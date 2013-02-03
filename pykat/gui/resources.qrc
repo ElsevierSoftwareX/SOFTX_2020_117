@@ -1,0 +1,10 @@
+ <!DOCTYPE RCC><RCC version="1.0">
+ <qresource>
+     <file>resources/beamsplitter.svg</file>
+	 <file>resources/laser.svg</file>
+	 <file>resources/mirror_flat.svg</file>
+	 <file>resources/mirror_curve.svg</file>
+	 <file>resources/photodiode_green.svg</file>
+	 <file>resources/photodiode_red.svg</file>
+ </qresource>
+ </RCC>

@@ -1,0 +1,55 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jan 28 11:58:09 2013
+
+@author: Daniel
+"""
+import numpy
+from numpy import min,max
+import exceptions
+from components import *
+from structs import *
+
+class Command:
+    def getFinesseText(self):
+        """ Base class for individual finesse optical components """    
+        raise NotImplementedError("This function is not implemented")
+        
+class xaxis(Command):
+    
+    def __init__(self, kat, scale, limits, comp, param, steps):
+        
+        if scale != Scale.linear and scale != Scale.logarithmic:
+            raise exceptions.ValueError("scale is not Scale.linear or Scale.logarithmic")            
+            
+        self.scale = scale
+        
+        if numpy.size(limits) != 2 :
+            raise exceptions.ValueError("limits input should be a 2x1 vector of limits for the xaxis")
+            
+        self.limits = limits
+        
+        if steps <= 0 :
+            raise exceptions.ValueError("steps value should be > 0")            
+            
+        self.steps = steps
+        
+        if not isinstance(comp, Component):
+            raise exceptions.ValueError("comp is not a Component")
+            
+        self.__comp = comp
+        
+        if not isinstance(param, Param) :
+            raise exceptions.ValueError("param argument is not of type Param")
+                
+        self._param = param
+        
+        kat.add(self)
+        
+    def getFinesseText(self):
+        
+        return 'xaxis {0} {1} {2} {3} {4} {5}'.format(
+                self.__comp.name, self._param.name, self.scale,
+                min(self.limits), max(self.limits), self.steps);
+                
+        
