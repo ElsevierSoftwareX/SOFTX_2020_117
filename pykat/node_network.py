@@ -8,7 +8,7 @@ import exceptions
 from pykat.components import Component
 from pykat.detectors import Detector
 
-class NodeNetwork:
+class NodeNetwork(object):
     def __init__(self, kat):
         self._nodes = {}
         self.__kat = kat
@@ -59,7 +59,7 @@ class NodeNetwork:
             print "node: {0} connected:{1} {2}->{3} {4}".format(
                     n.name,n.isConnected(),comp1, comp2, detectors)
         
-class Node:
+class Node(object):
     
     def __init__(self, name):
         self._comp1 = None
@@ -87,12 +87,34 @@ class Node:
         else:
             # we must have a detector as we check above            
             self._detectors.append(obj)
-            
+    
     def getComponents(self):
         ''' Returns a tuple with the first being the 2 components that 
         connect to the node. The second item is a list of the detectors at the
         node'''
         return [(self._comp1, self._comp2),self._detectors]
+        
+    def amIConnected(self, obj):
+        """
+        Checks if obj is connected oto the node. Returns true or false in tuple
+        with None or the other object and the node index which it is attached to
+        """ 
+        if obj == self._comp1:
+            if self._comp2 == None:
+                ix = -1
+            else:
+                ix = self._comp2.getNodes().index(self)
+                
+            return [True, self._comp2, ix]
+        elif obj == self._comp2:
+            if self._comp1 == None:
+                ix = -1
+            else:
+                ix = self._comp1.getNodes().index(self)
+                
+            return [True, self._comp1, ix]
+        else:
+            return [False, None]
         
     def __getname(self):
         return self.__name      

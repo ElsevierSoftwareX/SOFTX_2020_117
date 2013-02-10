@@ -10,11 +10,26 @@ import exceptions
 from components import *
 from structs import *
 
-class Command:
+class Command(object):
     def getFinesseText(self):
         """ Base class for individual finesse optical components """    
         raise NotImplementedError("This function is not implemented")
         
+class cavity(Command):
+    def __init__(self, kat, name, c1, n1, c2, n2):
+        self.__name = name
+        self.__c1 = c1
+        self.__c2 = c2
+        self.__n1 = n1
+        self.__n2 = n2
+    
+        kat.add(self)
+        
+    def getFinesseText(self):
+        return 'cav {0} {1} {2} {3} {4}'.format(
+                self.__name, self.__c1, self.__n1, self.__c2, self.__n2);
+    
+    
 class xaxis(Command):
     
     def __init__(self, kat, scale, limits, comp, param, steps):

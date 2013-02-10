@@ -7,13 +7,14 @@ Created on Mon Jan 28 11:10:01 2013
 import exceptions
 import pykat.gui.resources
 import pykat
+import inspect
 
 from pykat.gui.graphics import *
 from pykat.node_network import *
 from PyQt4.QtGui import *
 from PyQt4.Qt import *
 
-class Component() :
+class Component(object) :
     def __init__(self, name, kat):
         self.__name = name
         self._svgItem = None
@@ -55,17 +56,15 @@ class Component() :
         
     name = property(__getname)
     
-class Param:
+class Param(float):
+    def __new__(self,name,value):
+        return float.__new__(self,value)
+         
     def __init__(self,name,value):
-        self.value = value
         self.__name = name
-    
-    def getname(self):
-        return self.__name
         
-    name = property(getname)
-            
-   
+    name = property(lambda self: self.__name)
+           
 class mirror(Component):
     def __init__(self,kat,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0):
         
@@ -74,36 +73,71 @@ class mirror(Component):
         self.node1 = self._addNode(node1)
         self.node2 = self._addNode(node2)
         
-        self.R = Param('R',R)
-        self.T = Param('R',T)
-        self.phi = Param('phi',phi)
-        self.Rcx = Param('rcx',Rcx)
-        self.Rcy = Param('rcy',Rcy)
-        self.xbeta = Param('xbeta',xbeta)
-        self.ybeta = Param('ybeta',ybeta)
+        self.__R = R
+        self.__T = T
+        self.__phi = phi
+        self.__Rcx = Rcx
+        self.__Rcy = Rcy
+        self.__xbeta = xbeta
+        self.__ybeta = ybeta
+            
+    @property
+    def R(self):
+        return Param('R',self.__R)
+    @R.setter
+    def R(self,value):
+        self.__R = value
+    @property
+    def T(self): return Param('T', self.__T)
+    @T.setter
+    def T(self,value): self.__T = value
         
-    def _getRc(self):
+    @property
+    def phi(self): return Param('phi', self.__phi)
+    @phi.setter
+    def phi(self,value): self.__phi = value
+    
+    @property
+    def Rcx(self): return Param('Rcx', self.__Rcx)
+    @Rcx.setter
+    def Rcx(self,value): self.__Rcx = value
+    @property
+    def Rcy(self): return Param('Rcy', self.__Rcy)
+    @Rcy.setter
+    def Rcy(self,value): self.__Rcy = value
+    
+    
+    @property
+    def xbeta(self): return Param('xbeta', self.__xbeta)
+    @xbeta.setter
+    def xbeta(self,value): self.__xbeta = value
+    @property
+    def ybeta(self): return Param('ybeta', self.__ybeta)
+    @ybeta.setter
+    def ybeta(self,value): self.__ybeta = value
+    
+    @property
+    def Rc(self):
         if self.Rcx == self.Rcy:
             return self.Rcx
         else:
             return [self.Rcx, self.Rcy]
     
-    def _setRc(self,value):
+    @Rc.setter
+    def Rc(self,value):
         self.Rcx = value
         self.Rcy = value
         
-    Rc = property(_getRc,_setRc)
-    
     def getFinesseText(self):        
         rtn = []
         rtn.append('m {0} {1} {2} {3} {4} {5}'.format(
-                self.name, self.R.value, self.T.value, self.phi.value,
+                self.name, self.__R, self.__T, self.__phi,
                 self.node1.name, self.node2.name))
             
-        if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.Rcx))
-        if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.Rcy))
-        if self.xbeta != 0: rtn.append("attr {0} xbeta {1}".format(self.name,self.xbeta))
-        if self.ybeta != 0: rtn.append("attr {0} ybeta {1}".format(self.name,self.ybeta))
+        if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.__Rcx))
+        if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.__Rcy))
+        if self.xbeta != 0: rtn.append("attr {0} xbeta {1}".format(self.name,self.__xbeta))
+        if self.ybeta != 0: rtn.append("attr {0} ybeta {1}".format(self.name,self.__ybeta))
         
         return rtn
         
@@ -122,17 +156,31 @@ class space(Component):
         self.node1 = self._addNode(node1)
         self.node2 = self._addNode(node2)
         
-        self.length = Param('L',L)
-        self.refractive_index = Param('n',n)
+        self.__L = L
+        self.__n = n
+        self._QItem = None
         
+    @property
+    def L(self): return Param('L', self.__L)
+    @L.setter
+    def L(self,value): self.__L = value
+    @property
+    def n(self): return Param('n', self.__n)
+    @n.setter
+    def n(self,value): self.__n = value
+    
     def getFinesseText(self):
-        if self.refractive_index.value == 1:
-            return 's {0} {1} {2} {3}'.format(self.name, self.length.value, self.node1.name, self.node2.name)            
+        if self.__n == 1:
+            return 's {0} {1} {2} {3}'.format(self.name, self.__L, self.node1.name, self.node2.name)            
         else:
-            return 's {0} {1} {2} {3} {4}'.format(self.name, self.length.value, self.refractive_index.value, self.node1.name, self.node2.name)            
+            return 's {0} {1} {2} {3} {4}'.format(self.name, self.__L, self.__n, self.node1.name, self.node2.name)            
        
-       
-       
+    def getQGraphicsItem(self):
+        if self._QItem == None:
+            self._QItem = SpaceQGraphicsItem(self)
+        
+        return self._QItem  
+
        
 class laser(Component):
     def __init__(self,kat,name,node,P=1,f_offset=0,phase=0):
@@ -140,15 +188,30 @@ class laser(Component):
                 
         self.node = self._addNode(node)
         
-        self.power = Param('P', P)
-        self.f_offset = Param('f', f_offset)
-        self.phase = Param('phase',phase)
+        self.__power = P
+        self.__f_offset = f_offset
+        self.__phase = phase
         
+    @property
+    def power(self): return Param('P', self.__power)
+    @power.setter
+    def power(self,value): self.__power = value
+    
+    @property
+    def f_offset(self): return Param('f', self.__f_offset)
+    @f_offset.setter
+    def f_offset(self,value): self.__f_offset = value
+    
+    @property
+    def phase(self): return Param('phase', self.__phase)
+    @phase.setter
+    def phase(self,value): self.__phase = value
+    
     def getFinesseText(self):
-        if self.phase.value == 0 :
-            return 'l {0} {1} {2} {3}'.format(self.name, self.power.value, self.f_offset.value, self.node.name)            
+        if self.__phase == 0 :
+            return 'l {0} {1} {2} {3}'.format(self.name, self.__power, self.__f_offset, self.node.name)            
         else :
-            return 'l {0} {1} {2} {4} {3}'.format(self.name, self.power.value, self.f_offset.value, self.phase.value, self.node.name)            
+            return 'l {0} {1} {2} {4} {3}'.format(self.name, self.__power, self.__f_offset, self.__phase, self.node.name)            
          
     def getQGraphicsItem(self):
         if self._svgItem == None:

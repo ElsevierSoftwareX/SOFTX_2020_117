@@ -5,12 +5,15 @@ Created on Tue Jan 29 11:35:48 2013
 @author: Daniel
 """
 
+from pykat.components import Component
+from pykat.detectors import Detector
+
 from PyQt4 import QtGui, QtCore
 from PyQt4.Qt import *
-from PyQt4.QtGui import QCursor
+from PyQt4.QtGui import QCursor, QGraphicsItem
 from pykat.gui.graphics import *
 import qt_gui
-     
+        
 def openGUI(kat):
     app = QtGui.QApplication([""])
     pykatgui = pyKatGUI(kat)
@@ -20,16 +23,24 @@ def openGUI(kat):
 class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
     def __init__(self, kat,parent=None):
         super(pyKatGUI, self).__init__(parent)
+        
         self.setupUi(self)
+        self.graphicsView = pyKatGraphicsView(self.centralwidget)
+        self.graphicsView.setObjectName("graphicsView")
+        self.gridLayout.addWidget(self.graphicsView, 0, 0, 1, 1)
         
         # create a new scene
         self.__scene = QGraphicsScene()  
-
+        self.graphicsView.setRenderHint(QtGui.QPainter.Antialiasing)
+        
         brush = QBrush()
         brush.setStyle(Qt.CrossPattern)
         brush.setColor(QColor(230,230,230))
         self.__scene.setBackgroundBrush(brush)
         
+        self.actionExport_to_SVG.triggered.connect(lambda: self.exportToSVG())
+        self.actionClose.triggered.connect(lambda: self.close)
+
         # add scene to the graphics view
         self.graphicsView.setScene(self.__scene)
                 
@@ -50,7 +61,27 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
             
             if itm != None:
                 itm.setPos(0,0)
+                # uncomment this line to stop background bitmap caching of
+                # svg rendering. Important to make sure when rendering to 
+                # svg file that it is in a vector format. Gradients however
+                # don't work...
+                #itm.setCacheMode(QGraphicsItem.NoCache)
                 self.__scene.addItem(itm)
+                
+    def exportToSVG(self):
+        self.statusbar.showMessage("Saving to 'output.svg'...")
+        
+        svg = QSvgGenerator()
+        svg.setFileName("./output.svg")
+        svg.setSize(QSize(self.__scene.width(), self.__scene.height()))
+        svg.setViewBox(QRect(0,0,self.__scene.width(), self.__scene.height()))
+        svg.setTitle("pyKat output of example.kat")
+        
+        pntr = QPainter(svg)
+        self.__scene.render(pntr)
+        pntr.end()
+        
+        self.statusbar.showMessage("Complete: Saved to 'output.svg'")
                 
 class pyKatGraphicsView(QGraphicsView):
     def __init__(self,val):
@@ -72,7 +103,7 @@ class pyKatGraphicsView(QGraphicsView):
         item = self.itemAt(pt.x(),pt.y())
         
         if item != None :
-            if isinstance(item,Component):           
+            if isinstance(item, Component):           
                 menu.addSeparator()
                 menu.addAction("Edit")
                 menu.addAction("Delete")
@@ -110,8 +141,15 @@ class pyKatGraphicsView(QGraphicsView):
             self.setCursor(QCursor(Qt.ClosedHandCursor))
             
             item = self.__selected_item
-            pt_ = self.__prev_pt
+            #pt_ = self.__prev_pt
             pt = self.mapToScene(ev.pos())
             
-            item.moveBy(pt.x()-pt_.x(), pt.y()-pt_.y())
+            # smooth moving of item depending on where you click
+            #item.moveBy(pt.x()-pt_.x(), pt.y()-pt_.y())
+            # then snap to some integer value
+            snap = 10.0
+            item.setPos(int(round(pt.x()/snap)*snap),int(round(pt.y()/snap)*snap))
             self.__prev_pt = pt
+            
+            
+            

@@ -14,11 +14,13 @@ from pykat.node_network import *
 from PyQt4.QtGui import *
 from PyQt4.Qt import *
 
-class Detector() :
+class Detector(object) :
     def __init__(self, name,node,kat):
         self.__name = name
         self._svgItem = None
         self._kat = kat
+        self.noplot = False
+        self.enabled = True
         
         kat.add(self)
         
@@ -52,11 +54,21 @@ class photodiode(Detector):
                     
                 
     def getFinesseText(self) :
-        if self._alternate_beam:
-            return "pd {0} {1}".format(self.name, self.__node.name)
-        else:
-            return "pd {0} {1}*".format(self.name, self.__node.name)
+        if self.enabled:    
+            rtn = []
             
+            if self._alternate_beam:
+                rtn.append("pd {0} {1}".format(self.name, self.__node.name))
+            else:
+                rtn.append("pd {0} {1}*".format(self.name, self.__node.name))
+            
+            if self.noplot:
+                rtn.append("noplot {0}".format(self.name))
+            
+            return rtn
+        else:
+            return None
+    
     def getQGraphicsItem(self):
         if self._svgItem == None:
             self._svgItem = ComponentQGraphicsItem(":/resources/photodiode_red.svg",self,[(-20,0,self.node)])

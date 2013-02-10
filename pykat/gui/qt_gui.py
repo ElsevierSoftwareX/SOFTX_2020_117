@@ -1,5 +1,14 @@
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'qt_gui.ui'
+#
+# Created: Sat Feb 09 17:34:29 2013
+#      by: PyQt4 UI code generator 4.9.5
+#
+# WARNING! All changes made in this file will be lost!
+
 from PyQt4 import QtCore, QtGui
-import gui
+#from pykat.gui.gui import pyKatGraphicsView
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -9,8 +18,7 @@ except AttributeError:
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        MainWindow.resize(809, 611)
-        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "MainWindow", None, QtGui.QApplication.UnicodeUTF8))
+        MainWindow.resize(833, 614)
         self.centralwidget = QtGui.QWidget(MainWindow)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
@@ -20,70 +28,35 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.gridLayout = QtGui.QGridLayout(self.centralwidget)
         self.gridLayout.setSizeConstraint(QtGui.QLayout.SetDefaultConstraint)
-        self.gridLayout.setMargin(5)
+        self.gridLayout.setMargin(2)
+        self.gridLayout.setSpacing(5)
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
-        self.graphicsView = gui.pyKatGraphicsView(self.centralwidget)
-        self.graphicsView.setObjectName(_fromUtf8("graphicsView"))
-        self.gridLayout.addWidget(self.graphicsView, 0, 0, 1, 1)
-        self.widget = QtGui.QWidget(self.centralwidget)
-        self.widget.setMinimumSize(QtCore.QSize(200, 0))
-        self.widget.setMaximumSize(QtCore.QSize(200, 16777215))
-        self.widget.setObjectName(_fromUtf8("widget"))
-        self.verticalLayout = QtGui.QVBoxLayout(self.widget)
-        self.verticalLayout.setMargin(0)
-        self.verticalLayout.setObjectName(_fromUtf8("verticalLayout"))
-        self.label = QtGui.QLabel(self.widget)
-        self.label.setText(QtGui.QApplication.translate("MainWindow", "Toolbox", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setObjectName(_fromUtf8("label"))
-        self.verticalLayout.addWidget(self.label)
-        self.toolBox = QtGui.QToolBox(self.widget)
-        self.toolBox.setMinimumSize(QtCore.QSize(0, 200))
-        self.toolBox.setFrameShape(QtGui.QFrame.Panel)
-        self.toolBox.setFrameShadow(QtGui.QFrame.Sunken)
-        self.toolBox.setObjectName(_fromUtf8("toolBox"))
-        self.tool_components = QtGui.QWidget()
-        self.tool_components.setGeometry(QtCore.QRect(0, 0, 176, 136))
-        self.tool_components.setObjectName(_fromUtf8("tool_components"))
-        self.toolBox.addItem(self.tool_components, _fromUtf8(""))
-        self.page_2 = QtGui.QWidget()
-        self.page_2.setGeometry(QtCore.QRect(0, 0, 176, 136))
-        self.page_2.setObjectName(_fromUtf8("page_2"))
-        self.toolBox.addItem(self.page_2, _fromUtf8(""))
-        self.verticalLayout.addWidget(self.toolBox)
-        self.widget_2 = QtGui.QWidget(self.widget)
-        self.widget_2.setMinimumSize(QtCore.QSize(0, 300))
-        self.widget_2.setObjectName(_fromUtf8("widget_2"))
-        self.verticalLayout.addWidget(self.widget_2)
-        self.gridLayout.addWidget(self.widget, 0, 1, 1, 1)
-        self.gridLayout.setColumnStretch(0, 4)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 809, 25))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 833, 26))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         self.menuFile = QtGui.QMenu(self.menubar)
-        self.menuFile.setTitle(QtGui.QApplication.translate("MainWindow", "File", None, QtGui.QApplication.UnicodeUTF8))
         self.menuFile.setObjectName(_fromUtf8("menuFile"))
         self.menuAbout = QtGui.QMenu(self.menubar)
-        self.menuAbout.setTitle(QtGui.QApplication.translate("MainWindow", "About", None, QtGui.QApplication.UnicodeUTF8))
         self.menuAbout.setObjectName(_fromUtf8("menuAbout"))
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(MainWindow)
         self.statusbar.setObjectName(_fromUtf8("statusbar"))
         MainWindow.setStatusBar(self.statusbar)
         self.actionClose = QtGui.QAction(MainWindow)
-        self.actionClose.setText(QtGui.QApplication.translate("MainWindow", "Close", None, QtGui.QApplication.UnicodeUTF8))
         self.actionClose.setObjectName(_fromUtf8("actionClose"))
         self.actionSave = QtGui.QAction(MainWindow)
-        self.actionSave.setText(QtGui.QApplication.translate("MainWindow", "Save", None, QtGui.QApplication.UnicodeUTF8))
         self.actionSave.setObjectName(_fromUtf8("actionSave"))
         self.actionOpen = QtGui.QAction(MainWindow)
-        self.actionOpen.setText(QtGui.QApplication.translate("MainWindow", "Open", None, QtGui.QApplication.UnicodeUTF8))
         self.actionOpen.setObjectName(_fromUtf8("actionOpen"))
         self.actionHelp = QtGui.QAction(MainWindow)
-        self.actionHelp.setText(QtGui.QApplication.translate("MainWindow", "Help", None, QtGui.QApplication.UnicodeUTF8))
         self.actionHelp.setObjectName(_fromUtf8("actionHelp"))
+        self.actionExport_to_SVG = QtGui.QAction(MainWindow)
+        self.actionExport_to_SVG.setObjectName(_fromUtf8("actionExport_to_SVG"))
         self.menuFile.addAction(self.actionSave)
         self.menuFile.addAction(self.actionOpen)
+        self.menuFile.addSeparator()
+        self.menuFile.addAction(self.actionExport_to_SVG)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionClose)
         self.menuAbout.addAction(self.actionHelp)
@@ -91,10 +64,15 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuAbout.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.toolBox.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        self.toolBox.setItemText(self.toolBox.indexOf(self.tool_components), QtGui.QApplication.translate("MainWindow", "Page 1", None, QtGui.QApplication.UnicodeUTF8))
-        self.toolBox.setItemText(self.toolBox.indexOf(self.page_2), QtGui.QApplication.translate("MainWindow", "Page 2", None, QtGui.QApplication.UnicodeUTF8))
+        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "MainWindow", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuFile.setTitle(QtGui.QApplication.translate("MainWindow", "File", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuAbout.setTitle(QtGui.QApplication.translate("MainWindow", "About", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionClose.setText(QtGui.QApplication.translate("MainWindow", "Close", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionSave.setText(QtGui.QApplication.translate("MainWindow", "Save", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionOpen.setText(QtGui.QApplication.translate("MainWindow", "Open", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionHelp.setText(QtGui.QApplication.translate("MainWindow", "Help", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionExport_to_SVG.setText(QtGui.QApplication.translate("MainWindow", "Export to SVG...", None, QtGui.QApplication.UnicodeUTF8))
 
