@@ -56,14 +56,16 @@ class katRun(object):
         
 class kat(object):                    
         
-    def __init__(self):
+    def __init__(self, katexe=""):
         
+        self.scene = None # scene object for GUI
         self.__components = {}        
         self.__detectors = {}        
         self.__commands = {}        
         self.__gui = None
         self.nodes = NodeNetwork(self)  
-
+        self.__katexe = katexe
+        
         # Various         
         self.__phase = None
         self.__maxtem = None
@@ -90,25 +92,31 @@ class kat(object):
         It returns a katRun object which is populated with the various
         data from the simulation run.
         """
-                
-        # Get the environment variable for where Finesse is stored
-        self.__finesse_dir = os.environ.get('FINESSE_DIR')
-                
-        if self.__finesse_dir == None :
-            raise MissingFinesseEnvVar()
-        
         
         r = katRun()
-        r.katScript = "".join(self.generateKatScript())
+        r.katScript = "".join(self.generateKatScript())       
         
+        if len(self.__katexe) == 0:
+            # Get the environment variable for where Finesse is stored
+            self.__finesse_dir = os.environ.get('FINESSE_DIR')
+        
+            
+            if self.__finesse_dir == None :
+                raise MissingFinesseEnvVar()
+        
+            kat_exec = os.path.join(self.__finesse_dir,'kat.exe') 
+            
+        else:
+            kat_exec = self.__katexe
+        
+        # check if kat file exists and it is executable by user        
+        if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
+            raise MissingFinesse()
+        
+        # create a kat file which we will write the script into
         katfile = tempfile.TemporaryFile(suffix=".kat")
         katfile.writelines(r.katScript)
         katfile.flush()
-        
-        kat_exec = os.path.join(self.__finesse_dir,'kat.exe')   
-        
-        if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
-            raise MissingFinesse()
         
         kat_exec = "{0} {1}".format(kat_exec, katfile.name)
                                                             
@@ -118,12 +126,14 @@ class kat(object):
 
         [out,err] = p.communicate()
         
+        # get the version number
         ix = out.find('build ') + 6
         ix2 = out.find(')',ix)
         r.katVersion = out[ix:ix2]
         
         r.runDateTime = datetime.datetime.now()
         
+        # if something has gone wrong, print err regardless
         if p.returncode != 0:
             print err
             return None

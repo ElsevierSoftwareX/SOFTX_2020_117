@@ -144,7 +144,7 @@ class mirror(Component):
     def getQGraphicsItem(self):
         if self._svgItem == None:
             self._svgItem = ComponentQGraphicsItem(":/resources/mirror_flat.svg",self
-                                                ,[(-20,0,self.node1),(20,0,self.node2)])
+                                                ,[(-4,15,self.node1),(14,15,self.node2)])
         return self._svgItem
    
    
@@ -215,7 +215,8 @@ class laser(Component):
          
     def getQGraphicsItem(self):
         if self._svgItem == None:
-            self._svgItem = ComponentQGraphicsItem(":/resources/laser.svg",self,[(70,0,self.node)])
+            self._svgItem = ComponentQGraphicsItem(":/resources/laser.svg",
+                                                   self,[(65,25,self.node)])
             
         return self._svgItem
             

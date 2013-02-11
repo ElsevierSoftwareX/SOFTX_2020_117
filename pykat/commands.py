@@ -34,6 +34,14 @@ class xaxis(Command):
     
     def __init__(self, kat, scale, limits, comp, param, steps):
         
+        if scale == "lin":
+            scale = Scale.linear
+        elif scale == "log":
+            scale = Scale.logarithmic
+        elif isinstance(scale, str): 
+            # else we have a string but not a recognisable one
+            raise exceptions.ValueError("scale argument '{0}' is not valid, must be 'lin' or 'log'".format(scale))
+         
         if scale != Scale.linear and scale != Scale.logarithmic:
             raise exceptions.ValueError("scale is not Scale.linear or Scale.logarithmic")            
             
