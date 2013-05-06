@@ -8,7 +8,7 @@ import exceptions
 import pykat.gui.resources
 import pykat
 import inspect
-
+import pykat.gui.graphics
 from pykat.gui.graphics import *
 from pykat.node_network import *
 from PyQt4.QtGui import *
@@ -40,9 +40,10 @@ class Component(object) :
         n = self._kat.nodes.createNode(name)
         
         if n == None:
-            raise exceptions.RuntimeError("getNode did not return a node for '{0}'".format(name))
+            raise exceptions.RuntimeError("createNode did not return a node for '{0}'".format(name))
         else:
-            n.connect(self)    
+            n.connect(self)
+                
             self.__nodes.append(n)
         
         return n
@@ -143,10 +144,9 @@ class mirror(Component):
         
     def getQGraphicsItem(self):
         if self._svgItem == None:
-            self._svgItem = ComponentQGraphicsItem(":/resources/mirror_flat.svg",self
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg",self
                                                 ,[(-4,15,self.node1),(14,15,self.node2)])
         return self._svgItem
-   
    
    
 class space(Component):
@@ -177,11 +177,25 @@ class space(Component):
        
     def getQGraphicsItem(self):
         if self._QItem == None:
-            self._QItem = SpaceQGraphicsItem(self)
+            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self)
         
         return self._QItem  
 
-       
+    def changeNode(self, node_old, node_new):
+        '''
+        Called when a space's node has been connected
+        to another components node
+        '''
+        node_new.connect(self)
+        node_old.disconnect(self)
+        
+        if self.node1 == node_old:
+            self.node1 = node_new
+        
+        if self.node2 == node_old:
+            self.node2 = node_new
+
+    
 class laser(Component):
     def __init__(self,kat,name,node,P=1,f_offset=0,phase=0):
         Component.__init__(self,name,kat)
@@ -215,7 +229,7 @@ class laser(Component):
          
     def getQGraphicsItem(self):
         if self._svgItem == None:
-            self._svgItem = ComponentQGraphicsItem(":/resources/laser.svg",
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg",
                                                    self,[(65,25,self.node)])
             
         return self._svgItem

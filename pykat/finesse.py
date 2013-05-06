@@ -10,7 +10,6 @@ import subprocess
 import tempfile
 import numpy as np
 import datetime
-#from colorama import Fore
 import pickle
 
 from pykat.node_network import NodeNetwork
@@ -85,7 +84,7 @@ class kat(object):
     def noxaxis(self): return self.__noxaxis
     @noxaxis.setter
     def noxaxis(self,value): self.__noxaxis = bool(value)
-    
+        
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
@@ -287,6 +286,44 @@ class kat(object):
     def getComponents(self):
         return self.__components.values()
     
+    def hasComponent(self, name):
+        return (name in self.__components)
+    
+    def getNewComponentName(self,prefix):
+        '''
+        Returns a name for a component which hasn't already been added.
+        Returns [prefix] + number, where number is greater than 1. e.g.
+        if m1 exists getNewName('m') will return 'm2'
+        '''
+        n = 1
+        name = "{0}{1}".format(prefix, n)
+        
+        while name in self.__components:
+            n += 1
+            name = "{0}{1}".format(prefix,n)
+        
+        return name
+    
+    def getNewNodeNames(self,prefix,N=1):
+        '''
+        Returns a list of names for N number of nodes which haven't already been added.
+        Returns [prefix] + number, where number is greater than 1. e.g.
+        if m1 exists getNewName('m') will return 'm2'
+        '''
+        rtn = []
+        n = 1
+        
+        for M in range(1,N+1):
+            name = "{0}{1}".format(prefix, n)
+            
+            while name in self.nodes.getNodes() or (name in rtn):
+                n += 1
+                name = "{0}{1}".format(prefix,n)
+        
+            rtn.append(name)
+            
+        return rtn
+        
     
     def __add_detector(self, det):
 

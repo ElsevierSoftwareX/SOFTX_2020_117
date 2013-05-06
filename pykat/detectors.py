@@ -11,8 +11,6 @@ from pykat.utils import *
 
 from pykat.gui.graphics import *
 from pykat.node_network import *
-from PyQt4.QtGui import *
-from PyQt4.Qt import *
 
 class Detector(object) :
     def __init__(self, name,node,kat):
