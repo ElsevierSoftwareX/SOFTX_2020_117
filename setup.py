@@ -9,11 +9,11 @@ from distutils.core import setup
 
 setup(
     name='PyKat',
-    version='0.0.1',
+    version='0.0',
     author='Daniel Brown',
-    author_email='danielbrown87@gmail.com',
+    author_email='ddb@star.sr.bham.ac.uk',
     packages=['pykat'],
-    url='http://www.gwoptics.org/pykat',
+    url='http://pypi.python.org/pypi/PyKat/',
     license='LICENSE.txt',
     description='Python interface and tools for FINESSE',
     long_description=open('README.txt').read(),
