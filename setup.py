@@ -9,10 +9,10 @@ from distutils.core import setup
 
 setup(
     name='PyKat',
-    version='0.0',
+    version='0.0.1',
     author='Daniel Brown',
     author_email='ddb@star.sr.bham.ac.uk',
-    packages=['pykat'],
+    packages=['pykat','pykat.gui','pykat.gui.resources'],
     url='http://pypi.python.org/pypi/PyKat/',
     license='LICENSE.txt',
     description='Python interface and tools for FINESSE',
