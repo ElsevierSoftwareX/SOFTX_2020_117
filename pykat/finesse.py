@@ -58,9 +58,10 @@ class kat(object):
     def __init__(self, katexe=""):
         
         self.scene = None # scene object for GUI
-        self.__components = {}        
-        self.__detectors = {}        
-        self.__commands = {}        
+        self.__components = {}  # dictionary of optical components      
+        self.__detectors = {}   # dictionary of detectors
+        self.__commands = {}    # dictionary of commands
+        self.__extra_lines = [] # an array of strings which are just normal finesse code to include when running
         self.__gui = None
         self.nodes = NodeNetwork(self)  
         self.__katexe = katexe
@@ -84,7 +85,17 @@ class kat(object):
     def noxaxis(self): return self.__noxaxis
     @noxaxis.setter
     def noxaxis(self,value): self.__noxaxis = bool(value)
+       
+    def load(self, katfile):
+        """
+        Loads the kat file specified which can then be run
+        """
         
+        with open(katfile) as f:
+            for lines in f.readlines():
+                self.__extra_lines.append(lines)
+        
+	   
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
@@ -235,9 +246,7 @@ class kat(object):
             
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
-        if len(self.__components) == 0 :
-            raise exceptions.RuntimeError("No components have been added")
-
+        
         out = []    
         
         for key in self.__components:       
@@ -275,6 +284,15 @@ class kat(object):
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.maxtem != None: out.append("maxtem {0}\n".format(self.maxtem))            
         
+        # There maybe extra lines we want to include in the kat
+        # script which aren't parseable into components, detectors
+        # or commands. Typically when something hasn't been fully
+        # supported yet. So bung these extra lines on at the end
+        for lines in self.__extra_lines:
+            out.append(lines)
+        
+        # ensure we don't do any plotting. That should be handled
+        # by user themselves
         out.append("gnuterm no\n")
         out.append("pyterm no\n")
         
