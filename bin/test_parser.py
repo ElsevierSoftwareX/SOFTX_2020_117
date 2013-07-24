@@ -2,18 +2,17 @@ import sys
 sys.path.append("../")
 
 from pykat import finesse
+import pykat.profiling
 import numpy as np
 import pylab as pl
 
 kat = finesse.kat()
-kat.load("parse.kat")
+#kat.load("D:\\finesse\\test\\kat_test\\physics\\mirror_astig_tilt_all_BH.kat")
+kat.load('parse.kat')
+kat.getPerformanceData = True
 
-run = kat.run(printout=0,printerr=0)
+[run, perfdata] = kat.run(printout=0,printerr=0)
 
-pl.figure()
+pykat.profiling.plotReducedPerformanceData(perfdata)
 
-pl.plot(run.x,run.y)
-pl.xlabel(run.xlabel)
-pl.legend(run.ylabels)
-pl.show()
 

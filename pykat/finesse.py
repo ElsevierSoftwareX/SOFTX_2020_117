@@ -89,6 +89,7 @@ class kat(object):
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = None
+        self.__time_code = None
         
     @property
     def maxtem(self): return self.__maxtem
@@ -99,6 +100,11 @@ class kat(object):
     def phase(self): return self.__phase
     @phase.setter
     def phase(self,value): self.__phase = int(value)
+    
+    @property
+    def getPerformanceData(self): return self.__time_code
+    @getPerformanceData.setter
+    def getPerformanceData(self,value): self.__time_code = bool(value)
     
     @property
     def noxaxis(self): return self.__noxaxis
@@ -147,7 +153,12 @@ class kat(object):
         katfile.writelines(r.katScript)
         katfile.flush()
         
-        kat_exec = "{0} {1}".format(kat_exec, katfile.name)
+        flags = ""
+        
+        if self.__time_code:
+            flags = flags + " --perf-timing "
+            
+        kat_exec = "{0} {1} {2}".format(kat_exec, flags, katfile.name)
                                                             
         p=subprocess.Popen(kat_exec, 
                          stdout=subprocess.PIPE, 
@@ -180,7 +191,6 @@ class kat(object):
         r.ylabels = hdr[1:]
         
         if save_output:        
-            
             newoutfile = "{0}.out".format(base)
             
             cwd = os.path.os.getcwd()
@@ -209,8 +219,18 @@ class kat(object):
             
 
         katfile.close()
+        perfData = []
         
-        return r
+        if self.__time_code:
+            perffile = open(root[0] + ".perf",'r')
+            
+            for l in perffile.readlines():
+                vals = l.strip().split(' ')
+                perfData.append((vals[0], float(vals[1]), float(vals[2]), float(vals[3])))
+                
+            return [r, perfData]
+        else:
+            return r
         
     def add(self, obj) :
         

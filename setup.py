@@ -9,7 +9,7 @@ from distutils.core import setup
 
 setup(
     name='PyKat',
-    version='0.0.1',
+    version='0.0.2',
     author='Daniel Brown',
     author_email='ddb@star.sr.bham.ac.uk',
     packages=['pykat','pykat.gui','pykat.gui.resources'],
