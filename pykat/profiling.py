@@ -21,6 +21,7 @@ def plotReducedPerformanceData(perfdata, ordered=False):
     plt = fig.add_subplot(111)
     plt.barh(ind, times, height=0.5, log=True, align='center')
     pl.yticks(ind, labels)
-    pl.show()
+    pl.xlabel("Time [s]")
+    pl.title("Timing data for FINESSE")
     
-    return labels, times
+    return labels, times, fig
