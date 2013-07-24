@@ -23,6 +23,7 @@ Contact at ddb@star.sr.bham.ac.uk
 
 @author: Daniel Brown
 """
+import sys
 import os
 import exceptions
 import subprocess
@@ -153,17 +154,22 @@ class kat(object):
         katfile.writelines(r.katScript)
         katfile.flush()
         
-        flags = ""
+        flags = "--perl1 "
         
         if self.__time_code:
             flags = flags + " --perf-timing "
             
         kat_exec = "{0} {1} {2}".format(kat_exec, flags, katfile.name)
                                                             
-        p=subprocess.Popen(kat_exec, 
-                         stdout=subprocess.PIPE, 
-                         stderr=subprocess.PIPE)
+        p=subprocess.Popen(kat_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
+        for line in iter(p.stderr.readline, ""):
+            if "%" in line:
+                sys.stdout.write("%\n")
+                
+            sys.stdout.write('\r'+line[:-1] + '\n')
+            sys.stdout.flush()
+            
         [out,err] = p.communicate()
         
         # get the version number
