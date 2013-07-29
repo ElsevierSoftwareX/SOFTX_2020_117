@@ -20,6 +20,9 @@ def start(instance_path,port=5000, debug=True):
     
     from pykat.testing.web import app    
     
+    if(app.instance_path!=instance_path):
+        raise Exception("Instance path of Flask app didn't match the requested value")
+        
     # load up the actual interface code
     import pykat.testing.web.web_interface
     
@@ -30,6 +33,11 @@ def start(instance_path,port=5000, debug=True):
     else:
         # get the latest version for logs etc.
         utils.git("--git-dir ./finesse_src/.git pull")
+        
+    # need local copy of test
+    if not os.path.exists("./finesse_test"):
+        print "finesse test folder didn't exist, cloning now..."
+        utils.git("clone git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git finesse_test")
     
     app.secret_key = os.urandom(24)
     app.run(debug=debug, port=int(port))

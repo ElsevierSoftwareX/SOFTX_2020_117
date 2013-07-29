@@ -54,7 +54,7 @@ class FinesseTestProcess(Thread):
     
     def __init__(self, TEST_DIR, BASE_DIR, git_commit, 
                  run_fast=False, suites=[], test_id="0",
-                 git_bin="",emails="", nobuild=False,*args, **kqwargs):
+                 git_bin="",emails="", nobuild=True,*args, **kqwargs):
                  
         Thread.__init__(self)
         self.git_commit = git_commit
@@ -104,7 +104,10 @@ class FinesseTestProcess(Thread):
         self.GIT_BIN = git_bin
                 
     def percent_done(self):
-        return 100.0*float(self.done_files)/float(self.total_files)
+        if self.total_kats == 0:
+            return 0.0
+        else:
+            return 100.0*float(self.done_kats)/float(self.total_kats)
         
     def get_version(self):
         return self.git_commit
@@ -283,6 +286,7 @@ class FinesseTestProcess(Thread):
                     output_differences[suite][out] = (ref_arr[ix], out_arr[ix], np.max(rel_diff))
 
         os.chdir(BASE_DIR)
+        
         if not os.path.exists("reports"):
             os.mkdir("reports")
 
@@ -347,16 +351,6 @@ class FinesseTestProcess(Thread):
         finally:
             finished_test = True
         
-        # once done check if any other tests need to be ran
-        #schedule_lock.acquire()
-        
-        #if len(scheduled_tests) > 0:
-        #    current_test = scheduled_tests.pop(0)
-        #    current_test.start()
-        #else:
-        #    current_test = None
-        
-        #schedule_lock.release()
         
 
 if __name__ == "__main__":
