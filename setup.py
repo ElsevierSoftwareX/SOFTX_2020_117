@@ -7,6 +7,8 @@ Created on Sun Jan 27 09:43:16 2013
 
 from distutils.core import setup
 
+REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
+
 setup(
     name='PyKat',
     version='0.0.2',
@@ -17,9 +19,5 @@ setup(
     license='LICENSE.txt',
     description='Python interface and tools for FINESSE',
     long_description=open('README.txt').read(),
-    install_requires=[
-    "PyQt4 >= 4.8.3",
-    "numpy >= 1.6.2",
-    "flask >= 0.10.1"
-    ],
+    install_requires=REQUIREMENTS
 )
