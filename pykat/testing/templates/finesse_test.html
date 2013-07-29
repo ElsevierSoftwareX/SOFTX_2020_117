@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!--<link rel="stylesheet" type="text/css" href="/css/style.css"/>-->
+        <link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css"/>
+    </head>
+    <body>
+    
+        <div>
+            <h1>FINESSE Test</h1>
+            
+            <div class="current_test">
+                <h2>Current running test</h2>
+                Running test for commit: <span id="txtGitVersion"></span><br>
+                Test status: <span id="txtStatus"></span>
+                <div id="current_test_progress" style="width:500px;"></div>
+                <input type="button" value="Refresh" id="btnGetProgress"/>
+            </div>
+            
+            <div class="queued_tests">
+                <h2>Queued Tests</h2>
+                <input type="button" value="Refresh queued tests" id="btnGetTests"/>
+                <table id="tblQueuedTests" border="1" style="width:500px;">
+                    <col width="10%">
+                    <col width="50%">
+                    <col width="20%">
+                    <col width="20%">
+                    <tr>
+                        <td width="">Test ID</td>
+                        <td>Start time</td>
+                        <td>Git Commit</td>
+                        <td>Cancel Test</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="new_test">
+            <h2>Start new test</h2>
+            
+            <select id="commit_list" style="width: 300px;">
+            </select>
+            
+            <input type="button" value="Refresh log entries" id="btnGetLogs"/>
+            
+            <input type="button" value="Start new FINESSSE test" id="btnStartTest"/>
+            </div>
+        </div>
+    
+        <script type="text/JavaScript" src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <script type="text/JavaScript" src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+                
+        <script type="text/JavaScript">
+                        
+            $(document).ready(function(){
+                updateLogEntries();
+                
+                window.setInterval(function(){                
+                    updateQueuedTests();
+                    updateProgress();
+                }, 1000);
+                
+            });
+            
+            $( "#current_test_progress" ).progressbar({
+              value: false
+            });
+
+            $("#btnStartTest").click(function(){
+                startNewTest();
+            });
+            
+            $("#btnGetLogs").click(function(){
+                updateLogEntries();
+            });
+            
+            $("#btnGetTests").click(function(){
+                updateQueuedTests();
+            });
+            
+            $('#btnGetProgress').click(function(){
+                updateProgress();
+            });
+            
+            function updateProgress(){
+                $.ajax({
+                  type: "POST",
+                  contentType: "application/json; charset=utf-8",
+                  url: "/finesse/get_test_progress",
+                  success: function (data) {
+                    
+                    if(data.running){
+                        $('#txtGitVersion').text(data.version);
+                        $('#txtStatus').text(data.status);
+                        $( "#current_test_progress" ).progressbar({ value: data.percent });
+                    } else {
+                        $('#txtGitVersion').text("N/A");
+                        $('#txtStatus').text("No test running");
+                        $( "#current_test_progress" ).progressbar({ value: false });
+                    }
+                  },
+                  error: function(jqXHR, textStatus, err){
+                    console.log('error: ' + err);
+                  },
+                  dataType: "json"
+                });
+            }
+            
+            function startNewTest(){
+                
+                list = $("#commit_list");
+                data = JSON.stringify({"git_commit": list.val()});
+                
+                $.ajax({
+                  type: "POST",
+                  contentType: "application/json; charset=utf-8",
+                  url: "/finesse/start_test",
+                  data: data,
+                  success: function (data) {
+                    updateQueuedTests();
+                    updateProgress();
+                  },
+                  error: function(jqXHR, textStatus, err){
+                    console.log('error: ' + err);
+                  },
+                  dataType: "json"
+                });
+            }
+            
+            tbl = $('#tblQueuedTests');
+            
+            function updateQueuedTests(){
+                                
+                $.ajax({
+                  type: "POST",
+                  contentType: "application/json; charset=utf-8",
+                  url: "/finesse/get_tests",
+                  success: function (data) {
+                    tests = data.tests;
+                    
+                    $('#tblQueuedTests tr:not(:first)')
+                        .each(function(){
+                            id = $(this).attr("test_id");
+                            found = false;
+                            
+                            for(var i=0; i<tests.length; i++){
+                                if(id == tests[i].id){
+                                    found = true;
+                                    break;
+                                } 
+                            }
+                            
+                            if(!found)
+                                $(this).remove();
+                        
+                    });
+                    
+                    for(var i=0; i<tests.length; i++){
+                        if($('#test_row_' + tests[i].id).length == 0){
+                            rows = '<tr id="test_row_' + tests[i].id + '" test_id="' + tests[i].id + '">';
+                            rows += '<td>'+ tests[i].id + '</td>';
+                            rows += '<td>'+ tests[i].queue_time +'</td>';
+                            rows += '<td>'+ tests[i].git_commit +'</td>';
+                            rows += '<td>';
+                            rows += '</tr>';
+                            
+                            tbl.append(rows);
+                        }
+                    }
+                    
+                    
+                  },
+                  error: function(jqXHR, textStatus, err){
+                    console.log('error: ' + err);
+                  },
+                  dataType: "json"
+                });
+            }
+            
+            function updateLogEntries(){
+                list = $("#commit_list");
+
+                list.empty();
+                
+                $.ajax({
+                  type: "POST",
+                  contentType: "application/json; charset=utf-8",
+                  url: "/finesse/get_50_logs",
+                  success: function (data) {
+                    logs = data.logs;
+                    
+                    for(var i=0; i<logs.length; i++){
+                        list.append($('<option>', { value: logs[i].commit, text: logs[i].commit + " - " + logs[i].message}));
+                    }
+                  },
+                  error: function(jqXHR, textStatus, err){
+                    console.log('error: ' + err);
+                  },
+                  dataType: "json"
+                });
+            }
+        </script>
+    </body>
+</html>
