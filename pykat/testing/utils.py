@@ -18,9 +18,7 @@ def git(args):
         cmd = " ".join(args)
     else:
         cmd = GIT_BIN + " " + args
-    
-    print cmd
-    
+        
     p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
     out, err = p.communicate()
 

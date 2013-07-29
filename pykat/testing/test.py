@@ -1,5 +1,6 @@
- #!/bin/python
-
+#!/bin/python
+from threading import Thread, Lock
+from time import sleep
 from optparse import OptionParser
 import os
 import subprocess as sub
@@ -11,11 +12,9 @@ import smtplib
 import string
 import time
 import pickle
-import datetime
-
-options = None
-diff_rel_eps = 1e-13
-GIT_BIN = ""
+from datetime import datetime
+from pykat.testing import utils
+import sys
 
 class RunException(Exception):
 	def __init__(self, returncode, args, err, out):
@@ -39,226 +38,364 @@ def runcmd(args):
 
 	return [out,err]
 
-def git(args):
-	p = sub.Popen([GIT_BIN] + args, stdout=sub.PIPE, stderr=sub.PIPE)
-	out, err = p.communicate()
+class FinesseTestProcess(Thread):
+    
+    queue_time = None
+    status = "Not started"
+    built = False
+    total_kats = 0
+    done_kats = 0
+    git_commit = ""
+    test_id = -1
+    finished_test = False
+    diff_rel_eps = 1e-13
+    running_kat = ""
+    running_suite = ""
+    
+    def __init__(self, TEST_DIR, BASE_DIR, git_commit, 
+                 run_fast=False, suites=[], test_id="0",
+                 git_bin="",emails="", nobuild=False,*args, **kqwargs):
+                 
+        Thread.__init__(self)
+        self.git_commit = git_commit
+        self.queue_time = datetime.now()
+        self.test_id = test_id
+        self.TEST_DIR = TEST_DIR
+        self.BASE_DIR = BASE_DIR
+        self.emails = ""
+        
+        if type(nobuild) is str:
+            if nobuild.lower() == "true":
+                self.nobuild = True
+            elif nobuild.lower() == "false":
+                self.nobuild = False
+            else:
+                raise Exception("nobuild is not a boolean value")
+        elif type(nobuild) is bool:
+            self.nobuild = nobuild
+        else:
+            raise Exception("nobuild is not a boolean value")
+        
+        if type(run_fast) is str:
+            if run_fast.lower() == "true":
+                self.run_fast = True
+            elif run_fast.lower() == "false":
+                self.run_fast = False
+            else:
+                raise Exception("run_fast is not a boolean value")
+                
+        elif type(run_fast) is bool:
+            self.run_fast = run_fast
+        else:
+            raise Exception("nobuild is not a boolean value")
+            
+        if not os.path.isdir(self.BASE_DIR):
+            raise Exception("BASE_DIR was not a valid directory")
+        
+        if not os.path.isdir(self.TEST_DIR):
+            raise Exception("TEST_DIR was not a valid directory, should point to a clone of the FINESSE test repository")
+            
+        if not suites:
+            self.suites = ["physics","random"]				
+        else:
+            self.suites = []
+            self.suites.extend(suites)
 
-	if p.returncode != 0:
-		print err
-		raise RunException(p.returncode, args, err, out)
+        self.GIT_BIN = git_bin
+                
+    def percent_done(self):
+        return 100.0*float(self.done_files)/float(self.total_files)
+        
+    def get_version(self):
+        return self.git_commit
+        
+    def get_progress(self):
+        if self.built:
+            return '{0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats,self.running_kat, self.running_suite)
+        else:
+            return 'Building FINESSE executable'
+            
+    def startFinesseTest(self):
+        if sys.platform == "win32":
+            EXE = ".exe"
+        else:
+            EXE = ""
+            
+        self.built = False
 
-	return [out, err]
+        print type(self.nobuild), self.nobuild
+        
+        if not os.path.exists("build"):
+            os.mkdir("build")
+            
+        # Firstly we need to build the latest version of finesse
+        if os.path.isdir("build") and not self.nobuild:
+            print "deleting build dir..."
+            shutil.rmtree("build")
 
+            print "Checking out finesse base..."
+            utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git","build"])
 
-	BASE_DIR = os.getcwd()
+            os.chdir("build")
+            print "Checking out and building develop version of finesse..."
+            
+            if sys.platform == "win32":
+                runcmd(["bash","./finesse.sh","--checkout","develop"])
+                runcmd(["bash","./finesse.sh","--build"])
+            else:
+                EXE = ""
+                runcmd(["./finesse.sh","--checkout","develop"])
+                runcmd(["./finesse.sh","--build"])
+                
+            os.chdir(self.BASE_DIR)
+            
+        FINESSE_EXE = os.path.join(self.BASE_DIR,"build","kat" + EXE)
+        
+        # check if kat runs
+        if not os.path.exists(FINESSE_EXE):
+            raise Exception("Kat file was not found")
+        
+        self.built = True
+        
+        print "kat file found in " + FINESSE_EXE
+        
+        OUTPUTS_DIR = os.path.join(self.BASE_DIR,"outputs")
+        
+        if os.path.isdir(OUTPUTS_DIR):
+            print "deleting outputs dir..."
+            shutil.rmtree(OUTPUTS_DIR)
+            
+        os.mkdir(OUTPUTS_DIR)
+        
+        os.environ["KATINI"] = os.path.join(self.TEST_DIR,"kat.ini")
+        
+        # Clean up and pull latest test repository
+        print "Cleaning test repository..."
+        os.chdir(self.TEST_DIR)
+        utils.git(["clean","-xdf"])
+        utils.git(["reset","--hard"])
+        print "Pulling latest test..."
+        utils.git(["pull"])
 
-	if not options.suites:
-		suites = ["physics","random"]				
-	else:
-		suites = []
-		suites.extend(options.suites.split(","))
+        # Define storage structures for generating report later
+        kat_run_exceptions = {}
+        output_differences = {}
+        run_times = {}
 
+        self.total_kats = 0
+        
+        # create dictionary structures
+        # and count up total number of files to process
+        for suite in self.suites:
+            kat_run_exceptions[suite] = {}
+            output_differences[suite] = {}
+            run_times[suite] = {}
+            
+            os.chdir(os.path.join(self.TEST_DIR,"kat_test",suite))
+            print suite
+            
+            for files in os.listdir("."):
+                if files.endswith(".kat"):
+                    self.total_kats += 1
+                    print self.total_kats
 
-	if not options.git:
-		GIT_BIN = "/usr/git/bin"
-	else:
-		GIT_BIN = options.git
+        for suite in self.suites:
+            print "Running suite: " + suite + "..."
+            kats = []
+            os.chdir(os.path.join(self.TEST_DIR,"kat_test",suite))
 
-	if not options.fast:
-		run_fast = False
-	else:
-		run_fast = True
-		print "Running fast test"
+            for files in os.listdir("."):
+                if files.endswith(".kat"):
+                    kats.append(files)
 
-	# Firstly we need to build the latest version of finesse
-	if os.path.isdir("build") and not options.nobuild:
-		print "deleting build dir..."
-		shutil.rmtree("build")
+            SUITE_OUTPUT_DIR = os.path.join(OUTPUTS_DIR,suite)
+            os.mkdir(SUITE_OUTPUT_DIR)
 
-		print "Checking out finesse base..."
-		git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git","build"])
+            self.running_suite = suite
+            
+            for kat in kats:
+                self.running_kat = kat
+                
+                print self.get_progress()
+                basename = os.path.splitext(kat)[0]
 
-		os.chdir("build")
-		print "Checking out develop version of finesse..."
-		runcmd(["./finesse.sh","--checkout","develop"])
-		print "Building finesse..."
-		runcmd(["./finesse.sh","--build"])
-		os.chdir(BASE_DIR)
+                if self.run_fast and ('map ' in open(kat).read()):
+                    print "skipping " + kat			
+                else:
+                    try:
+                        start = time.time()
+                        out,err = runcmd([FINESSE_EXE, "--noheader", kat])
+                        finish = time.time()-start
+                        run_times[suite][kat] = finish
+                        shutil.move(basename + ".out", SUITE_OUTPUT_DIR)
+                    except RunException as e:
+                        print "Error running " + kat + ": " + e.err
+                        kat_run_exceptions[suite][kat] = e
+                    finally:
+                        self.done_kats += 1
 
-	# check if kat runs
-	if not os.path.exists("./build/kat"):
-		raise Exception("Kat file was not found")
+        for suite in self.suites:
+            if len(kat_run_exceptions[suite].keys()) > 0:
+                print "Could not run the following kats:\n" + "\n".join(kat_run_exceptions.keys()) + " in " + suite
+            else:
+                print "No errors whilst running" + suite
 
-	FINESSE_EXE = os.path.join(os.getcwd(),"build","kat")
+        
+        # Now we have generated the output files compare them to the references
+        for suite in self.suites:
+            print "Diffing suite: " + suite + "..."
 
-	print "kat file found in " + FINESSE_EXE
+            outs = []
+            os.chdir(os.path.join(OUTPUTS_DIR,suite))
 
+            for files in os.listdir("."):
+                if files.endswith(".out"):
+                    outs.append(files)
 
-	OUTPUTS_DIR = os.path.join(BASE_DIR,"outputs")
-	if os.path.isdir(OUTPUTS_DIR):
-		print "deleting outputs dir..."
-		shutil.rmtree(OUTPUTS_DIR)
+            REF_DIR = os.path.join(self.TEST_DIR,"kat_test",suite,"reference")
 
-	os.mkdir(OUTPUTS_DIR)
-	
-	os.environ["KATINI"]=os.path.join(BASE_DIR,"build","kat.ini")
-	
-	# Clean up and pull latest test repository
-	os.chdir(os.path.join(options.test_git))
-	print "Cleaning test repository...."
-	git(["clean","-xdf"])
-	git(["reset","--hard"])
-	print "Pulling latest test..."
-	git(["pull"])
+            if not os.path.exists(REF_DIR):
+                raise Exception("Suite reference directory doesn't exist: " + REF_DIR)
+            for out in outs:
+                #print "Diffing " + out
+                ref_file = os.path.join(REF_DIR,out)
+                
+                if not os.path.exists(ref_file):
+                    raise DiffException("Reference file doesn't exist for " + out, out)
+                ref_arr = np.loadtxt(ref_file)
+                out_arr = np.loadtxt(out)
 
-	# Define storage structures for generating report later
+                if ref_arr.shape != out_arr.shape:
+                    raise DiffException("Reference and output are different shapes", out)
 
-	kat_run_exceptions = {}
-	output_differences = {}
-	run_times = {}
+                # for computing relative errors we need to make sure we
+                # have no zeros in the data
+                ref_arr_c = np.where(ref_arr == 0, ref_arr, 1)
+                ref_arr_c[ref_arr_c==0] = 1
 
-	# create dictionary structures
-	for suite in suites:
-		kat_run_exceptions[suite] = {}
-		output_differences[suite] = {}
-		run_times[suite] = {}
+                rel_diff = np.abs(out_arr-ref_arr)/np.abs(ref_arr_c)
 
+                diff = np.any(rel_diff >= self.diff_rel_eps)
+                
+                if diff:
+                    # store the rows which are different
+                    ix = np.where(rel_diff >= self.diff_rel_eps)[0][0]
+                    output_differences[suite][out] = (ref_arr[ix], out_arr[ix], np.max(rel_diff))
 
-	for suite in suites:
-		print "Running suite: " + suite + "..."
-		kats = []
-		os.chdir(os.path.join(options.test_git,"kat_test",suite))
+        os.chdir(BASE_DIR)
+        if not os.path.exists("reports"):
+            os.mkdir("reports")
 
-		for files in os.listdir("."):
-			if files.endswith(".kat"):
-				kats.append(files)
+        os.chdir("reports")
+        today = datetime.datetime.utcnow()
+        reportname = today.strftime('%d%m%y')
+        print "Writing report to " + reportname
 
-		SUITE_OUTPUT_DIR = os.path.join(OUTPUTS_DIR,suite)
-		os.mkdir(SUITE_OUTPUT_DIR)
+        f = open(reportname,'w')
+        f.write("Python Nightly Test\n")
+        f.write(today.strftime('%A, %d. %B %Y %I:%M%p') + "\n")
 
-		for kat in kats:
-			print "Running kat: " + kat
-			basename = os.path.splitext(kat)[0]
+        # add kat file header
+        p = sub.Popen([FINESSE_EXE], stdout=sub.PIPE, stderr=sub.PIPE)
+        out, err = p.communicate()
+        f.write(out)
+        
+        # Now time to generate a report...
+        np.set_printoptions(precision=16)
+        
+        isError = False
 
-			if run_fast and ('map ' in open(kat).read()):
-				print "skipping " + kat			
-			else:
-				try:
-					start = time.time()
-					out,err = runcmd([FINESSE_EXE, "--noheader", kat])
-					finish = time.time()-start
-					run_times[suite][kat] = finish
-					shutil.move(basename + ".out", SUITE_OUTPUT_DIR)
-				except RunException as e:
-					print "Error running " + kat + ": " + e.err
-					kat_run_exceptions[suite][kat] = e
+        for suite in suites:
+            f.write("\n\n" + str(len(output_differences[suite].keys())) + " differences in suite " + suite)
+            for k in output_differences[suite].keys():
+                isError = True
+                f.write(k + ":\n")
+                f.write("     ref: " + str(output_differences[suite][k][0]) + "\n")
+                f.write("     out: " + str(output_differences[suite][k][1]) + "\n")
+                f.write("     Max relative difference: " + str(output_differences[suite][k][2]) + "\n")
 
-	for suite in suites:
-		if len(kat_run_exceptions[suite].keys()) > 0:
-			print "Could not run the following kats:\n" + "\n".join(kat_run_exceptions.keys()) + " in " + suite
-		else:
-			print "No errors whilst running" + suite
+            f.write("\n\n" + str(len(output_differences[suite].keys())) + " errors in suite " + suite)
+            for k in kat_run_exceptions[suite].keys():
+                isError = True
+                f.write(k + ":\n")
+                f.write("err: " + kat_run_exceptions[suite][k].err + "\n")
 
-	
-	# Now we have generated the output files compare them to the references
-	for suite in suites:
-		print "Diffing suite: " + suite + "..."
+        f.close()
+        
+        if self.emails:
+            
+            if isError:
+                subject = "Finesse test ERROR"
+            else:
+                subject = "Finesse test OK"
 
-		outs = []
-		os.chdir(os.path.join(OUTPUTS_DIR,suite))
+            emails = self.emails
 
-		for files in os.listdir("."):
-			if files.endswith(".out"):
-				outs.append(files)
+            args = ["mailx", "-s", subject, emails]
+            p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE, stdin=sub.PIPE)
+            r = open(reportname,"r")
+            out, err = p.communicate(r.read())
+        else:
+            print "No emails specified"
 
-		REF_DIR = os.path.join(options.test_git,"kat_test",suite,"reference")
+    def run(self):
+        
+        try:
+        
+            self.startFinesseTest()
+            
+        finally:
+            finished_test = True
+        
+        # once done check if any other tests need to be ran
+        #schedule_lock.acquire()
+        
+        #if len(scheduled_tests) > 0:
+        #    current_test = scheduled_tests.pop(0)
+        #    current_test.start()
+        #else:
+        #    current_test = None
+        
+        #schedule_lock.release()
+        
 
-		if not os.path.exists(REF_DIR):
-			raise Exception("Suite reference directory doesn't exist: " + REF_DIR)
-		for out in outs:
-			#print "Diffing " + out
-			ref_file = os.path.join(REF_DIR,out)
-			
-			if not os.path.exists(ref_file):
-				raise DiffException("Reference file doesn't exist for " + out, out)
-			ref_arr = np.loadtxt(ref_file)
-			out_arr = np.loadtxt(out)
+if __name__ == "__main__":
+    
+    parser = OptionParser()
+    
+    parser.add_option("-t","--test-dir",dest="test_dir",help="")
+    parser.add_option("-b","--base-dir",dest="base_dir",help="")
+    parser.add_option("-c","--test-commit",dest="test_commit",help="")
+    parser.add_option("-s","--suites",dest="suites",help="comma delimited list of each suite to run")
+    parser.add_option("-g","--git-bin",dest="git_bin", default="git",help="")
+    parser.add_option("-e","--emails",dest="emails", help="")
+    parser.add_option("-n","--no-build",default="False",dest="nobuild",action="store_true")
+    parser.add_option("-f","--fast",default="True",dest="fast",action="store_true")
 
-			if ref_arr.shape != out_arr.shape:
-				raise DiffException("Reference and output are different shapes", out)
+    options, args = parser.parse_args()
 
-			# for computing relative errors we need to make sure we
-			# have no zeros in the data
-			ref_arr_c = np.where(ref_arr == 0, ref_arr, 1)
-			ref_arr_c[ref_arr_c==0] = 1
-
-			rel_diff = np.abs(out_arr-ref_arr)/np.abs(ref_arr_c)
-
-			diff = np.any(rel_diff >= diff_rel_eps)
-			
-			if diff:
-				# store the rows which are different
-				ix = np.where(rel_diff >= diff_rel_eps)[0][0]
-				output_differences[suite][out] = (ref_arr[ix], out_arr[ix], np.max(rel_diff))
-
-
-	os.chdir(BASE_DIR)
-	if not os.path.exists("reports"):
-		os.mkdir("reports")
-
-	os.chdir("reports")
-	today = datetime.datetime.utcnow()
-	reportname = today.strftime('%d%m%y')
-	print "Writing report to " + reportname
-
-	f = open(reportname,'w')
-	f.write("Python Nightly Test\n")
-	f.write(today.strftime('%A, %d. %B %Y %I:%M%p') + "\n")
-
-
-	# add kat file header
-	p = sub.Popen([FINESSE_EXE], stdout=sub.PIPE, stderr=sub.PIPE)
-	out, err = p.communicate()
-	f.write(out)
-	
-	# Now time to generate a report...
-	np.set_printoptions(precision=16)
-	
-	isError = False
-
-	for suite in suites:
-		f.write("\n\n" + str(len(output_differences[suite].keys())) + " differences in suite " + suite)
-		for k in output_differences[suite].keys():
-			isError = True
-			f.write(k + ":\n")
-			f.write("     ref: " + str(output_differences[suite][k][0]) + "\n")
-			f.write("     out: " + str(output_differences[suite][k][1]) + "\n")
-			f.write("     Max relative difference: " + str(output_differences[suite][k][2]) + "\n")
-
-		f.write("\n\n" + str(len(output_differences[suite].keys())) + " errors in suite " + suite)
-		for k in kat_run_exceptions[suite].keys():
-			isError = True
-			f.write(k + ":\n")
-			f.write("err: " + kat_run_exceptions[suite][k].err + "\n")
-			
-	
-
-	f.close()
-	
-	if options.emails:
-		
-		if isError:
-			subject = "Finesse test ERROR"
-		else:
-			subject = "Finesse test OK"
-
-		emails = options.emails
-
-		args = ["mailx", "-s", subject, emails]
-		p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE, stdin=sub.PIPE)
-		r = open(reportname,"r")
-		out, err = p.communicate(r.read())
-	else:
-		print "No emails specified"
-
-
+    if options.test_dir is None:
+        print "--test-dir argument is missing"
+        exit()
+        
+    if options.test_commit is None:
+        print "--test-commit argument is missing"
+        exit()
+    
+    if options.base_dir is None:
+        options.base_dir = os.getcwd()
+    
+    if options.suites is None:
+        suites = []
+    else:
+        suites = options.suites.split(",")
+        
+    test = FinesseTestProcess(options.test_dir,
+                              options.base_dir,
+                              options.test_commit,
+                              run_fast=options.fast,
+                              suites=suites,
+                              git_bin=options.git_bin,
+                              emails=options.emails,
+                              nobuild=options.nobuild)
+    test.run()

@@ -19,6 +19,7 @@ setup(
     long_description=open('README.txt').read(),
     install_requires=[
     "PyQt4 >= 4.8.3",
-    "numpy >= 1.6.2"
+    "numpy >= 1.6.2",
+    "flask >= 0.10.1"
     ],
 )

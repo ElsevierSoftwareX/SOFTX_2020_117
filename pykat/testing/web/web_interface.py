@@ -8,8 +8,10 @@ from flask import request
 from flask import render_template
 from datetime import datetime
 from collections import namedtuple
+from pykat.testing import utils
 
-import utils
+from pykat.testing.web import app
+
 import os
 
 global current_test, scheduled_tests, schedule_lock
@@ -18,8 +20,8 @@ test_id = 0
 current_test = None
 scheduled_tests = []
 schedule_lock = Lock()
-
-app = Flask(__name__)
+    
+print "loading web interface"
 
 @app.route('/')
 def hello_world():
@@ -109,59 +111,7 @@ def finesse_get_log(count):
             
     
     return jsonify(logs=log2send)
-    
-class FinesseTestProcess(Thread):
-    
-    queue_time = None
-    status = "Not started"
-    built = False
-    total_files = 100
-    done_files = 0
-    suite = ""
-    git_commit = ""
-    test_id = -1
-    
-    def __init__(self, git_commit, test_id, *args, **kqwargs):
-        Thread.__init__(self)
-        self.git_commit = git_commit
-        self.queue_time = datetime.now()
-        self.test_id = test_id
-        
-    def run(self):
-        global current_test, scheduled_tests, schedule_lock
-        
-        for x in range(0,self.total_files):
-            sleep(0.1)
-            self.done_files += 1
-            
-            if x > 10:
-                self.built = True
-        
-        # once done check if any other tests need to be ran
-        schedule_lock.acquire()
-        
-        if len(scheduled_tests) > 0:
-            current_test = scheduled_tests.pop(0)
-            current_test.start()
-        else:
-            current_test = None
-        
-        schedule_lock.release()
-        
-        
-    def percent_done(self):
-        return 100.0*float(self.done_files)/float(self.total_files)
-        
-    def get_version(self):
-        return self.git_commit
-        
-    def get_progress(self):
-        if self.built:
-            return '{0} out of {1} ({2})'.format(self.done_files, self.total_files, self.suite)
-        else:
-            return 'Building FINESSE...'
-            
-            
+                        
 class FinesseTestProcessRun():
     def __init__(self, init_class=FinesseTestProcess):
         self.init_class = init_class    
@@ -186,15 +136,3 @@ class FinesseTestProcessRun():
         print '%s threaded process complete. Now exiting.' % fjp.__class__.__name__
         
         
-        
-if __name__ == '__main__':
-    
-    # need local copy of src
-    if not os.path.exists("./finesse_src"):
-        print "finesse src folder didn't exist, cloning now..."
-        utils.git("clone git://gitmaster.atlas.aei.uni-hannover.de/finesse/src.git finesse_src")
-    else:
-        # get the latest version for logs etc.
-        utils.git("--git-dir ./finesse_src/.git pull")
-        
-    app.run(debug=True)
