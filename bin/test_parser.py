@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../")
+sys.path.append(".")
 
 from pykat import finesse, profiling
 import numpy as np

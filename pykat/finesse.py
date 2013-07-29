@@ -157,18 +157,22 @@ class kat(object):
         flags = "--perl1 "
         
         if self.__time_code:
-            flags = flags + " --perf-timing "
+            flags = flags + " --perf-timing --no-backspace"
             
         kat_exec = "{0} {1} {2}".format(kat_exec, flags, katfile.name)
                                                             
         p=subprocess.Popen(kat_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         for line in iter(p.stderr.readline, ""):
-            if "%" in line:
-                sys.stdout.write("%\n")
+            vals = line.split("-")
+            
+            if len(vals) == 2:
+                action = vals[0].strip()
+                prc = vals[1].strip()[:-1]
                 
-            sys.stdout.write('\r'+line[:-1] + '\n')
-            sys.stdout.flush()
+                #sys.stdout.write("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b")
+                sys.stdout.write("\r{0} {1}%".format(action, prc))
+                sys.stdout.flush()
             
         [out,err] = p.communicate()
         

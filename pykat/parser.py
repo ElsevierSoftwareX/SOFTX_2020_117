@@ -29,8 +29,8 @@ def parse_kat_file(kat_filename):
             kat_cmps.append()
             
         elif (commands == arg).any():
-            
-        
+            print ""
+
 def parse_m(line):
     return line
     
