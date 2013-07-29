@@ -19,11 +19,16 @@ def git(args):
     else:
         cmd = GIT_BIN + " " + args
         
+    print cmd
+    
+    print os.getcwd()
+    
     p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
     out, err = p.communicate()
-
+        
     if p.returncode != 0:
-        print err
+        print "STDERR: " + err
+        print "STDOUT: " + err
         raise RunException(p.returncode, args, err, out)
 
     return [out, err]

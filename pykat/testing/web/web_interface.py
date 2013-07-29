@@ -68,9 +68,47 @@ class FinesseProcessWatcher(Thread):
             current_test = None
         
         schedule_lock.release()
+
+@app.route('/finesse/cancel_test_<id>', methods=["POST"])
+def finesse_cancel_test(id):
+    print id
+    
+    if int(id) >= 0:
+        id = int(id)
+        print "Cancelling " + str(id)
         
-
-
+        try:
+            # get lock here so that watcher doesn't interfere
+            # with removing/starting new tests
+            schedule_lock.acquire()
+            
+            print current_test
+            
+            if current_test is not None:
+                print "cid " + str(current_test.test_id)
+                if current_test.test_id == id:
+                    current_test.cancelling = True
+                    print "Cancelling Current Test"
+                    return str(id)
+        
+            ix = 0
+            remove = -1;
+            
+            for t in scheduled_tests:
+                if t.test_id == id:
+                    remove = ix
+                    break
+                ix += 1
+             
+            if remove > -1:
+                print "Cancelled queued test"
+                scheduled_tests.pop(remove)
+                return str(id)
+            
+            print "Nothing cancelled"
+            return "0"
+        finally:
+            schedule_lock.release()     
 
 @app.route('/')
 def home_page():
@@ -105,7 +143,7 @@ def finesse_start_test():
                                       TEST_RUN_PATH,
                                       git_commit, 
                                       run_fast=False, suites=[], test_id=test_id,
-                                      emails="", nobuild=True)
+                                      emails="", nobuild=False)
         
         # check if anything is running and if it
         # isn't start this test off
@@ -148,21 +186,46 @@ def finesse_get_test_progress():
     
             return jsonify(running=False)
         else:
-    
+            test_id = current_test.test_id
+            cancelling = current_test.cancelling
             percent_done = current_test.percent_done()
             status = current_test.get_progress()
             version = current_test.get_version()
-            return jsonify(running=True, percent=percent_done, status=status, version=version)    
+            return jsonify(cancelling=cancelling, running=True, id=test_id, percent=percent_done, status=status, version=version)    
             
     finally:
         schedule_lock.release()
     
+@app.route('/finesse/get_branches', methods=["POST"])
+def finesse_get_branches():
+    os.chdir(os.path.join(app.instance_path,"finesse_src"))
+        
+    try:
+        [out,err] = utils.git("branch -a")
+    except Exception as ex:
+        print "git branch error : " + str(ex)
     
-@app.route('/finesse/get_<count>_logs', methods=['POST'])
-def finesse_get_log(count):
-    [out,err] = utils.git("--git-dir ./finesse_src/.git pull")
+    branches = list()
     
-    [out,err] = utils.git("--git-dir ./finesse_src/.git log --max-count={0} --pretty=oneline".format(count))
+    for b in out.split("\n"):
+        vals = b.split("/")
+        if len(vals) >= 3:
+            branches.append(vals[2].split(" ")[0])
+
+    return jsonify(branches=branches)
+    
+@app.route('/finesse/get_<count>_<branch>_logs', methods=['POST'])
+def finesse_get_log(count,branch):
+    os.chdir(os.path.join(app.instance_path,"finesse_src"))
+        
+    print "!!!!", count, branch
+    try:
+        [out,err] = utils.git("checkout " + branch)
+        [out,err] = utils.git("pull")
+    except Exception as ex:
+        print "git pull error : " + str(ex)
+    
+    [out,err] = utils.git("log --max-count={0} --pretty=oneline".format(count))
     
     log_entries = out.split("\n")
     
@@ -182,4 +245,5 @@ def finesse_get_log(count):
             
     
     return jsonify(logs=log2send)
-                       
+                     
+                

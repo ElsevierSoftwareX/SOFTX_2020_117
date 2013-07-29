@@ -29,14 +29,15 @@ class DiffException(Exception):
 		self.outfile = outfile
 
 def runcmd(args):
-	p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
-	out, err = p.communicate()
+    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
+    out, err = p.communicate()
+    
+    if p.returncode != 0:
+        print "STDERR: " + err
+        print "STDOUT: " + out
+        raise RunException(p.returncode, args, err, out)
 
-	if p.returncode != 0:
-		print err
-		raise RunException(p.returncode, args, err, out)
-
-	return [out,err]
+    return [out,err]
 
 class FinesseTestProcess(Thread):
     
@@ -51,13 +52,18 @@ class FinesseTestProcess(Thread):
     diff_rel_eps = 1e-13
     running_kat = ""
     running_suite = ""
+    cancelling = False
     
-    def __init__(self, TEST_DIR, BASE_DIR, git_commit, 
+    def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, suites=[], test_id="0",
                  git_bin="",emails="", nobuild=True,*args, **kqwargs):
                  
         Thread.__init__(self)
-        self.git_commit = git_commit
+        self.git_commit = test_commit
+        
+        if test_commit is None:
+            raise Exception("A git commit ID must be provided for the test")
+        
         self.queue_time = datetime.now()
         self.test_id = test_id
         self.TEST_DIR = TEST_DIR
@@ -102,7 +108,11 @@ class FinesseTestProcess(Thread):
             self.suites.extend(suites)
 
         self.GIT_BIN = git_bin
-                
+    
+    def cancelCheck(self):
+        if self.cancelling:
+            raise SystemExit()
+    
     def percent_done(self):
         if self.total_kats == 0:
             return 0.0
@@ -126,29 +136,44 @@ class FinesseTestProcess(Thread):
             
         self.built = False
 
-        print type(self.nobuild), self.nobuild
-        
-        if not os.path.exists("build"):
-            os.mkdir("build")
-            
+        BUILD_PATH = os.path.join(self.BASE_DIR, "build")
+                    
         # Firstly we need to build the latest version of finesse
-        if os.path.isdir("build") and not self.nobuild:
-            print "deleting build dir..."
-            shutil.rmtree("build")
+        if not self.nobuild:
+            print "deleting build dir..." + BUILD_PATH
+            if os.path.exists(BUILD_PATH):
+                shutil.rmtree(BUILD_PATH)
 
             print "Checking out finesse base..."
-            utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git","build"])
+            utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git",BUILD_PATH])
 
-            os.chdir("build")
-            print "Checking out and building develop version of finesse..."
+            os.chdir(BUILD_PATH)
+            print "Checking out and building develop version of finesse " + self.git_commit
+            
+            SRC_PATH = os.path.join(BUILD_PATH,"src")
             
             if sys.platform == "win32":
-                runcmd(["bash","./finesse.sh","--checkout","develop"])
+                runcmd(["bash","./finesse.sh","--checkout"])
+                self.cancelCheck()
+                
+                os.chdir(SRC_PATH)
+                utils.git(["checkout",self.git_commit])
+                self.cancelCheck()
+                
+                os.chdir(BUILD_PATH)
                 runcmd(["bash","./finesse.sh","--build"])
+                self.cancelCheck()
             else:
-                EXE = ""
                 runcmd(["./finesse.sh","--checkout","develop"])
+                self.cancelCheck()
+                
+                os.chdir(SRC_PATH)
+                utils.git(["checkout",self.git_commit])
+                self.cancelCheck()
+                
+                os.chdir(BUILD_PATH)
                 runcmd(["./finesse.sh","--build"])
+                self.cancelCheck()
                 
             os.chdir(self.BASE_DIR)
             
@@ -156,7 +181,7 @@ class FinesseTestProcess(Thread):
         
         # check if kat runs
         if not os.path.exists(FINESSE_EXE):
-            raise Exception("Kat file was not found")
+            raise Exception("Kat file was not found in " + FINESSE_EXE)
         
         self.built = True
         
@@ -172,14 +197,18 @@ class FinesseTestProcess(Thread):
         
         os.environ["KATINI"] = os.path.join(self.TEST_DIR,"kat.ini")
         
+        self.cancelCheck()
         # Clean up and pull latest test repository
         print "Cleaning test repository..."
         os.chdir(self.TEST_DIR)
         utils.git(["clean","-xdf"])
+        self.cancelCheck()
         utils.git(["reset","--hard"])
+        self.cancelCheck()
         print "Pulling latest test..."
         utils.git(["pull"])
-
+        self.cancelCheck()
+    
         # Define storage structures for generating report later
         kat_run_exceptions = {}
         output_differences = {}
@@ -201,8 +230,9 @@ class FinesseTestProcess(Thread):
                 if files.endswith(".kat"):
                     self.total_kats += 1
                     print self.total_kats
-
+        
         for suite in self.suites:
+            self.cancelCheck()
             print "Running suite: " + suite + "..."
             kats = []
             os.chdir(os.path.join(self.TEST_DIR,"kat_test",suite))
@@ -217,6 +247,7 @@ class FinesseTestProcess(Thread):
             self.running_suite = suite
             
             for kat in kats:
+                self.cancelCheck()
                 self.running_kat = kat
                 
                 print self.get_progress()
@@ -237,6 +268,8 @@ class FinesseTestProcess(Thread):
                     finally:
                         self.done_kats += 1
 
+        self.cancelCheck()
+        
         for suite in self.suites:
             if len(kat_run_exceptions[suite].keys()) > 0:
                 print "Could not run the following kats:\n" + "\n".join(kat_run_exceptions.keys()) + " in " + suite
@@ -246,6 +279,7 @@ class FinesseTestProcess(Thread):
         
         # Now we have generated the output files compare them to the references
         for suite in self.suites:
+            self.cancelCheck()
             print "Diffing suite: " + suite + "..."
 
             outs = []
@@ -259,7 +293,9 @@ class FinesseTestProcess(Thread):
 
             if not os.path.exists(REF_DIR):
                 raise Exception("Suite reference directory doesn't exist: " + REF_DIR)
+                
             for out in outs:
+                self.cancelCheck()
                 #print "Diffing " + out
                 ref_file = os.path.join(REF_DIR,out)
                 
@@ -295,6 +331,8 @@ class FinesseTestProcess(Thread):
         reportname = today.strftime('%d%m%y')
         print "Writing report to " + reportname
 
+        self.cancelCheck()
+        
         f = open(reportname,'w')
         f.write("Python Nightly Test\n")
         f.write(today.strftime('%A, %d. %B %Y %I:%M%p') + "\n")
@@ -325,6 +363,8 @@ class FinesseTestProcess(Thread):
                 f.write("err: " + kat_run_exceptions[suite][k].err + "\n")
 
         f.close()
+        
+        self.cancelCheck()
         
         if self.emails:
             

@@ -3,7 +3,7 @@ import sys
 from flask import Flask
 from pykat.testing import utils
 
-def start(instance_path,port=5000, debug=True):
+def start(instance_path,port=5000, debug=False):
     global app
     
     print "starting web server..."
@@ -31,8 +31,9 @@ def start(instance_path,port=5000, debug=True):
         print "finesse src folder didn't exist, cloning now..."
         utils.git("clone git://gitmaster.atlas.aei.uni-hannover.de/finesse/src.git finesse_src")
     else:
+        os.chdir(os.path.join(app.instance_path,"finesse_src"))
         # get the latest version for logs etc.
-        utils.git("--git-dir ./finesse_src/.git pull")
+        utils.git("pull")
         
     # need local copy of test
     if not os.path.exists("./finesse_test"):

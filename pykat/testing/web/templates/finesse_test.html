@@ -15,6 +15,7 @@
                 Test status: <span id="txtStatus"></span>
                 <div id="current_test_progress" style="width:500px;"></div>
                 <input type="button" value="Refresh" id="btnGetProgress"/>
+                <input type="button" value="Cancel" id="btnCancelCurrent"/>
             </div>
             
             <div class="queued_tests">
@@ -37,10 +38,14 @@
             <div class="new_test">
             <h2>Start new test</h2>
             
+            <select id="branch_list" style="width: 100px;">
+                <option text="develop" value="develop"/>
+            </select>
+            
             <select id="commit_list" style="width: 300px;">
             </select>
             
-            <input type="button" value="Refresh log entries" id="btnGetLogs"/>
+            <input type="button" value="Refresh" id="btnGetLogs"/>
             
             <input type="button" value="Start new FINESSSE test" id="btnStartTest"/>
             </div>
@@ -52,7 +57,7 @@
         <script type="text/JavaScript">
                         
             $(document).ready(function(){
-                updateLogEntries();
+                updateBranches();
                 
                 window.setInterval(function(){                
                     updateQueuedTests();
@@ -70,6 +75,12 @@
             });
             
             $("#btnGetLogs").click(function(){
+                $("#branch_list").empty();
+                updateBranches();
+            });
+            
+            $("#branch_list").change(function(){
+                $("#commit_list").empty();
                 updateLogEntries();
             });
             
@@ -81,6 +92,7 @@
                 updateProgress();
             });
             
+            
             function updateProgress(){
                 $.ajax({
                   type: "POST",
@@ -88,15 +100,43 @@
                   url: "/finesse/get_test_progress",
                   success: function (data) {
                     
-                    if(data.running){
+                    if(data.cancelling){
+                        $('#btnCancelCurrent').attr("disabled", true);
                         $('#txtGitVersion').text(data.version);
-                        $('#txtStatus').text(data.status);
+                        $('#txtStatus').text("CANCELLING AT NEXT CHANCE - " + data.status);
                         $( "#current_test_progress" ).progressbar({ value: data.percent });
                     } else {
-                        $('#txtGitVersion').text("N/A");
-                        $('#txtStatus').text("No test running");
-                        $( "#current_test_progress" ).progressbar({ value: false });
+                        if(data.running){
+                            $('#txtGitVersion').text(data.version);
+                            $('#txtStatus').text(data.status);
+                            $("#current_test_progress").progressbar({ value: data.percent });
+                            $('#btnCancelCurrent').attr("disabled", false);
+                            $('#btnCancelCurrent').unbind('click');
+                            $('#btnCancelCurrent').click(function(){
+                                $('#btnCancelCurrent').attr("disabled", true);
+                                cancelTest(data.id);
+                            });
+                        } else {
+                            $('#btnCancelCurrent').attr("disabled", true);
+                            $('#txtGitVersion').text("N/A");
+                            $('#txtStatus').text("No test running");
+                            $( "#current_test_progress" ).progressbar({ value: false });
+                        }
                     }
+                  },
+                  error: function(jqXHR, textStatus, err){
+                    console.log('error: ' + err);
+                  },
+                  dataType: "json"
+                });
+            }
+            
+            function cancelTest(id){
+                $.ajax({
+                  type: "POST",
+                  contentType: "application/json; charset=utf-8",
+                  url: "/finesse/cancel_test_" + id,
+                  success: function () {
                   },
                   error: function(jqXHR, textStatus, err){
                     console.log('error: ' + err);
@@ -160,7 +200,7 @@
                             rows += '<td>'+ tests[i].id + '</td>';
                             rows += '<td>'+ tests[i].queue_time +'</td>';
                             rows += '<td>'+ tests[i].git_commit +'</td>';
-                            rows += '<td>';
+                            rows += '<td><input type="button" value="Cancel" onclick="cancelTest(' + tests[i].id + ');"'+ +'</td>';
                             rows += '</tr>';
                             
                             tbl.append(rows);
@@ -176,21 +216,48 @@
                 });
             }
             
-            function updateLogEntries(){
-                list = $("#commit_list");
+            function updateBranches(){
+                $("#btnStartTest").attr("disabled", true);
+                blist = $("#branch_list");
 
-                list.empty();
+                $.ajax({
+                  type: "POST",
+                  contentType: "application/json; charset=utf-8",
+                  url: "/finesse/get_branches",
+                  success: function (data) {
+                    
+                    branches = data.branches;
+                    blist.empty();
+                    
+                    for(var i=0; i<branches.length; i++){
+                        blist.append($('<option>', { value: branches[i], text: branches[i]}));
+                    }
+                    
+                    updateLogEntries();
+                  },
+                  error: function(jqXHR, textStatus, err){
+                    console.log('error: ' + err);
+                  },
+                  dataType: "json"
+                });
+            }
+            
+            function updateLogEntries(){
+                $("#btnStartTest").attr("disabled", true);
+                list = $("#commit_list");
                 
                 $.ajax({
                   type: "POST",
                   contentType: "application/json; charset=utf-8",
-                  url: "/finesse/get_50_logs",
+                  url: "/finesse/get_50_" + $("#branch_list").val() + "_logs",
                   success: function (data) {
                     logs = data.logs;
+                    list.empty();
                     
                     for(var i=0; i<logs.length; i++){
                         list.append($('<option>', { value: logs[i].commit, text: logs[i].commit + " - " + logs[i].message}));
                     }
+                    $("#btnStartTest").attr("disabled", false);
                   },
                   error: function(jqXHR, textStatus, err){
                     console.log('error: ' + err);
