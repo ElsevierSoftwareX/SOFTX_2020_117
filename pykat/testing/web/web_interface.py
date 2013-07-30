@@ -39,35 +39,37 @@ class FinesseProcessWatcher(Thread):
         self.process_to_watch = process
         
     def run(self):
-        global schedule_lock,current_test,scheduled_tests, watcher
+        try:
+            global schedule_lock,current_test,scheduled_tests, watcher
+            
+            if self.process_to_watch is None:
+                return
+            
+            #if type(self.process_to_watch) is not finesse_test.FinesseTestProcess:
+            #    raise Exception("Tried to watch something which wasn't a FinesseTestProcess")
         
-        if self.process_to_watch is None:
-            return
+            print "Watcher is watching", self.process_to_watch
+            self.process_to_watch.start()
+            self.process_to_watch.join()
+            print "Watcher is continuing"
+            
+        try:
+            # once done check if any other tests need to be ran
+            schedule_lock.acquire()
         
-        #if type(self.process_to_watch) is not finesse_test.FinesseTestProcess:
-        #    raise Exception("Tried to watch something which wasn't a FinesseTestProcess")
-    
-        print "Watcher is watching", self.process_to_watch
-    
-        self.process_to_watch.join()
-        
-        print "Watcher is continuing"
-        
-        # once done check if any other tests need to be ran
-        schedule_lock.acquire()
-        
-        if len(scheduled_tests) > 0:
-            print "Watcher starting next test"
-            current_test = scheduled_tests.pop(0)
-            watcher = FinesseProcessWatcher()
-            watcher.setProcessToWatch(current_test)
-            watcher.start()
-            current_test.start()
-        else:
-            print "Watcher found no more tests to run"
-            current_test = None
-        
-        schedule_lock.release()
+            if len(scheduled_tests) > 0:
+                print "Watcher starting next test"
+                current_test = scheduled_tests.pop(0)
+                watcher = FinesseProcessWatcher()
+                watcher.setProcessToWatch(current_test)
+                watcher.start()
+            else:
+                print "Watcher found no more tests to run"
+                current_test = None
+                watcher = None
+        finally:
+            schedule_lock.release()
+                
 
 @app.route('/finesse/cancel_test_<id>', methods=["POST"])
 def finesse_cancel_test(id):
@@ -150,12 +152,11 @@ def finesse_start_test():
         if current_test is None:
             print "running test"
             current_test = test
+            # create watcher thread which will start the test
+            # when ready
             watcher = FinesseProcessWatcher()
             watcher.setProcessToWatch(test)
             watcher.start()
-            
-            test.start()
-            
         else:
             print "queuing test"
             scheduled_tests.append(test)

@@ -11,7 +11,7 @@ REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
 setup(
     name='PyKat',
-    version='0.0.2',
+    version='0.0.3',
     author='Daniel Brown',
     author_email='ddb@star.sr.bham.ac.uk',
     packages=['pykat','pykat.gui','pykat.gui.resources'],
