@@ -1,7 +1,7 @@
 import subprocess as sub
 import os
 
-GIT_BIN = "c:\\cygwin64\\bin\\git"
+GIT_BIN = "/usr/bin/git"
 
 class RunException(Exception):
 	def __init__(self, returncode, args, err, out):
@@ -23,13 +23,13 @@ def git(args):
     
     print os.getcwd()
     
-    p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
+    p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE,shell=True)
     out, err = p.communicate()
         
     if p.returncode != 0:
         print "STDERR: " + err
         print "STDOUT: " + err
-        raise RunException(p.returncode, args, err, out)
+        raise RunException(p.poll(), args, err, out)
 
     return [out, err]
     
