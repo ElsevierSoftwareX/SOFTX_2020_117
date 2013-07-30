@@ -39,19 +39,18 @@ class FinesseProcessWatcher(Thread):
         self.process_to_watch = process
         
     def run(self):
-        try:
-            global schedule_lock,current_test,scheduled_tests, watcher
-            
-            if self.process_to_watch is None:
-                return
-            
-            #if type(self.process_to_watch) is not finesse_test.FinesseTestProcess:
-            #    raise Exception("Tried to watch something which wasn't a FinesseTestProcess")
+        global schedule_lock,current_test,scheduled_tests, watcher
         
-            print "Watcher is watching", self.process_to_watch
-            self.process_to_watch.start()
-            self.process_to_watch.join()
-            print "Watcher is continuing"
+        if self.process_to_watch is None:
+            return
+        
+        #if type(self.process_to_watch) is not finesse_test.FinesseTestProcess:
+        #    raise Exception("Tried to watch something which wasn't a FinesseTestProcess")
+    
+        print "Watcher is watching", self.process_to_watch
+        self.process_to_watch.start()
+        self.process_to_watch.join()
+        print "Watcher is continuing"
             
         try:
             # once done check if any other tests need to be ran
@@ -153,7 +152,6 @@ def finesse_start_test():
             print "running test"
             current_test = test
             # create watcher thread which will start the test
-            # when ready
             watcher = FinesseProcessWatcher()
             watcher.setProcessToWatch(test)
             watcher.start()
