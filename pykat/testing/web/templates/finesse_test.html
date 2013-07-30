@@ -81,6 +81,8 @@
             
             $("#branch_list").change(function(){
                 $("#commit_list").empty();
+                $('#commit_list').attr("disabled", true);
+                $("#commit_list").append($('<option>', { value: 0, text: "Loading log enteries, please wait..."}));
                 updateLogEntries();
             });
             
@@ -220,6 +222,14 @@
                 $("#btnStartTest").attr("disabled", true);
                 blist = $("#branch_list");
 
+                $("#commit_list").empty();
+                $('#commit_list').attr("disabled", true);
+                $("#commit_list").append($('<option>', { value: 0, text: "Loading log enteries, please wait..."}));
+                
+                blist.empty();
+                blist.attr("disabled", true);
+                blist.append($('<option>', { value: 0, text: "Loading branches, please wait..."}));
+                
                 $.ajax({
                   type: "POST",
                   contentType: "application/json; charset=utf-8",
@@ -258,6 +268,9 @@
                         list.append($('<option>', { value: logs[i].commit, text: logs[i].commit + " - " + logs[i].message}));
                     }
                     $("#btnStartTest").attr("disabled", false);
+                    
+                    list.attr("disabled", false);
+                    $("#branch_list").attr("disabled", false);
                   },
                   error: function(jqXHR, textStatus, err){
                     console.log('error: ' + err);

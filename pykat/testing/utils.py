@@ -10,14 +10,14 @@ class RunException(Exception):
 		self.err = err
 		self.out = out
         
-def git(args):
+def git(args, git_bin=GIT_BIN):
     cmd = ""
     
     if type(args) is list:
-        args.insert(0,GIT_BIN)
+        args.insert(0,git_bin)
         cmd = " ".join(args)
     else:
-        cmd = GIT_BIN + " " + args
+        cmd = git_bin + " " + args
         
     print cmd
     
