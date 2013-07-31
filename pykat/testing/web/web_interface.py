@@ -58,9 +58,9 @@ else:
     
 
 SRC_GIT_PATH = os.path.join(app.instance_path, "finesse_src",".git")
-# here we select a commit one back from HEAD to see if the
-# commit checker is working correctly
-latest_commit_id_tested = utils.git('--git-dir {0} log -2 --pretty=format:"%H"'.format(SRC_GIT_PATH))[0].split("\n")[1]
+
+# get HEAD commit to set as starting point for commit checker
+latest_commit_id_tested = utils.git('--git-dir {0} log -1 --pretty=format:"%H"'.format(SRC_GIT_PATH))[0].split("\n")[0]
 
 print "loading web interface"
 
