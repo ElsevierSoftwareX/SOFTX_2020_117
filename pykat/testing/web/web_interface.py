@@ -108,6 +108,9 @@ class FinesseProcessWatcher(Thread):
         doc["error"] = self.process_to_watch.errorOccurred
         doc["startTime"] = str(start)
         doc["endTime"] = str(datetime.now())
+        doc["testRun"] = self.process_to_watch.finished_test
+        doc["diffFound"] = self.process_to_watch.diffFound
+        
         db.update(doc)
         
         try:
@@ -246,7 +249,9 @@ def finesse_start_test():
                        test_id=test.test_id,
                        git_commit=test.get_version(),
                        cancelled=test.cancelling,
-                       error=test.errorOccurred))
+                       error=test.errorOccurred,
+                       diffFound=test.diffFound,
+                       testRun=test.finished_test))
                        
         __run_new(test)
     finally:
@@ -351,14 +356,13 @@ def finesse_get_prev_tests(count):
     
     try:
         data = db.all('testid',with_doc=True)
-        #db.get_many('testid',start=min,end=max,limit=-1, with_doc=True)
         
         for a in data:
             
             i = a["doc"]
             
             err = (not i['error'] is None)
-            
+                        
             if "startTime" in i:
                 startTime = i["startTime"]
             else:
@@ -369,13 +373,28 @@ def finesse_get_prev_tests(count):
             else:
                 endTime = ""
             
+            global current_test
+            
+            if current_test is not None and current_test.test_id == i["test_id"]:
+                status = "Running"
+            elif err:
+                status = "Test Exception"
+            elif i["cancelled"] == True:
+                status = "Cancelled"
+            elif "diffFound" in i and i["diffFound"] == True:
+                status = "ERRORS"
+            elif "testRun" in i and i["testRun"] == False:
+                status = "Not started"
+            else:
+                status = "OK"
+            
             obj = dict(test_id=i['test_id'],
                            git_commit=i['git_commit'],
-                           error=err,
+                           status=status,
                            startTime=startTime,
                            endTime=endTime)
             
-            rtn.append(obj)
+            rtn.insert(0,obj)
            
         return jsonify(tests=rtn)
         

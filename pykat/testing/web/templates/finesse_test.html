@@ -54,7 +54,7 @@
             <div class="prev_test">
                 <h2>Previous Tests</h2>
                 <input type="button" value="Refresh" id="btnGetPrevTests"/>
-                <div id="tblPrevTests" />
+                <div id="tblPrevTests" style="width: 900px;" />
             </div>
         </div>
     
@@ -133,9 +133,20 @@
                     "bLengthChange": true,
                     "aaData": data.tests,
                     "bJQueryUI": true,
+                    "aaSorting" : [[0, 'desc']],
+                    "fnRowCallback": function (nRow, aData){
+                        if(aData.status == "Running"){
+                            $(nRow).css({"background-color":"orange"})
+                        }else if(aData.status == "ERRORS" || aData.status == "Test Exception"){
+                            $(nRow).css({"background-color":"red"})
+                        }else if(aData.status == "Not started"){
+                            $(nRow).css({"background-color":"gray"})
+                        }
+                    },
                     "aoColumns": [
                         {
                             "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+                                console.log(oData["test_id"]);
                                 var a = $('<button type="button" style="margin: 0">View</button>').button().on('click', function () {  
                                         });
     
@@ -158,9 +169,10 @@
                                 $(nTd).empty();
                                 $(nTd).append(a);
                                 $(nTd).append(b);
-                            }, "mDataProp": "test_id", "sWidth": "30%", "bSearchable": false, "sTitle": "", "bSortable": false
+                            }, "mDataProp": "test_id", "bSearchable": false, "sTitle": "", "bSortable": false
                         },
                         { "mDataProp": "test_id", "sTitle": "Test ID","bSearchable": true, "bVisible": true, "sClass": "center" },
+                        { "mDataProp": "status", "sTitle": "Status","bSearchable": true, "bVisible": true, "sClass": "center" },
                         { "mDataProp": "git_commit", "sTitle": "Git Commit", "bSearchable": true, "bVisible": true, "sClass": "center" },
                         { "mDataProp": "startTime", "sTitle": "Start Time", "bSearchable": false, "bVisible": true, "sClass": "center" },
                         { "mDataProp": "endTime", "sTitle": "End Time", "bSearchable": false, "bVisible": true, "sClass": "center" }

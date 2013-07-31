@@ -54,6 +54,7 @@ class FinesseTestProcess(Thread):
     running_suite = ""
     cancelling = False
     errorOccurred = None
+    diffFound = False
     
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, suites=[], test_id="0",
@@ -295,11 +296,12 @@ class FinesseTestProcess(Thread):
                 
             for out in outs:
                 self.cancelCheck()
-                #print "Diffing " + out
+                
                 ref_file = os.path.join(REF_DIR,out)
                 
                 if not os.path.exists(ref_file):
                     raise DiffException("Reference file doesn't exist for " + out, out)
+                    
                 ref_arr = np.loadtxt(ref_file)
                 out_arr = np.loadtxt(out)
 
@@ -316,6 +318,7 @@ class FinesseTestProcess(Thread):
                 diff = np.any(rel_diff >= self.diff_rel_eps)
                 
                 if diff:
+                    self.diffFound = True
                     # store the rows which are different
                     ix = np.where(rel_diff >= self.diff_rel_eps)[0][0]
                     output_differences[suite][out] = (ref_arr[ix], out_arr[ix], np.max(rel_diff))
@@ -384,10 +387,13 @@ class FinesseTestProcess(Thread):
     def run(self):
         
         try:
+            raise Exception("Test exception")
             self.startFinesseTest()
         except Exception as ex:
+            
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            errorOccurred = dict(type=exc_type, value=exc_value, traceback=exc_traceback)
+            
+            self.errorOccurred = dict(value=str(exc_value), traceback=str(traceback.format_exc(5)))
             
             print "*** Exception for test_id = " + str(self.test_id)
             traceback.print_exception(exc_type, exc_value, exc_traceback,
