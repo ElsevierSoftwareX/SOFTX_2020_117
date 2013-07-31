@@ -10,6 +10,11 @@
             <h1>FINESSE Test {{ view_test_id }} View</h1>
             
             <a href="/finesse/view/{{view_test_id}}/build.log">build.log</a> | <a href="/finesse/view/{{view_test_id}}/make.log">make.log</a>
+            
+            <h3>Test Exceptions:</h3>
+            <pre>{{ excp_message}}</pre>
+            <pre>{{ excp_traceback}}</pre>
+            
         </div>
     </body>
 </html>

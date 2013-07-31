@@ -14,7 +14,18 @@ class RunException(Exception):
 		self.args = args
 		self.err = err
 		self.out = out
-        
+
+def runcmd(args):
+    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
+    out, err = p.communicate()
+    
+    if p.returncode != 0:
+        print "STDERR: " + err
+        print "STDOUT: " + out
+        raise RunException(p.returncode, args, err, out)
+
+    return [out,err]
+    
 def git(args, git_bin=GIT_BIN):
     cmd = ""
     

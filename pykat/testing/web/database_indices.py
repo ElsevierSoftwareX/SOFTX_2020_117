@@ -22,11 +22,11 @@ class SrcCommitIndex(HashIndex):
 
     def __init__(self, *args, **kwargs):
         kwargs['key_format'] = '40s'
-        super(TestIDIndex, self).__init__(*args, **kwargs)
+        super(SrcCommitIndex, self).__init__(*args, **kwargs)
 
     def make_key_value(self, data):
         if data['t'] == 'test':
-            key = int(data['git_commit'])
+            key = str(data['git_commit'])
             return key, None
         else:
             return None

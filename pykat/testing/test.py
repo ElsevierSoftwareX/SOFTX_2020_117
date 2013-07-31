@@ -42,7 +42,7 @@ def runcmd(args):
 class FinesseTestProcess(Thread):
     
     queue_time = None
-    status = "Not started"
+    status = ""
     built = False
     total_kats = 0
     done_kats = 0
@@ -55,6 +55,7 @@ class FinesseTestProcess(Thread):
     cancelling = False
     errorOccurred = None
     diffFound = False
+    diffing = False
     
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, suites=[], test_id="0",
@@ -125,8 +126,10 @@ class FinesseTestProcess(Thread):
         return self.git_commit
         
     def get_progress(self):
+        if self.diffing:
+            return 'Diffing {0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats, self.running_kat, self.running_suite)
         if self.built:
-            return '{0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats,self.running_kat, self.running_suite)
+            return 'Running {0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats, self.running_kat, self.running_suite)
         else:
             return 'Building FINESSE executable'
             
@@ -231,6 +234,10 @@ class FinesseTestProcess(Thread):
                 if files.endswith(".kat"):
                     self.total_kats += 1
         
+        # multiply as we include the diffining in the percentage
+        # done
+        self.total_kats *= 2
+        
         for suite in self.suites:
             self.cancelCheck()
             print "Running suite: " + suite + "..."
@@ -276,6 +283,7 @@ class FinesseTestProcess(Thread):
             else:
                 print "No errors whilst running" + suite
 
+        self.diffing = True
         
         # Now we have generated the output files compare them to the references
         for suite in self.suites:
@@ -322,7 +330,9 @@ class FinesseTestProcess(Thread):
                     # store the rows which are different
                     ix = np.where(rel_diff >= self.diff_rel_eps)[0][0]
                     output_differences[suite][out] = (ref_arr[ix], out_arr[ix], np.max(rel_diff))
-
+                
+                self.done_kats += 1
+                
         os.chdir(self.BASE_DIR)
         
         if not os.path.exists("reports"):

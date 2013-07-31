@@ -1,4 +1,4 @@
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 from time import sleep
 from uuid import uuid4
 from flask import Flask
@@ -18,7 +18,7 @@ from CodernityDB.database import RecordNotFound
 
 from pykat.testing.web.database_indices import TestIDIndex, SrcCommitIndex
 
-import os, sys
+import os, sys, traceback
 
 global current_test, scheduled_tests, schedule_lock
 
@@ -49,12 +49,19 @@ if db.exists():
            
     print "Current test_id: " + str(test_id)
     
+    for a in db.all('srccommit'):
+        print a
 else:
     db.create()
     db.add_index(TestIDIndex(db.path, 'testid'))
-    db.add_index(SrcCommitIndex(db.path, 'src_commit'))
+    db.add_index(SrcCommitIndex(db.path, 'srccommit'))
     
-    
+
+SRC_GIT_PATH = os.path.join(app.instance_path, "finesse_src",".git")
+# here we select a commit one back from HEAD to see if the
+# commit checker is working correctly
+latest_commit_id_tested = utils.git('--git-dir {0} log -2 --pretty=format:"%H"'.format(SRC_GIT_PATH))[0].split("\n")[1]
+
 print "loading web interface"
 
 # should be called with the correct locks already
@@ -220,16 +227,17 @@ def finesse_start_rerun(id):
     return "ok"
     
 @app.route('/finesse/start_test', methods=["POST"])
-def finesse_start_test():
+def finesse_start_test(git_commit):
+    return jsonify(__finesse_start_test(request.json["git_commit"]))
+    
+def __finesse_start_test(git_commit):
     global current_test, test_id
     
     try:
         schedule_lock.acquire()
         
         test_id += 1
-        
-        git_commit = request.json['git_commit']
-                
+                        
         TEST_OUTPUT_PATH = os.path.join(app.instance_path, "tests")
         if not os.path.exists(TEST_OUTPUT_PATH):
             os.mkdir(TEST_OUTPUT_PATH)
@@ -259,7 +267,7 @@ def finesse_start_test():
     finally:
         schedule_lock.release()
     
-    return jsonify({'id':test.test_id, 'queued': (current_test != test)})
+    return {'id':test.test_id}
         
 @app.route('/finesse/get_tests', methods=["POST"])
 def finesse_get_tests():
@@ -417,10 +425,20 @@ def finesse_view_make(view_test_id, log):
         
         if log == "build":
             log = os.path.join(TEST_PATH, "build", "build.log")
-            log_string = open(log).read()
+            
+            if not os.path.exists(log):
+                log_string = "No file found"
+            else:
+                log_string = open(log).read()
         elif log == "make":
             log = os.path.join(TEST_PATH, "build", "make.log")
-            log_string = open(log).read()
+            
+            if not os.path.exists(log):
+                log_string = "No file found"
+            else:
+                log_string = open(log).read()
+        else:
+            log_string = "No file found"
             
         response = make_response(log_string)
         response.headers["Content-type"] = "text/plain"
@@ -429,16 +447,93 @@ def finesse_view_make(view_test_id, log):
         
     else:
         return ""
+        
 @app.route('/finesse/view/<view_test_id>/', methods=["GET"])
 def finesse_view(view_test_id):
     
-    view_test_id = view_test_id
+    #try:
+    
+    view_test_id = int(view_test_id)
+    
+    doc = db.get('testid',view_test_id,with_doc=True)
+    
+    doc = doc["doc"]
+    
+    if "error" in doc and doc["error"] is not None:
+        traceback = doc["error"]["traceback"]
+        message = doc["error"]["value"]
+    else:
+        traceback = ""
+        message = "No test exceptions thrown"
     
     return render_template("finesse_test_view.html",
-                            view_test_id = view_test_id)
+                            view_test_id = str(view_test_id),
+                            excp_traceback=traceback,
+                            excp_message=message)
+    #except RecordNotFound:
+    #    pass
+    
+    
+    
+    
 
+print "Starting commit watch from most recent commit: " + latest_commit_id_tested
+   
+def setInterval(interval):
+    def decorator(function):
+        def wrapper(*args, **kwargs):
+            stopped = Event()
+
+            def loop(): # executed in another thread
+                while not stopped.wait(interval): # until stopped
+                    function(*args, **kwargs)
+
+            t = Thread(target=loop)
+            t.daemon = True # stop if the program exits
+            t.start()
+            return stopped
+        return wrapper
+    return decorator    
+
+@setInterval(10)
+def checkLatestCommits():
+    global latest_commit_id_tested
+    out = utils.git(["--git-dir",SRC_GIT_PATH,"log",latest_commit_id_tested + "..HEAD",'--pretty=format:"%H"'])
     
+    print "Checking latest commits..."
+    commits_not_tested = []
     
-    
-    
+    try:
+        done_all = True
+        commits = out[0].split("\n")
         
+        for commit in commits:
+            commit.strip()
+            
+            if len(commit) == 40:
+                try:
+                    db.get("srccommit",commit)
+                    print "Commit already done: " + commit
+                except RecordNotFound:
+                    print "Commit isn't done: " + commit
+                    done_all = False
+                    commits_not_tested.insert(0,commit)
+                    
+        if done_all:
+            latest_commit_id_tested = commits[0]
+        else:
+            for commit in commits_not_tested:
+                print "Trying to test " + commit
+                __finesse_start_test(commit)
+    except Exception as ex:
+        
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        
+        print "*** Exception in commit checker"
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                  limit=5, file=sys.stdout)
+        
+        pass
+        
+# start checker off
+stop_checkLatestCommit = checkLatestCommits()
