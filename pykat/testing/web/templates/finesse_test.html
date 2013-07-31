@@ -147,10 +147,10 @@
                         {
                             "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
                                 console.log(oData["test_id"]);
-                                var a = $('<button type="button" style="margin: 0">View</button>').button().on('click', function () {  
+                                var a = $('<input type="button" style="margin: 0" value="View report"></input>').click(function () {  
                                         });
     
-                                var b = $('<button type="button" style="margin: 0">Rerun</button>').button().on('click', function () {
+                                var b = $('<input type="button" style="margin: 0" value="Rerun test"></input>').click( function () {
                                             $.ajax({
                                               type: "POST",
                                               contentType: "application/json; charset=utf-8",

@@ -4,8 +4,8 @@ from uuid import uuid4
 from flask import Flask
 from flask import jsonify
 from flask import Module
-from flask import request
-from flask import render_template
+from flask import request, make_response
+from flask import render_template, url_for
 from datetime import datetime
 from collections import namedtuple
 from pykat.testing import utils
@@ -171,6 +171,7 @@ def finesse_cancel_test(id):
             schedule_lock.release()     
 
 @app.route('/')
+@app.route('/finesse/')
 def home_page():
     return render_template("finesse_test.html")
 
@@ -401,4 +402,41 @@ def finesse_get_prev_tests(count):
     except RecordNotFound:
         print "exception"
         return jsonify(test=rtn)
+
+@app.route('/finesse/view/<view_test_id>/<log>.log')
+def finesse_view_make(view_test_id, log):
+    view_test_id = int(view_test_id)
     
+    if view_test_id > 0:
+        TEST_PATH = os.path.join(app.instance_path, "tests", str(view_test_id))
+        response = ""
+        
+        log_string = ""
+        
+        if log == "build":
+            log = os.path.join(TEST_PATH, "build", "build.log")
+            log_string = open(log).read()
+        elif log == "make":
+            log = os.path.join(TEST_PATH, "build", "make.log")
+            log_string = open(log).read()
+            
+        response = make_response(log_string)
+        response.headers["Content-type"] = "text/plain"
+            
+        return response
+        
+    else:
+        return ""
+@app.route('/finesse/view/<view_test_id>/', methods=["GET"])
+def finesse_view(view_test_id):
+    
+    view_test_id = view_test_id
+    
+    return render_template("finesse_test_view.html",
+                            view_test_id = view_test_id)
+
+    
+    
+    
+    
+        
