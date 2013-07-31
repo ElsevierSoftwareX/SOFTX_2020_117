@@ -387,7 +387,6 @@ class FinesseTestProcess(Thread):
     def run(self):
         
         try:
-            raise Exception("Test exception")
             self.startFinesseTest()
         except Exception as ex:
             

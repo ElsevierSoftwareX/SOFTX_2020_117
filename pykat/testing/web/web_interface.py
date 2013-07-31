@@ -15,8 +15,8 @@ from pykat.testing.web import app
 
 from CodernityDB.database_thread_safe import ThreadSafeDatabase
 from CodernityDB.database import RecordNotFound
-from hashlib import md5
-from pykat.testing.web.database_indices import TestIDIndex
+
+from pykat.testing.web.database_indices import TestIDIndex, SrcCommitIndex
 
 import os, sys
 
@@ -52,6 +52,7 @@ if db.exists():
 else:
     db.create()
     db.add_index(TestIDIndex(db.path, 'testid'))
+    db.add_index(SrcCommitIndex(db.path, 'src_commit'))
     
     
 print "loading web interface"
@@ -330,14 +331,15 @@ def finesse_get_log(count,branch):
     for e in log_entries:
         
         vals = e.split(" ",1)
+        vals[0] = vals[0].strip()
         
-        if len(vals[0]) > 8:
+        if len(vals[0]) == 40:
             if len(vals) > 1:
                 message = vals[1]
             else:
                 message = "[no commit message]"
             
-            log2send.append({'commit':vals[0][0:8], 'message':message})
+            log2send.append({'commit':vals[0], 'message':message})
             
     
     return jsonify(logs=log2send)

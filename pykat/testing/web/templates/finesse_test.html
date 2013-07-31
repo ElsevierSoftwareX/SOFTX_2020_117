@@ -148,6 +148,7 @@
                             "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
                                 console.log(oData["test_id"]);
                                 var a = $('<input type="button" style="margin: 0" value="View report"></input>').click(function () {  
+                                            window.location = "/finesse/view/" + oData["test_id"] +  "/"
                                         });
     
                                 var b = $('<input type="button" style="margin: 0" value="Rerun test"></input>').click( function () {
