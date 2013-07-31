@@ -1,10 +1,13 @@
 import os
 import sys  
 from flask import Flask
-from pykat.testing import utils
+from optparse import OptionParser
 
-def start(instance_path,port=5000, debug=True, ip="0.0.0.0"):
-    global app
+def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/git"):
+        
+    os.environ["GIT_BIN"] = git_bin
+    # we import this now so that we can set the GIT_BIN env var
+    from pykat.testing import utils
     
     print "starting web server..."
     
@@ -42,36 +45,20 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0"):
         utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"])
     
     app.secret_key = os.urandom(24)
-    app.run(debug=debug, port=int(port), host=ip)
+    app.run(debug=debug, port=int(port), host=ip,use_reloader=False)
 
 if __name__ == "__main__":
-    n = len(sys.argv)
     
-    if n != 2 and n != 3:
-        print """
-Command starts a Flask based website on which allows
-users to manage the FINESSE test builds.
-        
-start_test_server usage:
-
-    python -m pykat.testing.web_server <server_path> <port>
-
-    Arguments:
-        server_path: Directory where website should be run from
-        port:        TCP port which the server should run under
-                     default is port 5000.
-"""
+    parser = OptionParser()
+    
+    parser.add_option("-P","--path",type="string",dest="instance_path",help="")
+    parser.add_option("-p","--port",type="int",default=5000,dest="port",help="")
+    parser.add_option("-g","--git-bin",type="string",default="/usr/bin/git",dest="git_bin",help="")
+    
+    options, args = parser.parse_args()
+    
+    if options.instance_path is None:
+        print "Must specify a path for the web server"
         exit()
-        
-    instance_path = sys.argv[1]
     
-    if n == 3:
-        port = sys.argv[2]
-    else:
-        port = 5000
-    
-    start(instance_path, port=port)
-
-
-
-    
+    start(options.instance_path, port=options.port, git_bin=options.git_bin )

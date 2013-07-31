@@ -1,8 +1,13 @@
 import subprocess as sub
 import os
 
-GIT_BIN = "/usr/bin/git"
+try:
+    GIT_BIN = os.environ["GIT_BIN"]
+except:
+    GIT_BIN = "/usr/bin/git"
 
+print "GIT_BIN = " + GIT_BIN
+    
 class RunException(Exception):
 	def __init__(self, returncode, args, err, out):
 		self.returncode = returncode
@@ -23,7 +28,7 @@ def git(args, git_bin=GIT_BIN):
     
     print os.getcwd()
     
-    p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE,shell=True)
+    p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
     out, err = p.communicate()
         
     if p.returncode != 0:

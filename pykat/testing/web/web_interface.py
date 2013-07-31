@@ -13,7 +13,12 @@ from pykat.testing import test as finesse_test
 import shutil
 from pykat.testing.web import app
 
-import os
+from CodernityDB.database_thread_safe import ThreadSafeDatabase
+from CodernityDB.database import RecordNotFound
+from hashlib import md5
+from pykat.testing.web.database_indices import TestIDIndex
+
+import os, sys
 
 global current_test, scheduled_tests, schedule_lock
 
@@ -23,7 +28,50 @@ scheduled_tests = []
 schedule_lock = Lock()
 watcher = None
 
+print "Starting up database"
+        
+DB_PATH = os.path.join(app.instance_path,"db")
+
+db = ThreadSafeDatabase(DB_PATH)
+
+if db.exists():
+    db.open()
+    print db.get_db_details()
+    print "Reindexing..."
+    db.reindex()
+    print "Done reindexing"
+    
+    # update the test_id from the previous tests that have been run
+    for a in db.all('testid'):
+        key = int(a['key'])
+        if key > test_id:
+            test_id = key
+           
+    print "Current test_id: " + str(test_id)
+    
+else:
+    db.create()
+    db.add_index(TestIDIndex(db.path, 'testid'))
+    
+    
 print "loading web interface"
+
+# should be called with the correct locks already
+# applied
+def __run_new(test):
+    global current_test,watcher,scheduled_tests
+    # check if anything is running and if it
+    # isn't start this test off
+    if current_test is None:
+        print "running test"
+        current_test = test
+        # create watcher thread which will start the test
+        watcher = FinesseProcessWatcher()
+        watcher.setProcessToWatch(test)
+        watcher.start()
+    else:
+        print "queuing test"
+        scheduled_tests.append(test)
 
 class FinesseProcessWatcher(Thread):
     process_to_watch = None
@@ -48,10 +96,20 @@ class FinesseProcessWatcher(Thread):
         #    raise Exception("Tried to watch something which wasn't a FinesseTestProcess")
     
         print "Watcher is watching", self.process_to_watch
+        start = datetime.now()
+        
         self.process_to_watch.start()
         self.process_to_watch.join()
+        
         print "Watcher is continuing"
-            
+        
+        doc = db.get('testid', self.process_to_watch.test_id,with_doc=True)["doc"]
+        doc["cancelled"] = self.process_to_watch.cancelling
+        doc["error"] = self.process_to_watch.errorOccurred
+        doc["startTime"] = str(start)
+        doc["endTime"] = str(datetime.now())
+        db.update(doc)
+        
         try:
             # once done check if any other tests need to be ran
             schedule_lock.acquire()
@@ -82,11 +140,8 @@ def finesse_cancel_test(id):
             # get lock here so that watcher doesn't interfere
             # with removing/starting new tests
             schedule_lock.acquire()
-            
-            print current_test
-            
+                        
             if current_test is not None:
-                print "cid " + str(current_test.test_id)
                 if current_test.test_id == id:
                     current_test.cancelling = True
                     print "Cancelling Current Test"
@@ -103,6 +158,7 @@ def finesse_cancel_test(id):
              
             if remove > -1:
                 print "Cancelled queued test"
+                scheduled_tests[remove].cancelling = True
                 scheduled_tests.pop(remove)
                 return str(id)
             
@@ -115,6 +171,49 @@ def finesse_cancel_test(id):
 def home_page():
     return render_template("finesse_test.html")
 
+@app.route('/finesse/rerun_test_<id>', methods=["POST"])
+def finesse_start_rerun(id):
+    id = int(id)
+    try:
+        schedule_lock.acquire()
+        
+        test_prev_doc = db.get('testid', id, with_doc=True)["doc"]
+        
+        if "rerun"  in test_prev_doc:
+            test_prev_doc["rerun"] += 1
+        else:
+            test_prev_doc["rerun"] = 1
+        
+        db.update(test_prev_doc)
+        
+        TEST_OUTPUT_PATH = os.path.join(app.instance_path, "tests")
+        
+        if not os.path.exists(TEST_OUTPUT_PATH):
+            raise Exception("Output path for rerun of test " + id + " does not exist")
+        
+        TEST_RUN_PATH_OLD = os.path.join(TEST_OUTPUT_PATH, str(id))        
+        TEST_RUN_PATH = os.path.join(TEST_OUTPUT_PATH, str(id) + "_rerun_" + str(test_prev_doc["rerun"]))
+        
+        if not os.path.exists(TEST_RUN_PATH_OLD):
+            NOBUILD = True
+            shutil.copytree(os.path.join(TEST_RUN_PATH_OLD,"build"), os.path.join(TEST_RUN_PATH,"build"))
+        else:
+            NOBUILD = False
+        
+        test = finesse_test.FinesseTestProcess(os.path.join(app.instance_path, "finesse_test"), 
+                                      TEST_RUN_PATH,
+                                      test_prev_doc["git_commit"], 
+                                      run_fast=True, suites=[], test_id=id,
+                                      emails="", nobuild=NOBUILD)
+        
+        
+        
+        __run_new(test)
+    finally:
+        schedule_lock.release()
+
+    return "ok"
+    
 @app.route('/finesse/start_test', methods=["POST"])
 def finesse_start_test():
     global current_test, test_id
@@ -125,15 +224,12 @@ def finesse_start_test():
         test_id += 1
         
         git_commit = request.json['git_commit']
-        
-        print app.instance_path
-        
+                
         TEST_OUTPUT_PATH = os.path.join(app.instance_path, "tests")
         if not os.path.exists(TEST_OUTPUT_PATH):
             os.mkdir(TEST_OUTPUT_PATH)
             
         TEST_RUN_PATH = os.path.join(TEST_OUTPUT_PATH, str(test_id))
-        print TEST_RUN_PATH
         
         if os.path.exists(TEST_RUN_PATH):
             shutil.rmtree(TEST_RUN_PATH)
@@ -143,21 +239,16 @@ def finesse_start_test():
         test = finesse_test.FinesseTestProcess(os.path.join(app.instance_path, "finesse_test"), 
                                       TEST_RUN_PATH,
                                       git_commit, 
-                                      run_fast=False, suites=[], test_id=test_id,
+                                      run_fast=True, suites=[], test_id=test_id,
                                       emails="", nobuild=False)
         
-        # check if anything is running and if it
-        # isn't start this test off
-        if current_test is None:
-            print "running test"
-            current_test = test
-            # create watcher thread which will start the test
-            watcher = FinesseProcessWatcher()
-            watcher.setProcessToWatch(test)
-            watcher.start()
-        else:
-            print "queuing test"
-            scheduled_tests.append(test)
+        db.insert(dict(t="test",
+                       test_id=test.test_id,
+                       git_commit=test.get_version(),
+                       cancelled=test.cancelling,
+                       error=test.errorOccurred))
+                       
+        __run_new(test)
     finally:
         schedule_lock.release()
     
@@ -244,5 +335,51 @@ def finesse_get_log(count,branch):
             
     
     return jsonify(logs=log2send)
-                     
-                
+      
+@app.route('/finesse/get_<count>_prev_tests', methods=["POST"])
+def finesse_get_prev_tests(count):
+    global test_id
+    
+    rtn = list()
+    max = test_id
+    min = max - int(count)
+
+    if min < 0:
+        min = 0
+    if min > max:
+        min = max
+    
+    try:
+        data = db.all('testid',with_doc=True)
+        #db.get_many('testid',start=min,end=max,limit=-1, with_doc=True)
+        
+        for a in data:
+            
+            i = a["doc"]
+            
+            err = (not i['error'] is None)
+            
+            if "startTime" in i:
+                startTime = i["startTime"]
+            else:
+                startTime = ""
+            
+            if "endTime" in i:
+                endTime = i["endTime"]
+            else:
+                endTime = ""
+            
+            obj = dict(test_id=i['test_id'],
+                           git_commit=i['git_commit'],
+                           error=err,
+                           startTime=startTime,
+                           endTime=endTime)
+            
+            rtn.append(obj)
+           
+        return jsonify(tests=rtn)
+        
+    except RecordNotFound:
+        print "exception"
+        return jsonify(test=rtn)
+    

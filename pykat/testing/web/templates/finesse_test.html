@@ -1,8 +1,8 @@
-<!DOCTYPE html>
 <html>
     <head>
         <!--<link rel="stylesheet" type="text/css" href="/css/style.css"/>-->
         <link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css"/>
+        <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
     </head>
     <body>
     
@@ -35,35 +35,48 @@
                 </table>
             </div>
             
+            
             <div class="new_test">
-            <h2>Start new test</h2>
+                <h2>Start new test</h2>
+                
+                <select id="branch_list" style="width: 100px;">
+                    <option text="develop" value="develop"/>
+                </select>
+                
+                <select id="commit_list" style="width: 300px;">
+                </select>
+                
+                <input type="button" value="Refresh" id="btnGetLogs"/>
+                
+                <input type="button" value="Start new FINESSSE test" id="btnStartTest"/>
+            </div>
             
-            <select id="branch_list" style="width: 100px;">
-                <option text="develop" value="develop"/>
-            </select>
-            
-            <select id="commit_list" style="width: 300px;">
-            </select>
-            
-            <input type="button" value="Refresh" id="btnGetLogs"/>
-            
-            <input type="button" value="Start new FINESSSE test" id="btnStartTest"/>
+            <div class="prev_test">
+                <h2>Previous Tests</h2>
+                <input type="button" value="Refresh" id="btnGetPrevTests"/>
+                <div id="tblPrevTests" />
             </div>
         </div>
     
         <script type="text/JavaScript" src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
         <script type="text/JavaScript" src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
-                
+        <script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+
         <script type="text/JavaScript">
                         
             $(document).ready(function(){
                 updateBranches();
+                getPreviousTests();
                 
                 window.setInterval(function(){                
                     updateQueuedTests();
                     updateProgress();
                 }, 1000);
-                
+                                
+            });
+            
+            $('#btnGetPrevTests').click(function(){
+                getPreviousTests();
             });
             
             $( "#current_test_progress" ).progressbar({
@@ -94,6 +107,66 @@
                 updateProgress();
             });
             
+            function getPreviousTests() {
+                $.ajax({
+                    type: "POST",
+                    url: "/finesse/get_100_prev_tests",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: buildPreviousTestTable,
+                    error: function(o,a,err){
+                        alert("Error getting previous tests : " + err);
+                    }
+                });
+            }
+            
+            function buildPreviousTestTable(data) {
+                
+                var tbl = $('#tblPrevTests');
+                
+                tbl.html('<table cellpadding="0" cellspacing="0" border="0" id="bTable" class="style1 datatable"></table>');
+                
+                gtable = $('#bTable').dataTable({
+                    "bPaginate": true,
+                    "sPaginationType": "full_numbers",
+                    "bAutoWidth": true,
+                    "bLengthChange": true,
+                    "aaData": data.tests,
+                    "bJQueryUI": true,
+                    "aoColumns": [
+                        {
+                            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+                                var a = $('<button type="button" style="margin: 0">View</button>').button().on('click', function () {  
+                                        });
+    
+                                var b = $('<button type="button" style="margin: 0">Rerun</button>').button().on('click', function () {
+                                            $.ajax({
+                                              type: "POST",
+                                              contentType: "application/json; charset=utf-8",
+                                              url: "/finesse/rerun_test_" + oData["test_id"],
+                                              success: function () {
+                                                updateQueuedTests();
+                                                updateProgress();
+                                              },
+                                              error: function(jqXHR, textStatus, err){
+                                                console.log('error: ' + err);
+                                              },
+                                              dataType: "json"
+                                            });
+                                        });
+                                        
+                                $(nTd).empty();
+                                $(nTd).append(a);
+                                $(nTd).append(b);
+                            }, "mDataProp": "test_id", "sWidth": "30%", "bSearchable": false, "sTitle": "", "bSortable": false
+                        },
+                        { "mDataProp": "test_id", "sTitle": "Test ID","bSearchable": true, "bVisible": true, "sClass": "center" },
+                        { "mDataProp": "git_commit", "sTitle": "Git Commit", "bSearchable": true, "bVisible": true, "sClass": "center" },
+                        { "mDataProp": "startTime", "sTitle": "Start Time", "bSearchable": false, "bVisible": true, "sClass": "center" },
+                        { "mDataProp": "endTime", "sTitle": "End Time", "bSearchable": false, "bVisible": true, "sClass": "center" }
+                    ]
+                });
+            }
             
             function updateProgress(){
                 $.ajax({

@@ -14,7 +14,7 @@ import time
 import pickle
 from datetime import datetime
 from pykat.testing import utils
-import sys
+import sys, traceback
 
 class RunException(Exception):
 	def __init__(self, returncode, args, err, out):
@@ -53,11 +53,12 @@ class FinesseTestProcess(Thread):
     running_kat = ""
     running_suite = ""
     cancelling = False
+    errorOccurred = None
     
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, suites=[], test_id="0",
                  git_bin="",emails="", nobuild=True,*args, **kqwargs):
-                 
+        
         Thread.__init__(self)
         self.git_commit = test_commit
         
@@ -224,12 +225,10 @@ class FinesseTestProcess(Thread):
             run_times[suite] = {}
             
             os.chdir(os.path.join(self.TEST_DIR,"kat_test",suite))
-            print suite
-            
+                        
             for files in os.listdir("."):
                 if files.endswith(".kat"):
                     self.total_kats += 1
-                    print self.total_kats
         
         for suite in self.suites:
             self.cancelCheck()
@@ -321,7 +320,7 @@ class FinesseTestProcess(Thread):
                     ix = np.where(rel_diff >= self.diff_rel_eps)[0][0]
                     output_differences[suite][out] = (ref_arr[ix], out_arr[ix], np.max(rel_diff))
 
-        os.chdir(BASE_DIR)
+        os.chdir(self.BASE_DIR)
         
         if not os.path.exists("reports"):
             os.mkdir("reports")
@@ -385,9 +384,14 @@ class FinesseTestProcess(Thread):
     def run(self):
         
         try:
-        
             self.startFinesseTest()
+        except Exception as ex:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            errorOccurred = dict(type=exc_type, value=exc_value, traceback=exc_traceback)
             
+            print "*** Exception for test_id = " + str(self.test_id)
+            traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                      limit=5, file=sys.stdout)
         finally:
             finished_test = True
         
