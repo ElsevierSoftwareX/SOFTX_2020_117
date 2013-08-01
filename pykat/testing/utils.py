@@ -29,17 +29,16 @@ def runcmd(args):
 def git(args, git_bin=GIT_BIN):
     cmd = ""
     
-    if type(args) is list:
-        args.insert(0,git_bin)
-        cmd = " ".join(args)
-    else:
-        cmd = git_bin + " " + args
-        
-    print cmd
+    if type(args) is str:
+	args = args.split(" ")
+    elif type(args) is not list:
+	raise Exception("arg for utils.git must be a list or string")
+ 
+    args.insert(0, git_bin)
+
+    print "GIT CMD: " + " ".join(args), os.getcwd()
     
-    print os.getcwd()
-    
-    p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
+    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
     out, err = p.communicate()
         
     if p.returncode != 0:
