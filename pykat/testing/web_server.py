@@ -27,9 +27,6 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
 	print app.instance_path, instance_path
         raise Exception("Instance path of Flask app didn't match the requested value")
         
-    # load up the actual interface code
-    import pykat.testing.web.web_interface
-    
     # need local copy of src
     if not os.path.exists(os.path.join(app.instance_path,"finesse_src")):
         print "finesse src folder didn't exist, cloning now..."
@@ -43,6 +40,9 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
     if not os.path.exists(os.path.join(app.instance_path,"finesse_test")):
         print "finesse test folder didn't exist, cloning now..."
         utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"])
+    
+    # load up the actual interface code
+    import pykat.testing.web.web_interface
     
     app.secret_key = os.urandom(24)
     app.run(debug=debug, port=int(port), host=ip,use_reloader=False)
