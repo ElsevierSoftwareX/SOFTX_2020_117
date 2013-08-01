@@ -56,9 +56,10 @@ class FinesseTestProcess(Thread):
     errorOccurred = None
     diffFound = False
     diffing = False
+    kats_to_run = []
     
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
-                 run_fast=False, suites=[], test_id="0",
+                 run_fast=False, kats=[], test_id="0",
                  git_bin="",emails="", nobuild=True,*args, **kqwargs):
         
         Thread.__init__(self)
@@ -104,12 +105,8 @@ class FinesseTestProcess(Thread):
         if not os.path.isdir(self.TEST_DIR):
             raise Exception("TEST_DIR was not a valid directory, should point to a clone of the FINESSE test repository")
             
-        if not suites:
-            self.suites = ["physics","random"]				
-        else:
-            self.suites = []
-            self.suites.extend(suites)
-
+        self.kats_to_run = kats
+        
         self.GIT_BIN = git_bin
     
     def cancelCheck(self):
@@ -127,9 +124,9 @@ class FinesseTestProcess(Thread):
         
     def get_progress(self):
         if self.diffing:
-            return 'Diffing {0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats, self.running_kat, self.running_suite)
+            return 'Diffing {0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats/2, self.running_kat, self.running_suite)
         if self.built:
-            return 'Running {0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats, self.running_kat, self.running_suite)
+            return 'Running {0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats/2, self.running_kat, self.running_suite)
         else:
             return 'Building FINESSE executable'
             
@@ -223,30 +220,22 @@ class FinesseTestProcess(Thread):
         
         # create dictionary structures
         # and count up total number of files to process
-        for suite in self.suites:
+        for suite in self.kats_to_run.keys():
             kat_run_exceptions[suite] = {}
             output_differences[suite] = {}
             run_times[suite] = {}
             
-            os.chdir(os.path.join(self.TEST_DIR,"kat_test",suite))
-                        
-            for files in os.listdir("."):
-                if files.endswith(".kat"):
-                    self.total_kats += 1
+            self.total_kats += len(self.kats_to_run[suite])
         
         # multiply as we include the diffining in the percentage
         # done
         self.total_kats *= 2
         
-        for suite in self.suites:
+        for suite in self.kats_to_run.keys():
             self.cancelCheck()
             print "Running suite: " + suite + "..."
-            kats = []
+            kats = self.kats_to_run[suite]
             os.chdir(os.path.join(self.TEST_DIR,"kat_test",suite))
-
-            for files in os.listdir("."):
-                if files.endswith(".kat"):
-                    kats.append(files)
 
             SUITE_OUTPUT_DIR = os.path.join(OUTPUTS_DIR,suite)
             os.mkdir(SUITE_OUTPUT_DIR)
@@ -277,7 +266,7 @@ class FinesseTestProcess(Thread):
 
         self.cancelCheck()
         
-        for suite in self.suites:
+        for suite in self.kats_to_run.keys():
             if len(kat_run_exceptions[suite].keys()) > 0:
                 print "Could not run the following kats:\n" + "\n".join(kat_run_exceptions.keys()) + " in " + suite
             else:
@@ -286,7 +275,7 @@ class FinesseTestProcess(Thread):
         self.diffing = True
         
         # Now we have generated the output files compare them to the references
-        for suite in self.suites:
+        for suite in self.kats_to_run.keys():
             self.cancelCheck()
             print "Diffing suite: " + suite + "..."
 
@@ -304,6 +293,7 @@ class FinesseTestProcess(Thread):
                 
             for out in outs:
                 self.cancelCheck()
+                self.running_kat = out
                 
                 ref_file = os.path.join(REF_DIR,out)
                 
@@ -339,11 +329,9 @@ class FinesseTestProcess(Thread):
             os.mkdir("reports")
 
         os.chdir("reports")
-        today = datetime.datetime.utcnow()
+        today = datetime.utcnow()
         reportname = today.strftime('%d%m%y')
         print "Writing report to " + reportname
-
-        self.cancelCheck()
         
         f = open(reportname,'w')
         f.write("Python Nightly Test\n")
@@ -359,7 +347,7 @@ class FinesseTestProcess(Thread):
         
         isError = False
 
-        for suite in suites:
+        for suite in self.kats_to_run.keys():
             f.write("\n\n" + str(len(output_differences[suite].keys())) + " differences in suite " + suite)
             for k in output_differences[suite].keys():
                 isError = True
@@ -376,24 +364,24 @@ class FinesseTestProcess(Thread):
 
         f.close()
         
-        self.cancelCheck()
-        
-        if self.emails:
+        #if self.emails:
+        #    
+        #    if isError:
+        #        subject = "Finesse test ERROR"
+        #    else:
+        #        subject = "Finesse test OK"
+        #    emails = self.emails
+
+        #    args = ["mailx", "-s", subject, emails]
+        #    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE, stdin=sub.PIPE)
+        #    r = open(reportname,"r")
+        #    out, err = p.communicate(r.read())
+        #else:
+        #    print "No emails specified"
+
+        return output_differences
             
-            if isError:
-                subject = "Finesse test ERROR"
-            else:
-                subject = "Finesse test OK"
-
-            emails = self.emails
-
-            args = ["mailx", "-s", subject, emails]
-            p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE, stdin=sub.PIPE)
-            r = open(reportname,"r")
-            out, err = p.communicate(r.read())
-        else:
-            print "No emails specified"
-
+            
     def run(self):
         
         try:

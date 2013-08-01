@@ -3,6 +3,26 @@
         <!--<link rel="stylesheet" type="text/css" href="/css/style.css"/>-->
         <link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css"/>
         <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
+        
+        <style type="text/css">
+            SELECT, INPUT[type="text"] {
+                width: 300px;
+                box-sizing: border-box;
+            }
+            SECTION {
+                width: 700px;
+                padding: 8px;
+                overflow: auto;
+            }
+            SECTION > DIV {
+                float: left;
+                padding: 4px;
+            }
+            SECTION > DIV + DIV {
+                width: 40px;
+                text-align: center;
+            }
+        </style>
     </head>
     <body>
     
@@ -49,6 +69,22 @@
                 <input type="button" value="Refresh" id="btnGetLogs"/>
                 
                 <input type="button" value="Start new FINESSSE test" id="btnStartTest"/>
+                
+                <section class="container">
+                    <div>
+                        <div>Files to run</div>
+                        <select id="leftValues" size="12" multiple></select>
+                    </div>
+                    <div style="padding-top:100px;">
+                        <input type="button" id="btnLeft" value="&lt;&lt;" />
+                        <input type="button" id="btnRight" value="&gt;&gt;" />
+                    </div>
+                    <div>
+                        <div style="width: 100px;">Files available</div>
+                        <select id="rightValues" size="12" multiple>
+                        </select>
+                    </div>
+                </section>
             </div>
             
             <div class="prev_test">
@@ -67,6 +103,7 @@
             $(document).ready(function(){
                 updateBranches();
                 getPreviousTests();
+                updateKats();
                 
                 window.setInterval(function(){                
                     updateQueuedTests();
@@ -75,6 +112,16 @@
                                 
             });
             
+            $("#btnLeft").click(function () {
+                var selectedItem = $("#rightValues option:selected");
+                $("#leftValues").append(selectedItem);
+            });
+
+            $("#btnRight").click(function () {
+                var selectedItem = $("#leftValues option:selected");
+                $("#rightValues").append(selectedItem);
+            });
+
             $('#btnGetPrevTests').click(function(){
                 getPreviousTests();
             });
@@ -106,6 +153,27 @@
             $('#btnGetProgress').click(function(){
                 updateProgress();
             });
+            
+            function updateKats(){
+                $.ajax({
+                    type: "POST",
+                    url: "/finesse/get/kats",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function(data){
+                        rlist = $('#rightValues')
+                        rlist.empty()
+                        $('#leftValues').empty()
+                        
+                        for(var i=0; i < data.kats.length; i++){
+                            rlist.append($('<option>', { value: data.kats[i], text: data.values[i]}));
+                        }
+                    },
+                    error: function(o,a,err){
+                        alert("Error getting kats : " + err);
+                    }
+                });
+            }
             
             function getPreviousTests() {
                 $.ajax({
@@ -234,9 +302,21 @@
             }
             
             function startNewTest(){
+                opts = $('#leftValues option');
+                kats = {};
+                
+                for(var i=0; i<opts.length; i++){
+                    suite = opts[i].text.split(" - ")[0]
+                    
+                    if(!(suite in kats)){
+                        kats[suite] = [];
+                    }
+                    
+                    kats[suite].push(opts[i].value);
+                }
                 
                 list = $("#commit_list");
-                data = JSON.stringify({"git_commit": list.val()});
+                data = JSON.stringify({"git_commit": list.val(), "kats":kats});
                 
                 $.ajax({
                   type: "POST",

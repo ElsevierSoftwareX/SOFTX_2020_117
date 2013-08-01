@@ -49,8 +49,6 @@ if db.exists():
            
     print "Current test_id: " + str(test_id)
     
-    for a in db.all('srccommit'):
-        print a
 else:
     db.create()
     db.add_index(TestIDIndex(db.path, 'testid'))
@@ -227,10 +225,11 @@ def finesse_start_rerun(id):
     return "ok"
     
 @app.route('/finesse/start_test', methods=["POST"])
-def finesse_start_test(git_commit):
-    return jsonify(__finesse_start_test(request.json["git_commit"]))
+def finesse_start_test():
     
-def __finesse_start_test(git_commit):
+    return jsonify(__finesse_start_test(request.json["git_commit"], request.json["kats"]))
+    
+def __finesse_start_test(git_commit, kats):
     global current_test, test_id
     
     try:
@@ -252,7 +251,7 @@ def __finesse_start_test(git_commit):
         test = finesse_test.FinesseTestProcess(os.path.join(app.instance_path, "finesse_test"), 
                                       TEST_RUN_PATH,
                                       git_commit, 
-                                      run_fast=True, suites=[], test_id=test_id,
+                                      run_fast=False, kats=kats, test_id=test_id,
                                       emails="", nobuild=False)
         
         db.insert(dict(t="test",
@@ -474,9 +473,22 @@ def finesse_view(view_test_id):
     #    pass
     
     
+@app.route("/finesse/get/kats", methods=["POST"])
+def finesse_get_kats():
+    suites = ["physics","random"]
+    kats = []
+    values = []
     
+    for suite in suites:
+        suite_path = os.path.join(app.instance_path,"finesse_test","kat_test",suite)
+        
+        for file in os.listdir(suite_path):
+            if file.endswith(".kat"):
+                kats.append(str(file))
+                values.append(suite + " - " + str(file))
     
-
+    return jsonify(kats=kats, values=values)
+    
 print "Starting commit watch from most recent commit: " + latest_commit_id_tested
    
 def setInterval(interval):
@@ -495,7 +507,8 @@ def setInterval(interval):
         return wrapper
     return decorator    
 
-@setInterval(10)
+    
+@setInterval(600)
 def checkLatestCommits():
     global latest_commit_id_tested
     out = utils.git(["--git-dir",SRC_GIT_PATH,"log",latest_commit_id_tested + "..HEAD",'--pretty=format:"%H"'])
