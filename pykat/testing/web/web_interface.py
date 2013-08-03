@@ -374,10 +374,10 @@ def finesse_get_test_progress():
     
 @app.route('/finesse/get_branches', methods=["POST"])
 def finesse_get_branches():
-    os.chdir(os.path.join(app.instance_path,"finesse_src"))
-        
+    SRC_PATH = os.path.join(app.instance_path,"finesse_src")
+    
     try:
-        [out,err] = utils.git("branch -a")
+        [out,err] = utils.git(["branch","-a"],cwd = SRC_PATH)
     except Exception as ex:
         print "git branch error : " + str(ex)
     
@@ -392,15 +392,15 @@ def finesse_get_branches():
     
 @app.route('/finesse/get_<count>_<branch>_logs', methods=['POST'])
 def finesse_get_log(count,branch):
-    os.chdir(os.path.join(app.instance_path,"finesse_src"))
-        
+    
+    SRC_PATH = os.path.join(app.instance_path,"finesse_src")
     try:
-        [out,err] = utils.git(["checkout", branch])
-        [out,err] = utils.git(["pull"])
+        [out,err] = utils.git(["checkout", branch],cwd = SRC_PATH)
+        [out,err] = utils.git(["pull"],cwd = SRC_PATH)
     except Exception as ex:
         print "git pull error : " + str(ex)
     
-    [out,err] = utils.git(["log","--max-count={0}".format(count),"--pretty=oneline"])
+    [out,err] = utils.git(["log","--max-count={0}".format(count),"--pretty=oneline"],cwd = SRC_PATH)
     
     log_entries = out.split("\n")
     
@@ -599,7 +599,7 @@ def setInterval(interval):
 @setInterval(600)
 def checkLatestCommits():
     global latest_commit_id_tested
-    out = utils.git(["--git-dir",SRC_GIT_PATH,"log", latest_commit_id_tested[:8] + "..HEAD",'--pretty=format:"%H"'])
+    out = utils.git(["log", latest_commit_id_tested[:8] + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_GIT_PATH)
     
     print "Checking latest commits..."
     commits_not_tested = []
