@@ -11,10 +11,10 @@ REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
 setup(
     name='PyKat',
-    version='0.0.3',
+    version='0.0.5',
     author='Daniel Brown',
     author_email='ddb@star.sr.bham.ac.uk',
-    packages=['pykat','pykat.gui','pykat.gui.resources'],
+    packages=['pykat','pykat.gui','pykat.gui.resources','pykat.testing','pykat.testing.web'],
     url='http://pypi.python.org/pypi/PyKat/',
     license='LICENSE.txt',
     description='Python interface and tools for FINESSE',
