@@ -468,11 +468,14 @@ def finesse_get_prev_tests(count):
             else:
                 status = "OK"
             
+            dt = datetime.strptime(endTime,"%Y-%m-%d %H:%M:%S.%f")-datetime.strptime(startTime,"%Y-%m-%d %H:%M:%S.%f")
+            
             obj = dict(test_id=i['test_id'],
                            git_commit=i['git_commit'],
                            status=status,
                            startTime=startTime,
-                           endTime=endTime)
+                           endTime=endTime,
+                           duration=float(dt.seconds))
             
             rtn.insert(0,obj)
            
