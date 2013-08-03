@@ -9,12 +9,31 @@
         <div>
             <h1>FINESSE Test {{ view_test_id }} View</h1>
             
-            <a href="/finesse/view/{{view_test_id}}/build.log">build.log</a> | <a href="/finesse/view/{{view_test_id}}/make.log">make.log</a>
+            <a href="/finesse/view/{{view_test_id}}/build.log">build.log</a> | <a href="/finesse/view/{{view_test_id}}/make.log">make.log</a>| <a href="/finesse/view/{{view_test_id}}/report.log">report.log</a>
             
             <h3>Test Exceptions:</h3>
-            <pre>{{ excp_message}}</pre>
-            <pre>{{ excp_traceback}}</pre>
+            <pre>{{ excp_message }}</pre>
+            <pre>{{ excp_traceback }}</pre>
             
+            <h3>Kat result summary</h3>
+            
+            <h4>Results</h4>
+            {% for suite in kats.keys() %}
+            <ul>
+                <li>{{ suite }}</li>
+                <ul>
+                    {% for item in kats[suite] %}
+                    <li>{{item[0]}} - Max rel diff = {{item[1]}}</li>
+                    {% if item[2][0] != "" %}
+                    <ul>
+                        <li>stdout: <pre>{{item[2][0]}}</pre></li>
+                        <li>stderr: <pre>{{item[2][1]}}</pre></li>
+                    </ul>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </ul>
+            {% endfor %}
         </div>
     </body>
 </html>

@@ -15,8 +15,8 @@ class RunException(Exception):
 		self.err = err
 		self.out = out
 
-def runcmd(args):
-    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
+def runcmd(args, cwd="."):
+    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE, cwd=cwd)
     out, err = p.communicate()
     
     if p.returncode != 0:
@@ -26,24 +26,23 @@ def runcmd(args):
 
     return [out,err]
     
-def git(args, git_bin=GIT_BIN):
+def git(args, git_bin=GIT_BIN, cwd="."):
     cmd = ""
+
+    if type(args) is not list:
+        if type(args) is not str:
+            print type(args)
+            raise Exception("arg for utils.git must be a list or string")
     
     if type(args) is str:
-	args = args.split(" ")
-    elif type(args) is not list:
-	raise Exception("arg for utils.git must be a list or string")
- 
-    args.insert(0, git_bin)
-
-    print "GIT CMD: " + " ".join(args), os.getcwd()
+        args = args.split(" ")
     
-    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
+    args.insert(0, git_bin)
+    
+    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE, cwd=cwd)
     out, err = p.communicate()
         
-    if p.returncode != 0:
-        print "STDERR: " + err
-        print "STDOUT: " + err
+    if p.poll() != 0:
         raise RunException(p.poll(), args, err, out)
 
     return [out, err]

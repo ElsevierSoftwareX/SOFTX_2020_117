@@ -12,11 +12,11 @@ from pykat.testing import utils
 from pykat.testing import test as finesse_test
 import shutil
 from pykat.testing.web import app
-
+from hashlib import md5
 from CodernityDB.database_thread_safe import ThreadSafeDatabase
 from CodernityDB.database import RecordNotFound
 
-from pykat.testing.web.database_indices import TestIDIndex, SrcCommitIndex
+from pykat.testing.web.database_indices import TestIDIndex, SrcCommitIndex, KatTestIndex
 
 import os, sys, traceback
 
@@ -53,12 +53,14 @@ else:
     db.create()
     db.add_index(TestIDIndex(db.path, 'testid'))
     db.add_index(SrcCommitIndex(db.path, 'srccommit'))
-    
+    db.add_index(KatTestIndex(db.path, 'kattest'))
 
+        
 SRC_GIT_PATH = os.path.join(app.instance_path, "finesse_src",".git")
 
 # get HEAD commit to set as starting point for commit checker
-latest_commit_id_tested = utils.git('--git-dir {0} log -1 --pretty=format:"%H"'.format(SRC_GIT_PATH))[0].split("\n")[0]
+latest_data = utils.git(['--git-dir',SRC_GIT_PATH,"log","-1",'--pretty=format:"%H"'])
+latest_commit_id_tested = latest_data[0].split("\n")[0].rstrip('"').lstrip("\\")
 
 print "loading web interface"
 
@@ -109,32 +111,89 @@ class FinesseProcessWatcher(Thread):
         
         print "Watcher is continuing"
         
-        doc = db.get('testid', self.process_to_watch.test_id,with_doc=True)["doc"]
-        doc["cancelled"] = self.process_to_watch.cancelling
-        doc["error"] = self.process_to_watch.errorOccurred
-        doc["startTime"] = str(start)
-        doc["endTime"] = str(datetime.now())
-        doc["testRun"] = self.process_to_watch.finished_test
-        doc["diffFound"] = self.process_to_watch.diffFound
-        
-        db.update(doc)
-        
         try:
-            # once done check if any other tests need to be ran
-            schedule_lock.acquire()
-        
-            if len(scheduled_tests) > 0:
-                print "Watcher starting next test"
-                current_test = scheduled_tests.pop(0)
-                watcher = FinesseProcessWatcher()
-                watcher.setProcessToWatch(current_test)
-                watcher.start()
-            else:
-                print "Watcher found no more tests to run"
-                current_test = None
-                watcher = None
+            testdoc = db.get('testid',
+                         self.process_to_watch.test_id,
+                         with_doc=True)["doc"]
+                                 
+            testdoc["cancelled"]    = self.process_to_watch.cancelling
+            testdoc["error"]        = self.process_to_watch.errorOccurred
+            testdoc["startTime"]    = str(start)
+            testdoc["endTime"]      = str(datetime.now())
+            testdoc["testFinished"] = self.process_to_watch.finished_test
+            testdoc["diffFound"]    = self.process_to_watch.diffFound
+                                 
+            kats_run = list()
+            
+            print "Storing kat run time data..."
+            
+            if self.process_to_watch is not None:
+                for suite in self.process_to_watch.run_times.keys():
+                    print suite
+                    for kat in self.process_to_watch.run_times[suite].keys(): 
+                        key = md5(str(suite) + str(kat)).digest() 
+                        out = kat[:-4] + ".out"
+                        
+                        if out in self.process_to_watch.output_differences[suite]:
+                            max_diff = self.process_to_watch.output_differences[suite][out][2]
+                        else:
+                            max_diff = float('NaN')
+                            
+                        if kat in self.process_to_watch.kat_run_exceptions[suite]:
+                            err = self.process_to_watch.kat_run_exceptions[suite][kat];
+                            runexception = (str(err.err), str(err.out));
+                        else:
+                            runexception = ("","")
+                            
+                        kats_run.append(dict(suite = suite, 
+                                             kat = kat,
+                                             max_diff = float(max_diff),
+                                             runexception = runexception))     
+                                            
+                        try:
+                            doc = db.get('kattest', key, with_doc=True)["doc"]
+                            doc["test_id"].append(self.process_to_watch.test_id)
+                            doc["commit"].append(self.process_to_watch.get_version())
+                            doc["timing"].append(self.process_to_watch.run_times[suite][kat])
+                            db.update(doc)
+                            
+                        except RecordNotFound:
+                            doc = dict(t="kattest",test_id=[],commit=[],timing=[],suite=suite,kat=kat)
+
+                            doc["test_id"].append(self.process_to_watch.test_id)
+                            doc["commit"].append(self.process_to_watch.get_version())
+                            doc["timing"].append(self.process_to_watch.run_times[suite][kat])
+                            db.insert(doc)
+                    
+            #finally update with details on the kat files ran
+            testdoc["kats_run"] = kats_run
+            db.update(testdoc)
+        except RecordNotFound:
+            print "Could not find database records for test id " + str(self.process_to_watch.test_id)
+            pass
+        except:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+           
+            print "*** Exception for test_id = " + str(self.process_to_watch.test_id)
+            traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                      limit=5, file=sys.stdout)
         finally:
-            schedule_lock.release()
+            try:
+                # once done check if any other tests need to be ran
+                schedule_lock.acquire()
+            
+                if len(scheduled_tests) > 0:
+                    print "Watcher starting next test"
+                    current_test = scheduled_tests.pop(0)
+                    watcher = FinesseProcessWatcher()
+                    watcher.setProcessToWatch(current_test)
+                    watcher.start()
+                else:
+                    print "Watcher found no more tests to run"
+                    current_test = None
+                    watcher = None
+            finally:
+                schedule_lock.release()
                 
 
 @app.route('/finesse/cancel_test_<id>', methods=["POST"])
@@ -169,6 +228,15 @@ def finesse_cancel_test(id):
                 print "Cancelled queued test"
                 scheduled_tests[remove].cancelling = True
                 scheduled_tests.pop(remove)
+                
+                try:
+                    #need to update in database for queued test
+                    doc = db.get("testid",id,with_doc=True)["doc"]
+                    doc["cancelled"] = true
+                    db.update(doc)
+                except RecordNotFound:
+                    pass
+                    
                 return str(id)
             
             print "Nothing cancelled"
@@ -260,7 +328,7 @@ def __finesse_start_test(git_commit, kats):
                        cancelled=test.cancelling,
                        error=test.errorOccurred,
                        diffFound=test.diffFound,
-                       testRun=test.finished_test))
+                       testFinished=test.finished_test))
                        
         __run_new(test)
     finally:
@@ -295,7 +363,11 @@ def finesse_get_test_progress():
             percent_done = current_test.percent_done()
             status = current_test.get_progress()
             version = current_test.get_version()
-            return jsonify(cancelling=cancelling, running=True, id=test_id, percent=percent_done, status=status, version=version)    
+            
+            return jsonify(cancelling=cancelling,
+                           running=True, id=test_id,
+                           percent=percent_done, status=status,
+                           version=version)    
             
     finally:
         schedule_lock.release()
@@ -322,14 +394,13 @@ def finesse_get_branches():
 def finesse_get_log(count,branch):
     os.chdir(os.path.join(app.instance_path,"finesse_src"))
         
-    print "!!!!", count, branch
     try:
-        [out,err] = utils.git("checkout " + branch)
-        [out,err] = utils.git("pull")
+        [out,err] = utils.git(["checkout", branch])
+        [out,err] = utils.git(["pull"])
     except Exception as ex:
         print "git pull error : " + str(ex)
     
-    [out,err] = utils.git("log --max-count={0} --pretty=oneline".format(count))
+    [out,err] = utils.git(["log","--max-count={0}".format(count),"--pretty=oneline"])
     
     log_entries = out.split("\n")
     
@@ -348,7 +419,6 @@ def finesse_get_log(count,branch):
             
             log2send.append({'commit':vals[0], 'message':message})
             
-    
     return jsonify(logs=log2send)
       
 @app.route('/finesse/get_<count>_prev_tests', methods=["POST"])
@@ -393,7 +463,7 @@ def finesse_get_prev_tests(count):
                 status = "Cancelled"
             elif "diffFound" in i and i["diffFound"] == True:
                 status = "ERRORS"
-            elif "testRun" in i and i["testRun"] == False:
+            elif "testFinished" in i and i["testFinished"] == False:
                 status = "Not started"
             else:
                 status = "OK"
@@ -436,6 +506,13 @@ def finesse_view_make(view_test_id, log):
                 log_string = "No file found"
             else:
                 log_string = open(log).read()
+        elif log == "report":
+            log = os.path.join(TEST_PATH, "report", "report.log")
+            
+            if not os.path.exists(log):
+                log_string = "No file found"
+            else:
+                log_string = open(log).read()
         else:
             log_string = "No file found"
             
@@ -457,6 +534,15 @@ def finesse_view(view_test_id):
     doc = db.get('testid',view_test_id,with_doc=True)
     
     doc = doc["doc"]
+    kats = {}
+    
+    for run in doc["kats_run"]:
+        suite = run["suite"]
+        if not suite in kats:
+            kats[suite] = []
+            
+        kats[suite].append((run["kat"], run["max_diff"], run["runexception"]))
+        
     
     if "error" in doc and doc["error"] is not None:
         traceback = doc["error"]["traceback"]
@@ -466,9 +552,11 @@ def finesse_view(view_test_id):
         message = "No test exceptions thrown"
     
     return render_template("finesse_test_view.html",
-                            view_test_id = str(view_test_id),
-                            excp_traceback=traceback,
-                            excp_message=message)
+                           view_test_id = str(view_test_id),
+                           excp_traceback=traceback,
+                           excp_message=message,
+                           kats = kats)
+                           
     #except RecordNotFound:
     #    pass
     
@@ -511,7 +599,7 @@ def setInterval(interval):
 @setInterval(600)
 def checkLatestCommits():
     global latest_commit_id_tested
-    out = utils.git(["--git-dir",SRC_GIT_PATH,"log",latest_commit_id_tested + "..HEAD",'--pretty=format:"%H"'])
+    out = utils.git(["--git-dir",SRC_GIT_PATH,"log", latest_commit_id_tested[:8] + "..HEAD",'--pretty=format:"%H"'])
     
     print "Checking latest commits..."
     commits_not_tested = []

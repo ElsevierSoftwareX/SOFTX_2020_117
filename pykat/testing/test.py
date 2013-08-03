@@ -16,28 +16,10 @@ from datetime import datetime
 from pykat.testing import utils
 import sys, traceback
 
-class RunException(Exception):
-	def __init__(self, returncode, args, err, out):
-		self.returncode = returncode
-		self.args = args
-		self.err = err
-		self.out = out
-
 class DiffException(Exception):
 	def __init__(self, msg, outfile):
 		self.msg = msg
 		self.outfile = outfile
-
-def runcmd(args):
-    p = sub.Popen(args, stdout=sub.PIPE, stderr=sub.PIPE)
-    out, err = p.communicate()
-    
-    if p.returncode != 0:
-        print "STDERR: " + err
-        print "STDOUT: " + out
-        raise RunException(p.returncode, args, err, out)
-
-    return [out,err]
 
 class FinesseTestProcess(Thread):
     
@@ -58,6 +40,11 @@ class FinesseTestProcess(Thread):
     diffing = False
     kats_to_run = []
     
+    # Define storage structures for generating report later
+    kat_run_exceptions = {}
+    output_differences = {}
+    run_times = {}
+        
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, kats=[], test_id="0",
                  git_bin="",emails="", nobuild=True,*args, **kqwargs):
@@ -75,12 +62,14 @@ class FinesseTestProcess(Thread):
         self.emails = ""
         
         if type(nobuild) is str:
+        
             if nobuild.lower() == "true":
                 self.nobuild = True
             elif nobuild.lower() == "false":
                 self.nobuild = False
             else:
                 raise Exception("nobuild is not a boolean value")
+                
         elif type(nobuild) is bool:
             self.nobuild = nobuild
         else:
@@ -149,36 +138,29 @@ class FinesseTestProcess(Thread):
             print "Checking out finesse base..."
             utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git",BUILD_PATH])
 
-            os.chdir(BUILD_PATH)
             print "Checking out and building develop version of finesse " + self.git_commit
             
             SRC_PATH = os.path.join(BUILD_PATH,"src")
             
             if sys.platform == "win32":
-                runcmd(["bash","./finesse.sh","--checkout"])
+                utils.runcmd(["bash","./finesse.sh","--checkout"],cwd=BUILD_PATH)
                 self.cancelCheck()
                 
-                os.chdir(SRC_PATH)
-                utils.git(["checkout",self.git_commit])
+                utils.git(["checkout",self.git_commit],cwd=SRC_PATH)
                 self.cancelCheck()
                 
-                os.chdir(BUILD_PATH)
-                runcmd(["bash","./finesse.sh","--build"])
+                utils.runcmd(["bash","./finesse.sh","--build"],cwd=BUILD_PATH)
                 self.cancelCheck()
             else:
-                runcmd(["./finesse.sh","--checkout","develop"])
+                utils.runcmd(["./finesse.sh","--checkout","develop"],cwd=BUILD_PATH)
                 self.cancelCheck()
                 
-                os.chdir(SRC_PATH)
-                utils.git(["checkout",self.git_commit])
+                utils.git(["checkout",self.git_commit],cwd=SRC_PATH)
                 self.cancelCheck()
                 
-                os.chdir(BUILD_PATH)
-                runcmd(["./finesse.sh","--build"])
+                utils.runcmd(["./finesse.sh","--build"],cwd=BUILD_PATH)
                 self.cancelCheck()
-                
-            os.chdir(self.BASE_DIR)
-            
+                            
         FINESSE_EXE = os.path.join(self.BASE_DIR,"build","kat" + EXE)
         
         # check if kat runs
@@ -197,33 +179,27 @@ class FinesseTestProcess(Thread):
             
         os.mkdir(OUTPUTS_DIR)
         
-        os.environ["KATINI"] = os.path.join(self.TEST_DIR,"kat.ini")
+        os.environ["KATINI"] = os.path.join(self.TEST_DIR,"kat_test","kat.ini")
         
         self.cancelCheck()
         # Clean up and pull latest test repository
         print "Cleaning test repository..."
-        os.chdir(self.TEST_DIR)
-        utils.git(["clean","-xdf"])
+        utils.git(["clean","-xdf"], cwd=self.TEST_DIR)
         self.cancelCheck()
-        utils.git(["reset","--hard"])
+        utils.git(["reset","--hard"], cwd=self.TEST_DIR)
         self.cancelCheck()
         print "Pulling latest test..."
-        utils.git(["pull"])
+        utils.git(["pull"],cwd=self.TEST_DIR)
         self.cancelCheck()
     
-        # Define storage structures for generating report later
-        kat_run_exceptions = {}
-        output_differences = {}
-        run_times = {}
-
         self.total_kats = 0
         
         # create dictionary structures
         # and count up total number of files to process
         for suite in self.kats_to_run.keys():
-            kat_run_exceptions[suite] = {}
-            output_differences[suite] = {}
-            run_times[suite] = {}
+            self.kat_run_exceptions[suite] = {}
+            self.output_differences[suite] = {}
+            self.run_times[suite] = {}
             
             self.total_kats += len(self.kats_to_run[suite])
         
@@ -235,7 +211,7 @@ class FinesseTestProcess(Thread):
             self.cancelCheck()
             print "Running suite: " + suite + "..."
             kats = self.kats_to_run[suite]
-            os.chdir(os.path.join(self.TEST_DIR,"kat_test",suite))
+            SUITE_PATH = os.path.join(self.TEST_DIR,"kat_test",suite)
 
             SUITE_OUTPUT_DIR = os.path.join(OUTPUTS_DIR,suite)
             os.mkdir(SUITE_OUTPUT_DIR)
@@ -254,21 +230,29 @@ class FinesseTestProcess(Thread):
                 else:
                     try:
                         start = time.time()
-                        out,err = runcmd([FINESSE_EXE, "--noheader", kat])
-                        finish = time.time()-start
-                        run_times[suite][kat] = finish
-                        shutil.move(basename + ".out", SUITE_OUTPUT_DIR)
-                    except RunException as e:
+                        out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat],cwd=SUITE_PATH)
+                        
+                        OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
+                        shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
+                    
+                    except utils.RunException as e:
+                    
+                        print "STDERR: " + e.out
+                        print "STDOUT: " + e.err
+                        
                         print "Error running " + kat + ": " + e.err
-                        kat_run_exceptions[suite][kat] = e
+                        self.kat_run_exceptions[suite][kat] = e
+                        # if this happens a difference definitely is found
+                        self.diffFound = True
                     finally:
+                        self.run_times[suite][kat] = time.time()-start
                         self.done_kats += 1
 
         self.cancelCheck()
         
         for suite in self.kats_to_run.keys():
-            if len(kat_run_exceptions[suite].keys()) > 0:
-                print "Could not run the following kats:\n" + "\n".join(kat_run_exceptions.keys()) + " in " + suite
+            if len(self.kat_run_exceptions[suite].keys()) > 0:
+                print "Could not run the following kats:\n" + "\n".join(self.kat_run_exceptions[suite].keys()) + " in " + suite
             else:
                 print "No errors whilst running" + suite
 
@@ -280,9 +264,9 @@ class FinesseTestProcess(Thread):
             print "Diffing suite: " + suite + "..."
 
             outs = []
-            os.chdir(os.path.join(OUTPUTS_DIR,suite))
+            SUITE_PATH = os.path.join(OUTPUTS_DIR,suite)
 
-            for files in os.listdir("."):
+            for files in os.listdir(SUITE_PATH):
                 if files.endswith(".out"):
                     outs.append(files)
 
@@ -296,12 +280,13 @@ class FinesseTestProcess(Thread):
                 self.running_kat = out
                 
                 ref_file = os.path.join(REF_DIR,out)
+                out_file = os.path.join(SUITE_PATH,out)
                 
                 if not os.path.exists(ref_file):
                     raise DiffException("Reference file doesn't exist for " + out, out)
                     
                 ref_arr = np.loadtxt(ref_file)
-                out_arr = np.loadtxt(out)
+                out_arr = np.loadtxt(out_file)
 
                 if ref_arr.shape != out_arr.shape:
                     raise DiffException("Reference and output are different shapes", out)
@@ -317,20 +302,28 @@ class FinesseTestProcess(Thread):
                 
                 if diff:
                     self.diffFound = True
+                    
                     # store the rows which are different
                     ix = np.where(rel_diff >= self.diff_rel_eps)[0][0]
-                    output_differences[suite][out] = (ref_arr[ix], out_arr[ix], np.max(rel_diff))
                 
+                    self.output_differences[suite][out] = (ref_arr[ix],
+                                                           out_arr[ix],
+                                                           np.max(rel_diff))
+                else:
+                    max = np.max(rel_diff) 
+                    
+                    self.output_differences[suite][out] = ([],
+                                                           [],
+                                                           max)
                 self.done_kats += 1
                 
-        os.chdir(self.BASE_DIR)
+        REPORT_PATH = os.path.join(self.BASE_DIR,"reports")
         
-        if not os.path.exists("reports"):
-            os.mkdir("reports")
+        if not os.path.exists(REPORT_PATH):
+            os.mkdir(REPORT_PATH)
 
-        os.chdir("reports")
         today = datetime.utcnow()
-        reportname = today.strftime('%d%m%y')
+        reportname = os.path.join(REPORT_PATH,"report.log") #today.strftime('%d%m%y')
         print "Writing report to " + reportname
         
         f = open(reportname,'w')
@@ -348,19 +341,19 @@ class FinesseTestProcess(Thread):
         isError = False
 
         for suite in self.kats_to_run.keys():
-            f.write("\n\n" + str(len(output_differences[suite].keys())) + " differences in suite " + suite)
-            for k in output_differences[suite].keys():
+            f.write("\n\n" + str(len(self.output_differences[suite].keys())) + " differences in suite " + suite)
+            for k in self.output_differences[suite].keys():
                 isError = True
                 f.write(k + ":\n")
-                f.write("     ref: " + str(output_differences[suite][k][0]) + "\n")
-                f.write("     out: " + str(output_differences[suite][k][1]) + "\n")
-                f.write("     Max relative difference: " + str(output_differences[suite][k][2]) + "\n")
+                f.write("     ref: " + str(self.output_differences[suite][k][0]) + "\n")
+                f.write("     out: " + str(self.output_differences[suite][k][1]) + "\n")
+                f.write("     Max relative difference: " + str(self.output_differences[suite][k][2]) + "\n")
 
-            f.write("\n\n" + str(len(output_differences[suite].keys())) + " errors in suite " + suite)
-            for k in kat_run_exceptions[suite].keys():
+            f.write("\n\n" + str(len(self.output_differences[suite].keys())) + " errors in suite " + suite)
+            for k in self.kat_run_exceptions[suite].keys():
                 isError = True
                 f.write(k + ":\n")
-                f.write("err: " + kat_run_exceptions[suite][k].err + "\n")
+                f.write("err: " + self.kat_run_exceptions[suite][k].err + "\n")
 
         f.close()
         
@@ -379,7 +372,6 @@ class FinesseTestProcess(Thread):
         #else:
         #    print "No emails specified"
 
-        return output_differences
             
             
     def run(self):
@@ -396,7 +388,7 @@ class FinesseTestProcess(Thread):
             traceback.print_exception(exc_type, exc_value, exc_traceback,
                                       limit=5, file=sys.stdout)
         finally:
-            finished_test = True
+            self.finished_test = True
         
         
 

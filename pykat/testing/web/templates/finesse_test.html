@@ -82,6 +82,7 @@
                     <div>
                         <div style="width: 100px;">Files available</div>
                         <select id="rightValues" size="12" multiple>
+                        <input type="text" id="txtKatSearch" />
                         </select>
                     </div>
                 </section>
@@ -108,8 +109,22 @@
                 window.setInterval(function(){                
                     updateQueuedTests();
                     updateProgress();
-                }, 1000);
+                }, 5000);
                                 
+            });
+            
+            $('#txtKatSearch').change(function(){
+                term = $('#txtKatSearch').val();
+                
+                term.trim();
+                
+                match = $("#rightValues span > option");
+                match.unwrap();
+                    
+                if(term.length > 0){
+                    match = $("#rightValues :not(:contains('" + term + "'))");
+                    match.wrap("<span></span>");
+                }
             });
             
             $("#btnLeft").click(function () {
@@ -305,6 +320,8 @@
                 opts = $('#leftValues option');
                 kats = {};
                 
+                $('#btnStartTest').attr('disabled',true)
+                
                 for(var i=0; i<opts.length; i++){
                     suite = opts[i].text.split(" - ")[0]
                     
@@ -326,9 +343,11 @@
                   success: function (data) {
                     updateQueuedTests();
                     updateProgress();
+                    $('#btnStartTest').attr('disabled',false)
                   },
                   error: function(jqXHR, textStatus, err){
                     console.log('error: ' + err);
+                    $('#btnStartTest').attr('disabled',false)
                   },
                   dataType: "json"
                 });
