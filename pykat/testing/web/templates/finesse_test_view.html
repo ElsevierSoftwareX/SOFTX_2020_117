@@ -23,7 +23,7 @@
                 <li>{{ suite }}</li>
                 <ul>
                     {% for item in kats[suite] %}
-                    <li><span style="display:inline-block;width: 300px">{{item[0]}}</span>Max rel diff = {{item[1]}}</li>
+                    <li><span style="display:inline-block;width: 300px">{{item[0]}}</span><a href="/finesse/view/{{view_test_id}}/diff/{{suite}}/{{item[0]}}">View Diff</a> &nbsp; Max rel diff = {{item[1]}}</li>
                     {% if item[2][0] != "" %}
                     <ul>
                         <li>stdout: <pre>{{item[2][0]}}</pre></li>

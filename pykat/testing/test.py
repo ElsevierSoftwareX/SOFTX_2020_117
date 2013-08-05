@@ -230,9 +230,7 @@ class FinesseTestProcess(Thread):
                 else:
                     try:
                         start = time.time()
-                        
-                        print "running", kat, FINESSE_EXE
-                        
+                                                
                         out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
                         
                         OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")

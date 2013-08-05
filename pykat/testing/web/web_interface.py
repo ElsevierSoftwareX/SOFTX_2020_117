@@ -15,7 +15,7 @@ from pykat.testing.web import app
 from hashlib import md5
 from CodernityDB.database_thread_safe import ThreadSafeDatabase
 from CodernityDB.database import RecordNotFound
-
+import numpy as np
 from pykat.testing.web.database_indices import TestIDIndex, SrcCommitIndex, KatTestIndex
 
 import os, sys, traceback
@@ -533,7 +533,31 @@ def finesse_view_make(view_test_id, log):
         
     else:
         return ""
+
+@app.route('/finesse/view/<view_test_id>/diff/<suite>/<kat>/', methods=["GET"])
+def finesse_view_diff(view_test_id, suite, kat):
+    out = kat[:-4] + ".out"
+    REF_FILE = os.path.join(app.instance_path,"finesse_test","kat_test",suite,"reference",out)
+    OUT_FILE = os.path.join(app.instance_path,"tests",str(view_test_id),"outputs",suite,out)
+            
+    if not os.path.exists(REF_FILE):
+        raise Exception("Reference file " + REF_FILE + " not found")
+    
+    if not os.path.exists(OUT_FILE):
+        raise Exception("Output file " + OUT_FILE + " not found")
         
+    #ref_data = np.loadtxt(REF_FILE)
+    #out_data = np.loadtxt(OUT_FILE)
+    
+    import difflib
+    
+    ref = open(REF_FILE, 'U').readlines()
+    out = open(OUT_FILE, 'U').readlines()
+    
+    
+    return difflib.HtmlDiff().make_file(ref,out,REF_FILE,OUT_FILE)
+                            
+    
 @app.route('/finesse/view/<view_test_id>/', methods=["GET"])
 def finesse_view(view_test_id):
     
