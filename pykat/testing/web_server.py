@@ -3,7 +3,7 @@ import sys
 from flask import Flask
 from optparse import OptionParser
 
-def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/git"):
+def start(instance_path,port=5000, debug=False, ip="0.0.0.0", git_bin="/usr/bin/git"):
         
     os.environ["GIT_BIN"] = git_bin
     # we import this now so that we can set the GIT_BIN env var
