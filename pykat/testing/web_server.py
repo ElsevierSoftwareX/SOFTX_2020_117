@@ -27,7 +27,8 @@ def start(instance_path,port=5000, debug=False, ip="0.0.0.0", git_bin="/usr/bin/
 	print app.instance_path, instance_path
         raise Exception("Instance path of Flask app didn't match the requested value")
     
-os.chdir(instance_path)    
+    os.chdir(instance_path)    
+    
     # need local copy of src
     if not os.path.exists(os.path.join(app.instance_path,"finesse_src")):
         print "finesse src folder didn't exist, cloning now..."
