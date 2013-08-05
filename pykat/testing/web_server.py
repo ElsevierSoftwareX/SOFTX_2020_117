@@ -42,7 +42,7 @@ def start(instance_path,port=5000, debug=False, ip="0.0.0.0", git_bin="/usr/bin/
     # need local copy of test
     if not os.path.exists(os.path.join(app.instance_path,"finesse_test")):
         print "finesse test folder didn't exist, cloning now..."
-        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"]))
+        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"])
     
     # load up the actual interface code
     import pykat.testing.web.web_interface
