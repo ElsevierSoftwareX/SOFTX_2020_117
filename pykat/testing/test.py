@@ -31,7 +31,7 @@ class FinesseTestProcess(Thread):
     git_commit = ""
     test_id = -1
     finished_test = False
-    diff_rel_eps = 1e-13
+    diff_rel_eps = 1e-12
     running_kat = ""
     running_suite = ""
     cancelling = False
@@ -47,7 +47,7 @@ class FinesseTestProcess(Thread):
         
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, kats=[], test_id="0",
-                 git_bin="",emails="", nobuild=True,*args, **kqwargs):
+                 git_bin="",emails="", nobuild=False,*args, **kqwargs):
         
         Thread.__init__(self)
         self.git_commit = test_commit
@@ -179,7 +179,7 @@ class FinesseTestProcess(Thread):
             
         os.mkdir(OUTPUTS_DIR)
         
-        os.environ["KATINI"] = os.path.join(self.TEST_DIR,"kat_test","kat.ini")
+        os.environ["KATINI"] = os.path.join(BUILD_PATH,"kat.ini")
         
         self.cancelCheck()
         # Clean up and pull latest test repository
@@ -230,7 +230,10 @@ class FinesseTestProcess(Thread):
                 else:
                     try:
                         start = time.time()
-                        out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat],cwd=SUITE_PATH)
+                        
+                        print "running", kat, FINESSE_EXE
+                        
+                        out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
                         
                         OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
                         shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
@@ -285,21 +288,21 @@ class FinesseTestProcess(Thread):
                 if not os.path.exists(ref_file):
                     raise DiffException("Reference file doesn't exist for " + out, out)
                     
-                ref_arr = np.loadtxt(ref_file)
-                out_arr = np.loadtxt(out_file)
-
+                ref_arr = np.loadtxt(ref_file, dtype=np.float64)
+                out_arr = np.loadtxt(out_file, dtype=np.float64)
+                                
                 if ref_arr.shape != out_arr.shape:
                     raise DiffException("Reference and output are different shapes", out)
 
                 # for computing relative errors we need to make sure we
                 # have no zeros in the data
-                ref_arr_c = np.where(ref_arr == 0, ref_arr, 1)
+                ref_arr_c = np.where(ref_arr == 0, 1, ref_arr)
                 ref_arr_c[ref_arr_c==0] = 1
 
                 rel_diff = np.abs(out_arr-ref_arr)/np.abs(ref_arr_c)
-
-                diff = np.any(rel_diff >= self.diff_rel_eps)
                 
+                diff = np.any(rel_diff >= self.diff_rel_eps)
+                                
                 if diff:
                     self.diffFound = True
                     
@@ -384,6 +387,10 @@ class FinesseTestProcess(Thread):
             
             self.errorOccurred = dict(value=str(exc_value), traceback=str(traceback.format_exc(5)))
             
+            if exc_type is utils.RunException:
+                self.errorOccurred["stdout"] = ex.out
+                self.errorOccurred["stderr"] = ex.err
+                
             print "*** Exception for test_id = " + str(self.test_id)
             traceback.print_exception(exc_type, exc_value, exc_traceback,
                                       limit=5, file=sys.stdout)

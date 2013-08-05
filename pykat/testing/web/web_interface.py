@@ -152,14 +152,17 @@ class FinesseProcessWatcher(Thread):
                                             
                         try:
                             doc = db.get('kattest', key, with_doc=True)["doc"]
+                            
+                            doc["max_diff"].append(max_diff)
                             doc["test_id"].append(self.process_to_watch.test_id)
                             doc["commit"].append(self.process_to_watch.get_version())
                             doc["timing"].append(self.process_to_watch.run_times[suite][kat])
                             db.update(doc)
                             
                         except RecordNotFound:
-                            doc = dict(t="kattest",test_id=[],commit=[],timing=[],suite=suite,kat=kat)
-
+                            doc = dict(t="kattest",max_diff=[],test_id=[],commit=[],timing=[],suite=suite,kat=kat)
+                            
+                            doc["max_diff"].append(max_diff)
                             doc["test_id"].append(self.process_to_watch.test_id)
                             doc["commit"].append(self.process_to_watch.get_version())
                             doc["timing"].append(self.process_to_watch.run_times[suite][kat])
@@ -468,14 +471,18 @@ def finesse_get_prev_tests(count):
             else:
                 status = "OK"
             
-            dt = datetime.strptime(endTime,"%Y-%m-%d %H:%M:%S.%f")-datetime.strptime(startTime,"%Y-%m-%d %H:%M:%S.%f")
+            if len(endTime) > 0 and len(startTime) > 0:
+                difftime = datetime.strptime(endTime,"%Y-%m-%d %H:%M:%S.%f")-datetime.strptime(startTime,"%Y-%m-%d %H:%M:%S.%f")
+                dt = float(difftime.seconds)
+            else:
+                dt = float(0)
             
             obj = dict(test_id=i['test_id'],
                            git_commit=i['git_commit'],
                            status=status,
                            startTime=startTime,
                            endTime=endTime,
-                           duration=float(dt.seconds))
+                           duration=dt)
             
             rtn.insert(0,obj)
            
@@ -539,17 +546,25 @@ def finesse_view(view_test_id):
     doc = doc["doc"]
     kats = {}
     
-    for run in doc["kats_run"]:
-        suite = run["suite"]
-        if not suite in kats:
-            kats[suite] = []
-            
-        kats[suite].append((run["kat"], run["max_diff"], run["runexception"]))
-        
+    if "kats_run" in doc:
+        for run in doc["kats_run"]:
+            suite = run["suite"]
+            if not suite in kats:
+                kats[suite] = []
+                
+            kats[suite].append((run["kat"], run["max_diff"], run["runexception"]))
+    else:
+        kats = {}
     
     if "error" in doc and doc["error"] is not None:
         traceback = doc["error"]["traceback"]
         message = doc["error"]["value"]
+        
+        if "stdout" in doc["error"]:
+            message += "\n\nstdout: " + doc["error"]["stdout"]
+            
+        if "stderr" in doc["error"]:
+            message += "\n\nstderr: " + doc["error"]["stderr"]
     else:
         traceback = ""
         message = "No test exceptions thrown"
