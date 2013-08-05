@@ -34,14 +34,14 @@ os.chdir(instance_path)
         utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/src.git","finesse_src"])
     else:
         # get the latest version for logs etc.
-        utils.git("pull", cwd=os.path.join(app.instance_path))
+        utils.git("pull", cwd=os.path.join(app.instance_path,"finesse_src"))
      
     os.chdir(instance_path)
     
     # need local copy of test
     if not os.path.exists(os.path.join(app.instance_path,"finesse_test")):
         print "finesse test folder didn't exist, cloning now..."
-        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"],cwd=os.path.join(app.instance_path))
+        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"]))
     
     # load up the actual interface code
     import pykat.testing.web.web_interface
