@@ -534,6 +534,20 @@ def finesse_view_make(view_test_id, log):
     else:
         return ""
 
+@app.route('/finesse/kat/<suite>/<kat>', methods=["GET"])
+def finesse_view_kat(suite, kat):
+    KAT_FILE = os.path.join(app.instance_path,"finesse_test","kat_test",suite,kat)
+    
+    if os.path.exists(KAT_FILE):
+        kat_contents = open(KAT_FILE).read()
+    else:
+        kat_contents = "kat not found"
+        
+    response = make_response(kat_contents)
+    response.headers["Content-type"] = "text/plain"
+        
+    return response
+
 @app.route('/finesse/view/<view_test_id>/diff/<suite>/<kat>/', methods=["GET"])
 def finesse_view_diff(view_test_id, suite, kat):
     out = kat[:-4] + ".out"
@@ -555,7 +569,7 @@ def finesse_view_diff(view_test_id, suite, kat):
     out = open(OUT_FILE, 'U').readlines()
     
     
-    return difflib.HtmlDiff().make_file(ref,out,REF_FILE,OUT_FILE)
+    return difflib.HtmlDiff().make_file(ref,out,REF_FILE,OUT_FILE,context=False)
                             
     
 @app.route('/finesse/view/<view_test_id>/', methods=["GET"])
@@ -638,7 +652,7 @@ def setInterval(interval):
     return decorator    
 
     
-@setInterval(600)
+@setInterval(60)
 def checkLatestCommits():
     global latest_commit_id_tested
     out = utils.git(["log", latest_commit_id_tested[:8] + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_GIT_PATH)
@@ -668,6 +682,11 @@ def checkLatestCommits():
             for commit in commits_not_tested:
                 print "Trying to test " + commit
                 __finesse_start_test(commit)
+    except util.RunException as ex:
+        print "stderr", ex.err
+        
+        pass
+        
     except Exception as ex:
         
         exc_type, exc_value, exc_traceback = sys.exc_info()
