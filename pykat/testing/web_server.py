@@ -26,19 +26,22 @@ def start(instance_path,port=5000, debug=False, ip="0.0.0.0", git_bin="/usr/bin/
     if(app.instance_path!=instance_path):
 	print app.instance_path, instance_path
         raise Exception("Instance path of Flask app didn't match the requested value")
-        
+    
+os.chdir(instance_path)    
     # need local copy of src
     if not os.path.exists(os.path.join(app.instance_path,"finesse_src")):
         print "finesse src folder didn't exist, cloning now..."
         utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/src.git","finesse_src"])
     else:
         # get the latest version for logs etc.
-        utils.git("pull", cwd=os.path.join(app.instance_path,"finesse_src"))
-        
+        utils.git("pull", cwd=os.path.join(app.instance_path))
+     
+    os.chdir(instance_path)
+    
     # need local copy of test
     if not os.path.exists(os.path.join(app.instance_path,"finesse_test")):
         print "finesse test folder didn't exist, cloning now..."
-        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"],cwd=os.path.join(app.instance_path,"finesse_src"))
+        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"],cwd=os.path.join(app.instance_path))
     
     # load up the actual interface code
     import pykat.testing.web.web_interface
