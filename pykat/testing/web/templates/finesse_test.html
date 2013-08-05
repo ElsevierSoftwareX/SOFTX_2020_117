@@ -100,7 +100,18 @@
         <script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
 
         <script type="text/JavaScript">
-                        
+            function sortKatList(list){
+                // resort alphabetically the options visible
+                var rvals = $(list);
+                var opts = rvals.children("option");
+                
+                opts.sort(function(a, b) {
+                   return $(a).text().toUpperCase().localeCompare($(b).text().toUpperCase());
+                });
+                
+                $.each(opts, function(idx, itm) { rvals.append(itm); });
+            }
+            
             $(document).ready(function(){
                 updateBranches();
                 getPreviousTests();
@@ -114,6 +125,7 @@
             });
             
             $('#txtKatSearch').change(function(){
+                
                 term = $('#txtKatSearch').val();
                 
                 term.trim();
@@ -125,16 +137,20 @@
                     match = $("#rightValues :not(:contains('" + term + "'))");
                     match.wrap("<span></span>");
                 }
+                
+                sortKatList("#rightValues");
             });
             
             $("#btnLeft").click(function () {
                 var selectedItem = $("#rightValues option:selected");
                 $("#leftValues").append(selectedItem);
+                sortKatList("#leftValues");
             });
 
             $("#btnRight").click(function () {
                 var selectedItem = $("#leftValues option:selected");
                 $("#rightValues").append(selectedItem);
+                sortKatList("#rightValues");
             });
 
             $('#btnGetPrevTests').click(function(){
