@@ -17,16 +17,18 @@ from CodernityDB.database_thread_safe import ThreadSafeDatabase
 from CodernityDB.database import RecordNotFound
 import numpy as np
 from pykat.testing.web.database_indices import TestIDIndex, SrcCommitIndex, KatTestIndex
-
+import re
 import os, sys, traceback
 
-global current_test, scheduled_tests, schedule_lock
+global current_test, scheduled_tests, schedule_lock,enabled_suites
 
 test_id = 0
 current_test = None
 scheduled_tests = []
 schedule_lock = Lock()
 watcher = None
+enabled_suites = ["physics","random"]
+commit_check_seconds = 600
 
 print "Starting up database"
         
@@ -59,8 +61,9 @@ else:
 SRC_GIT_PATH = os.path.join(app.instance_path, "finesse_src",".git")
 
 # get HEAD commit to set as starting point for commit checker
-latest_data = utils.git(['--git-dir',SRC_GIT_PATH,"log","-1",'--pretty=format:"%H"'])
-latest_commit_id_tested = latest_data[0].split("\n")[0].rstrip('"').lstrip("\\")
+latest_data = utils.git(['--git-dir',SRC_GIT_PATH,"log","-2",'--pretty=format:"%H"'])
+
+latest_commit_id_tested = latest_data[0].split("\n")[1].replace('"',"").replace("\\","")
 
 print "loading web interface"
 
@@ -129,7 +132,7 @@ class FinesseProcessWatcher(Thread):
             
             if self.process_to_watch is not None:
                 for suite in self.process_to_watch.run_times.keys():
-                    print suite
+                    
                     for kat in self.process_to_watch.run_times[suite].keys(): 
                         key = str(suite) + "_" + str(kat)
                         out = kat.replace(".kat",".out")
@@ -152,8 +155,7 @@ class FinesseProcessWatcher(Thread):
                         
                         out = utils.git(["log",str(self.process_to_watch.get_version()),"-1",'--pretty="%ai"'],cwd=os.path.join(app.instance_path,"finesse_src"))
                         commit_date = out[0].replace("\\","").replace('"','').replace("\n","")
-                        print commit_date
-                        
+                                                
                         try:
                             doc = db.get('kattest', key, with_doc=True)["doc"]
                             
@@ -317,6 +319,7 @@ def __finesse_start_test(git_commit, kats):
         test_id += 1
                         
         TEST_OUTPUT_PATH = os.path.join(app.instance_path, "tests")
+        
         if not os.path.exists(TEST_OUTPUT_PATH):
             os.mkdir(TEST_OUTPUT_PATH)
             
@@ -649,11 +652,11 @@ def finesse_view(view_test_id):
     
 @app.route("/finesse/get/kats", methods=["POST"])
 def finesse_get_kats():
-    suites = ["physics","random"]
     kats = []
     values = []
+    global enabled_suites
     
-    for suite in suites:
+    for suite in enabled_suites:
         suite_path = os.path.join(app.instance_path,"finesse_test","kat_test",suite)
         
         for file in os.listdir(suite_path):
@@ -682,17 +685,18 @@ def setInterval(interval):
     return decorator    
 
     
-@setInterval(60)
+@setInterval(commit_check_seconds)
 def checkLatestCommits():
+    
     global latest_commit_id_tested
-    out = utils.git(["log", latest_commit_id_tested[:8] + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_GIT_PATH)
+    out = utils.git(["log", re.sub(r"[\W]",'',latest_commit_id_tested) + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_GIT_PATH)
     
     print "Checking latest commits..."
     commits_not_tested = []
     
     try:
         done_all = True
-        commits = out[0].split("\n")
+        commits = [re.sub(r"[\W]","",t) for t in out[0].split("\n")]
         
         for commit in commits:
             commit.strip()
@@ -711,8 +715,22 @@ def checkLatestCommits():
         else:
             for commit in commits_not_tested:
                 print "Trying to test " + commit
-                __finesse_start_test(commit)
-    except util.RunException as ex:
+                kats = dict()
+                # only run random and physics suites
+                global enabled_suites
+                
+                for suite in enabled_suites:
+                    suite_path = os.path.join(app.instance_path,"finesse_test","kat_test",suite)
+                    
+                    if not suite in kats:
+                        kats[suite] = list()
+                        
+                    for file in os.listdir(suite_path):
+                        if file.endswith(".kat"):
+                            kats[suite].append(str(file))
+                
+                __finesse_start_test(commit,kats)
+    except utils.RunException as ex:
         print "stderr", ex.err
         
         pass

@@ -1,0 +1,43 @@
+<html>
+    <head>
+        <!--<link rel="stylesheet" type="text/css" href="/css/style.css"/>-->
+        <link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css"/>
+        <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
+    </head>
+    <body>
+    
+        <div>
+            <h1>FINESSE Test - {{kat}} history</h1>
+            <table id="tblHistory"> 
+                <thead>
+                    <td>Test ID</td>
+                    <td>Commit ID</td>
+                    <td>Commit Date</td>
+                    <td>Max rel Diff</td>
+                    <td>Run time [s]</td>
+                </thead>
+                {% for item in data%}
+                <tr>
+                    <td>{{item[0]}}</td>
+                    <td>{{item[1]}}</td>
+                    <td>{{item[2]}}</td>
+                    <td>{{item[3]}}</td>
+                    <td>{{item[4]}}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </body>
+    <script type="text/JavaScript" src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script type="text/JavaScript" src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+    <script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+    
+    <script type="text/JavaScript">
+        $(document).ready(function(){
+                    
+                    gtable = $('#tblHistory').dataTable();
+                    
+                
+            });
+    </script>
+</html>
