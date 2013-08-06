@@ -131,8 +131,8 @@ class FinesseProcessWatcher(Thread):
                 for suite in self.process_to_watch.run_times.keys():
                     print suite
                     for kat in self.process_to_watch.run_times[suite].keys(): 
-                        key = md5(str(suite) + str(kat)).digest() 
-                        out = kat[:-4] + ".out"
+                        key = str(suite) + "_" + str(kat)
+                        out = kat.replace(".kat",".out")
                         
                         if out in self.process_to_watch.output_differences[suite]:
                             max_diff = self.process_to_watch.output_differences[suite][out][2]
@@ -149,23 +149,31 @@ class FinesseProcessWatcher(Thread):
                                              kat = kat,
                                              max_diff = float(max_diff),
                                              runexception = runexception))     
-                                            
+                        
+                        out = utils.git(["log",str(self.process_to_watch.get_version()),"-1",'--pretty="%ai"'],cwd=os.path.join(app.instance_path,"finesse_src"))
+                        commit_date = out[0].replace("\\","").replace('"','').replace("\n","")
+                        print commit_date
+                        
                         try:
                             doc = db.get('kattest', key, with_doc=True)["doc"]
                             
-                            doc["max_diff"].append(max_diff)
+                            doc["max_diff"].append(float(max_diff))
                             doc["test_id"].append(self.process_to_watch.test_id)
                             doc["commit"].append(self.process_to_watch.get_version())
+                            doc["commit_date"].append(str(commit_date))
                             doc["timing"].append(self.process_to_watch.run_times[suite][kat])
+                            
                             db.update(doc)
                             
                         except RecordNotFound:
-                            doc = dict(t="kattest",max_diff=[],test_id=[],commit=[],timing=[],suite=suite,kat=kat)
+                            doc = dict(t="kattest",max_diff=[],test_id=[],commit=[],commit_date=[],timing=[],suite=suite,kat=kat)
                             
-                            doc["max_diff"].append(max_diff)
+                            doc["max_diff"].append(float(max_diff))
                             doc["test_id"].append(self.process_to_watch.test_id)
                             doc["commit"].append(self.process_to_watch.get_version())
+                            doc["commit_date"].append(str(commit_date))
                             doc["timing"].append(self.process_to_watch.run_times[suite][kat])
+                            
                             db.insert(doc)
                     
             #finally update with details on the kat files ran
@@ -548,6 +556,28 @@ def finesse_view_kat(suite, kat):
         
     return response
 
+@app.route('/finesse/kat_history/<suite>/<kat>', methods=["GET"])
+def finesse_view_kat_history(suite, kat):
+    
+    try:
+        
+        doc =  db.get("kattest", str(suite)+"_"+str(kat), with_doc=True)
+        doc = doc["doc"]
+        
+        print doc
+        
+        data = zip(doc["test_id"],doc["commit"],doc["commit_date"],doc["max_diff"],doc["timing"])
+        
+        response = render_template("finesse_kat_history.html",
+                                    kat=kat,
+                                    data=data)
+    except RecordNotFound:
+        response = make_response("None Found")
+        response.headers["Content-type"] = "text/plain"
+        
+        
+    return response
+    
 @app.route('/finesse/view/<view_test_id>/diff/<suite>/<kat>/', methods=["GET"])
 def finesse_view_diff(view_test_id, suite, kat):
     out = kat[:-4] + ".out"

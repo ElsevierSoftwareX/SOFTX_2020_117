@@ -43,11 +43,11 @@ class KatTestIndex(HashIndex):
 
     def make_key_value(self, data):
         if data['t'] == 'kattest':
-            key = str(data['suite']) + str(data['kat'])
-            return md5(key).digest(), None
+            key = str(data['suite'])  + "_" + str(data['kat'])
+            return md5(key).hexdigest(), None
         else:
             return None
 
     def make_key(self, key):
-        return md5(key).digest()
+        return md5(key).hexdigest()
         
