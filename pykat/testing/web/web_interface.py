@@ -58,11 +58,12 @@ else:
     db.add_index(KatTestIndex(db.path, 'kattest'))
 
         
-SRC_GIT_PATH = os.path.join(app.instance_path, "finesse_src",".git")
+SRC_PATH = os.path.join(app.instance_path, "finesse_src")
 
 # get HEAD commit to set as starting point for commit checker
 prev_commits = 10
-latest_data = utils.git(["log","-" + str(prev_commits),'--pretty=format:"%H"'],cwd=SRC_GIT_PATH)
+utils.git(["checkout","develop"], cwd=SRC_PATH)
+latest_data = utils.git(["log","-" + str(prev_commits),'--pretty=format:"%H"'], cwd=SRC_PATH)
 latest_commit_id_tested = latest_data[0].split("\n")[prev_commits-1].replace('"',"").replace("\\","")
 
 print "loading web interface"
@@ -739,6 +740,7 @@ def setInterval(interval):
 def checkLatestCommits():
     SRC_PATH = os.path.join(app.instance_path,"finesse_src")
     
+    utils.git(["checkout","develop"], cwd=SRC_PATH)
     utils.git(["pull"], cwd=SRC_PATH)
     
     global latest_commit_id_tested
