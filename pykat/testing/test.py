@@ -60,12 +60,6 @@ class FinesseTestProcess(Thread):
         self.TEST_DIR = TEST_DIR
         self.BASE_DIR = BASE_DIR
         
-        if os.path.exists(self.BASE_DIR):
-            print "Deleting previous base_dir " + BASE_DIR
-            shutil.rmtree(self.BASE_DIR)
-        
-        os.mkdir(self.BASE_DIR)
-
         self.emails = ""
         
         if type(nobuild) is str:
@@ -135,6 +129,13 @@ class FinesseTestProcess(Thread):
                     
         # Firstly we need to build the latest version of finesse
         if not self.nobuild:
+            
+            if os.path.exists(self.BASE_DIR):
+                print "Deleting previous base_dir " + self.BASE_DIR
+                shutil.rmtree(self.BASE_DIR)
+            
+            os.mkdir(self.BASE_DIR)
+            
             print "deleting build dir..." + BUILD_PATH
             if os.path.exists(BUILD_PATH):
                 shutil.rmtree(BUILD_PATH)
@@ -164,20 +165,29 @@ class FinesseTestProcess(Thread):
                 
                 utils.runcmd(["./finesse.sh","--build"],cwd=BUILD_PATH)
                 self.cancelCheck()
-                            
+                          
         FINESSE_EXE = os.path.join(self.BASE_DIR,"build","kat" + EXE)
         
         # check if kat runs
         if not os.path.exists(FINESSE_EXE):
             raise Exception("Kat file was not found in " + FINESSE_EXE)
         
-        # check version numbers match up
-        out = utils.runcmd([FINESSE_EXE])
+        out = None
         
-        shortid = out[0].split("\n")[2].split("(build ")[-1].rstrip(")").split("-")[-1].lstrip("g")
+        
+        # check version numbers match up
+        out = utils.runcmd([FINESSE_EXE,"-v"])
+            
+        # I am sure there is a regex expression that could make this
+        # easier but I am being lazy
+        out = out[0]
+        out = out.split("\n")
+        out = out[0].split("(")[1].split(")")
+        out = out[0].split("-")[-1]
+        shortid = out.lstrip("g")
         
         if shortid != self.git_commit[0:len(shortid)]:
-            raise Exception("Version of kat did not match the version that it was requested to build. Not sure why...")
+            raise Exception("Version of kat {0} did not match the version that it was requested to build {1}.".format(shortid, self.git_commit[0:len(shortid)]))
         
         self.built = True
         

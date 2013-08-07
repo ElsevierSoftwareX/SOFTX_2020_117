@@ -20,7 +20,7 @@ def runcmd(args, cwd="."):
     out, err = p.communicate()
     
     if p.returncode != 0:
-        print "STDERR: " + err
+        print "STDERR: " + errk
         print "STDOUT: " + out
         raise RunException(p.returncode, args, err, out)
 

@@ -115,6 +115,26 @@ class FinesseProcessWatcher(Thread):
         print "Watcher is continuing"
         
         try:
+            # store a copy of the kat file for future use if a nobuild is
+            # requested from the user.
+            if sys.platform == "win32":
+                EXE = ".exe"
+            else:
+                EXE = ""
+            
+            KAT_EXE = os.path.join(app.instance_path,"tests",str(self.process_to_watch.test_id),"build","kat" + EXE)
+            KAT_STORE_PATH = os.path.join(app.instance_path,"kat_store")
+            KAT_STORE_EXE = os.path.join(KAT_STORE_PATH,"kat_" + str(self.process_to_watch.get_version()) + EXE)
+            
+            if not os.path.exists(KAT_STORE_PATH):
+                os.mkdir(KAT_STORE_PATH)
+                
+            if os.path.exists(KAT_EXE):
+                if os.path.exists(KAT_STORE_EXE):
+                    os.remove(KAT_STORE_EXE)
+                    
+            shutil.copyfile(KAT_EXE, KAT_STORE_EXE)
+            
             testdoc = db.get('testid',
                          self.process_to_watch.test_id,
                          with_doc=True)["doc"]
@@ -177,7 +197,7 @@ class FinesseProcessWatcher(Thread):
                             doc["timing"].append(self.process_to_watch.run_times[suite][kat])
                             
                             db.insert(doc)
-                    
+             
             #finally update with details on the kat files ran
             testdoc["kats_run"] = kats_run
             db.update(testdoc)
