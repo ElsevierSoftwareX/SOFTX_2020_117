@@ -61,7 +61,7 @@ else:
 SRC_GIT_PATH = os.path.join(app.instance_path, "finesse_src",".git")
 
 # get HEAD commit to set as starting point for commit checker
-latest_data = utils.git(['--git-dir',SRC_GIT_PATH,"log","-2",'--pretty=format:"%H"'])
+latest_data = utils.git(["log","-2",'--pretty=format:"%H"'],cwd=SRC_GIT_PATH)
 
 latest_commit_id_tested = latest_data[0].split("\n")[1].replace('"',"").replace("\\","")
 
@@ -687,12 +687,14 @@ def setInterval(interval):
     
 @setInterval(commit_check_seconds)
 def checkLatestCommits():
-    utils.git(["pull"], cwd=SRC_GIT_PATH)
+    SRC_PATH = os.path.join(app.instance_path,"finesse_src")
+    
+    utils.git(["pull"], cwd=SRC_PATH)
     
     global latest_commit_id_tested
-    out = utils.git(["log", re.sub(r"[\W]",'',latest_commit_id_tested) + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_GIT_PATH)
+        
+    out = utils.git(["log", re.sub(r"[\W]",'',latest_commit_id_tested) + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_PATH)
     
-    print "Checking latest commits..."
     commits_not_tested = []
     
     try:

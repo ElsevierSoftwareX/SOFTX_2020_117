@@ -61,7 +61,10 @@ class FinesseTestProcess(Thread):
         self.BASE_DIR = BASE_DIR
         
         if os.path.exists(self.BASE_DIR):
+            print "Deleting previous base_dir " + BASE_DIR
             shutil.rmtree(self.BASE_DIR)
+        
+        os.mkdir(self.BASE_DIR)
 
         self.emails = ""
         
@@ -92,9 +95,6 @@ class FinesseTestProcess(Thread):
         else:
             raise Exception("nobuild is not a boolean value")
             
-        if not os.path.isdir(self.BASE_DIR):
-            raise Exception("BASE_DIR was not a valid directory")
-        
         if not os.path.isdir(self.TEST_DIR):
             raise Exception("TEST_DIR was not a valid directory, should point to a clone of the FINESSE test repository")
             
