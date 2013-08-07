@@ -59,6 +59,10 @@ class FinesseTestProcess(Thread):
         self.test_id = test_id
         self.TEST_DIR = TEST_DIR
         self.BASE_DIR = BASE_DIR
+        
+        if os.path.exists(self.BASE_DIR):
+            shutil.rmtree(self.BASE_DIR)
+
         self.emails = ""
         
         if type(nobuild) is str:
@@ -166,6 +170,14 @@ class FinesseTestProcess(Thread):
         # check if kat runs
         if not os.path.exists(FINESSE_EXE):
             raise Exception("Kat file was not found in " + FINESSE_EXE)
+        
+        # check version numbers match up
+        out = utils.runcmd([FINESSE_EXE])
+        
+        shortid = out[0].split("\n")[2].split("(build ")[-1].rstrip(")").split("-")[-1].lstrip("g")
+        
+        if shortid != self.git_commit[0:len(shortid)]:
+            raise Exception("Version of kat did not match the version that it was requested to build. Not sure why...")
         
         self.built = True
         
