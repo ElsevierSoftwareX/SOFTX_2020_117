@@ -18,28 +18,45 @@
             <h3>Kat result summary</h3>
             
             <h4>Results</h4>
-            {% for suite in kats.keys() %}
-            <ul>
-                <li>{{ suite }}</li>
-                <ul>
-                    {% for item in kats[suite] %}
-                    <li><span style="display:inline-block;width: 300px">{{item[0]}}</span>
-                                &nbsp; <a href="/finesse/kat/{{suite}}/{{item[0]}}">Kat</a>
-                                &nbsp; <a href="/finesse/out/{{view_test_id}}/{{suite}}/{{item[0]}}">Out</a> 
-                                &nbsp; <a href="/finesse/ref/{{suite}}/{{item[0]}}">Ref</a> 
-                                &nbsp; <a href="/finesse/view/{{view_test_id}}/diff/{{suite}}/{{item[0]}}">Diff</a> 
-                                &nbsp; <a href="/finesse/kat_history/{{suite}}/{{item[0]}}">History</a>
-                                &nbsp; Max rel diff = {{item[1]}}</li> 
-                    {% if item[2][0] != "" %}
-                    <ul>
-                        <li>stdout: <pre>{{item[2][0]}}</pre></li>
-                        <li>stderr: <pre>{{item[2][1]}}</pre></li>
-                    </ul>
-                    {% endif %}
-                    {% endfor %}
-                </ul>
-            </ul>
-            {% endfor %}
+            <table id="tblResults">
+            <thead>
+                <td>Suite</td>
+                <td>Kat</td>
+                <td>Max Rel. Difference</td>
+                <td>View .kat</td>
+                <td>View .out</td>
+                <td>View ref</td>
+                <td>View Diff</td>
+                <td>View History
+                </thead>
+                {% for suite in kats.keys() %}
+                {% for item in kats[suite] %}
+                <tr>
+                    <td>{{ suite }}</td>
+                    <td>{{item[0]}}</td>
+                    <td>{{item[1]}}</td> 
+                    <td><a href="/finesse/kat/{{suite}}/{{item[0]}}">Kat</a></td>
+                    <td><a href="/finesse/out/{{view_test_id}}/{{suite}}/{{item[0]}}">Out</a></td>
+                    <td><a href="/finesse/ref/{{suite}}/{{item[0]}}">Ref</a></td>
+                    <td><a href="/finesse/view/{{view_test_id}}/diff/{{suite}}/{{item[0]}}">Diff</a></td>
+                    <td><a href="/finesse/kat_history/{{suite}}/{{item[0]}}">History</a></td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </table>
+            
         </div>
     </body>
+    <script type="text/JavaScript" src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script type="text/JavaScript" src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+    <script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+    
+    <script type="text/JavaScript">
+        $(document).ready(function(){
+                    
+                    gtable = $('#tblResults').dataTable();
+                    
+                
+            });
+    </script>
 </html>
