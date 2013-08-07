@@ -28,7 +28,7 @@ scheduled_tests = []
 schedule_lock = Lock()
 watcher = None
 enabled_suites = ["physics","random"]
-commit_check_seconds = 600
+commit_check_seconds = 60
 
 print "Starting up database"
         
@@ -687,6 +687,7 @@ def setInterval(interval):
     
 @setInterval(commit_check_seconds)
 def checkLatestCommits():
+    utils.git(["pull"], cwd=SRC_GIT_PATH)
     
     global latest_commit_id_tested
     out = utils.git(["log", re.sub(r"[\W]",'',latest_commit_id_tested) + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_GIT_PATH)
