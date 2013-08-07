@@ -23,8 +23,10 @@
                 <li>{{ suite }}</li>
                 <ul>
                     {% for item in kats[suite] %}
-                    <li><span style="display:inline-block;width: 300px">
-                    {{item[0]}}</span> <a href="/finesse/kat/{{suite}}/{{item[0]}}">Kat</a>
+                    <li><span style="display:inline-block;width: 300px">{{item[0]}}</span>
+                                &nbsp; <a href="/finesse/kat/{{suite}}/{{item[0]}}">Kat</a>
+                                &nbsp; <a href="/finesse/out/{{view_test_id}}/{{suite}}/{{item[0]}}">Out</a> 
+                                &nbsp; <a href="/finesse/ref/{{suite}}/{{item[0]}}">Ref</a> 
                                 &nbsp; <a href="/finesse/view/{{view_test_id}}/diff/{{suite}}/{{item[0]}}">Diff</a> 
                                 &nbsp; <a href="/finesse/kat_history/{{suite}}/{{item[0]}}">History</a>
                                 &nbsp; Max rel diff = {{item[1]}}</li> 

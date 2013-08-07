@@ -610,6 +610,36 @@ def finesse_view_kat(suite, kat):
         
     return response
 
+@app.route('/finesse/out/<test_id>/<suite>/<out>', methods=["GET"])
+def finesse_view_out(test_id,suite, out):
+    out = str(out).replace(".kat",".out")
+    OUT_FILE = os.path.join(app.instance_path,"tests",str(test_id),"outputs",suite,out)
+    
+    if os.path.exists(OUT_FILE):
+        contents = open(OUT_FILE).read()
+    else:
+        contents = "out file not found"
+        
+    response = make_response(contents)
+    response.headers["Content-type"] = "text/plain"
+        
+    return response
+    
+@app.route('/finesse/ref/<suite>/<out>', methods=["GET"])
+def finesse_view_ref(suite, out):
+    out = str(out).replace(".kat",".out")
+    OUT_FILE = os.path.join(app.instance_path,"finesse_test","kat_test",suite,"reference",out)
+    
+    if os.path.exists(OUT_FILE):
+        kat_contents = open(OUT_FILE).read()
+    else:
+        kat_contents = "out file not found"
+        
+    response = make_response(kat_contents)
+    response.headers["Content-type"] = "text/plain"
+        
+    return response
+    
 @app.route('/finesse/kat_history/<suite>/<kat>', methods=["GET"])
 def finesse_view_kat_history(suite, kat):
     
