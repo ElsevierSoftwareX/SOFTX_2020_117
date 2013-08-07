@@ -400,7 +400,10 @@ def finesse_get_branches():
     for b in out.split("\n"):
         vals = b.split("/")
         if len(vals) >= 3:
-            branches.append(vals[2].split(" ")[0])
+            branch = vals[2].split(" ")[0]
+            
+            if branch != "HEAD":
+                branches.append(branch)
 
     return jsonify(branches=branches)
     
