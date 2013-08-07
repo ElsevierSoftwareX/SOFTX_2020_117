@@ -67,7 +67,9 @@
                 </select>
                 
                 <input type="button" value="Refresh" id="btnGetLogs"/>
+                <br/>
                 
+                <input type="checkbox" id="chkNoBuild" />Use previously built kat (Will built if it can't find any previous kats of the requested version)<br>
                 <input type="button" value="Start new FINESSSE test" id="btnStartTest"/>
                 
                 <section class="container">
@@ -350,7 +352,8 @@
                 }
                 
                 list = $("#commit_list");
-                data = JSON.stringify({"git_commit": list.val(), "kats":kats});
+                
+                data = JSON.stringify({"git_commit": list.val(), "kats":kats, "nobuild":$('#chkNoBuild').is(':checked')});
                 
                 $.ajax({
                   type: "POST",

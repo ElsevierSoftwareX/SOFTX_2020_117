@@ -126,7 +126,9 @@ class FinesseTestProcess(Thread):
         self.built = False
 
         BUILD_PATH = os.path.join(self.BASE_DIR, "build")
-                    
+
+        print "NOBUILD", self.nobuild
+        
         # Firstly we need to build the latest version of finesse
         if not self.nobuild:
             

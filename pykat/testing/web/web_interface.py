@@ -61,9 +61,9 @@ else:
 SRC_GIT_PATH = os.path.join(app.instance_path, "finesse_src",".git")
 
 # get HEAD commit to set as starting point for commit checker
-latest_data = utils.git(["log","-2",'--pretty=format:"%H"'],cwd=SRC_GIT_PATH)
-
-latest_commit_id_tested = latest_data[0].split("\n")[1].replace('"',"").replace("\\","")
+prev_commits = 10
+latest_data = utils.git(["log","-" + str(prev_commits),'--pretty=format:"%H"'],cwd=SRC_GIT_PATH)
+latest_commit_id_tested = latest_data[0].split("\n")[prev_commits-1].replace('"',"").replace("\\","")
 
 print "loading web interface"
 
@@ -327,10 +327,17 @@ def finesse_start_rerun(id):
     
 @app.route('/finesse/start_test', methods=["POST"])
 def finesse_start_test():
+    nobuild = False
+        
+    if "nobuild" in request.json:
+        if request.json["nobuild"] == True:
+            nobuild = True
+        else:
+            nobuild = False
     
-    return jsonify(__finesse_start_test(request.json["git_commit"], request.json["kats"]))
+    return jsonify(__finesse_start_test(request.json["git_commit"], request.json["kats"], nobuild))
     
-def __finesse_start_test(git_commit, kats):
+def __finesse_start_test(git_commit, kats, nobuild=False):
     global current_test, test_id
     
     try:
@@ -350,11 +357,31 @@ def __finesse_start_test(git_commit, kats):
             
         os.mkdir(TEST_RUN_PATH)
         
+        # if we are not building then check to see if we can find a previous version
+        # of kat and if so put it in the correct folder for the test to find
+        if nobuild:
+            if sys.platform == "win32":
+                EXE = ".exe"
+            else:
+                EXE = ""
+                
+            TEST_BUILD_PATH = os.path.join(TEST_RUN_PATH,"build")
+            KAT_EXE = os.path.join(app.instance_path, "kat_store", "kat_" + str(git_commit) + EXE)
+            
+            if os.path.exists(KAT_EXE):
+                print "using existing kat file " + KAT_EXE
+                utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git",TEST_BUILD_PATH])
+                KAT_NEW_EXE = os.path.join(TEST_BUILD_PATH,"kat" + EXE)
+                shutil.copyfile(KAT_EXE, KAT_NEW_EXE)
+                
+          
+        print "nobuild", nobuild
+        
         test = finesse_test.FinesseTestProcess(os.path.join(app.instance_path, "finesse_test"), 
                                       TEST_RUN_PATH,
                                       git_commit, 
                                       run_fast=False, kats=kats, test_id=test_id,
-                                      emails="", nobuild=False)
+                                      emails="", nobuild=nobuild)
         
         db.insert(dict(t="test",
                        test_id=test.test_id,
