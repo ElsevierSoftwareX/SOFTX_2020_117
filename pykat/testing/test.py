@@ -174,10 +174,12 @@ class FinesseTestProcess(Thread):
         if not os.path.exists(FINESSE_EXE):
             raise Exception("Kat file was not found in " + FINESSE_EXE)
         
+        if os.access(FINESSE_EXE, os.X_OK)):
+            raise Exception("Kat file was not executable, could need higher privileges")
+        
         out = None
         
-        
-        # check version numbers match up
+        # check version numbers match upkat
         out = utils.runcmd([FINESSE_EXE,"-v"])
             
         # I am sure there is a regex expression that could make this
