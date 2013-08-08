@@ -174,8 +174,11 @@ class FinesseTestProcess(Thread):
         if not os.path.exists(FINESSE_EXE):
             raise Exception("Kat file was not found in " + FINESSE_EXE)
         
+        
         if not os.access(FINESSE_EXE, os.X_OK):
-            raise Exception("Kat file was not executable, could need higher privileges")
+            if sys.platform != "win32":
+                print "Trying to chmod " + FINESSE_EXE
+                os.chmod(FINESSE_EXE, stat.S_IXUSR)
         
         out = None
         
