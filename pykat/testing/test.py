@@ -174,7 +174,7 @@ class FinesseTestProcess(Thread):
         if not os.path.exists(FINESSE_EXE):
             raise Exception("Kat file was not found in " + FINESSE_EXE)
         
-        if not os.access(FINESSE_EXE, os.X_OK)):
+        if not os.access(FINESSE_EXE, os.X_OK):
             raise Exception("Kat file was not executable, could need higher privileges")
         
         out = None
