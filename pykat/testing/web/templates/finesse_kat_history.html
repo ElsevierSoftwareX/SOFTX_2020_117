@@ -34,9 +34,31 @@
     
     <script type="text/JavaScript">
         $(document).ready(function(){
+                    jQuery.extend( jQuery.fn.dataTableExt.oSort, {
+                        "num-html-pre": function ( a ) {
+                            var x = String(a).replace( /<[\s\S]*?>/g, "" );
+                            return parseFloat( x );
+                        },
+                     
+                        "num-html-asc": function ( a, b ) {
+                            return ((a < b) ? -1 : ((a > b) ? 1 : 0));
+                        },
+                     
+                        "num-html-desc": function ( a, b ) {
+                            return ((a < b) ? 1 : ((a > b) ? -1 : 0));
+                        }
+                    } );
                     
-                    gtable = $('#tblHistory').dataTable();
-                    
+                    gtable = $('#tblHistory').dataTable({
+                        "iDisplayLength":250,
+                        "aoColumns": [
+                            { "sType": "num-html" },
+                            null,
+                            { "sType": "date" },
+                            { "sType": "numeric" },
+                            { "sType": "numeric" }
+                        ]
+                    } );
                 
             });
     </script>

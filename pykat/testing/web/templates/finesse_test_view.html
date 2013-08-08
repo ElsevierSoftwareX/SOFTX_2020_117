@@ -52,9 +52,40 @@
     <script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
     
     <script type="text/JavaScript">
+        
+        
         $(document).ready(function(){
-                    
-                    gtable = $('#tblResults').dataTable();
+                    jQuery.extend( jQuery.fn.dataTableExt.oSort, {
+                        "num-html-pre": function ( a ) {
+                            console.log("1");
+                            var x = String(a).replace( /<[\s\S]*?>/g, "" );
+                            return parseFloat( x );
+                        },
+                     
+                        "num-html-asc": function ( a, b ) {
+                        console.log("2");
+                            return ((a < b) ? -1 : ((a > b) ? 1 : 0));
+                        },
+                     
+                        "num-html-desc": function ( a, b ) {
+                        console.log("3");
+                            return ((a < b) ? 1 : ((a > b) ? -1 : 0));
+                        }
+                    } );
+                    gtable = $('#tblResults').dataTable({
+                        "iDisplayLength":250,
+                        "aLengthMenu": [[-1], ['All']],
+                        "aoColumns": [
+                            null,
+                            null,
+                            { "sType": "numeric" },
+                            {"bSearchable": false, "bSortable": false},
+                            {"bSearchable": false, "bSortable": false},
+                            {"bSearchable": false, "bSortable": false},
+                            {"bSearchable": false, "bSortable": false},
+                            {"bSearchable": false, "bSortable": false}
+                        ]
+                    } );
                     
                 
             });
