@@ -179,7 +179,7 @@ class FinesseTestProcess(Thread):
         if not os.access(FINESSE_EXE, os.X_OK):
             if sys.platform != "win32":
                 print "Trying to chmod " + FINESSE_EXE
-                os.chmod(FINESSE_EXE, stat.S_IXUSR)
+                os.chmod(FINESSE_EXE, stat.S_IRWXU)
         
         out = None
         
