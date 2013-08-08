@@ -15,6 +15,7 @@ import pickle
 from datetime import datetime
 from pykat.testing import utils
 import sys, traceback
+import stat
 
 class DiffException(Exception):
 	def __init__(self, msg, outfile):
