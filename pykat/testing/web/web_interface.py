@@ -407,7 +407,7 @@ def __finesse_start_test(git_commit, kats, nobuild=False):
     finally:
         schedule_lock.release()
     
-    return {'OK'}
+    return {state:'OK'}
         
 @app.route('/finesse/get_tests', methods=["POST"])
 def finesse_get_tests():
