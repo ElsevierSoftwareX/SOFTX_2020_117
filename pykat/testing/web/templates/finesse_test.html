@@ -59,17 +59,19 @@
             <div class="new_test">
                 <h2>Start new test</h2>
                 
-                <select id="branch_list" style="width: 100px;">
+                <select id="branch_list" style="width: 200px;">
                     <option text="develop" value="develop"/>
                 </select>
-                
-                <select id="commit_list" style="width: 300px;">
-                </select>
-                
-                <input type="button" value="Refresh" id="btnGetLogs"/>
                 <br/>
-                
+                <select style="float:left;vertical-align: top; height:210px;width:200px;" multiple="multiple" size="10" id="commit_list" style="width: 300px;">
+                </select>
+                <div style="float:left; vertical-align: display:block; width:450px; overflow:auto; padding:5px; margin-left:10px; height:200px; border: 1px solid #aaa;">
+                    <h4 style="padding:0px; margin:0px;" id="gitDescriptionHdr">Git log description</h4>
+                    <p id="gitDescriptionTxt">[Select item to see commit message]</p>
+                </div>
+                <br style="clear:both;" />
                 <input type="checkbox" id="chkNoBuild" />Use previously built kat (Will built if it can't find any previous kats of the requested version)<br>
+                <input type="button" value="Refresh branches and logs" id="btnGetLogs"/>
                 <input type="button" value="Start new FINESSSE test" id="btnStartTest"/>
                 
                 <section class="container">
@@ -102,6 +104,9 @@
         <script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
 
         <script type="text/JavaScript">
+        
+            var commit_msgs = {};
+            
             function sortKatList(list){
                 // resort alphabetically the options visible
                 var rvals = $(list);
@@ -153,6 +158,21 @@
                 var selectedItem = $("#leftValues option:selected");
                 $("#rightValues").append(selectedItem);
                 sortKatList("#rightValues");
+            });
+            
+            $("#commit_list").change(function(){
+                vals = $("#commit_list option:selected").val();
+                
+                if($.isArray(vals)){
+                    $("#gitDescriptionHdr").text("Git log: " + vals[0]);
+                    $("#gitDescriptionTxt").text(commit_msgs[vals[0]]);
+                }else if(vals.length == 40){
+                    $("#gitDescriptionHdr").text("Git log: " + vals);
+                    $("#gitDescriptionTxt").text(commit_msgs[vals]);
+                }else{
+                    $("#gitDescriptionHdr").text("Git log: ");
+                    $("#gitDescriptionTxt").text("[Select item to see commit message]");
+                }
             });
 
             $('#btnGetPrevTests').click(function(){
@@ -470,13 +490,15 @@
                 $.ajax({
                   type: "POST",
                   contentType: "application/json; charset=utf-8",
-                  url: "/finesse/get_50_" + $("#branch_list").val() + "_logs",
+                  url: "/finesse/get_100_" + $("#branch_list").val() + "_logs",
                   success: function (data) {
                     logs = data.logs;
                     list.empty();
+                    commit_msgs = {};
                     
                     for(var i=0; i<logs.length; i++){
-                        list.append($('<option>', { value: logs[i].commit, text: logs[i].commit + " - " + logs[i].message}));
+                        commit_msgs[logs[i].commit] = logs[i].message;
+                        list.append($('<option>', { value: logs[i].commit, text: logs[i].commit}));
                     }
                     $("#btnStartTest").attr("disabled", false);
                     

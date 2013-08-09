@@ -285,6 +285,7 @@ def home_page():
 
 @app.route('/finesse/rerun_test_<id>', methods=["POST"])
 def finesse_start_rerun(id):
+    
     id = int(id)
     try:
         schedule_lock.acquire()
@@ -339,64 +340,74 @@ def finesse_start_test():
     return jsonify(__finesse_start_test(request.json["git_commit"], request.json["kats"], nobuild))
     
 def __finesse_start_test(git_commit, kats, nobuild=False):
+    
     global current_test, test_id
+    
+    git_commits = []
+    
+    if type(git_commit) is not list:
+        git_commits.append(git_commit)
+    elif type(git_commit) is list:
+        git_commits = git_commit
+    else:
+        raise Exception("git_commit variable was not a list of git commit strings or a single string git commit")
     
     try:
         schedule_lock.acquire()
         
-        test_id += 1
-                        
-        TEST_OUTPUT_PATH = os.path.join(app.instance_path, "tests")
-        
-        if not os.path.exists(TEST_OUTPUT_PATH):
-            os.mkdir(TEST_OUTPUT_PATH)
+        for git_commit in git_commits:
             
-        TEST_RUN_PATH = os.path.join(TEST_OUTPUT_PATH, str(test_id))
-        
-        if os.path.exists(TEST_RUN_PATH):
-            shutil.rmtree(TEST_RUN_PATH)
+            test_id += 1
+                            
+            TEST_OUTPUT_PATH = os.path.join(app.instance_path, "tests")
             
-        os.mkdir(TEST_RUN_PATH)
-        
-        # if we are not building then check to see if we can find a previous version
-        # of kat and if so put it in the correct folder for the test to find
-        if nobuild:
-            if sys.platform == "win32":
-                EXE = ".exe"
-            else:
-                EXE = ""
+            if not os.path.exists(TEST_OUTPUT_PATH):
+                os.mkdir(TEST_OUTPUT_PATH)
                 
-            TEST_BUILD_PATH = os.path.join(TEST_RUN_PATH,"build")
-            KAT_EXE = os.path.join(app.instance_path, "kat_store", "kat_" + str(git_commit) + EXE)
+            TEST_RUN_PATH = os.path.join(TEST_OUTPUT_PATH, str(test_id))
             
-            if os.path.exists(KAT_EXE):
-                print "using existing kat file " + KAT_EXE
-                utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git",TEST_BUILD_PATH])
-                KAT_NEW_EXE = os.path.join(TEST_BUILD_PATH,"kat" + EXE)
-                shutil.copyfile(KAT_EXE, KAT_NEW_EXE)
+            if os.path.exists(TEST_RUN_PATH):
+                shutil.rmtree(TEST_RUN_PATH)
                 
-          
-        print "nobuild", nobuild
-        
-        test = finesse_test.FinesseTestProcess(os.path.join(app.instance_path, "finesse_test"), 
-                                      TEST_RUN_PATH,
-                                      git_commit, 
-                                      run_fast=False, kats=kats, test_id=test_id,
-                                      emails="", nobuild=nobuild)
-        
-        db.insert(dict(t="test",
-                       test_id=test.test_id,
-                       git_commit=test.get_version(),
-                       cancelled=test.cancelling,
-                       error=test.errorOccurred,
-                       diffFound=test.diffFound,
-                       testFinished=test.finished_test))
-                       
-        __run_new(test)
+            os.mkdir(TEST_RUN_PATH)
+            
+            # if we are not building then check to see if we can find a previous version
+            # of kat and if so put it in the correct folder for the test to find
+            if nobuild:
+                if sys.platform == "win32":
+                    EXE = ".exe"
+                else:
+                    EXE = ""
+                    
+                TEST_BUILD_PATH = os.path.join(TEST_RUN_PATH,"build")
+                KAT_EXE = os.path.join(app.instance_path, "kat_store", "kat_" + str(git_commit) + EXE)
+                
+                if os.path.exists(KAT_EXE):
+                    print "using existing kat file " + KAT_EXE
+                    utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git",TEST_BUILD_PATH])
+                    KAT_NEW_EXE = os.path.join(TEST_BUILD_PATH,"kat" + EXE)
+                    shutil.copyfile(KAT_EXE, KAT_NEW_EXE)
+              
+            test = finesse_test.FinesseTestProcess(os.path.join(app.instance_path, "finesse_test"), 
+                                          TEST_RUN_PATH,
+                                          git_commit, 
+                                          run_fast=False, kats=kats, test_id=test_id,
+                                          emails="", nobuild=nobuild)
+            
+            db.insert(dict(t="test",
+                           test_id=test.test_id,
+                           git_commit=test.get_version(),
+                           cancelled=test.cancelling,
+                           error=test.errorOccurred,
+                           diffFound=test.diffFound,
+                           testFinished=test.finished_test))
+                           
+            __run_new(test)
+            
     finally:
         schedule_lock.release()
     
-    return {'id':test.test_id}
+    return {'OK'}
         
 @app.route('/finesse/get_tests', methods=["POST"])
 def finesse_get_tests():
