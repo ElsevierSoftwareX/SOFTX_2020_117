@@ -28,7 +28,7 @@ scheduled_tests = []
 schedule_lock = Lock()
 watcher = None
 enabled_suites = ["physics","random"]
-commit_check_seconds = 60
+commit_check_seconds = 300
 
 print "Starting up database"
         
@@ -61,7 +61,7 @@ else:
 SRC_PATH = os.path.join(app.instance_path, "finesse_src")
 
 # get HEAD commit to set as starting point for commit checker
-prev_commits = 10
+prev_commits = 2
 utils.git(["checkout","develop"], cwd=SRC_PATH)
 latest_data = utils.git(["log","-" + str(prev_commits),'--pretty=format:"%H"'], cwd=SRC_PATH)
 latest_commit_id_tested = latest_data[0].split("\n")[prev_commits-1].replace('"',"").replace("\\","")
@@ -134,7 +134,7 @@ class FinesseProcessWatcher(Thread):
                 if os.path.exists(KAT_STORE_EXE):
                     os.remove(KAT_STORE_EXE)
                     
-            shutil.copyfile(KAT_EXE, KAT_STORE_EXE)
+                shutil.copyfile(KAT_EXE, KAT_STORE_EXE)
             
             testdoc = db.get('testid',
                          self.process_to_watch.test_id,
@@ -407,7 +407,7 @@ def __finesse_start_test(git_commit, kats, nobuild=False):
     finally:
         schedule_lock.release()
     
-    return jsonify(dict(state='OK'))
+    return dict(state='OK')
         
 @app.route('/finesse/get_tests', methods=["POST"])
 def finesse_get_tests():
@@ -779,56 +779,58 @@ def setInterval(interval):
     
 @setInterval(commit_check_seconds)
 def checkLatestCommits():
-    SRC_PATH = os.path.join(app.instance_path,"finesse_src")
-    
-    utils.git(["checkout","develop"], cwd=SRC_PATH)
-    utils.git(["pull"], cwd=SRC_PATH)
-    
-    global latest_commit_id_tested
-        
-    out = utils.git(["log", re.sub(r"[\W]",'',latest_commit_id_tested) + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_PATH)
-    
-    commits_not_tested = []
     
     try:
-        done_all = True
-        commits = [re.sub(r"[\W]","",t) for t in out[0].split("\n")]
+        SRC_PATH = os.path.join(app.instance_path,"finesse_src")
+    
+        utils.git(["checkout","develop"], cwd=SRC_PATH)
+        utils.git(["pull"], cwd=SRC_PATH)
         
+        global latest_commit_id_tested
+            
+        out = utils.git(["log", re.sub(r"[\W]",'',latest_commit_id_tested) + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_PATH)
+        
+        commits_not_tested = []
+        
+        done_all = True
+        commits = []
+        
+        for c in [re.sub(r"[\W]","",t) for t in out[0].split("\n")]:
+            if len(str(c)) == 40:
+                commits.append(str(c))
+                
         for commit in commits:
             commit.strip()
             
             if len(commit) == 40:
                 try:
                     db.get("srccommit",commit)
-                    print "Commit already done: " + commit
                 except RecordNotFound:
-                    print "Commit isn't done: " + commit
                     done_all = False
                     commits_not_tested.insert(0,commit)
-                    
-        if done_all:
+        
+        if done_all and len(commits_not_tested) == 0 and len(commits) > 0:
             latest_commit_id_tested = commits[0]
-        else:
-            for commit in commits_not_tested:
-                print "Trying to test " + commit
-                kats = dict()
-                # only run random and physics suites
-                global enabled_suites
+        elif len(commits_not_tested) > 0:
+            
+            kats = dict()
+            # only run random and physics suites
+            global enabled_suites
+            
+            for suite in enabled_suites:
+                suite_path = os.path.join(app.instance_path,"finesse_test","kat_test",suite)
                 
-                for suite in enabled_suites:
-                    suite_path = os.path.join(app.instance_path,"finesse_test","kat_test",suite)
+                if not suite in kats:
+                    kats[suite] = list()
                     
-                    if not suite in kats:
-                        kats[suite] = list()
-                        
-                    for file in os.listdir(suite_path):
-                        if file.endswith(".kat"):
-                            kats[suite].append(str(file))
+                for file in os.listdir(suite_path):
+                    if file.endswith(".kat"):
+                        kats[suite].append(str(file))
                 
-                __finesse_start_test(commit,kats)
+            __finesse_start_test(commits_not_tested,kats)
+                
     except utils.RunException as ex:
         print "stderr", ex.err
-        
         pass
         
     except Exception as ex:
