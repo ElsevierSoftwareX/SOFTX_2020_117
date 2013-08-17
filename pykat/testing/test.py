@@ -39,12 +39,7 @@ class FinesseTestProcess(Thread):
     errorOccurred = None
     diffFound = False
     diffing = False
-    kats_to_run = []
     
-    # Define storage structures for generating report later
-    kat_run_exceptions = {}
-    output_differences = {}
-    run_times = {}
         
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, kats=[], test_id="0",
@@ -55,6 +50,10 @@ class FinesseTestProcess(Thread):
         
         if test_commit is None:
             raise Exception("A git commit ID must be provided for the test")
+        
+        self.kat_run_exceptions = {}
+        self.output_differences = {}
+        self.run_times = {}
         
         self.queue_time = datetime.now()
         self.test_id = test_id
@@ -94,6 +93,12 @@ class FinesseTestProcess(Thread):
             raise Exception("TEST_DIR was not a valid directory, should point to a clone of the FINESSE test repository")
             
         self.kats_to_run = kats
+        
+        print "KATS TO TEST"
+        
+        for a in kats.keys():
+            for kat in kats[a]:
+                print "INIT!!!!",a,kat
         
         self.GIT_BIN = git_bin
     
@@ -227,6 +232,8 @@ class FinesseTestProcess(Thread):
         # create dictionary structures
         # and count up total number of files to process
         for suite in self.kats_to_run.keys():
+            print "RUNNING SUITES", suite
+            
             self.kat_run_exceptions[suite] = {}
             self.output_differences[suite] = {}
             self.run_times[suite] = {}

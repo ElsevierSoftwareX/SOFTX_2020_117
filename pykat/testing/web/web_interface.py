@@ -134,8 +134,9 @@ class FinesseProcessWatcher(Thread):
             
             if self.process_to_watch is not None:
                 for suite in self.process_to_watch.run_times.keys():
-                    
                     for kat in self.process_to_watch.run_times[suite].keys(): 
+                        print "!!!!KAT - ",suite, kat
+                    
                         key = str(suite) + "_" + str(kat)
                         out = kat.replace(".kat",".out")
                         
@@ -275,7 +276,7 @@ def finesse_cancel_test(id):
                 try:
                     #need to update in database for queued test
                     doc = db.get("testid",id,with_doc=True)["doc"]
-                    doc["cancelled"] = true
+                    doc["cancelled"] = True
                     db.update(doc)
                 except RecordNotFound:
                     pass
@@ -350,6 +351,10 @@ def finesse_start_test():
     
 def __finesse_start_test(git_commit, kats, nobuild=False):
     
+    for a in kats.keys():
+        for b in kats[a]:
+            print "START KAT",a,b
+            
     global current_test, test_id
     
     git_commits = []
