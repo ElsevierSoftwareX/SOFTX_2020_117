@@ -210,6 +210,7 @@ class FinesseProcessWatcher(Thread):
             
             utils.runcmd(["rm","src","-rf"],cwd=BUILD_PATH)
             utils.runcmd(["rm","lib","-rf"],cwd=BUILD_PATH)
+            
         except RecordNotFound:
             print "Could not find database records for test id " + str(self.process_to_watch.test_id)
             pass
