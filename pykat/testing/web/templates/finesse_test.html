@@ -69,9 +69,7 @@
                     <h4 style="padding:0px; margin:0px;" id="gitDescriptionHdr">Git log description</h4>
                     <p id="gitDescriptionTxt">[Select item to see commit message]</p>
                 </div>
-                <br style="clear:both;" />
-                
-                <section class="container">
+                <section class="container" style="clear:both;">
                     <div>
                         <div>Files to run</div>
                         <select id="leftValues" size="12" multiple></select>
@@ -87,7 +85,7 @@
                         </select>
                     </div>
                 </section>
-                
+                <br style="clear:both;"/> 
                 <input type="checkbox" id="chkNoBuild" />Use previously built kat (Will built if it can't find any previous kats of the requested version)<br>
                 <input type="button" value="Refresh branches and logs" id="btnGetLogs"/>
                 <input type="button" value="Start new FINESSSE test" id="btnStartTest"/>
