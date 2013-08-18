@@ -107,14 +107,11 @@ class FinesseProcessWatcher(Thread):
         #if type(self.process_to_watch) is not finesse_test.FinesseTestProcess:
         #    raise Exception("Tried to watch something which wasn't a FinesseTestProcess")
     
-        print "Watcher is watching", self.process_to_watch
         start = datetime.now()
         
         self.process_to_watch.start()
         self.process_to_watch.join()
-        
-        print "Watcher is continuing"
-        
+                
         try:
             
             testdoc = db.get('testid',
@@ -130,12 +127,9 @@ class FinesseProcessWatcher(Thread):
                                  
             kats_run = list()
             
-            print "Storing kat run time data..."
-            
             if self.process_to_watch is not None:
                 for suite in self.process_to_watch.run_times.keys():
                     for kat in self.process_to_watch.run_times[suite].keys(): 
-                        print "!!!!KAT - ",suite, kat
                     
                         key = str(suite) + "_" + str(kat)
                         out = kat.replace(".kat",".out")
@@ -256,7 +250,6 @@ def finesse_cancel_test(id):
             if current_test is not None:
                 if current_test.test_id == id:
                     current_test.cancelling = True
-                    print "Cancelling Current Test"
                     return str(id)
         
             ix = 0
@@ -269,7 +262,6 @@ def finesse_cancel_test(id):
                 ix += 1
              
             if remove > -1:
-                print "Cancelled queued test"
                 scheduled_tests[remove].cancelling = True
                 scheduled_tests.pop(remove)
                 
@@ -283,7 +275,6 @@ def finesse_cancel_test(id):
                     
                 return str(id)
             
-            print "Nothing cancelled"
             return "0"
         finally:
             schedule_lock.release()     
@@ -350,11 +341,7 @@ def finesse_start_test():
     return jsonify(__finesse_start_test(request.json["git_commit"], request.json["kats"], nobuild))
     
 def __finesse_start_test(git_commit, kats, nobuild=False):
-    
-    for a in kats.keys():
-        for b in kats[a]:
-            print "START KAT",a,b
-            
+                
     global current_test, test_id
     
     git_commits = []
@@ -576,7 +563,6 @@ def finesse_get_prev_tests(count):
         return jsonify(tests=rtn)
         
     except RecordNotFound:
-        print "exception"
         return jsonify(test=rtn)
 
 @app.route('/finesse/view/<view_test_id>/<log>.log')
@@ -672,8 +658,6 @@ def finesse_view_kat_history(suite, kat):
         
         doc =  db.get("kattest", str(suite)+"_"+str(kat), with_doc=True)
         doc = doc["doc"]
-        
-        print doc
         
         data = zip(doc["test_id"],doc["commit"],doc["commit_date"],doc["max_diff"],doc["timing"])
         

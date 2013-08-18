@@ -93,13 +93,6 @@ class FinesseTestProcess(Thread):
             raise Exception("TEST_DIR was not a valid directory, should point to a clone of the FINESSE test repository")
             
         self.kats_to_run = kats
-        
-        print "KATS TO TEST"
-        
-        for a in kats.keys():
-            for kat in kats[a]:
-                print "INIT!!!!",a,kat
-        
         self.GIT_BIN = git_bin
     
     def cancelCheck(self):
