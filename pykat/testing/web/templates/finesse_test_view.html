@@ -15,10 +15,43 @@
             <pre>{{ excp_message }}</pre>
             <pre>{{ excp_traceback }}</pre>
             
-            <h3>Kat result summary</h3>
-            
-            <h4>Results</h4>
-            <table id="tblResults">
+            <h3>Files that were ERROR</h3>
+            <table id="tblResultsERR">
+            <thead>
+                <td>Suite</td>
+                <td>Kat</td>
+                <td>Max Rel. Difference</td>
+                <td>View stderr/stdout</td>
+                <td>View .kat</td>
+                <td>View .out</td>
+                <td>View ref</td>
+                <td>View Diff</td>
+                <td>View History
+                </thead>
+                {% for suite in kats_err.keys() %}
+                {% for item in kats_err[suite] %}
+                <tr>
+                    <td>{{ suite }}</td>
+                    <td>{{item[0]}}</td>
+                    <td>{{item[1]}}</td> 
+                    {% if item[2][0].strip() %}
+                    <td><a target="_blank" href="/finesse/view/exception/{{view_test_id}}/{{suite}}/{{item[0]}}/">Error</a></td>
+                    {% else%}
+                    <td><a target="_blank" href="/finesse/view/exception/{{view_test_id}}/{{suite}}/{{item[0]}}/">Error</a></td>
+                    {% endif %}
+                    <td><a target="_blank" href="/finesse/kat/{{suite}}/{{item[0]}}">Kat</a></td>
+                    <td><a target="_blank" href="/finesse/out/{{view_test_id}}/{{suite}}/{{item[0]}}">Out</a></td>
+                    <td><a target="_blank" href="/finesse/ref/{{suite}}/{{item[0]}}">Ref</a></td>
+                    <td><a target="_blank" href="/finesse/view/{{view_test_id}}/diff/{{suite}}/{{item[0]}}">Diff</a></td>
+                    <td><a target="_blank" href="/finesse/kat_history/{{suite}}/{{item[0]}}">History</a></td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </table>
+            <br/>
+            <br/>
+            <h3>Files that were OK</h3>
+            <table id="tblResultsOK">
             <thead>
                 <td>Suite</td>
                 <td>Kat</td>
@@ -29,8 +62,8 @@
                 <td>View Diff</td>
                 <td>View History
                 </thead>
-                {% for suite in kats.keys() %}
-                {% for item in kats[suite] %}
+                {% for suite in kats_ok.keys() %}
+                {% for item in kats_ok[suite] %}
                 <tr>
                     <td>{{ suite }}</td>
                     <td>{{item[0]}}</td>
@@ -44,7 +77,6 @@
                 {% endfor %}
                 {% endfor %}
             </table>
-            
         </div>
     </body>
     <script type="text/JavaScript" src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
@@ -72,13 +104,29 @@
                             return ((a < b) ? 1 : ((a > b) ? -1 : 0));
                         }
                     } );
-                    gtable = $('#tblResults').dataTable({
+                    gtable = $('#tblResultsOK').dataTable({
                         "iDisplayLength":250,
                         "aLengthMenu": [[-1], ['All']],
                         "aoColumns": [
                             null,
                             null,
                             { "sType": "numeric" },
+                            {"bSearchable": false, "bSortable": false},     
+                            {"bSearchable": false, "bSortable": false},
+                            {"bSearchable": false, "bSortable": false},
+                            {"bSearchable": false, "bSortable": false},
+                            {"bSearchable": false, "bSortable": false}
+                        ]
+                    } );
+                    
+                    gtable = $('#tblResultsERR').dataTable({
+                        "iDisplayLength":250,
+                        "aLengthMenu": [[-1], ['All']],
+                        "aoColumns": [
+                            null,
+                            null,
+                            { "sType": "numeric" },
+                            {"bSearchable": false, "bSortable": false},
                             {"bSearchable": false, "bSortable": false},
                             {"bSearchable": false, "bSortable": false},
                             {"bSearchable": false, "bSortable": false},

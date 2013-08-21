@@ -23,27 +23,26 @@ class DiffException(Exception):
 		self.outfile = outfile
 
 class FinesseTestProcess(Thread):
-    
-    queue_time = None
-    status = ""
-    built = False
-    total_kats = 0
-    done_kats = 0
-    git_commit = ""
-    test_id = -1
-    finished_test = False
-    diff_rel_eps = 1e-12
-    running_kat = ""
-    running_suite = ""
-    cancelling = False
-    errorOccurred = None
-    diffFound = False
-    diffing = False
-    
         
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, kats=[], test_id="0",
                  git_bin="",emails="", nobuild=False,*args, **kqwargs):
+                 
+        self.queue_time = None
+        self.status = ""
+        self.built = False
+        self.total_kats = 0
+        self.done_kats = 0
+        self.git_commit = ""
+        self.test_id = -1
+        self.finished_test = False
+        self.diff_rel_eps = 1e-12
+        self.running_kat = ""
+        self.running_suite = ""
+        self.cancelling = False
+        self.errorOccurred = None
+        self.diffFound = False
+        self.diffing = False
         
         Thread.__init__(self)
         self.git_commit = test_commit
@@ -125,8 +124,6 @@ class FinesseTestProcess(Thread):
         self.built = False
 
         BUILD_PATH = os.path.join(self.BASE_DIR, "build")
-
-        print "NOBUILD", self.nobuild
         
         # Firstly we need to build the latest version of finesse
         if not self.nobuild:

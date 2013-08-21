@@ -373,7 +373,7 @@
                 
                 list = $("#commit_list");
                 
-                data = JSON.stringify({"git_commit": list.val(), "kats":kats, "nobuild":$('#chkNoBuild').is(':checked')});
+                data = JSON.stringify({"git_commit": list.val().reverse(), "kats":kats, "nobuild":$('#chkNoBuild').is(':checked')});
                 
                 $.ajax({
                   type: "POST",

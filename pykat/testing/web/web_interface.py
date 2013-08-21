@@ -144,15 +144,23 @@ class FinesseProcessWatcher(Thread):
                             runexception = (str(err.err), str(err.out));
                         else:
                             runexception = ("","")
-                            
+                        
+                        #check if any errors
+                        v = self.process_to_watch.output_differences[suite][kat.replace(".kat",".out")]
+                        if len(v) > 0:
+                            error = True
+                        else:
+                            error = False
+                        
                         kats_run.append(dict(suite = suite, 
                                              kat = kat,
                                              max_diff = float(max_diff),
-                                             runexception = runexception))     
+                                             runexception = runexception,
+                                             error=error))     
                         
                         out = utils.git(["log",str(self.process_to_watch.get_version()),"-1",'--pretty="%ai"'],cwd=os.path.join(app.instance_path,"finesse_src"))
                         commit_date = out[0].replace("\\","").replace('"','').replace("\n","")
-                                                
+                            
                         try:
                             doc = db.get('kattest', key, with_doc=True)["doc"]
                             
@@ -695,6 +703,30 @@ def finesse_view_diff(view_test_id, suite, kat):
     return difflib.HtmlDiff().make_file(ref,out,REF_FILE,OUT_FILE,context=False)
                             
     
+@app.route('/finesse/view/exception/<view_test_id>/<suite>/<kat>/', methods=["GET"])
+def finesse_view_exception(view_test_id,suite,kat):
+    view_test_id = int(view_test_id)
+    
+    doc = db.get('testid',view_test_id,with_doc=True)
+    
+    doc = doc["doc"]
+    response = None
+    
+    
+    if "kats_run" in doc:
+        for run in doc["kats_run"]:
+            if run["kat"] == kat:
+                print "\n\n".join(run["runexception"])
+                response = make_response("\n\n".join(run["runexception"]))
+    
+    if response is None:
+        response = make_response("No error message")
+        
+    response.headers["Content-type"] = "text/plain"
+    return response
+        
+        
+        
 @app.route('/finesse/view/<view_test_id>/', methods=["GET"])
 def finesse_view(view_test_id):
     
@@ -705,15 +737,24 @@ def finesse_view(view_test_id):
     doc = db.get('testid',view_test_id,with_doc=True)
     
     doc = doc["doc"]
-    kats = {}
+    kats_err = {}
+    kats_ok = {}
     
     if "kats_run" in doc:
         for run in doc["kats_run"]:
             suite = run["suite"]
-            if not suite in kats:
-                kats[suite] = []
-                
-            kats[suite].append((run["kat"], run["max_diff"], run["runexception"]))
+            
+            
+            if run["error"]:
+                if not suite in kats_err:
+                    kats_err[suite] = []
+                    
+                kats_err[suite].append((run["kat"], run["max_diff"], run["runexception"]))
+            else:
+                if not suite in kats_ok:
+                    kats_ok[suite] = []
+                    
+                kats_ok[suite].append((run["kat"], run["max_diff"], run["runexception"]))
     else:
         kats = {}
     
@@ -734,7 +775,8 @@ def finesse_view(view_test_id):
                            view_test_id = str(view_test_id),
                            excp_traceback=traceback,
                            excp_message=message,
-                           kats = kats)
+                           kats_ok = kats_ok,
+                           kats_err = kats_err)
                            
     #except RecordNotFound:
     #    pass
@@ -809,6 +851,7 @@ def checkLatestCommits():
         
         if done_all and len(commits_not_tested) == 0 and len(commits) > 0:
             latest_commit_id_tested = commits[0]
+            
         elif len(commits_not_tested) > 0:
             
             kats = dict()
