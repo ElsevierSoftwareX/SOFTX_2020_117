@@ -135,7 +135,11 @@ class FinesseProcessWatcher(Thread):
                         out = kat.replace(".kat",".out")
                         
                         if out in self.process_to_watch.output_differences[suite]:
-                            max_diff = self.process_to_watch.output_differences[suite][out][2]
+                            print "asdasd", self.process_to_watch.output_differences[suite][out]
+                            if self.process_to_watch.output_differences[suite][out][0]:
+                                max_diff = self.process_to_watch.output_differences[suite][out][3]
+                            else:
+                                max_diff = self.process_to_watch.output_differences[suite][out][1]
                         else:
                             max_diff = float('NaN')
                             
@@ -143,20 +147,16 @@ class FinesseProcessWatcher(Thread):
                             err = self.process_to_watch.kat_run_exceptions[suite][kat];
                             runexception = (str(err.err), str(err.out));
                         else:
-                            runexception = ("","")
+                            runexception = None
                         
                         #check if any errors
-                        v = self.process_to_watch.output_differences[suite][kat.replace(".kat",".out")]
-                        if len(v) > 0:
-                            error = True
-                        else:
-                            error = False
-                        
+                        vals = self.process_to_watch.output_differences[suite][kat.replace(".kat",".out")]
+                                                
                         kats_run.append(dict(suite = suite, 
                                              kat = kat,
                                              max_diff = float(max_diff),
                                              runexception = runexception,
-                                             error=error))     
+                                             error=vals[0]))     
                         
                         out = utils.git(["log",str(self.process_to_watch.get_version()),"-1",'--pretty="%ai"'],cwd=os.path.join(app.instance_path,"finesse_src"))
                         commit_date = out[0].replace("\\","").replace('"','').replace("\n","")
@@ -658,6 +658,21 @@ def finesse_view_ref(suite, out):
     response.headers["Content-type"] = "text/plain"
         
     return response
+   
+@app.route('/finesse/log/<test_id>/<suite>/<kat>', methods=["GET"])
+def finesse_view_log(test_id,suite, kat):
+    log = str(kat).replace(".kat",".log")
+    OUT_FILE = os.path.join(app.instance_path,"tests",str(test_id),"outputs",suite,log)
+    
+    if os.path.exists(OUT_FILE):
+        contents = open(OUT_FILE).read()
+    else:
+        contents = "log file not found"
+        
+    response = make_response(contents)
+    response.headers["Content-type"] = "text/plain"
+        
+    return response
     
 @app.route('/finesse/kat_history/<suite>/<kat>', methods=["GET"])
 def finesse_view_kat_history(suite, kat):
@@ -712,12 +727,14 @@ def finesse_view_exception(view_test_id,suite,kat):
     doc = doc["doc"]
     response = None
     
-    
     if "kats_run" in doc:
         for run in doc["kats_run"]:
             if run["kat"] == kat:
-                print "\n\n".join(run["runexception"])
-                response = make_response("\n\n".join(run["runexception"]))
+                print run["runexception"]
+                print "\n\n".join(str(run["runexception"]))
+                response = make_response("\n\n".join(str(run["runexception"])))
+    else:
+        print "NOTHING"
     
     if response is None:
         response = make_response("No error message")
@@ -744,7 +761,7 @@ def finesse_view(view_test_id):
         for run in doc["kats_run"]:
             suite = run["suite"]
             
-            
+            print "RUN ERROR",run["error"]
             if run["error"]:
                 if not suite in kats_err:
                     kats_err[suite] = []

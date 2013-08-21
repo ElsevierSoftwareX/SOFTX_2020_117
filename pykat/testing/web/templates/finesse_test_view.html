@@ -21,10 +21,10 @@
                 <td>Suite</td>
                 <td>Kat</td>
                 <td>Max Rel. Difference</td>
-                <td>View stderr/stdout</td>
                 <td>View .kat</td>
                 <td>View .out</td>
                 <td>View ref</td>
+                <td>View log</td>
                 <td>View Diff</td>
                 <td>View History
                 </thead>
@@ -34,14 +34,10 @@
                     <td>{{ suite }}</td>
                     <td>{{item[0]}}</td>
                     <td>{{item[1]}}</td> 
-                    {% if item[2][0].strip() %}
-                    <td><a target="_blank" href="/finesse/view/exception/{{view_test_id}}/{{suite}}/{{item[0]}}/">Error</a></td>
-                    {% else%}
-                    <td><a target="_blank" href="/finesse/view/exception/{{view_test_id}}/{{suite}}/{{item[0]}}/">Error</a></td>
-                    {% endif %}
                     <td><a target="_blank" href="/finesse/kat/{{suite}}/{{item[0]}}">Kat</a></td>
                     <td><a target="_blank" href="/finesse/out/{{view_test_id}}/{{suite}}/{{item[0]}}">Out</a></td>
                     <td><a target="_blank" href="/finesse/ref/{{suite}}/{{item[0]}}">Ref</a></td>
+                    <td><a target="_blank" href="/finesse/log/{{view_test_id}}/{{suite}}/{{item[0]}}">Log</a></td>
                     <td><a target="_blank" href="/finesse/view/{{view_test_id}}/diff/{{suite}}/{{item[0]}}">Diff</a></td>
                     <td><a target="_blank" href="/finesse/kat_history/{{suite}}/{{item[0]}}">History</a></td>
                 </tr>
@@ -59,6 +55,7 @@
                 <td>View .kat</td>
                 <td>View .out</td>
                 <td>View ref</td>
+                <td>View log</td>
                 <td>View Diff</td>
                 <td>View History
                 </thead>
@@ -71,6 +68,7 @@
                     <td><a target="_blank" href="/finesse/kat/{{suite}}/{{item[0]}}">Kat</a></td>
                     <td><a target="_blank" href="/finesse/out/{{view_test_id}}/{{suite}}/{{item[0]}}">Out</a></td>
                     <td><a target="_blank" href="/finesse/ref/{{suite}}/{{item[0]}}">Ref</a></td>
+                    <td><a target="_blank" href="/finesse/log/{{view_test_id}}/{{suite}}/{{item[0]}}">Log</a></td>
                     <td><a target="_blank" href="/finesse/view/{{view_test_id}}/diff/{{suite}}/{{item[0]}}">Diff</a></td>
                     <td><a target="_blank" href="/finesse/kat_history/{{suite}}/{{item[0]}}">History</a></td>
                 </tr>
@@ -112,6 +110,7 @@
                             null,
                             { "sType": "numeric" },
                             {"bSearchable": false, "bSortable": false},     
+                            {"bSearchable": false, "bSortable": false},
                             {"bSearchable": false, "bSortable": false},
                             {"bSearchable": false, "bSortable": false},
                             {"bSearchable": false, "bSortable": false},

@@ -262,7 +262,9 @@ class FinesseTestProcess(Thread):
                         
                         OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
                         shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
-                    
+                        
+                        LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
+                        shutil.move(LOG_FILE, SUITE_OUTPUT_DIR)
                     except utils.RunException as e:
                     
                         print "STDERR: " + e.out
@@ -334,14 +336,14 @@ class FinesseTestProcess(Thread):
                     # store the rows which are different
                     ix = np.where(rel_diff >= self.diff_rel_eps)[0][0]
                 
-                    self.output_differences[suite][out] = (ref_arr[ix],
+                    self.output_differences[suite][out] = (True,
+                                                           ref_arr[ix],
                                                            out_arr[ix],
                                                            np.max(rel_diff))
                 else:
                     max = np.max(rel_diff) 
                     
-                    self.output_differences[suite][out] = ([],
-                                                           [],
+                    self.output_differences[suite][out] = (False,
                                                            max)
                 self.done_kats += 1
                 
@@ -373,10 +375,15 @@ class FinesseTestProcess(Thread):
             for k in self.output_differences[suite].keys():
                 isError = True
                 f.write(k + ":\n")
-                f.write("     ref: " + str(self.output_differences[suite][k][0]) + "\n")
-                f.write("     out: " + str(self.output_differences[suite][k][1]) + "\n")
-                f.write("     Max relative difference: " + str(self.output_differences[suite][k][2]) + "\n")
-
+                if self.output_differences[suite][k][0]:
+                    f.write("     Differences larger than " + str(self.diff_rel_eps) + "\n")
+                    f.write("     ref: " + str(self.output_differences[suite][k][1]) + "\n")
+                    f.write("     out: " + str(self.output_differences[suite][k][2]) + "\n")
+                    f.write("     Max relative difference: " + str(self.output_differences[suite][k][3]) + "\n")
+                else:
+                    f.write("     Differences smaller than " + str(self.diff_rel_eps) + "\n")
+                    f.write("     Max relative difference: " + str(self.output_differences[suite][k][1]) + "\n")
+                    
             f.write("\n\n" + str(len(self.output_differences[suite].keys())) + " errors in suite " + suite)
             for k in self.kat_run_exceptions[suite].keys():
                 isError = True
