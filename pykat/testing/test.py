@@ -1,4 +1,5 @@
 #!/bin/python
+import gzip
 from threading import Thread, Lock
 from time import sleep
 from optparse import OptionParser
@@ -165,7 +166,7 @@ class FinesseTestProcess(Thread):
                 self.cancelCheck()
                           
         FINESSE_EXE = os.path.join(self.BASE_DIR,"build","kat" + EXE)
-        
+        print "NOBUILD",self.nobuild
         # check if kat runs
         if not os.path.exists(FINESSE_EXE):
             raise Exception("Kat file was not found in " + FINESSE_EXE)
@@ -261,10 +262,17 @@ class FinesseTestProcess(Thread):
                         out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
                         
                         OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
-                        shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
-                        
                         LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
-                        shutil.move(LOG_FILE, SUITE_OUTPUT_DIR)
+                        
+                        f_in = open(LOG_FILE, 'rb')
+                        f_out = gzip.open(LOG_FILE + ".gz", 'wb')
+                        f_out.writelines(f_in)
+                        f_out.close()
+                        f_in.close()
+                        
+                        shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
+                        shutil.move(LOG_FILE + ".gz", SUITE_OUTPUT_DIR)
+                        
                     except utils.RunException as e:
                     
                         print "STDERR: " + e.out
@@ -345,6 +353,18 @@ class FinesseTestProcess(Thread):
                     
                     self.output_differences[suite][out] = (False,
                                                            max)
+                
+                
+                        
+                # compress the data
+                f_in = open(out_file, 'rb')
+                f_out = gzip.open(out_file + ".gz", 'wb')
+                f_out.writelines(f_in)
+                f_out.close()
+                f_in.close()
+                
+                os.remove(out_file)
+                
                 self.done_kats += 1
                 
         REPORT_PATH = os.path.join(self.BASE_DIR,"reports")

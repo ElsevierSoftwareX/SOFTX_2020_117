@@ -135,7 +135,7 @@ class FinesseProcessWatcher(Thread):
                         out = kat.replace(".kat",".out")
                         
                         if out in self.process_to_watch.output_differences[suite]:
-                            print "asdasd", self.process_to_watch.output_differences[suite][out]
+                            
                             if self.process_to_watch.output_differences[suite][out][0]:
                                 max_diff = self.process_to_watch.output_differences[suite][out][3]
                             else:
@@ -396,6 +396,8 @@ def __finesse_start_test(git_commit, kats, nobuild=False):
                     utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git",TEST_BUILD_PATH])
                     KAT_NEW_EXE = os.path.join(TEST_BUILD_PATH,"kat" + EXE)
                     shutil.copyfile(KAT_EXE, KAT_NEW_EXE)
+                else:
+                    nobuild = False
               
             test = finesse_test.FinesseTestProcess(os.path.join(app.instance_path, "finesse_test"), 
                                           TEST_RUN_PATH,
@@ -632,7 +634,7 @@ def finesse_view_kat(suite, kat):
 @app.route('/finesse/out/<test_id>/<suite>/<out>', methods=["GET"])
 def finesse_view_out(test_id,suite, out):
     out = str(out).replace(".kat",".out")
-    OUT_FILE = os.path.join(app.instance_path,"tests",str(test_id),"outputs",suite,out)
+    OUT_FILE = os.path.join(app.instance_path,"tests",str(test_id),"outputs",suite,out+".gz")
     
     if os.path.exists(OUT_FILE):
         contents = open(OUT_FILE).read()
@@ -641,6 +643,7 @@ def finesse_view_out(test_id,suite, out):
         
     response = make_response(contents)
     response.headers["Content-type"] = "text/plain"
+    response.headers["Content-encoding"] = "gzip"
         
     return response
     
@@ -662,7 +665,7 @@ def finesse_view_ref(suite, out):
 @app.route('/finesse/log/<test_id>/<suite>/<kat>', methods=["GET"])
 def finesse_view_log(test_id,suite, kat):
     log = str(kat).replace(".kat",".log")
-    OUT_FILE = os.path.join(app.instance_path,"tests",str(test_id),"outputs",suite,log)
+    OUT_FILE = os.path.join(app.instance_path,"tests",str(test_id),"outputs",suite,log + ".gz")
     
     if os.path.exists(OUT_FILE):
         contents = open(OUT_FILE).read()
@@ -671,6 +674,7 @@ def finesse_view_log(test_id,suite, kat):
         
     response = make_response(contents)
     response.headers["Content-type"] = "text/plain"
+    response.headers["Content-encoding"] = "gzip"
         
     return response
     
@@ -730,8 +734,6 @@ def finesse_view_exception(view_test_id,suite,kat):
     if "kats_run" in doc:
         for run in doc["kats_run"]:
             if run["kat"] == kat:
-                print run["runexception"]
-                print "\n\n".join(str(run["runexception"]))
                 response = make_response("\n\n".join(str(run["runexception"])))
     else:
         print "NOTHING"
@@ -761,7 +763,6 @@ def finesse_view(view_test_id):
         for run in doc["kats_run"]:
             suite = run["suite"]
             
-            print "RUN ERROR",run["error"]
             if run["error"]:
                 if not suite in kats_err:
                     kats_err[suite] = []
