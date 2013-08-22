@@ -17,7 +17,7 @@ from CodernityDB.database_thread_safe import ThreadSafeDatabase
 from CodernityDB.database import RecordNotFound
 import numpy as np
 from pykat.testing.web.database_indices import TestIDIndex, SrcCommitIndex, KatTestIndex
-import re
+import re, gzip
 import os, sys, traceback
 
 global current_test, scheduled_tests, schedule_lock,enabled_suites
@@ -637,13 +637,12 @@ def finesse_view_out(test_id,suite, out):
     OUT_FILE = os.path.join(app.instance_path,"tests",str(test_id),"outputs",suite,out+".gz")
     
     if os.path.exists(OUT_FILE):
-        contents = open(OUT_FILE).read()
+        contents = gzip.open(OUT_FILE, 'rb').read()
     else:
         contents = "out file not found"
         
     response = make_response(contents)
     response.headers["Content-type"] = "text/plain"
-    response.headers["Content-encoding"] = "gzip"
         
     return response
     
@@ -668,13 +667,13 @@ def finesse_view_log(test_id,suite, kat):
     OUT_FILE = os.path.join(app.instance_path,"tests",str(test_id),"outputs",suite,log + ".gz")
     
     if os.path.exists(OUT_FILE):
-        contents = open(OUT_FILE).read()
+        file = gzip.open(OUT_FILE, 'rb')
+        contents = file.read()
     else:
-        contents = "log file not found"
+        contents = "log file not found"        
         
     response = make_response(contents)
     response.headers["Content-type"] = "text/plain"
-    response.headers["Content-encoding"] = "gzip"
         
     return response
     

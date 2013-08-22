@@ -331,10 +331,11 @@ class FinesseTestProcess(Thread):
 
                 # for computing relative errors we need to make sure we
                 # have no zeros in the data
-                ref_arr_c = np.where(ref_arr == 0, 1, ref_arr)
-                ref_arr_c[ref_arr_c==0] = 1
-
-                rel_diff = np.abs(out_arr-ref_arr)/np.abs(ref_arr_c)
+                nzix = (ref_arr != 0)
+                
+                rel_diff = np.abs(out_arr-ref_arr)
+                # only compute rel diff for non zero values
+                rel_diff[nzix] = np.divide(rel_diff[nzix], np.abs(ref_arr[nzix]))
                 
                 diff = np.any(rel_diff >= self.diff_rel_eps)
                                 
