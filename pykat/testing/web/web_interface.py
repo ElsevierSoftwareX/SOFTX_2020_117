@@ -150,7 +150,12 @@ class FinesseProcessWatcher(Thread):
                             runexception = None
                         
                         #check if any errors
-                        vals = self.process_to_watch.output_differences[suite][kat.replace(".kat",".out")]
+                        outf = kat.replace(".kat",".out")
+                        
+                        if outf in self.process_to_watch.output_differences[suite]:
+                            vals = self.process_to_watch.output_differences[suite][outf]
+                        else:
+                            vals = [True]
                                                 
                         kats_run.append(dict(suite = suite, 
                                              kat = kat,
