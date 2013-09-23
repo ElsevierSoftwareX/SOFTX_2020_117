@@ -26,7 +26,7 @@ class DiffException(Exception):
 class FinesseTestProcess(Thread):
         
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
-                 run_fast=False, kats=[], test_id="0",
+                 run_fast=False, kats={}, test_id="0",
                  git_bin="",emails="", nobuild=False,*args, **kqwargs):
                  
         self.queue_time = None
