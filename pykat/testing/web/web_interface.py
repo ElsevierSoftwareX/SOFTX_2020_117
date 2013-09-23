@@ -492,7 +492,7 @@ def finesse_get_log(count,branch):
     except Exception as ex:
         print "git pull error : " + str(ex)
     
-    [out,err] = utils.git(["log","--max-count={0}".format(count),"--pretty=oneline"],cwd = SRC_PATH)
+    [out,err] = utils.git(["log","--no-merges","--max-count={0}".format(count),"--pretty=oneline"],cwd = SRC_PATH)
     
     log_entries = out.split("\n")
     
@@ -850,7 +850,7 @@ def checkLatestCommits():
         
         global latest_commit_id_tested
             
-        out = utils.git(["log", re.sub(r"[\W]",'',latest_commit_id_tested) + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_PATH)
+        out = utils.git(["log","--no-merges", re.sub(r"[\W]",'',latest_commit_id_tested) + "..HEAD",'--pretty=format:"%H"'], cwd=SRC_PATH)
         
         commits_not_tested = []
         
