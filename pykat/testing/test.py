@@ -4,6 +4,8 @@ from threading import Thread, Lock
 from time import sleep
 from optparse import OptionParser
 import os
+import multiprocessing
+from multiprocessing import Pool, Queue
 import subprocess as sub
 import numpy as np
 import difflib
@@ -17,6 +19,58 @@ from datetime import datetime
 from pykat.testing import utils
 import sys, traceback
 import stat
+import math
+
+def initProcess(dkats):
+    #print "init!!!", dkats
+    global done_kats
+    done_kats = dkats
+
+def run_kat_file(item):
+    #print os.getpid(),"getting kat...",item["kat"]
+    global done_kats
+    
+    kat = item["kat"]
+    suite = item["suite"]
+    FINESSE_EXE = item["FINESSE_EXE"]
+    SUITE_PATH = item["SUITE_PATH"]
+    SUITE_OUTPUT_DIR  = item["SUITE_OUTPUT_DIR"]
+    basename = os.path.splitext(kat)[0]
+    
+    if item["run_fast"] and ('map ' in open(kat).read()):
+        print "skipping " + kat			
+    else:
+        exp = None
+        
+        try:
+            start = time.time()
+            
+            out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
+            
+            OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
+            LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
+            
+            f_in = open(LOG_FILE, 'rb')
+            f_out = gzip.open(LOG_FILE + ".gz", 'wb')
+            f_out.writelines(f_in)
+            f_out.close()
+            f_in.close()
+            
+            shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
+            shutil.move(LOG_FILE + ".gz", SUITE_OUTPUT_DIR)
+            
+        except utils.RunException as e:
+        
+            print "STDERR: " + e.out
+            print "STDOUT: " + e.err
+            
+            print "Error running " + kat + ": " + e.err
+            
+            exp = e
+        finally:
+            done_kats.value += 1
+            return [time.time()-start, suite, kat, exp]
+    
 
 class DiffException(Exception):
 	def __init__(self, msg, outfile):
@@ -27,13 +81,14 @@ class FinesseTestProcess(Thread):
         
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, kats={}, test_id="0",
-                 git_bin="",emails="", nobuild=False,*args, **kqwargs):
+                 git_bin="",emails="", nobuild=False, pool_size=int(multiprocessing.cpu_count()*3.0/4.0),*args, **kqwargs):
                  
+         
         self.queue_time = None
         self.status = ""
         self.built = False
         self.total_kats = 0
-        self.done_kats = 0
+        self.done_kats = multiprocessing.Value('i', 0)
         self.git_commit = ""
         self.test_id = -1
         self.finished_test = False
@@ -44,6 +99,11 @@ class FinesseTestProcess(Thread):
         self.errorOccurred = None
         self.diffFound = False
         self.diffing = False
+        
+        if pool_size < 1:
+            self.pool_size = 1
+        else:
+            self.pool_size = pool_size
         
         Thread.__init__(self)
         self.git_commit = test_commit
@@ -103,25 +163,29 @@ class FinesseTestProcess(Thread):
         if self.total_kats == 0:
             return 0.0
         else:
-            return 100.0*float(self.done_kats)/float(self.total_kats)
+            return 100.0*float(self.done_kats.value)/float(self.total_kats)
         
     def get_version(self):
         return self.git_commit
         
     def get_progress(self):
         if self.diffing:
-            return 'Diffing {0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats/2, self.running_kat, self.running_suite)
+            return 'Diffing {0} out of {1} ({2} in {3})'.format(self.done_kats.value, self.total_kats/2, self.running_kat, self.running_suite)
         if self.built:
-            return 'Running {0} out of {1} ({2} in {3})'.format(self.done_kats, self.total_kats/2, self.running_kat, self.running_suite)
+            return 'Running {0} out of {1} ({2} in {3})'.format(self.done_kats.value, self.total_kats/2, self.running_kat, self.running_suite)
         else:
             return 'Building FINESSE executable'
             
     def startFinesseTest(self):
+        self.done_kats.value = 0
+        
         if sys.platform == "win32":
             EXE = ".exe"
         else:
             EXE = ""
-            
+        
+        print "Using", self.pool_size, "processes..."
+        
         self.built = False
 
         BUILD_PATH = os.path.join(self.BASE_DIR, "build")
@@ -140,25 +204,19 @@ class FinesseTestProcess(Thread):
                 shutil.rmtree(BUILD_PATH)
 
             print "Checking out finesse base..."
-            utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git",BUILD_PATH])
+            utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/finesse.git", BUILD_PATH])
 
             print "Checking out and building develop version of finesse " + self.git_commit
             
             SRC_PATH = os.path.join(BUILD_PATH,"src")
             
-            if sys.platform == "win32":
-                utils.runcmd(["bash","./finesse.sh","--checkout"],cwd=BUILD_PATH)
-                self.cancelCheck()
-                
+            if sys.platform == "win32":                
                 utils.git(["checkout",self.git_commit],cwd=SRC_PATH)
                 self.cancelCheck()
                 
                 utils.runcmd(["bash","./finesse.sh","--build"],cwd=BUILD_PATH)
                 self.cancelCheck()
-            else:
-                utils.runcmd(["./finesse.sh","--checkout","develop"],cwd=BUILD_PATH)
-                self.cancelCheck()
-                
+            else:                
                 utils.git(["checkout",self.git_commit],cwd=SRC_PATH)
                 self.cancelCheck()
                 
@@ -234,58 +292,32 @@ class FinesseTestProcess(Thread):
         # multiply as we include the diffining in the percentage
         # done
         self.total_kats *= 2
+        runs = []
         
         for suite in self.kats_to_run.keys():
             self.cancelCheck()
-            print "Running suite: " + suite + "..."
+            print "Queuing up suite: " + suite + "..."
             kats = self.kats_to_run[suite]
             SUITE_PATH = os.path.join(self.TEST_DIR,"kat_test",suite)
 
             SUITE_OUTPUT_DIR = os.path.join(OUTPUTS_DIR,suite)
             os.mkdir(SUITE_OUTPUT_DIR)
-
-            self.running_suite = suite
             
             for kat in kats:
-                self.cancelCheck()
-                self.running_kat = kat
-                
-                print self.get_progress()
-                basename = os.path.splitext(kat)[0]
-
-                if self.run_fast and ('map ' in open(kat).read()):
-                    print "skipping " + kat			
-                else:
-                    try:
-                        start = time.time()
-                                                
-                        out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
-                        
-                        OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
-                        LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
-                        
-                        f_in = open(LOG_FILE, 'rb')
-                        f_out = gzip.open(LOG_FILE + ".gz", 'wb')
-                        f_out.writelines(f_in)
-                        f_out.close()
-                        f_in.close()
-                        
-                        shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
-                        shutil.move(LOG_FILE + ".gz", SUITE_OUTPUT_DIR)
-                        
-                    except utils.RunException as e:
-                    
-                        print "STDERR: " + e.out
-                        print "STDOUT: " + e.err
-                        
-                        print "Error running " + kat + ": " + e.err
-                        self.kat_run_exceptions[suite][kat] = e
-                        # if this happens a difference definitely is found
-                        self.diffFound = True
-                    finally:
-                        self.run_times[suite][kat] = time.time()-start
-                        self.done_kats += 1
-
+                runs.append({'SUITE_OUTPUT_DIR':SUITE_OUTPUT_DIR,'suite':suite, 'run_fast':self.run_fast, 'kat':kat, 'FINESSE_EXE':FINESSE_EXE, 'SUITE_PATH':SUITE_PATH})
+        
+        self.pool = Pool(initializer=initProcess,initargs=(self.done_kats,) ,processes = self.pool_size)    
+        results = self.pool.imap_unordered(run_kat_file, runs, 1)
+        self.pool.close()
+        
+        for result in results:
+            
+            if result[3] is not None:
+                self.kat_run_exceptions[result[1]][result[2]] = result[3]
+                self.diffFound = True
+            
+            self.run_times[result[1]][result[2]] = result[0]
+        
         self.cancelCheck()
         
         for suite in self.kats_to_run.keys():
@@ -366,7 +398,7 @@ class FinesseTestProcess(Thread):
                 
                 os.remove(out_file)
                 
-                self.done_kats += 1
+                self.done_kats.value += 1
                 
         REPORT_PATH = os.path.join(self.BASE_DIR,"reports")
         
@@ -492,3 +524,5 @@ if __name__ == "__main__":
                               emails=options.emails,
                               nobuild=options.nobuild)
     test.run()
+    
+    

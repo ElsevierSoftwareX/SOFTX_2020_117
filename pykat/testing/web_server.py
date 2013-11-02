@@ -32,7 +32,7 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
     # need local copy of src
     if not os.path.exists(os.path.join(app.instance_path,"finesse_src")):
         print "finesse src folder didn't exist, cloning now..."
-        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/src.git","finesse_src"])
+        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/finesse.git","finesse_src"])
     else:
         # get the latest version for logs etc.
         utils.git("pull", cwd=os.path.join(app.instance_path,"finesse_src"))
