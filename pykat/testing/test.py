@@ -111,7 +111,7 @@ class FinesseTestProcess(Thread):
         if pool_size < 1:
             self.pool_size = 1
         else:
-            self.pool_size = pool_size
+            self.pool_size = 1 # default to 1 for testing # pool_size
         
         Thread.__init__(self)
         self.git_commit = test_commit
@@ -316,6 +316,7 @@ class FinesseTestProcess(Thread):
         
         self.pool = Pool(initializer=initProcess,initargs=(self.done_kats,) ,processes = self.pool_size)    
         results = self.pool.imap_unordered(run_kat_file, runs, 1)
+        print "DONE POOL!!!!"
         self.pool.close()
         
         for result in results:
