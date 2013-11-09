@@ -44,38 +44,38 @@ def run_kat_file(item):
         else:
             exp = None
             
-            try:
-                start = time.time()
-                
-                out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
-                
-                OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
-                LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
-                
-                f_in = open(LOG_FILE, 'rb')
-                f_out = gzip.open(LOG_FILE + ".gz", 'wb')
-                f_out.writelines(f_in)
-                f_out.close()
-                f_in.close()
-                
-                shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
-                shutil.move(LOG_FILE + ".gz", SUITE_OUTPUT_DIR)
-                
-            except utils.RunException as e:
+            #try:
+            start = time.time()
             
-                print "STDERR: " + e.out
-                print "STDOUT: " + e.err
+            out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
+            
+            OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
+            LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
+            
+            f_in = open(LOG_FILE, 'rb')
+            f_out = gzip.open(LOG_FILE + ".gz", 'wb')
+            f_out.writelines(f_in)
+            f_out.close()
+            f_in.close()
+            
+            shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
+            shutil.move(LOG_FILE + ".gz", SUITE_OUTPUT_DIR)
                 
-                print "Error running " + kat
+            #except utils.RunException as e:
+            #
+             #   print "STDERR: " + e.out
+              #  print "STDOUT: " + e.err
+               # 
+               # print "Error running " + kat
                 
-                exp = e
-            finally:
+              #  exp = e
+            #finally:
                 done_kats.value += 1
-                return [time.time()-start, suite, kat, exp]
+            #    return [time.time()-start, suite, kat, exp]
                     
     except Exception as e:
         print "main error in kat call",e
-        return [0,suite,kat,NULL]
+        return [0,suite,kat,e]
         
 
 class DiffException(Exception):
