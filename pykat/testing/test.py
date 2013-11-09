@@ -27,50 +27,55 @@ def initProcess(dkats):
     done_kats = dkats
 
 def run_kat_file(item):
-    #print os.getpid(),"getting kat...",item["kat"]
-    global done_kats
-    
     kat = item["kat"]
     suite = item["suite"]
-    FINESSE_EXE = item["FINESSE_EXE"]
-    SUITE_PATH = item["SUITE_PATH"]
-    SUITE_OUTPUT_DIR  = item["SUITE_OUTPUT_DIR"]
-    basename = os.path.splitext(kat)[0]
     
-    if item["run_fast"] and ('map ' in open(kat).read()):
-        print "skipping " + kat			
-    else:
-        exp = None
+    try:
+        #print os.getpid(),"getting kat...",item["kat"]
+        global done_kats
         
-        try:
-            start = time.time()
-            
-            out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
-            
-            OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
-            LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
-            
-            f_in = open(LOG_FILE, 'rb')
-            f_out = gzip.open(LOG_FILE + ".gz", 'wb')
-            f_out.writelines(f_in)
-            f_out.close()
-            f_in.close()
-            
-            shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
-            shutil.move(LOG_FILE + ".gz", SUITE_OUTPUT_DIR)
-            
-        except utils.RunException as e:
+        FINESSE_EXE = item["FINESSE_EXE"]
+        SUITE_PATH = item["SUITE_PATH"]
+        SUITE_OUTPUT_DIR  = item["SUITE_OUTPUT_DIR"]
+        basename = os.path.splitext(kat)[0]
         
-            print "STDERR: " + e.out
-            print "STDOUT: " + e.err
+        if item["run_fast"] and ('map ' in open(kat).read()):
+            print "skipping " + kat			
+        else:
+            exp = None
             
-            print "Error running " + kat + ": " + e.err
+            try:
+                start = time.time()
+                
+                out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
+                
+                OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
+                LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
+                
+                f_in = open(LOG_FILE, 'rb')
+                f_out = gzip.open(LOG_FILE + ".gz", 'wb')
+                f_out.writelines(f_in)
+                f_out.close()
+                f_in.close()
+                
+                shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
+                shutil.move(LOG_FILE + ".gz", SUITE_OUTPUT_DIR)
+                
+            except utils.RunException as e:
             
-            exp = e
-        finally:
-            done_kats.value += 1
-            return [time.time()-start, suite, kat, exp]
-    
+                print "STDERR: " + e.out
+                print "STDOUT: " + e.err
+                
+                print "Error running " + kat + ": " + e.err
+                
+                exp = e
+            finally:
+                done_kats.value += 1
+                return [time.time()-start, suite, kat, exp]
+                
+    except Exception as e:
+        print "main error in kat call",e
+        return [0,suite,kat,NULL]
 
 class DiffException(Exception):
 	def __init__(self, msg, outfile):
