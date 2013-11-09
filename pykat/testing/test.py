@@ -66,16 +66,19 @@ def run_kat_file(item):
                 print "STDERR: " + e.out
                 print "STDOUT: " + e.err
                 
-                print "Error running " + kat + ": " + e.err
+                print "Error running " + kat
                 
                 exp = e
             finally:
                 done_kats.value += 1
                 return [time.time()-start, suite, kat, exp]
-                
+                    
     except Exception as e:
         print "main error in kat call",e
         return [0,suite,kat,NULL]
+    finally:
+        print "DONE!!!!!!"
+        
 
 class DiffException(Exception):
 	def __init__(self, msg, outfile):
