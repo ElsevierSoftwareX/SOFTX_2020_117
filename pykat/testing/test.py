@@ -94,7 +94,7 @@ class FinesseTestProcess(Thread):
         
     def __init__(self, TEST_DIR, BASE_DIR, test_commit, 
                  run_fast=False, kats={}, test_id="0",
-                 git_bin="",emails="", nobuild=False, pool_size=int(multiprocessing.cpu_count()*3.0/4.0),*args, **kqwargs):
+                 git_bin="",emails="", nobuild=False, pool_size=int(multiprocessing.cpu_count()*3.5/4.0),*args, **kqwargs):
                  
          
         self.queue_time = None
@@ -116,7 +116,7 @@ class FinesseTestProcess(Thread):
         if pool_size < 1:
             self.pool_size = 1
         else:
-            self.pool_size = 1 # default to 1 for testing # pool_size
+            self.pool_size = pool_size
         
         Thread.__init__(self)
         self.git_commit = test_commit
