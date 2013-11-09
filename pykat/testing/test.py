@@ -29,7 +29,7 @@ def initProcess(dkats):
 def run_kat_file(item):
     kat = item["kat"]
     suite = item["suite"]
-    time = 0.0;
+    runtime = 0.0;
     try:
         #print os.getpid(),"getting kat...",item["kat"]
         global done_kats
@@ -48,7 +48,7 @@ def run_kat_file(item):
             start = time.time()
             
             out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
-            time = time.time()-start
+            runtime = time.time()-start
             
             OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
             LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
@@ -74,11 +74,15 @@ def run_kat_file(item):
             done_kats.value += 1
             #    return [time.time()-start, suite, kat, exp]
                     
-    except e:
-        print "main error in kat call",e
-        exp = e
+    except Exception as e:
+        print "main error in kat call"
+        exp = None
     finally:
-        return [time,suite,kat,e]
+        # Annoyingly it seems that exceptions can't be returned
+	# from a process that has been mapped because exceptions
+	# or some at least, can't be pickled, so they will appear as 
+	# nan in the tests
+        return [runtime, suite, kat, None] #[runtime,suite,kat,e]
         
 
 class DiffException(Exception):
