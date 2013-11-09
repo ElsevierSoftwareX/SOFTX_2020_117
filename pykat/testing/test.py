@@ -76,8 +76,6 @@ def run_kat_file(item):
     except Exception as e:
         print "main error in kat call",e
         return [0,suite,kat,NULL]
-    finally:
-        print "DONE!!!!!!"
         
 
 class DiffException(Exception):
