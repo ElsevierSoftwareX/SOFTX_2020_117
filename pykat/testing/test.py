@@ -29,7 +29,7 @@ def initProcess(dkats):
 def run_kat_file(item):
     kat = item["kat"]
     suite = item["suite"]
-    
+    time = 0.0;
     try:
         #print os.getpid(),"getting kat...",item["kat"]
         global done_kats
@@ -38,16 +38,17 @@ def run_kat_file(item):
         SUITE_PATH = item["SUITE_PATH"]
         SUITE_OUTPUT_DIR  = item["SUITE_OUTPUT_DIR"]
         basename = os.path.splitext(kat)[0]
+        exp = None
         
         if item["run_fast"] and ('map ' in open(kat).read()):
             print "skipping " + kat			
         else:
-            exp = None
             
             #try:
             start = time.time()
             
             out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
+            time = time.time()-start
             
             OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
             LOG_FILE = os.path.join(SUITE_PATH,basename + ".log")
@@ -60,7 +61,7 @@ def run_kat_file(item):
             
             shutil.move(OUT_FILE, SUITE_OUTPUT_DIR)
             shutil.move(LOG_FILE + ".gz", SUITE_OUTPUT_DIR)
-                
+            
             #except utils.RunException as e:
             #
              #   print "STDERR: " + e.out
@@ -70,12 +71,14 @@ def run_kat_file(item):
                 
               #  exp = e
             #finally:
-                done_kats.value += 1
+            done_kats.value += 1
             #    return [time.time()-start, suite, kat, exp]
                     
-    except Exception as e:
+    except e:
         print "main error in kat call",e
-        return [0,suite,kat,e]
+        exp = e
+    finally:
+        return [time,suite,kat,e]
         
 
 class DiffException(Exception):
