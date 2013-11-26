@@ -20,11 +20,6 @@ class Component(object) :
         self.__nodes = []
         self._requested_node_names = []
         self._kat = None
-        
-        #if not isinstance(kat,pykat.finesse.kat):
-        #    raise exceptions.ValueError("kat argument is not a pykat.finesse.kat object")
-            
-        #kat.add(self)
     
     def _on_kat_add(self, kat):
         """
@@ -87,48 +82,48 @@ class mirror(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         
-        self.__R = R
-        self.__T = T
-        self.__phi = phi
-        self.__Rcx = Rcx
-        self.__Rcy = Rcy
-        self.__xbeta = xbeta
-        self.__ybeta = ybeta
+        self.__R = float(R)
+        self.__T = float(T)
+        self.__phi = float(phi)
+        self.__Rcx = float(Rcx)
+        self.__Rcy = float(Rcy)
+        self.__xbeta = float(xbeta)
+        self.__ybeta = float(ybeta)
             
     @property
-    def R(self):
-        return Param('R',self.__R)
+    def R(self): return Param('R', self.__R)
     @R.setter
-    def R(self,value):
-        self.__R = value
+    def R(self,value): self.__R = float(value)
+    
     @property
     def T(self): return Param('T', self.__T)
     @T.setter
-    def T(self,value): self.__T = value
+    def T(self,value): self.__T = float(value)
         
     @property
     def phi(self): return Param('phi', self.__phi)
     @phi.setter
-    def phi(self,value): self.__phi = value
+    def phi(self,value): self.__phi = float(value)
     
     @property
     def Rcx(self): return Param('Rcx', self.__Rcx)
     @Rcx.setter
-    def Rcx(self,value): self.__Rcx = value
+    def Rcx(self,value): self.__Rcx = float(value)
+    
     @property
     def Rcy(self): return Param('Rcy', self.__Rcy)
     @Rcy.setter
-    def Rcy(self,value): self.__Rcy = value
+    def Rcy(self,value): self.__Rcy = float(value)
     
     
     @property
     def xbeta(self): return Param('xbeta', self.__xbeta)
     @xbeta.setter
-    def xbeta(self,value): self.__xbeta = value
+    def xbeta(self,value): self.__xbeta = float(value)
     @property
     def ybeta(self): return Param('ybeta', self.__ybeta)
     @ybeta.setter
-    def ybeta(self,value): self.__ybeta = value
+    def ybeta(self,value): self.__ybeta = float(value)
     
     @property
     def Rc(self):
@@ -139,8 +134,8 @@ class mirror(Component):
     
     @Rc.setter
     def Rc(self,value):
-        self.Rcx = value
-        self.Rcy = value
+        self.Rcx = float(value)
+        self.Rcy = float(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -178,7 +173,7 @@ class mirror(Component):
         if self._svgItem == None:
             nodes = self.getNodes()
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg",self
-                                                ,[(-4,15,self.nodes[0]),(14,15,self.nodes[1])])
+                                                ,[(-4,15,nodes[0]),(14,15,nodes[1])])
         return self._svgItem
    
    
@@ -189,18 +184,18 @@ class space(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         
-        self.__L = L
-        self.__n = n
+        self.__L = float(L)
+        self.__n = float(n)
         self._QItem = None
         
     @property
     def L(self): return Param('L', self.__L)
     @L.setter
-    def L(self,value): self.__L = value
+    def L(self,value): self.__L = float(value)
     @property
     def n(self): return Param('n', self.__n)
     @n.setter
-    def n(self,value): self.__n = value
+    def n(self,value): self.__n = float(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -253,24 +248,24 @@ class laser(Component):
         
         self._requested_node_names.append(node)
         
-        self.__power = P
-        self.__f_offset = f_offset
-        self.__phase = phase
+        self.__power = float(P)
+        self.__f_offset = float(f_offset)
+        self.__phase = float(phase)
         
     @property
     def power(self): return Param('P', self.__power)
     @power.setter
-    def power(self,value): self.__power = value
+    def power(self,value): self.__power = float(value)
     
     @property
     def f_offset(self): return Param('f', self.__f_offset)
     @f_offset.setter
-    def f_offset(self,value): self.__f_offset = value
+    def f_offset(self,value): self.__f_offset = float(value)
     
     @property
     def phase(self): return Param('phase', self.__phase)
     @phase.setter
-    def phase(self,value): self.__phase = value
+    def phase(self,value): self.__phase = float(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -295,6 +290,7 @@ class laser(Component):
          
     def getQGraphicsItem(self):
         if self._svgItem == None:
+            nodes = self.getNodes()
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg",
                                                    self,[(65,25,nodes[0])])
             

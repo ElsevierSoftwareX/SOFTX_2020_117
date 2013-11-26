@@ -15,6 +15,10 @@ class Command(object):
         """ Base class for individual finesse optical components """    
         raise NotImplementedError("This function is not implemented")
     
+    @staticmethod
+    def parseFinesseText(text):    
+        raise NotImplementedError("This function is not implemented")
+    
     def _on_kat_add(self, kat):
         """
         Called when this component has been added to a kat object
@@ -53,12 +57,12 @@ class xaxis(Command):
         if numpy.size(limits) != 2 :
             raise exceptions.ValueError("limits input should be a 2x1 vector of limits for the xaxis")
             
-        self.limits = limits
+        self.limits = numpy.array(limits).astype(float)
         
         if steps <= 0 :
             raise exceptions.ValueError("steps value should be > 0")            
             
-        self.steps = steps
+        self.steps = int(steps)
         
         # if entered component is a string then just store and use that
         if isinstance(comp, str):
@@ -74,6 +78,20 @@ class xaxis(Command):
             raise exceptions.ValueError("param argument is not of type Param")
         else:
             self.__param = param
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split(" ")
+        
+        if values[0] != "xaxis" and values[0] != "xaxis*" and values[0] != "x2axis" and values[0] != "x2axis*":
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse xaxis command".format(text))
+
+        values.pop(0) # remove initial value
+        
+        if len(values) != 6:
+            raise exceptions.RuntimeError("xaxis Finesse code format incorrect '{0}'".format(text))
+
+        return xaxis(values[2], [values[3], values[4]], values[0], values[1], values[5])
         
     def getFinesseText(self):
         # store either the component name of the string provided

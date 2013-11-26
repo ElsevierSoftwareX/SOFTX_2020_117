@@ -24,7 +24,7 @@ kat.add(photodiode('pd_cav','n4'))
 kat.add(photodiode('pd_ref','n2'))
 kat.add(photodiode('pd_trs','n5'))
 
-kat.add(xaxis(Scale.linear, [0, 360], kat.m2, kat.m2.phi, 100))
+kat.add(xaxis("lin", [0, 360], kat.m2, kat.m2.phi, 100))
 
 kat.m1.Rcx = -1000.0
 kat.m1.Rcy = -1000.0

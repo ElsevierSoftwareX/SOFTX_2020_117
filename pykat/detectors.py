@@ -28,7 +28,6 @@ class Detector(object) :
 
     def _on_kat_add(self, kat):
         self._node = kat.nodes.createNode(self.__requested_node)
-        #self.__node.connect(self)
     
     @staticmethod
     def parseFinesseText(text):    

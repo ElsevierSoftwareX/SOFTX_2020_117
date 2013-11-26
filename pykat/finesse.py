@@ -144,6 +144,8 @@ class kat(object):
                     self.add(pykat.components.space.parseFinesseText(line))
                 elif(first == "l"):
                     self.add(pykat.components.laser.parseFinesseText(line))
+                elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
+                    self.add(pykat.commands.xaxis.parseFinesseText(line))
                 else:
                     print "Could not parse `{0}`".format(line)
                     self.__extra_lines.append(line + "\n")

@@ -15,6 +15,7 @@ ad ad1 0 n2
 kat = finesse.kat(kat_code = code)
 
 kat.add(xaxis("lin", [0, 360], kat.m2, kat.m2.phi, 1000))
+kat.add(xaxis("lin", [0, 360], kat.m2, kat.m2.phi, 1000))
 
 r = kat.run(printerr=1)
 
