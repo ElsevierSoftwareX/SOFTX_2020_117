@@ -101,10 +101,7 @@ class Node(object):
     def remove(self):
         self._network.removeNode(self)
         self._item.scene().removeItem(self._item)
-     
-    #def disconnect(self, obj):
-        
-                 
+                      
     def connect(self, obj):
 
         if not (isinstance(obj,Component) or isinstance(obj,Detector)):
@@ -121,7 +118,7 @@ class Node(object):
                                     obj.name, self.__name,self._comp1.name,self._comp2.name))
             
             if self._comp1 == self._comp2:
-                raise exceptions.RuntimeError("Cannot connect {obj} to both sides of node".format(obj.name))            
+                raise exceptions.RuntimeError("Cannot connect {0} to both sides of node".format(obj.name))            
         else:
             # we must have a detector as we check above            
             self._detectors.append(obj)
@@ -173,6 +170,6 @@ class Node(object):
     
 class DumpNode(Node):
     def __init__(self):
-        Node.__init__(self,'dump')
+        Node.__init__(self, 'dump', None)
         
         

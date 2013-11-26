@@ -31,6 +31,7 @@ import tempfile
 import numpy as np
 import datetime
 import pickle
+import pykat
 
 from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
@@ -48,7 +49,14 @@ class MissingFinesse(Exception) :
                "or you do not have the permissions to run it." \
                .format(os.environ.get('FINESSE_DIR'))
     
-
+class FinesseError(Exception) :
+    def __init__(self, err, kat):
+        self.__err = err
+        self.__kat = kat
+        
+    def __str__(self):
+        return "Finesse returned an error running {1}: {0}".format(self.__err, self.__kat)
+        
 class katRun(object):
     def __init__(self):
         self.runDateTime = datetime.datetime.now()
@@ -75,7 +83,7 @@ class katRun(object):
         
 class kat(object):                    
         
-    def __init__(self, katexe=""):
+    def __init__(self, kat_file=None, kat_code=None, katexe=""):
         
         self.scene = None # scene object for GUI
         self.__components = {}  # dictionary of optical components      
@@ -92,6 +100,15 @@ class kat(object):
         self.__noxaxis = None
         self.__time_code = None
         
+        if kat_code != None and kat_file != None:
+            raise exceptions.RuntimeError("Specify either a Kat file or some Kat code, not both.")
+        
+        if kat_code != None:
+            self.parseCommands(kat_code)
+        
+        if kat_file != None:
+            self.loadKatFile(kat_file)
+            
     @property
     def maxtem(self): return self.__maxtem
     @maxtem.setter
@@ -112,135 +129,150 @@ class kat(object):
     @noxaxis.setter
     def noxaxis(self,value): self.__noxaxis = bool(value)
        
-    def load(self, katfile):
-        """
-        Loads the kat file specified which can then be run
-        """
-        
+    def loadKatFile(self, katfile):
         with open(katfile) as f:
-            for lines in f.readlines():
-                self.__extra_lines.append(lines)
-        
-	   
+            parseCommands(f.readlines())
+    
+    def parseCommands(self, commands):
+        for line in commands.split("\n"):
+            if len(line.strip()) > 0: 
+                first = line.split(" ",1)[0]
+                
+                if(first == "m"):
+                    self.add(pykat.components.mirror.parseFinesseText(line))
+                elif(first == "s"):
+                    self.add(pykat.components.space.parseFinesseText(line))
+                elif(first == "l"):
+                    self.add(pykat.components.laser.parseFinesseText(line))
+                else:
+                    print "Could not parse `{0}`".format(line)
+                    self.__extra_lines.append(line + "\n")
+            
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun object which is populated with the various
         data from the simulation run.
         """
-        
-        r = katRun()
-        r.katScript = "".join(self.generateKatScript())       
-        
-        if len(self.__katexe) == 0:
-            # Get the environment variable for where Finesse is stored
-            self.__finesse_dir = os.environ.get('FINESSE_DIR')
-        
+        try:
+            r = katRun()
+            r.katScript = "".join(self.generateKatScript())       
             
-            if self.__finesse_dir == None :
-                raise MissingFinesseEnvVar()
-        
-            kat_exec = os.path.join(self.__finesse_dir,'kat.exe') 
+            if len(self.__katexe) == 0:
+                # Get the environment variable for where Finesse is stored
+                self.__finesse_dir = os.environ.get('FINESSE_DIR')
             
-        else:
-            kat_exec = self.__katexe
-        
-        # check if kat file exists and it is executable by user        
-        if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
-            raise MissingFinesse()
-        
-        # create a kat file which we will write the script into
-        katfile = tempfile.TemporaryFile(suffix=".kat")
-        katfile.writelines(r.katScript)
-        katfile.flush()
-        
-        flags = "--perl1 "
-        
-        if self.__time_code:
-            flags = flags + " --perf-timing --no-backspace"
-            
-        kat_exec = "{0} {1} {2}".format(kat_exec, flags, katfile.name)
-                                                            
-        p=subprocess.Popen(kat_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        for line in iter(p.stderr.readline, ""):
-            vals = line.split("-")
-            
-            if len(vals) == 2:
-                action = vals[0].strip()
-                prc = vals[1].strip()[:-1]
                 
-                #sys.stdout.write("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b")
-                sys.stdout.write("\r{0} {1}%".format(action, prc))
-                sys.stdout.flush()
+                if self.__finesse_dir == None :
+                    raise MissingFinesseEnvVar()
             
-        [out,err] = p.communicate()
-        
-        # get the version number
-        ix = out.find('build ') + 6
-        ix2 = out.find(')',ix)
-        r.katVersion = out[ix:ix2]
-        
-        r.runDateTime = datetime.datetime.now()
-        
-        # if something has gone wrong, print err regardless
-        if p.returncode != 0:
-            print err
-            return None
-        
-        if printout == 1: print out
-        if printerr == 1: print err
-
-        root = os.path.splitext(katfile.name)
-        base = os.path.basename(root[0])            
-        outfile = root[0] + ".out"
+                kat_exec = os.path.join(self.__finesse_dir,'kat.exe') 
                 
-        [r.x,r.y,hdr] = self.readOutFile(outfile)
-        
-        r.xlabel = hdr[0]
-        r.ylabels = hdr[1:]
-        
-        if save_output:        
-            newoutfile = "{0}.out".format(base)
+            else:
+                kat_exec = self.__katexe
             
-            cwd = os.path.os.getcwd()
-            newoutfile = os.path.join(cwd,newoutfile)
+            # check if kat file exists and it is executable by user        
+            if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
+                raise MissingFinesse()
             
-            if os.path.isfile(newoutfile):
-                os.remove(newoutfile)
+            # create a kat file which we will write the script into
+            katfile = tempfile.TemporaryFile(suffix=".kat")
+            katfile.writelines(r.katScript)
+            katfile.flush()
+            
+            flags = "--perl1 "
+            
+            if self.__time_code:
+                flags = flags + " --perf-timing --no-backspace"
                 
-            os.rename(outfile, newoutfile)
-
-            print "Output data saved to '{0}'".format(newoutfile)
+            kat_exec = "{0} {1} {2}".format(kat_exec, flags, katfile.name)
+                          
+            p=subprocess.Popen(kat_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            err = ""
             
-        if save_kat:
-            if kat_name == None:
-                kat_name = "pykat_output"                
-            
-            cwd = os.path.os.getcwd()
-            newkatfile = os.path.join(cwd, kat_name + ".kat")
-            
-            if os.path.isfile(newkatfile):
-                os.remove(newkatfile)
-              
-            os.rename(katfile.name, newkatfile)         
-            
-            print "Kat file saved to '{0}'".format(newkatfile)
-            
-
-        katfile.close()
-        perfData = []
-        
-        if self.__time_code:
-            perffile = open(root[0] + ".perf",'r')
-            
-            for l in perffile.readlines():
-                vals = l.strip().split(' ')
-                perfData.append((vals[0], float(vals[1]), float(vals[2]), float(vals[3])))
+            for line in iter(p.stderr.readline, ""):
+                err += line
+                vals = line.split("-")
                 
-            return [r, perfData]
-        else:
-            return r
+                if len(vals) == 2:
+                    action = vals[0].strip()
+                    prc = vals[1].strip()[:-1]
+                    
+                    #sys.stdout.write("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b")
+                    sys.stdout.write("\r{0} {1}%".format(action, prc))
+                    sys.stdout.flush()
+                
+            [out,errpipe] = p.communicate()
+            
+            print out
+            
+            # get the version number
+            ix = out.find('build ') + 6
+            ix2 = out.find(')',ix)
+            r.katVersion = out[ix:ix2]
+            
+            r.runDateTime = datetime.datetime.now()
+            
+            if p.returncode != 0:
+                raise FinesseError(err, katfile.name)
+            
+            if printout == 1: print out
+            if printerr == 1: print err
+
+            root = os.path.splitext(katfile.name)
+            base = os.path.basename(root[0])            
+            outfile = root[0] + ".out"
+                    
+            [r.x,r.y,hdr] = self.readOutFile(outfile)
+            
+            r.xlabel = hdr[0]
+            r.ylabels = hdr[1:]
+            
+            if save_output:        
+                newoutfile = "{0}.out".format(base)
+                
+                cwd = os.path.os.getcwd()
+                newoutfile = os.path.join(cwd,newoutfile)
+                
+                if os.path.isfile(newoutfile):
+                    os.remove(newoutfile)
+                    
+                os.rename(outfile, newoutfile)
+
+                print "Output data saved to '{0}'".format(newoutfile)
+                
+            if save_kat:
+                if kat_name == None:
+                    kat_name = "pykat_output"                
+                
+                cwd = os.path.os.getcwd()
+                newkatfile = os.path.join(cwd, kat_name + ".kat")
+                
+                if os.path.isfile(newkatfile):
+                    os.remove(newkatfile)
+                  
+                os.rename(katfile.name, newkatfile)         
+                
+                print "Kat file saved to '{0}'".format(newkatfile)
+                
+
+            katfile.close()
+            perfData = []
+            
+            if self.__time_code:
+                perffile = open(root[0] + ".perf",'r')
+                
+                for l in perffile.readlines():
+                    vals = l.strip().split(' ')
+                    perfData.append((vals[0], float(vals[1]), float(vals[2]), float(vals[3])))
+                    
+                return [r, perfData]
+            else:
+                return r
+                
+        except FinesseError as fe:
+            print fe
+            
         
     def add(self, obj) :
         
@@ -251,7 +283,6 @@ class kat(object):
                         
             self.__components[obj.name] = obj
             self.__add_component(obj)
-                        
             
         elif isinstance(obj, Detector):
             
@@ -267,14 +298,11 @@ class kat(object):
             self.__add_command(obj)
             
         else :
-            raise exceptions.ValueError("Object could not be added")
+            raise exceptions.ValueError("Object {0} could not be added".format(obj))
             
-            
-            # now we have added the component we need to update the node
-            # network
-            
-       
+        obj._on_kat_add(self)
     
+
     def readOutFile(self, filename):
         
         outfile = open(filename,'r')

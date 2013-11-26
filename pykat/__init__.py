@@ -1,1 +1,5 @@
-__all__ = ['finesse', 'components', 'detectors', 'commands']
+#__all__ = ['finesse', 'components', 'detectors', 'commands']
+import finesse
+import components
+import detectors
+import commands

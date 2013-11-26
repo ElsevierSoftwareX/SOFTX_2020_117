@@ -14,25 +14,28 @@ class Command(object):
     def getFinesseText(self):
         """ Base class for individual finesse optical components """    
         raise NotImplementedError("This function is not implemented")
+    
+    def _on_kat_add(self, kat):
+        """
+        Called when this component has been added to a kat object
+        """
+        self._kat = kat
         
 class cavity(Command):
-    def __init__(self, kat, name, c1, n1, c2, n2):
+    def __init__(self, name, c1, n1, c2, n2):
         self.__name = name
         self.__c1 = c1
         self.__c2 = c2
         self.__n1 = n1
         self.__n2 = n2
-    
-        kat.add(self)
         
     def getFinesseText(self):
-        return 'cav {0} {1} {2} {3} {4}'.format(
-                self.__name, self.__c1, self.__n1, self.__c2, self.__n2);
+        return 'cav {0} {1} {2} {3} {4}'.format(self.__name, self.__c1, self.__n1, self.__c2, self.__n2);
     
     
 class xaxis(Command):
     
-    def __init__(self, kat, scale, limits, comp, param, steps):
+    def __init__(self, scale, limits, comp, param, steps):
         
         if scale == "lin":
             scale = Scale.linear
@@ -57,22 +60,28 @@ class xaxis(Command):
             
         self.steps = steps
         
-        if not isinstance(comp, Component):
-            raise exceptions.ValueError("comp is not a Component")
-            
-        self.__comp = comp
+        # if entered component is a string then just store and use that
+        if isinstance(comp, str):
+            self.__comp = comp
+        elif not isinstance(comp, Component):
+            raise exceptions.ValueError("{0} has not been added".format(comp))
+        else:
+            self.__comp = comp
         
-        if not isinstance(param, Param) :
+        if isinstance(param, str):
+            self.__param = param
+        elif not isinstance(param, Param) :
             raise exceptions.ValueError("param argument is not of type Param")
-                
-        self._param = param
-        
-        kat.add(self)
+        else:
+            self.__param = param
         
     def getFinesseText(self):
+        # store either the component name of the string provided
+        comp_name = self.__comp.name if isinstance(self.__comp, Component) else self.__comp
+        param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
         
         return 'xaxis {0} {1} {2} {3} {4} {5}'.format(
-                self.__comp.name, self._param.name, self.scale,
+                comp_name, param_name, self.scale,
                 min(self.limits), max(self.limits), self.steps);
                 
         

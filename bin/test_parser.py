@@ -1,19 +1,23 @@
-import sys
-sys.path.append(".")
-
-from pykat import finesse, profiling
-import numpy as np
+from pykat import finesse
+from pykat.commands import xaxis
 import pylab as pl
 
-kat = finesse.kat()
-#kat.load("D:\\finesse\\test\\kat_test\\physics\\mirror_astig_tilt_all_BH.kat")
-kat.load('parse.kat')
-kat.getPerformanceData = True
+code = """
+l l1 1 0 0 n1
+s s1 10 1 n1 n2
+m m1 0.5 0.5 0 n2 n3
+s s2 10 1 n3 n4
+m m2 0.5 0.5 0 n4 dump
 
-[run, perfdata] = kat.run(printout=0,printerr=0)
+ad ad1 0 n2
+"""
 
-l,t,fig = profiling.plotReducedPerformanceData(perfdata)
+kat = finesse.kat(kat_code = code)
 
-fig.savefig("Timing.png",pad_inches=0.1, bbox_inches='tight')
-fig.show()
+kat.add(xaxis("lin", [0, 360], kat.m2, kat.m2.phi, 1000))
+
+r = kat.run(printerr=1)
+
+pl.plot(r.x, r.y)
+pl.show()
     

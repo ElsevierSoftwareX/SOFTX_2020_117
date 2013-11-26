@@ -13,17 +13,26 @@ from pykat.gui.graphics import *
 from pykat.node_network import *
 
 class Detector(object) :
-    def __init__(self, name,node,kat):
+    def __init__(self, name,node):
         self.__name = name
         self._svgItem = None
-        self._kat = kat
+        self._kat = None
         self.noplot = False
         self.enabled = True
         
-        kat.add(self)
+        if node.find('*'):
+            self._alternate_beam = True
+            node.replace('*','')
         
-        self.__node = kat.nodes.createNode(node)
-        self.__node.connect(self)
+        self.__requested_node = node
+
+    def _on_kat_add(self, kat):
+        self._node = kat.nodes.createNode(self.__requested_node)
+        #self.__node.connect(self)
+    
+    @staticmethod
+    def parseFinesseText(text):    
+        raise NotImplementedError("This function is not implemented")
         
     def getFinesseText(self):
         """ Base class for individual finesse optical components """    
@@ -41,24 +50,18 @@ class Detector(object) :
     name = property(__getname)
 
 class photodiode(Detector):
-    def __init__(self,kat,name,node) :
-        Detector.__init__(self,name,node,kat)
+    @staticmethod
+    def parseFinesseText(text):    
+        raise NotImplementedError("This function is not implemented")   
         
-        if node.find('*'):
-            self._alternate_beam = True
-            node.replace('*','')
-            
-        self.__node = kat.nodes.createNode(node)
-                    
-                
     def getFinesseText(self) :
         if self.enabled:    
             rtn = []
             
             if self._alternate_beam:
-                rtn.append("pd {0} {1}".format(self.name, self.__node.name))
+                rtn.append("pd {0} {1}".format(self.name, self._node.name))
             else:
-                rtn.append("pd {0} {1}*".format(self.name, self.__node.name))
+                rtn.append("pd {0} {1}*".format(self.name, self._node.name))
             
             if self.noplot:
                 rtn.append("noplot {0}".format(self.name))
