@@ -6,7 +6,7 @@ import numpy as np
 code = """
 l l1 1 0 0 n1
 s s1 10 1 n1 n2
-m m1 1 0 0 n2 dump
+m m1 1 0 0 n2 n3
 
 gauss g1 m1 n2 1e-3 0
 

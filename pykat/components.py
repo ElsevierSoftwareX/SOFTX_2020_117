@@ -17,7 +17,7 @@ class Component(object) :
     def __init__(self, name):
         self.__name = name
         self._svgItem = None
-        self.__nodes = []
+        self._nodes = []
         self._requested_node_names = []
         self._kat = None
     
@@ -52,13 +52,13 @@ class Component(object) :
         else:
             n.connect(self)
                 
-            self.__nodes.append(n)
+            self._nodes.append(n)
         
         return n
         
     def getNodes(self):
         """ Returns a copy of the nodes the component has """
-        return self.__nodes[:]        
+        return self._nodes[:]        
             
     def __getname(self):
         return self.__name      
@@ -235,11 +235,11 @@ class space(Component):
         node_new.connect(self)
         node_old.disconnect(self)
         
-        if self.node1 == node_old:
-            self.node1 = node_new
+        if self._nodes[0] == node_old:
+            self._nodes[0] = node_new
         
-        if self.node2 == node_old:
-            self.node2 = node_new
+        if self._nodes[1] == node_old:
+            self._nodes[1] = node_new
 
     
 class laser(Component):

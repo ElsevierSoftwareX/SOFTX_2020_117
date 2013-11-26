@@ -22,7 +22,7 @@ class NodeNetwork(object):
             # then this node already exists
             return self._nodes[node_name]
         else:
-            n = Node(node_name,self)
+            n = Node(node_name, self)
             self._nodes[node_name] = n
             return n
         
@@ -30,7 +30,7 @@ class NodeNetwork(object):
         if not isinstance(node,Node):
             raise exceptions.ValueError("node argument is not of type Node")
         
-        if node not in self._nodes:
+        if node.name not in self._nodes:
             raise exceptions.RuntimeError("Trying to remove node {0} when it has not been added".format(node.name))
         
         C = node.getComponents()
@@ -87,7 +87,7 @@ class Node(object):
         self._detectors = []
         self.__name = name
         self._item = None
-        self._network = None
+        self._network = network
         
     @property
     def network(self): return self._network
@@ -100,8 +100,33 @@ class Node(object):
       
     def remove(self):
         self._network.removeNode(self)
-        self._item.scene().removeItem(self._item)
-                      
+        
+        if self._item != None:
+            self._item.scene().removeItem(self._item)
+    
+    def disconnect(self, obj):
+    
+        if not (isinstance(obj,Component) or isinstance(obj,Detector)):
+            raise exceptions.ValueError("Object is not a component or detector")
+        
+        if isinstance(obj, Component):
+            
+            if self._comp1 == obj:
+                self._comp1 = None
+            elif self._comp2 == obj:
+                self._comp2 = None
+            else:
+                raise exceptions.RuntimeError("Cannot dettach {0} from node {1}".format(
+                                    obj.name, self.__name))
+          
+        else:
+            # we must have a detector as we check above            
+            self._detectors.remove(obj)
+    
+        if self._item is not None:
+            self._item.refresh()
+            
+    
     def connect(self, obj):
 
         if not (isinstance(obj,Component) or isinstance(obj,Detector)):
@@ -143,7 +168,7 @@ class Node(object):
         
     def amIConnected(self, obj):
         """
-        Checks if obj is connected oto the node. Returns true or false in tuple
+        Checks if obj is connected to the node. Returns true or false in tuple
         with None or the other object and the node index which it is attached to
         """ 
         if obj == self._comp1:

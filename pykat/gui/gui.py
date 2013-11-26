@@ -99,10 +99,27 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
     def addMirror(self, x,y):
         name = self.kat.getNewComponentName('m')
         n = self.kat.getNewNodeNames('n',2)
-        m = pykat.components.mirror(self.kat,name,n[0],n[1])
-               
+        m = pykat.components.mirror(name,n[0],n[1])
+        
+        self.kat.add(m)
         self.addComponentToScene(m,x,y)
-                
+    
+    def addSpace(self, x,y):
+        name = self.kat.getNewComponentName('s')
+        n = self.kat.getNewNodeNames('n',2)
+        s = pykat.components.space(name, n[0], n[1])
+
+        self.kat.add(s)
+        self.addComponentToScene(s,x,y) 
+     
+    def addLaser(self, x,y):
+        name = self.kat.getNewComponentName('l')
+        n = self.kat.getNewNodeNames('n',1)
+        l = pykat.components.laser(name, n[0])
+
+        self.kat.add(l)
+        self.addComponentToScene(l,x,y)   
+        
 class pyKatGraphicsScene(QGraphicsScene):
     def drawBackground(self, painter, rect):
         size = 10
@@ -148,10 +165,15 @@ class pyKatGraphicsView(QGraphicsView):
         menu = QMenu(self)
         addmenu = menu.addMenu("Add...")
         
+        action = addmenu.addAction("Space")
+        action.triggered.connect(functools.partial(gui.addSpace, pt.x(), pt.y()))
+        
         action = addmenu.addAction("Mirror")
-        action.triggered.connect(functools.partial(gui.addMirror,pt.x(),pt.y()))
-                
-        addmenu.addAction("Laser")
+        action.triggered.connect(functools.partial(gui.addMirror, pt.x(), pt.y()))
+        
+        action = addmenu.addAction("Laser")
+        action.triggered.connect(functools.partial(gui.addLaser, pt.x(), pt.y()))
+        
         addmenu.addAction("Beamsplitter")
         addmenu.addAction("Photodiode")
         
@@ -204,6 +226,7 @@ class pyKatGraphicsView(QGraphicsView):
     def mouseReleaseEvent(self, ev):
         # if we have dragged a node and marked another to connect it too
         if self.__selected_item is not None and isinstance(self.__selected_item, NodeQGraphicItem) and self.__marked is not None:
+            
             # node attached to space which needs to be removed
             node_s = self.__selected_item.node
             
@@ -217,13 +240,16 @@ class pyKatGraphicsView(QGraphicsView):
             qcomp = self.__marked.parentItem()
             
             # connect space of node dragged to the component node
-            space.changeNode(node_s,node_c)
-            node_s.remove()
+            # the space node that has been dragged gets deleted and we
+            # replace it with the components
+            space.changeNode(node_s, node_c)
+            node_s.remove() # now remove from node network completly
             
             # then refresh the graphical items
             qspace.refresh()
             qcomp.refresh()
             
+                        
         if self.__marked is not None:
             self.__marked.marked = False
             self.__marked.refresh()

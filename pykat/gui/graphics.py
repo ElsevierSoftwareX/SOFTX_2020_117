@@ -60,11 +60,16 @@ class SpaceQGraphicsItem(QGraphicsLineItem):
             
         conn = nodes[0].amIConnected(self.__space)
         
+        x1 = 0
+        y1 = 0
+        x2 = 0
+        y2 = 0
+        
         if conn[0]:
             if conn[1] != None:
                 if self.__n1 is not None:
                     # i.e. we have a node graphic item but now it is connected to something
-                    self.__n1.scene().removeItem(self.__n2)
+                    self.__n1.scene().removeItem(self.__n1)
                     self.__n1 = None
                     
                 # now check if a connected component was returned too
@@ -170,7 +175,7 @@ class ComponentQGraphicsItem(QGraphicsSvgItem):
             n.refresh()
         
     def itemChange(self, change, value):
-        # if the item move then update any spaces
+        # if the item is moved then update any spaces attached to it
         if change == QGraphicsItem.ItemPositionHasChanged:
             nodes = self.__component.getNodes()
             
