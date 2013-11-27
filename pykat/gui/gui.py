@@ -119,6 +119,14 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
 
         self.kat.add(l)
         self.addComponentToScene(l,x,y)   
+    
+    def addPhotodiode(self, x, y):
+        name = self.kat.getNewDetectorName('pd')
+        n = self.kat.getNewNodeNames('n',1)
+        l = pykat.detectors.photodiode(name, n[0], [])
+
+        self.kat.add(l)
+        self.addComponentToScene(l,x,y)   
         
 class pyKatGraphicsScene(QGraphicsScene):
     def drawBackground(self, painter, rect):
@@ -159,7 +167,7 @@ class pyKatGraphicsView(QGraphicsView):
         
     def contextMenuEvent(self, ev):  
         pt = self.mapToScene(ev.pos())
-        
+              
         gui = self.parentWidget().parent() # get the main gui window
         
         menu = QMenu(self)
@@ -174,8 +182,8 @@ class pyKatGraphicsView(QGraphicsView):
         action = addmenu.addAction("Laser")
         action.triggered.connect(functools.partial(gui.addLaser, pt.x(), pt.y()))
         
-        addmenu.addAction("Beamsplitter")
-        addmenu.addAction("Photodiode")
+        action = addmenu.addAction("Photodiode")
+        action.triggered.connect(functools.partial(gui.addPhotodiode, pt.x(), pt.y()))
         
         item = self.scene().itemAt(pt.x(),pt.y())
         
@@ -189,6 +197,7 @@ class pyKatGraphicsView(QGraphicsView):
             if isinstance(item,NodeQGraphicItem):
                 menu.addSeparator()
                 menu.addAction("Disconnect")
+                
 
         menu.popup(ev.globalPos());        
         
@@ -248,7 +257,8 @@ class pyKatGraphicsView(QGraphicsView):
             # then refresh the graphical items
             qspace.refresh()
             qcomp.refresh()
-            
+
+            self.setCursor(QCursor(Qt.ArrowCursor))
                         
         if self.__marked is not None:
             self.__marked.marked = False
@@ -256,8 +266,7 @@ class pyKatGraphicsView(QGraphicsView):
             self.__marked = None
             
         self.__selected_item = None
-        self.setCursor(QCursor(Qt.ArrowCursor))
-            
+        
     def mouseMoveEvent(self, ev):
         if self.__selected_item != None:
             

@@ -134,8 +134,23 @@ class kat(object):
             parseCommands(f.readlines())
     
     def parseCommands(self, commands):
+        blockComment = False
+        
         for line in commands.split("\n"):
-            if len(line.strip()) > 0: 
+            if len(line.strip()) >= 2:
+                line = line.strip()
+                # don't read comment lines
+                if line[0] == "#" or line[0] == "%":
+                    continue
+                
+                # check if block comment is being used
+                if not blockComment and line[0:2] == "/*":
+                    blockComment = True
+                    continue
+                elif blockComment and line[0:2] == "*/":
+                    blockComment = False
+                    continue
+                
                 first = line.split(" ",1)[0]
                 
                 if(first == "m"):
@@ -316,10 +331,18 @@ class kat(object):
         hdr = outfile.readline().replace('%','').replace('\n','').split(',')
 
         data = np.loadtxt(filename,comments='%')
-        rows,cols = data.shape
+        shape_len = len(data.shape)
         
-        x = data[:,0]
-        y = data[:,1:cols].squeeze()
+        if shape_len > 1:
+            rows,cols = data.shape
+            x = data[:,0]
+            y = data[:,1:cols].squeeze()
+        else:
+            rows = 1
+            cols = data.shape[0]
+            
+            x = data[0]
+            y = data[1:cols].squeeze()
         
         return [x, y, hdr]
             
@@ -386,21 +409,32 @@ class kat(object):
     def hasComponent(self, name):
         return (name in self.__components)
     
+    def _newName(self, container, prefix):
+        n = 1
+        name = "{0}{1}".format(prefix, n)
+        
+        while name in container:
+            n += 1
+            name = "{0}{1}".format(prefix,n)
+        
+        return name
+    
     def getNewComponentName(self,prefix):
         '''
         Returns a name for a component which hasn't already been added.
         Returns [prefix] + number, where number is greater than 1. e.g.
         if m1 exists getNewName('m') will return 'm2'
         '''
-        n = 1
-        name = "{0}{1}".format(prefix, n)
-        
-        while name in self.__components:
-            n += 1
-            name = "{0}{1}".format(prefix,n)
-        
-        return name
+        return self._newName(self.__components, prefix)
     
+    def getNewDetectorName(self,prefix):
+        '''
+        Returns a name for a component which hasn't already been added.
+        Returns [prefix] + number, where number is greater than 1. e.g.
+        if m1 exists getNewName('m') will return 'm2'
+        '''
+        return self._newName(self.__detectors, prefix)
+        
     def getNewNodeNames(self,prefix,N=1):
         '''
         Returns a list of names for N number of nodes which haven't already been added.

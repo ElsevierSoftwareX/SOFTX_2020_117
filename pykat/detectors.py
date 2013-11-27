@@ -8,7 +8,6 @@ import exceptions
 import pykat.gui.resources
 
 from pykat.utils import *
-
 from pykat.gui.graphics import *
 from pykat.node_network import *
 
@@ -40,8 +39,8 @@ class Detector(object) :
     def getQGraphicsItem(self):    
         return None
     
-    def getNode(self):
-        return self.__node;        
+    def getNodes(self):
+        return [self._node]
         
     def __getname(self):
         return self.__name        
@@ -49,6 +48,22 @@ class Detector(object) :
     name = property(__getname)
 
 class photodiode(Detector):
+    class demodulation:
+        def __init__(self, f, phase):
+            self.frequency = f
+            self.phase = phase
+        
+    def __init__(self, name, node, demods):
+        Detector.__init__(self, name, node)
+        
+        self._num_demods = len(demods)
+        
+        for d in demods:
+            if not isinstance(d, photodiode.demodulation):
+                raise ValueError("demods array has something other than a demodulation in it")
+                
+            self._demods.append(d)
+
     @staticmethod
     def parseFinesseText(text):    
         raise NotImplementedError("This function is not implemented")   
@@ -71,7 +86,7 @@ class photodiode(Detector):
     
     def getQGraphicsItem(self):
         if self._svgItem == None:
-            self._svgItem = ComponentQGraphicsItem(":/resources/photodiode_red.svg",self,[(-20,0,self.node)])
+            self._svgItem = ComponentQGraphicsItem(":/resources/photodiode_red.svg",self,[(-5,11,self._node)])
         
         return self._svgItem    
         

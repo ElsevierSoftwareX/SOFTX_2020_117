@@ -16,7 +16,6 @@ l l1 1 0 0 n1
 
 kat = finesse.kat(kat_code = code)
 
-
 kat.openGUI()
 
 

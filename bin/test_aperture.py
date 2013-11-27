@@ -17,10 +17,10 @@ xaxis m1 r_ap lin 0.1e-3 2e-3 10
 
 kat = finesse.kat(kat_code = code)
 
-maxtem = np.arange(0, 1, 2)
+maxtem = np.arange(0, 3, 2)
 
 for tem in maxtem:
-    print "Calculating maxtem ",tem,"..."
+    print "Calculating maxtem ", tem, "..."
     kat.maxtem = tem
     r = kat.run()
     pl.plot(r.x/1e-3, r.y, label="maxtem={0}".format(tem))

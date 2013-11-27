@@ -10,7 +10,7 @@ from PyQt4.Qt import *
 import pykat.components
 import exceptions
 
-nsize = 8
+nsize = 10
     
 class NodeQGraphicItem(QGraphicsRectItem):
     
