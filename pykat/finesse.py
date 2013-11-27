@@ -178,12 +178,16 @@ class kat(object):
             if len(self.__katexe) == 0:
                 # Get the environment variable for where Finesse is stored
                 self.__finesse_dir = os.environ.get('FINESSE_DIR')
-            
                 
+                katexe = "kat"
+                
+                if os.sys.platform == "win32":
+                    katexe += ".exe"
+            
                 if self.__finesse_dir == None :
                     raise MissingFinesseEnvVar()
             
-                kat_exec = os.path.join(self.__finesse_dir,'kat.exe') 
+                kat_exec = os.path.join(self.__finesse_dir, katexe) 
                 
             else:
                 kat_exec = self.__katexe
