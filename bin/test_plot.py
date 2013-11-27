@@ -16,9 +16,11 @@ m m2 0.5 0.5 0 n4 n5
 s s3 10 1 n5 n6
 """
 
-kat = finesse.kat(kat_code=code)
+kat = finesse.kat()
 
-kat.add(cavity('cav1','m1','n3','m2','n4'))
+kat.parseCommands(code)
+
+kat.add(cavity('cav1', 'm1', 'n3', 'm2', 'n4'))
 
 kat.add(photodiode('pd_cav','n4',[]))
 kat.add(photodiode('pd_ref','n2',[]))
