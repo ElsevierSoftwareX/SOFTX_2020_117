@@ -77,13 +77,14 @@ class Param(float):
     name = property(lambda self: self.__name)
            
 class mirror(Component):
-    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0):
+    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0, r_ap=0):
         
         Component.__init__(self,name)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
-        
+
+        self.__r_ap = float(r_ap)        
         self.__mass = float(mass)
         self.__R = float(R)
         self.__T = float(T)
@@ -93,6 +94,11 @@ class mirror(Component):
         self.__xbeta = float(xbeta)
         self.__ybeta = float(ybeta)
     
+    @property
+    def r_ap(self): return Param('r_ap', self.__mass)
+    @r_ap.setter
+    def r_ap(self,value): self.__aperture = float(value)
+
     @property
     def mass(self): return Param('mass', self.__mass)
     @mass.setter
@@ -169,7 +175,8 @@ class mirror(Component):
         rtn.append('m {0} {1} {2} {3} {4} {5}'.format(
                 self.name, self.__R, self.__T, self.__phi,
                 nodes[0].name, nodes[1].name))
-            
+
+        if self.r_ap != 0: rtn.append("attr {0} r_ap {1}".format(self.name,self.__r_ap))            
         if self.mass != 0: rtn.append("attr {0} mass {1}".format(self.name,self.__mass))
         if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.__Rcx))
         if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.__Rcy))
