@@ -37,7 +37,9 @@ from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
 from pykat.components import Component
 from pykat.commands import Command, xaxis
-from pykat.gui.gui import openGUI
+from pykat.gui.gui import pyKatGUI
+
+NO_GUI = False
 
 class MissingFinesseEnvVar(Exception) :    
     def __str__(self) :
@@ -93,7 +95,7 @@ class kat(object):
         self.__gui = None
         self.nodes = NodeNetwork(self)  
         self.__katexe = katexe
-        
+        self.pykatgui = None
         # Various         
         self.__phase = None
         self.__maxtem = None
@@ -405,7 +407,15 @@ class kat(object):
         return out
         
     def openGUI(self):
-        self.__gui = openGUI(self)
+        if NO_GUI:
+            print  "No PyQt4 module was installed so cannot open a GUI"
+        else:
+            if self.pykatgui == None:
+                #self.app = QtGui.QApplication([""])
+                self.pykatgui = pyKatGUI(self)
+                self.pykatgui.main()
+            else:
+                self.pykatgui.show()
     
     def getComponents(self):
         return self.__components.values()
