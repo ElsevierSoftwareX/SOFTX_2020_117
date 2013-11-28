@@ -373,6 +373,16 @@ class kat(object):
                     else:
                         out.append(txt + "\n")
             
+        # now loop through all the nodes and get any gauss commands
+        for key in self.nodes.getNodes():
+            txt = self.nodes.getNodes()[key].getFinesseText()
+            
+            if txt != None:
+                if isinstance(txt,list):
+                    for t in txt: out.append(t+ "\n")
+                else:
+                    out.append(txt + "\n")
+        
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.maxtem != None: out.append("maxtem {0}\n".format(self.maxtem))            
         

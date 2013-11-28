@@ -6,6 +6,7 @@ Created on Sun Jan 27 10:02:41 2013
 """
 import exceptions
 import pykat.gui.graphics
+import pykat.exceptions as pkex
 from pykat.components import Component
 from pykat.detectors import Detector
 
@@ -23,6 +24,7 @@ class NodeNetwork(object):
             return self._nodes[node_name]
         else:
             n = Node(node_name, self)
+            self.__add_node(n) # add node as a member of this object, e.g. kat.nodes.n
             self._nodes[node_name] = n
             return n
         
@@ -41,6 +43,7 @@ class NodeNetwork(object):
         if len(C[1]) > 0:
             raise exceptions.RuntimeError("Cannot remove a node which is attached to detectors still")
         
+        self.__remove_node(node)
         del self._nodes[node.name] 
         
     def hasNode(self, name):
@@ -78,9 +81,34 @@ class NodeNetwork(object):
                 
             print "node: {0} connected:{1} {2}->{3} {4}".format(
                     n.name,n.isConnected(),comp1, comp2, detectors)
+       
+    def __add_node(self, node):
+
+        if not isinstance(node, Node):
+            raise exceptions.ValueError("Argument is not of type Node")
+        
+        name = node.name
+        fget = lambda self: self.__get_node(name)
+        
+        setattr(self.__class__, name, property(fget))
+        setattr(self, '__node_' + name, node)                   
+    
+    def __remove_node(self, node):
+        if not isinstance(node, Node):
+            raise exceptions.ValueError("Argument is not of type Node")
+        
+        name = node.name
+        setattr(self, '__node_' + name)
+        delattr(self.__class__, name)
+        
+    def __get_node(self, name):
+        return getattr(self, '__node_' + name)        
         
 class Node(object):
-    
+    class gauss_version:
+        w0_z = 1
+        z_zR = 2
+        
     def __init__(self, name, network):
         self._comp1 = None
         self._comp2 = None
@@ -88,10 +116,58 @@ class Node(object):
         self.__name = name
         self._item = None
         self._network = network
+        self.__gauss = None
+        self.__gauss_version = None
         
     @property
     def network(self): return self._network
     
+    @property
+    def gauss(self): return self.__gauss
+    
+    def removeGauss():
+        self.__gauss_version = None
+        self.__gauss = None
+        
+    def gauss_w0_z(self, w0, z, w0y=None, zy=None):
+        self.__gauss = []
+        self.__gauss.append(w0)
+        self.__gauss.append(z)
+        
+        if w0y != None and zy != None:
+            self.__gauss.append(w0y)
+            self.__gauss.append(zy)
+            
+        self.__gauss_version = Node.gauss_version.w0_z
+        
+    def getFinesseText(self):
+        
+        if not self.isConnected() or self.__gauss == None or self.__gauss_version == None:
+            return None
+            
+            
+        comp = ""
+        
+        if self._comp2 == None:
+            comp = self._comp1.name
+        else:
+            comp = self._comp2.name
+        
+        rtn = []
+        
+        if self.__gauss_version == Node.gauss_version.w0_z:
+            
+            if len(self.__gauss) == 2:
+                rtn.append("gauss gauss_{node} {comp} {node} {w0} {z}".format(node=self.name, comp=comp, w0=self.__gauss[0], z=self.__gauss[1]))
+            elif len(self.__gauss) == 4:
+                rtn.append("gauss gauss_{node} {comp} {node} {w0x} {zx} {w0y} {zy}".format(node=self.name, comp=comp, w0x=self.__gauss[0], zx=self.__gauss[1], w0y=self.__gauss[2], zy=self.__gauss[3]))
+            else:
+                raise pkex.BasePyKatException("Unexpected number of gaussian parameters")
+        else:
+            raise pkex.BasePyKatException("Unexpected gauss version")
+            
+        return rtn
+        
     def isConnected(self):
         if (self._comp1 is not None) and (self._comp2 is not None):
             return True
