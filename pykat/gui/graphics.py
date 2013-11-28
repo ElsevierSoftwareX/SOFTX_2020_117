@@ -7,6 +7,7 @@ Created on Fri Feb 01 09:13:03 2013
 
 from PyQt4.QtGui import *
 from PyQt4.Qt import *
+from PyQt4 import QtSvg
 import pykat.components
 import exceptions
 
@@ -139,7 +140,7 @@ class SpaceQGraphicsItem(QGraphicsLineItem):
         self.setPen(QPen(Qt.red, 3))
         
     
-class ComponentQGraphicsItem(QGraphicsSvgItem):
+class ComponentQGraphicsItem(QtSvg.QGraphicsSvgItem):
     
     def __init__(self, svgfile, component, nodes):
         QGraphicsSvgItem.__init__(self,svgfile)
