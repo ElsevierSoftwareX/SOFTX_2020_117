@@ -16,6 +16,7 @@ m m2 0.5 0.5 0 n4 n5
 s s3 10 1 n5 n6
 """
 
+#kat = finesse.kat(katexe='/Users/adf/work/bin/kat')
 kat = finesse.kat()
 
 kat.parseCommands(code)
@@ -35,11 +36,11 @@ kat.m2.Rcy =  1000.0
 
 kat.maxtem = 0
 
-run = kat.run(printout=0,printerr=0)
+out = kat.run(printout=0,printerr=0)
 
 pl.figure()
-pl.plot(run.x,run.y)
-pl.xlabel(run.xlabel)
+pl.plot(out.x,out.y)
+pl.xlabel(out.xlabel)
 pl.ylabel("Intensity [W]")
-pl.legend(run.ylabels)
+pl.legend(out.ylabels)
 pl.show()

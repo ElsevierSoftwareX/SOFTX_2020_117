@@ -133,7 +133,7 @@ class kat(object):
        
     def loadKatFile(self, katfile):
         with open(katfile) as f:
-            parseCommands(f.readlines())
+            self.parseCommands(f.readlines())
     
     def parseCommands(self, commands):
         blockComment = False
@@ -199,18 +199,17 @@ class kat(object):
                 raise MissingFinesse()
             
             # create a kat file which we will write the script into
-            katfile = tempfile.TemporaryFile(suffix=".kat")
+            katfile = tempfile.NamedTemporaryFile(suffix=".kat")
             katfile.writelines(r.katScript)
             katfile.flush()
             
-            flags = "--perl1 "
-            
+            cmd=[kat_exec, '--perl1']
             if self.__time_code:
-                flags = flags + " --perf-timing --no-backspace"
-                
-            kat_exec = "{0} {1} {2}".format(kat_exec, flags, katfile.name)
-                          
-            p=subprocess.Popen(kat_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                cmd.append('--perf-timing')
+                cmd.append('--no-backspace')
+
+            cmd.append(katfile.name)
+            p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
             for line in iter(p.stderr.readline, ""):
