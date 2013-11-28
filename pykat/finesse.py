@@ -25,13 +25,14 @@ Contact at ddb@star.sr.bham.ac.uk
 """
 import sys
 import os
-import exceptions
 import subprocess
 import tempfile
 import numpy as np
 import datetime
 import pickle
 import pykat
+
+import pykat.exceptions as pkex
 
 from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
@@ -40,24 +41,6 @@ from pykat.commands import Command, xaxis
 from pykat.gui.gui import pyKatGUI
 
 NO_GUI = False
-
-class MissingFinesseEnvVar(Exception) :    
-    def __str__(self) :
-        return "The environment variable FINESSE_DIR was not defined"
-
-class MissingFinesse(Exception) :    
-    def __str__(self) :
-        return "Could not find the finesse executable 'kat' in '{0}'," \
-               "or you do not have the permissions to run it." \
-               .format(os.environ.get('FINESSE_DIR'))
-    
-class FinesseError(Exception) :
-    def __init__(self, err, kat):
-        self.__err = err
-        self.__kat = kat
-        
-    def __str__(self):
-        return "Finesse returned an error running {1}: {0}".format(self.__err, self.__kat)
         
 class katRun(object):
     def __init__(self):
@@ -71,7 +54,7 @@ class katRun(object):
         
     def saveKatRun(self, run, filename):
         if not isinstance(run, katRun):
-            raise RuntimeError("run object must be a katRun type")
+            raise pkex.BasePyKatException("run object must be a katRun type")
         
         with open(filename,'w') as outfile:
             pickle.dump(run, outfile, pickle.HIGHEST_PROTOCOL)
@@ -82,10 +65,9 @@ class katRun(object):
             return pickle.load(infile)
         
         
-        
 class kat(object):                    
         
-    def __init__(self, kat_file=None, kat_code=None, katexe=""):
+    def __init__(self, kat_file=None, kat_code=None, katdir="", katname=""):
         
         self.scene = None # scene object for GUI
         self.__components = {}  # dictionary of optical components      
@@ -94,7 +76,8 @@ class kat(object):
         self.__extra_lines = [] # an array of strings which are just normal finesse code to include when running
         self.__gui = None
         self.nodes = NodeNetwork(self)  
-        self.__katexe = katexe
+        self.__katdir = katdir
+        self.__katname = katname
         self.pykatgui = None
         # Various         
         self.__phase = None
@@ -103,7 +86,7 @@ class kat(object):
         self.__time_code = None
         
         if kat_code != None and kat_file != None:
-            raise exceptions.RuntimeError("Specify either a Kat file or some Kat code, not both.")
+            raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
         
         if kat_code != None:
             self.parseCommands(kat_code)
@@ -164,7 +147,7 @@ class kat(object):
                 elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
                     self.add(pykat.commands.xaxis.parseFinesseText(line))
                 else:
-                    print "Could not parse `{0}`".format(line)
+                    print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                     self.__extra_lines.append(line + "\n")
             
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
@@ -177,26 +160,28 @@ class kat(object):
             r = katRun()
             r.katScript = "".join(self.generateKatScript())       
             
-            if len(self.__katexe) == 0:
+            if len(self.__katdir) == 0:
                 # Get the environment variable for where Finesse is stored
                 self.__finesse_dir = os.environ.get('FINESSE_DIR')
                 
+                if self.__finesse_dir == None :
+                    raise pkex.MissingFinesseEnvVar()
+            else:
+                self.__finesse_dir = self.__katdir
+                
+            if len(self.__katname) == 0:
                 katexe = "kat"
                 
                 if os.sys.platform == "win32":
                     katexe += ".exe"
-            
-                if self.__finesse_dir == None :
-                    raise MissingFinesseEnvVar()
-            
-                kat_exec = os.path.join(self.__finesse_dir, katexe) 
-                
             else:
-                kat_exec = self.__katexe
+                katexe = self.__katname
+            
+            kat_exec = os.path.join(self.__finesse_dir, katexe) 
             
             # check if kat file exists and it is executable by user        
             if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
-                raise MissingFinesse()
+                raise pkex.MissingFinesse()
             
             # create a kat file which we will write the script into
             katfile = tempfile.NamedTemporaryFile(suffix=".kat")
@@ -226,8 +211,6 @@ class kat(object):
                 
             [out,errpipe] = p.communicate()
             
-            print out
-            
             # get the version number
             ix = out.find('build ') + 6
             ix2 = out.find(')',ix)
@@ -236,7 +219,7 @@ class kat(object):
             r.runDateTime = datetime.datetime.now()
             
             if p.returncode != 0:
-                raise FinesseError(err, katfile.name)
+                raise pkex.FinesseRunError(err, katfile.name)
             
             if printout == 1: print out
             if printerr == 1: print err
@@ -297,33 +280,35 @@ class kat(object):
             
         
     def add(self, obj) :
-        
-        if isinstance(obj, Component):
-            
-            if obj.name in self.__components :
-                raise exceptions.ValueError("A component with name '{0}' has already been added".format([obj.name]))            
+        try:
+            if isinstance(obj, Component):
+                
+                if obj.name in self.__components :
+                    raise pkex.BasePyKatException("A component with name '{0}' has already been added".format([obj.name]))            
+                            
+                self.__components[obj.name] = obj
+                self.__add_component(obj)
+                
+            elif isinstance(obj, Detector):
+                
+                if obj.name in self.__detectors :
+                        raise pkex.BasePyKatException("A detector '{0}' has already been added".format(obj.name))
                         
-            self.__components[obj.name] = obj
-            self.__add_component(obj)
+                self.__detectors[obj.name] = obj
+                self.__add_detector(obj)
+                
+            elif isinstance(obj, Command):
+                
+                self.__commands[obj.__class__.__name__] = obj
+                self.__add_command(obj)
+                
+            else :
+                raise pkex.BasePyKatException("Object {0} could not be added".format(obj))
+                
+            obj._on_kat_add(self)
             
-        elif isinstance(obj, Detector):
-            
-            if obj.name in self.__detectors :
-                    raise exceptions.ValueError("A detector '{0}' has already been added".format(obj.name))
-                    
-            self.__detectors[obj.name] = obj
-            self.__add_detector(obj)
-            
-        elif isinstance(obj, Command):
-            
-            self.__commands[obj.__class__.__name__] = obj
-            self.__add_command(obj)
-            
-        else :
-            raise exceptions.ValueError("Object {0} could not be added".format(obj))
-            
-        obj._on_kat_add(self)
-    
+        except pkex.BasePyKatException as ex:
+            print ex
 
     def readOutFile(self, filename):
         

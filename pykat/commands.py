@@ -36,7 +36,33 @@ class cavity(Command):
     def getFinesseText(self):
         return 'cav {0} {1} {2} {3} {4}'.format(self.__name, self.__c1, self.__n1, self.__c2, self.__n2);
     
-    
+
+class attr():
+    @staticmethod
+    def parseFinesseText(text, kat):  
+        values = text.split(" ")
+        
+        if values[0] != "attr":
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse attr command".format(text))
+
+        values.pop(0) # remove initial value
+        
+        if len(values) < 3:
+            raise exceptions.RuntimeError("attr Finesse code format incorrect '{0}'".format(text))
+        
+        comp = None
+        comp_name = values[0]
+        values.pop(0)
+        
+        for c in kat.getComponents():
+            if c.name == comp_name:
+                comp = c
+                break
+        
+        if comp == None:
+            raise 
+        # can list multiple attributes per command
+        
 class xaxis(Command):
     
     def __init__(self, scale, limits, comp, param, steps):

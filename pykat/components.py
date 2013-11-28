@@ -32,6 +32,9 @@ class Component(object) :
     @staticmethod
     def parseFinesseText(text):    
         raise NotImplementedError("This function is not implemented")
+    
+    def setAttr(name, value):    
+        raise NotImplementedError("This function is not implemented")
         
     def getFinesseText(self):
         """ Base class for individual finesse optical components """    
@@ -74,13 +77,14 @@ class Param(float):
     name = property(lambda self: self.__name)
            
 class mirror(Component):
-    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0):
+    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0):
         
         Component.__init__(self,name)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         
+        self.__mass = float(mass)
         self.__R = float(R)
         self.__T = float(T)
         self.__phi = float(phi)
@@ -88,7 +92,12 @@ class mirror(Component):
         self.__Rcy = float(Rcy)
         self.__xbeta = float(xbeta)
         self.__ybeta = float(ybeta)
-            
+    
+    @property
+    def mass(self): return Param('mass', self.__mass)
+    @mass.setter
+    def mass(self,value): self.__mass = float(value)
+    
     @property
     def R(self): return Param('R', self.__R)
     @R.setter
@@ -114,11 +123,11 @@ class mirror(Component):
     @Rcy.setter
     def Rcy(self,value): self.__Rcy = float(value)
     
-    
     @property
     def xbeta(self): return Param('xbeta', self.__xbeta)
     @xbeta.setter
     def xbeta(self,value): self.__xbeta = float(value)
+    
     @property
     def ybeta(self): return Param('ybeta', self.__ybeta)
     @ybeta.setter
@@ -161,6 +170,7 @@ class mirror(Component):
                 self.name, self.__R, self.__T, self.__phi,
                 nodes[0].name, nodes[1].name))
             
+        if self.mass != 0: rtn.append("attr {0} mass {1}".format(self.name,self.__mass))
         if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.__Rcx))
         if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.__Rcy))
         if self.xbeta != 0: rtn.append("attr {0} xbeta {1}".format(self.name,self.__xbeta))
