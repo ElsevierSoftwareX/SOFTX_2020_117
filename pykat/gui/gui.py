@@ -15,13 +15,6 @@ from pykat.gui.graphics import *
 import qt_gui
 import functools
 
-def openGUI(kat):
-    app = QtGui.QApplication([""])
-    pykatgui = pyKatGUI(kat)
-    pykatgui.main()
-    app.exec_()
-   
-
 class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
     def __init__(self, kat,parent=None):
         super(pyKatGUI, self).__init__(parent)

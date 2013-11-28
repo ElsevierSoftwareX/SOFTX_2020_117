@@ -5,13 +5,12 @@ Created on Mon Jan 28 11:10:01 2013
 @author: Daniel
 """
 import exceptions
-import pykat.gui.resources
 import pykat
-import pykat.gui.graphics
-#from pykat.gui.graphics import *
 from pykat.node_network import *
-#from PyQt4.QtGui import *
-#from PyQt4.Qt import *
+
+import pykat.gui.resources
+import pykat.gui.graphics
+from pykat.gui.graphics import *
 
 class Component(object) :
     def __init__(self, name):
@@ -172,8 +171,8 @@ class mirror(Component):
     def getQGraphicsItem(self):
         if self._svgItem == None:
             nodes = self.getNodes()
-            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg",self
-                                                ,[(-4,15,nodes[0]),(14,15,nodes[1])])
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,nodes[0]), (14,15,nodes[1])])
+            
         return self._svgItem
    
    
