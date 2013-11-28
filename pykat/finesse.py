@@ -32,7 +32,7 @@ import datetime
 import pickle
 import pykat
 
-import pykat.exceptions as pkex
+from pykat.exceptions import *
 
 from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
@@ -54,7 +54,7 @@ class katRun(object):
         
     def saveKatRun(self, run, filename):
         if not isinstance(run, katRun):
-            raise pkex.BasePyKatException("run object must be a katRun type")
+            raise BasePyKatException("run object must be a katRun type")
         
         with open(filename,'w') as outfile:
             pickle.dump(run, outfile, pickle.HIGHEST_PROTOCOL)
@@ -86,7 +86,7 @@ class kat(object):
         self.__time_code = None
         
         if kat_code != None and kat_file != None:
-            raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
+            raise BasePyKatException("Specify either a Kat file or some Kat code, not both.")
         
         if kat_code != None:
             self.parseCommands(kat_code)
@@ -165,7 +165,7 @@ class kat(object):
                 self.__finesse_dir = os.environ.get('FINESSE_DIR')
                 
                 if self.__finesse_dir == None :
-                    raise pkex.MissingFinesseEnvVar()
+                    raise MissingFinesseEnvVar()
             else:
                 self.__finesse_dir = self.__katdir
                 
@@ -181,7 +181,7 @@ class kat(object):
             
             # check if kat file exists and it is executable by user        
             if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
-                raise pkex.MissingFinesse()
+                raise MissingFinesse()
             
             # create a kat file which we will write the script into
             katfile = tempfile.NamedTemporaryFile(suffix=".kat")
@@ -219,7 +219,7 @@ class kat(object):
             r.runDateTime = datetime.datetime.now()
             
             if p.returncode != 0:
-                raise pkex.FinesseRunError(err, katfile.name)
+                raise FinesseRunError(err, katfile.name)
             
             if printout == 1: print out
             if printerr == 1: print err
@@ -275,7 +275,7 @@ class kat(object):
             else:
                 return r
                 
-        except FinesseError as fe:
+        except FinesseRunError as fe:
             print fe
             
         
@@ -284,7 +284,7 @@ class kat(object):
             if isinstance(obj, Component):
                 
                 if obj.name in self.__components :
-                    raise pkex.BasePyKatException("A component with name '{0}' has already been added".format([obj.name]))            
+                    raise BasePyKatException("A component with name '{0}' has already been added".format([obj.name]))            
                             
                 self.__components[obj.name] = obj
                 self.__add_component(obj)
@@ -292,7 +292,7 @@ class kat(object):
             elif isinstance(obj, Detector):
                 
                 if obj.name in self.__detectors :
-                        raise pkex.BasePyKatException("A detector '{0}' has already been added".format(obj.name))
+                        raise BasePyKatException("A detector '{0}' has already been added".format(obj.name))
                         
                 self.__detectors[obj.name] = obj
                 self.__add_detector(obj)
@@ -303,11 +303,11 @@ class kat(object):
                 self.__add_command(obj)
                 
             else :
-                raise pkex.BasePyKatException("Object {0} could not be added".format(obj))
+                raise BasePyKatException("Object {0} could not be added".format(obj))
                 
             obj._on_kat_add(self)
             
-        except pkex.BasePyKatException as ex:
+        except BasePyKatException as ex:
             print ex
 
     def readOutFile(self, filename):
