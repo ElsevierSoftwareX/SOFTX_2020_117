@@ -35,22 +35,22 @@ yaxis log re:im
 """
 
 kat = finesse.kat(kat_code=code)
-run = kat.run(printout=0,printerr=0)
+out = kat.run(printout=0,printerr=0)
 
 # using real and imag part compute the complex value of the upper and lower sidebands
-a_up = run.y[:,0] + run.y[:,1]*1j
-a_lo = run.y[:,2] + run.y[:,3]*-1j
+a_up = out.y[:,0] + out.y[:,1]*1j
+a_lo = out.y[:,2] + out.y[:,3]*-1j
 
 pl.figure(1)
-pl.loglog(run.x, np.abs(a_up + a_lo), run.x, np.abs((a_up - a_lo) / (1j)))
-pl.xlabel(run.xlabel)
+pl.loglog(out.x, np.abs(a_up + a_lo), out.x, np.abs((a_up - a_lo) / (1j)))
+pl.xlabel(out.xlabel)
 pl.title("Reflection quadratures with no relative carrier phase")
 pl.legend(["Amplitude","Phase"])
 pl.show()
 
 pl.figure(2)
-pl.loglog(run.x, np.abs(a_up), run.x, np.abs(a_lo))
-pl.xlabel(run.xlabel)
+pl.loglog(out.x, np.abs(a_up), out.x, np.abs(a_lo))
+pl.xlabel(out.xlabel)
 pl.title("Amplitude of reflected sidebands")
 pl.legend(["Upper","Lower"])
 pl.show()

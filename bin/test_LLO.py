@@ -16,4 +16,4 @@ kat.HRBS.r_ap = 37e-2
 kat.parseCommands("pd pdIN nin")
 kat.noxaxis = True
 
-run = kat.run()
+out = kat.run()
