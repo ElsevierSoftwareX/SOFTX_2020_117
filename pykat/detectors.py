@@ -18,6 +18,7 @@ class Detector(object) :
         self._kat = None
         self.noplot = False
         self.enabled = True
+        self.tag = None
         
         if node.find('*'):
             self._alternate_beam = True

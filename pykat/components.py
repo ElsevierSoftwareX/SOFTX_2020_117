@@ -34,6 +34,7 @@ class Component(object) :
         self._nodes = None
         self._requested_node_names = []
         self._kat = None
+        self.tag = None
         
         # store a unique ID for this component
         global next_component_id

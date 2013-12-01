@@ -11,6 +11,9 @@ from components import *
 from structs import *
 
 class Command(object):
+    def __init__(self):
+        self.tag = None
+        
     def getFinesseText(self):
         """ Base class for individual finesse optical components """    
         raise NotImplementedError("This function is not implemented")

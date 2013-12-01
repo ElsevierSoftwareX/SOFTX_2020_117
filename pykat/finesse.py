@@ -141,11 +141,19 @@ class kat(object):
                 if values[0] == "%%%":
                     if values[1] == "FTblock":
                         newTag = values[2]
-                        if newTag != self.__currentTag and self.__currentTag: 
+                        
+                        if self.__currentTag != None and newTag != self.__currentTag: 
                             warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
+                            
+                        if newTag in self.__blocks:
+                            raise pkex.BasePyKatException("Block `{0}` has already been read")
+                            
+                        self.__blocks{newTag} = [] # create new list to store all references to components in block
                         self.__currentTag = newTag                            
+                        
                     if values[1] == "FTend":
-                        self.__currentTag = ""
+                        self.__currentTag = None
+                        
                     continue
                 #warnings.warn("current tag {0}".format(self.__currentTag))    
 
@@ -174,6 +182,7 @@ class kat(object):
                 else:
                     print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                     self.__extra_lines.append(line + "\n")
+                    
         self.__currentTag= ""
             
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
@@ -308,6 +317,7 @@ class kat(object):
     def add(self, obj) :
         try:
             obj.tag = self.__currentTag
+            
             if isinstance(obj, Component):
                 
                 if obj.name in self.__components :
