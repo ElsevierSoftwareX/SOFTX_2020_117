@@ -121,23 +121,25 @@ class kat(object):
     
     def parseCommands(self, commands):
         blockComment = False
-        currentTag= ""
+        self.__currentTag= ""
         
         for line in commands.split("\n"):
             if len(line.strip()) >= 2:
                 line = line.strip()
 
                 # Looking for block start or end
-                if line[0:3] == "%%%":
-                    values = text.split(" ")
+                values = line.split(" ")
+                if values[0] == "%%%":
                     if values[1] == "FTblock":
                         newTag = values[2]
+                        if newTag != self.__currentTag and self.__currentTag: 
+                            warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
+                        self.__currentTag = newTag                            
                     if values[1] == "FTend":
-                        if currentTag != values[2]:
-                            warnings.warn("Found FTend {0} but expected block {1) to end".format(values[2], currentTag))
-                        currentTag = ""
+                        self.__currentTag = ""
                     continue
-                    
+                #warnings.warn("current tag {0}".format(self.__currentTag))    
+
                 # don't read comment lines
                 if line[0] == "#" or line[0] == "%":
                     continue
@@ -163,6 +165,7 @@ class kat(object):
                 else:
                     print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                     self.__extra_lines.append(line + "\n")
+        self.__currentTag= ""
             
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
         """ 
@@ -295,6 +298,7 @@ class kat(object):
         
     def add(self, obj) :
         try:
+            obj.tag = self.__currentTag
             if isinstance(obj, Component):
                 
                 if obj.name in self.__components :
