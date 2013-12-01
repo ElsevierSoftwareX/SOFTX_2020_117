@@ -31,6 +31,7 @@ import numpy as np
 import datetime
 import pickle
 import pykat
+import warnings
 
 from pykat.exceptions import *
 
@@ -129,10 +130,23 @@ class kat(object):
     
     def parseCommands(self, commands):
         blockComment = False
+        currentTag= ""
         
         for line in commands.split("\n"):
             if len(line.strip()) >= 2:
                 line = line.strip()
+
+                # Looking for block start or end
+                if line[0:3] == "%%%":
+                    values = text.split(" ")
+                    if values[1] == "FTblock":
+                        newTag = values[2]
+                    if values[1] == "FTend":
+                        if currentTag != values[2]:
+                            warnings.warn("Found FTend {0} but expected block {1) to end".format(values[2], currentTag))
+                        currentTag = ""
+                    continue
+                    
                 # don't read comment lines
                 if line[0] == "#" or line[0] == "%":
                     continue
