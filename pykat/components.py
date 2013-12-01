@@ -5,6 +5,7 @@ Created on Mon Jan 28 11:10:01 2013
 @author: Daniel
 """
 import exceptions
+import pykat.exceptions as pkex
 import pykat
 from pykat.node_network import *
 
@@ -12,22 +13,83 @@ import pykat.gui.resources
 import pykat.gui.graphics
 from pykat.gui.graphics import *
 
+next_component_id = 1
+
+class NodeGaussSetter:
+    def __init__(self, component, node):
+    
+        if not isinstance(component, Component):
+            raise pkex.BasePyKatException("Value passed is not a Component")
+        
+        if not isinstance(node, Node):
+            raise pkex.BasePyKatException("Value passed is not a Node")        
+            
+        self._comp = component
+        self._node = node
+        
 class Component(object) :
     def __init__(self, name):
         self.__name = name
         self._svgItem = None
-        self._nodes = []
+        self._nodes = None
         self._requested_node_names = []
         self._kat = None
-    
-    def _on_kat_add(self, kat):
+        
+        # store a unique ID for this component
+        global next_component_id
+        self.__id = next_component_id
+        next_component_id += 1
+        
+    def _on_kat_add(self, kat, node_array):
         """
-        Called when this component has been added to a kat object
+        Called when this component has been added to a kat object.
+        kat is the finesse.kat object which it now belongs to and
+        node_array is an array specific to this object which contains
+        references to the nodes that are attached to it.
         """
+        if self._kat != None:
+            raise pkex.BasePyKatException("Component has already been added to a finesse.kat object")
+            
         self._kat = kat
         
         for node_name in self._requested_node_names:
-            self._addNode(node_name)
+            node = self.__addNode(node_name)
+        
+        # now that we have changed what our nodes are we need to
+        # update stuff...
+        self._on_node_change()
+        
+    def _on_node_change():
+        # need to update the node gauss parameter setter members 
+        self.__update_node_setters()
+        
+    def __update_node_setters(self):
+        # check if any node setters have already been added. If so we
+        # need to remove them. This function should get called if the nodes
+        # are updated, either by some function call or the GUI
+        key_rm = [k for k in self.__dict__ if k.startswith("__nodesetter_", 0, 13)]
+        # now we have a list of which to remove
+        for key in key_rm:
+            ns = self.__dict__[key]
+            detattr(self, '__nodesetter_' + ns._node.name)
+            delattr(self.__class__, ns._node.name)
+    
+        for node_name in self.getNodes():
+            self.__add_node_setter(NodeGaussSetter(self, node))
+        
+    def __add_node_setter(self, ns):
+
+        if not isinstance(ns, NodeGaussSetter):
+            raise exceptions.ValueError("Argument is not of type NodeGaussSetter")
+        
+        name = ns.__class__.__name__
+        fget = lambda self: self.__get_node_setter(name)
+        
+        setattr(self.__class__, name, property(fget))
+        setattr(self, '__nodesetter_' + name, ns)                   
+
+    def __get_node_setter(self, name):
+        return getattr(self, '__nodesetter_' + name)   
         
     @staticmethod
     def parseFinesseText(text):    
@@ -43,29 +105,27 @@ class Component(object) :
     def getQGraphicsItem(self):    
         return None      
         
-    def _addNode(self, name):
-        """ Adds a node in sequential order to the component, i.e. add them
-        n1, n2, n3, n4... etc. by the name of the node"""
-            
+    def __addNode(self, name):            
         n = self._kat.nodes.createNode(name)
         
         if n == None:
             raise exceptions.RuntimeError("createNode did not return a node for '{0}'".format(name))
         else:
             n.connect(self)
-                
-            self._nodes.append(n)
-        
+                        
         return n
         
     def getNodes(self):
         """ Returns a copy of the nodes the component has """
-        return self._nodes[:]        
-            
-    def __getname(self):
-        return self.__name      
-        
-    name = property(__getname)
+        return self._kat.nodes.getComponentNodes(self)        
+    
+    @property    
+    def name(self): return self.__name      
+    
+    @property
+    def id(self): return self.__id
+    
+    
     
 class Param(float):
     def __new__(self,name,value):

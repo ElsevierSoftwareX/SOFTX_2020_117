@@ -52,12 +52,9 @@ class katRun(object):
         self.katScript = None
         self.katVersion = None
         
-    def saveKatRun(self, run, filename):
-        if not isinstance(run, katRun):
-            raise BasePyKatException("run object must be a katRun type")
-        
+    def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
-            pickle.dump(run, outfile, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self, outfile)
     
     @staticmethod
     def loadKatRun(filename):
@@ -65,11 +62,21 @@ class katRun(object):
             return pickle.load(infile)
         
         
+class Block:
+    def __init__(self, name):
+        self.__name = name
+        self.contents = {} # dictionary of objects and strings of finesse code
+        self.enabled = True 
+        
+    @property
+    def name(self): return self.__name
+    
 class kat(object):                    
         
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname=""):
         
         self.scene = None # scene object for GUI
+        self.__blocks = {} # dictionary of blocks that are used
         self.__components = {}  # dictionary of optical components      
         self.__detectors = {}   # dictionary of detectors
         self.__commands = {}    # dictionary of commands
@@ -79,7 +86,9 @@ class kat(object):
         self.__katdir = katdir
         self.__katname = katname
         self.pykatgui = None
-        # Various         
+        
+        # Various options for running finesse, typicaly the commands with just 1 input
+        # and have no name attached to them.
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = None

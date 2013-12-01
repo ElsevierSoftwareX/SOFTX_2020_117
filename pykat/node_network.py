@@ -14,6 +14,7 @@ class NodeNetwork(object):
     def __init__(self, kat):
         self._nodes = {}
         self.__kat = kat
+        self.__componentNodes = {}
         
     def createNode(self, node_name):
         if node_name == 'dump':
@@ -81,7 +82,14 @@ class NodeNetwork(object):
                 
             print "node: {0} connected:{1} {2}->{3} {4}".format(
                     n.name,n.isConnected(),comp1, comp2, detectors)
-       
+    
+    def getComponentNodes(self, comp):
+    
+        if not isinstance(comp, Component):
+            raise pkex.BasePyKatException("Passed object was not a component")
+        
+        return self.__componentNodes[comp.id]
+            
     def __add_node(self, node):
 
         if not isinstance(node, Node):
@@ -98,7 +106,7 @@ class NodeNetwork(object):
             raise exceptions.ValueError("Argument is not of type Node")
         
         name = node.name
-        setattr(self, '__node_' + name)
+        detattr(self, '__node_' + name)
         delattr(self.__class__, name)
         
     def __get_node(self, name):
