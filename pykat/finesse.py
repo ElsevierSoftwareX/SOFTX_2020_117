@@ -131,7 +131,6 @@ class kat(object):
         commands=self.remove_comments(commands)
 
         for line in commands.split("\n"):
-            print line
             #for line in commands:
             if len(line.strip()) >= 2:
                 line = line.strip()
