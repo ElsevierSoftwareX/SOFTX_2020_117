@@ -71,7 +71,7 @@ class Component(object) :
     
 class Param(float):
     def __new__(self,name,value):
-        return float.__new__(self,value)
+        return float.__new__(self,SIfloat(value))
          
     def __init__(self,name,value):
         self.__name = name

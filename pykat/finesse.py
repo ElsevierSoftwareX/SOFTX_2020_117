@@ -122,7 +122,7 @@ class kat(object):
     
     def parseKatCode(self, code):
         #commands = code.split("\n")
-        self.parseCommands(commands)
+        self.parseCommands(code)
         
     def parseCommands(self, commands):
         blockComment = False
