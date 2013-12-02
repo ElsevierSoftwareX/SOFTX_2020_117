@@ -156,7 +156,7 @@ class mirror(Component):
         self.__ybeta = float(ybeta)
     
     @property
-    def r_ap(self): return Param('r_ap', self.__mass)
+    def r_ap(self): return Param('r_ap', self.__r_ap)
     @r_ap.setter
     def r_ap(self,value): self.__aperture = float(value)
 
