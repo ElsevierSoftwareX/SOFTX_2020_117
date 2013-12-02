@@ -32,6 +32,7 @@ import datetime
 import pickle
 import pykat
 import warnings
+import re
 
 from pykat.exceptions import *
 
@@ -126,17 +127,25 @@ class kat(object):
     def noxaxis(self,value): self.__noxaxis = bool(value)
        
     def loadKatFile(self, katfile):
-        with open(katfile) as f:
-            self.parseCommands(f.readlines())
+        commands=open(katfile).read()
+        self.parseCommands(commands)
     
+    def parseKatCode(self, code):
+        #commands = code.split("\n")
+        self.parseCommands(commands)
+        
     def parseCommands(self, commands):
         blockComment = False
+
         self.__currentTag= NO_BLOCK
         
         if not (NO_BLOCK in self.__blocks):
             self.__blocks[NO_BLOCK] = Block(NO_BLOCK)
         
+        commands=self.remove_comments(commands)
+        
         for line in commands.split("\n"):
+            #for line in commands:
             if len(line.strip()) >= 2:
                 line = line.strip()
 
@@ -536,3 +545,17 @@ class kat(object):
 
     def __get_component(self, name):
         return getattr(self, '__comp_' + name)        
+
+    def remove_comments(self, string):
+        pattern = r"(\".*?\"|\'.*?\'|%{3}[^\r\n]*$)|(/\*.*?\*/|%[^\r\n]*$|#[^\r\n]*$|//[^\r\n]*$)"
+        # first group captures quoted strings (double or single)
+        # second group captures comments (//single-line or /* multi-line */)
+        regex = re.compile(pattern, re.MULTILINE|re.DOTALL)
+        def _replacer(match):
+            # if the 2nd group (capturing comments) is not None,
+            # it means we have captured a non-quoted (real) comment string.
+            if match.group(2) is not None:
+                return "" # so we will return empty to remove the comment
+            else: # otherwise, we will return the 1st group
+                return match.group(1) # captured quoted-string
+        return regex.sub(_replacer, string)

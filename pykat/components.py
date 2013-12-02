@@ -8,10 +8,12 @@ import exceptions
 import pykat.exceptions as pkex
 import pykat
 from pykat.node_network import *
+from pykat.exceptions import *
 
 import pykat.gui.resources
 import pykat.gui.graphics
 from pykat.gui.graphics import *
+from pykat.SIfloat import *
 
 next_component_id = 1
 
@@ -261,8 +263,8 @@ class space(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         
-        self.__L = float(L)
-        self.__n = float(n)
+        self.__L = SIfloat(L)
+        self.__n = SIfloat(n)
         self._QItem = None
         
     @property
@@ -358,7 +360,7 @@ class laser(Component):
         elif len(values) == 4:
             return laser(values[0],values[3],P=values[1],f_offset=values[2], phase=0)
         else:
-            raise exceptions.RuntimeError("Laser Finesse code format incorrect '{0}'".format(text))
+            raise exceptions.FinesseParse("Laser Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
         nodes = self.getNodes()

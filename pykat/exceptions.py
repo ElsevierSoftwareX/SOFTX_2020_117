@@ -1,5 +1,6 @@
 import exceptions
 
+
 class BasePyKatException(Exception):
     def __init__(self, msg):
         self.__msg = msg
@@ -7,6 +8,10 @@ class BasePyKatException(Exception):
     def __str__(self):
         return self.__msg
 
+class FinesseParse(BasePyKatException) :    
+    def __init__(self, msg):
+        BasePyKatException.__init__(self, "Error parsing Finesse input\n{0}".format(msg))
+    
 class MissingFinesseEnvVar(BasePyKatException) :    
     def __init__(self):
         BasePyKatException.__init__(self, "The environment variable FINESSE_DIR was not defined")
