@@ -69,7 +69,7 @@ class katRun(object):
         
 class kat(object):                    
         
-    def __init__(self, kat_file=None, kat_code=None, katdir="", katname=""):
+    def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir="", tempname=""):
         
         self.scene = None # scene object for GUI
         self.__components = {}  # dictionary of optical components      
@@ -80,6 +80,8 @@ class kat(object):
         self.nodes = NodeNetwork(self)  
         self.__katdir = katdir
         self.__katname = katname
+        self.__tempdir = tempdir
+        self.__tempname = tempname
         self.pykatgui = None
         # Various         
         self.__phase = None
@@ -170,6 +172,8 @@ class kat(object):
                     self.add(pykat.components.laser.parseFinesseText(line))
                 elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
                     self.add(pykat.commands.xaxis.parseFinesseText(line))
+                    #elif(first[0:2] == "pd"):
+                    #self.add(pykat.detectors.photodiode.parseFinesseText(line))
                 else:
                     print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                     self.__extra_lines.append(line + "\n")
@@ -209,7 +213,12 @@ class kat(object):
                 raise MissingFinesse()
             
             # create a kat file which we will write the script into
-            katfile = tempfile.NamedTemporaryFile(suffix=".kat")
+            if self.__tempname == None:
+                katfile = tempfile.NamedTemporaryFile(suffix=".kat", dir=self.__tempdir)
+            else:
+                filepath =os.path.join(self.__tempdir, self.__tempname+".kat" )
+                katfile = open( filepath, 'w' ) 
+                
             katfile.writelines(r.katScript)
             katfile.flush()
             
@@ -219,6 +228,7 @@ class kat(object):
                 cmd.append('--no-backspace')
 
             cmd.append(katfile.name)
+            print cmd
             p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
