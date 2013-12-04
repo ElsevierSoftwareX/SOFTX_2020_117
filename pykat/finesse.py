@@ -69,7 +69,7 @@ class katRun(object):
         
 class kat(object):                    
         
-    def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir="", tempname=""):
+    def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
         
         self.scene = None # scene object for GUI
         self.__components = {}  # dictionary of optical components      
