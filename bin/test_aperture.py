@@ -1,3 +1,4 @@
+from pykat.utilities.optics.gaussian_beams import gauss_param
 from pykat import finesse
 from pykat.commands import xaxis
 import pylab as pl
@@ -19,7 +20,7 @@ kat.parseCommands(code)
 
 maxtem = np.arange(0, 2, 2)
 
-kat.m1.n2.q = 1j*(math.pi * 1e-3)**2/1064e-9
+kat.m1.n2.q = gauss_param(w0=1e-3, z=0)
 
 for tem in maxtem:
     print "Calculating maxtem ", tem, "..."

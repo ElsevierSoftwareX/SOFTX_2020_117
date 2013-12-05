@@ -38,8 +38,17 @@ class cavity(Command):
         
     def getFinesseText(self):
         return 'cav {0} {1} {2} {3} {4}'.format(self.__name, self.__c1, self.__n1, self.__c2, self.__n2);
-    
 
+class gauss(object):
+    @staticmethod
+    def parseFinesseText(text, kat):  
+        values = text.split(" ")
+        
+        if not values[0].startswith("gauss"):
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse gauss command".format(text))
+        
+        
+        
 class attr():
     @staticmethod
     def parseFinesseText(text, kat):  

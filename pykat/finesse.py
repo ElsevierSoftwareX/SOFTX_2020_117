@@ -149,6 +149,9 @@ class kat(object):
         
         commands=self.remove_comments(commands)
         
+        after_process = [] # list of commands that should be processed after 
+                           # objects have been set and created
+        
         for line in commands.split("\n"):
             #for line in commands:
             if len(line.strip()) >= 2:
@@ -200,15 +203,25 @@ class kat(object):
                     obj = pykat.detectors.photodiode.parseFinesseText(line)
                 elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
                     obj = pykat.commands.xaxis.parseFinesseText(line)
+                elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
+                    after_process.append(line)
                 else:
                     print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                     obj = line
                     # manually add the line to the block contents
                     self.__blocks[self.__currentTag].contents.append(line) 
                 
-                if not isinstance(obj, str):
+                if obj != None and not isinstance(obj, str):
                     self.add(obj)
                     
+        # now process all the varous gauss/attr etc. commands which require
+        # components to exist first before they can be processed
+        for line in after_process:
+            first = line.split(" ",1)[0]
+            
+            if first == "gauss" or first == "gauss*" or first == "gauss**":
+                pykat.commands.gauss.parseFinesseText(line)
+            
         self.__currentTag = NO_BLOCK 
             
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
