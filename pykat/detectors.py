@@ -51,21 +51,26 @@ class Detector(object) :
 
 class photodiode(Detector):
 
-    class f(list):
+    class F:
         def __init__(self, values=None):
-            print "tadaaaaaaaaaaaaaaa"
             if values is None:
                 self.values = []
             else:
                 self.values = values
 
-        def __getitem__(self,key):
+        def __len__(self):
+            return len(self.values)
+
+        def __getitem__(self, key):
+            # if key is of invalid type or value, the list values will raise the error
             return self.values[key]
 
-        def __setitem__(self,key,value):
+        def __setitem__(self, key, value):
+            print "setting"
             self.values[key] = SIfloat(value)
 
-    class phi(list):
+    
+    class Phi():
         def __init__(self, values=None):
             print values
             if values is None:
@@ -85,8 +90,14 @@ class photodiode(Detector):
                 self.values[key] = value
             else:
                 self.values[key] = SIfloat(value)
-                
-    
+        def append(self, value):
+            self.values.append(value)
+
+    @property
+    def f(self): return self.F('f', self.__f)
+    @f.setter
+    def f(self, key, value): self.__f[key]=value
+
     def __init__(self, name, node, senstype=None, num_demods=0, demods=[]):        
         Detector.__init__(self, name, node)
         if num_demods>2:
@@ -94,14 +105,17 @@ class photodiode(Detector):
         self.num_demods = num_demods
         self.senstype = senstype
         # every second element into f (starting at 1)
-        self.f(demods[::2])
         
-        # every second element into phi (starting at 2)
-        self.phi([1,2])
+        self.__f = self.F(demods[::2])
         
+        # Every second element into phi (starting at 2)
+        self.__phi = self.Phi()
         for i in demods[1::2]:
-            self.phi.append(i)
+            self.__phi.append(i)
+        print self.__phi
+        print self.__phi[0]
         
+
     @staticmethod
     def parseFinesseText(text): 
         values = text.split(" ")

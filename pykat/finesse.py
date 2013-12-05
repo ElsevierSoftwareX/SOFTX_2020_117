@@ -193,6 +193,8 @@ class kat(object):
                     obj = pykat.components.space.parseFinesseText(line)
                 elif(first == "l"):
                     obj = pykat.components.laser.parseFinesseText(line)
+                elif(first[0:2] == "pd"):
+                    obj = pykat.detectors.photodiode.parseFinesseText(line)
                 elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
                     obj = pykat.commands.xaxis.parseFinesseText(line)
                 else:
@@ -200,7 +202,7 @@ class kat(object):
                     obj = line
                     # manually add the line to the block contents
                     self.__blocks[self.__currentTag].contents.append(line) 
-                
+                print obj
                 if not isinstance(obj, str):
                     self.add(obj)
                     
