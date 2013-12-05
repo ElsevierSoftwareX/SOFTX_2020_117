@@ -5,6 +5,7 @@ Created on Mon Jan 28 11:10:01 2013
 @author: Daniel
 """
 import exceptions
+import pykat.exceptions as pkex
 import pykat
 from pykat.node_network import *
 from pykat.exceptions import *
@@ -14,60 +15,102 @@ import pykat.gui.graphics
 from pykat.gui.graphics import *
 from pykat.SIfloat import *
 
+next_component_id = 1
+
+class NodeGaussSetter:
+    def __init__(self, component, node):
+    
+        if not isinstance(component, Component):
+            raise pkex.BasePyKatException("Value passed is not a Component")
+        
+        if not isinstance(node, Node):
+            raise pkex.BasePyKatException("Value passed is not a Node")        
+            
+        self._comp = component
+        self._node = node
+        
 class Component(object) :
     def __init__(self, name):
         self.__name = name
         self._svgItem = None
-        self._nodes = []
+        self._nodes = None
         self._requested_node_names = []
         self._kat = None
-    
+        self.tag = None
+        
+        # store a unique ID for this component
+        global next_component_id
+        self.__id = next_component_id
+        next_component_id += 1
+        
     def _on_kat_add(self, kat):
         """
-        Called when this component has been added to a kat object
+        Called when this component has been added to a kat object.
+        kat is the finesse.kat object which it now belongs to and
+        node_array is an array specific to this object which contains
+        references to the nodes that are attached to it.
         """
+        if self._kat != None:
+            raise pkex.BasePyKatException("Component has already been added to a finesse.kat object")
+            
         self._kat = kat
         
-        for node_name in self._requested_node_names:
-            self._addNode(node_name)
+        kat.nodes.registerComponentNodes(self, self._requested_node_names, self.__on_node_change)
+        
+    def __on_node_change(self):
+        # need to update the node gauss parameter setter members 
+        #self.__update_node_setters()
+        return
+        
+    def __update_node_setters(self):
+        # check if any node setters have already been added. If so we
+        # need to remove them. This function should get called if the nodes
+        # are updated, either by some function call or the GUI
+        key_rm = [k for k in self.__dict__ if k.startswith("__nodesetter_", 0, 13)]
+        # now we have a list of which to remove
+        for key in key_rm:
+            ns = self.__dict__[key]
+            detattr(self, '__nodesetter_' + ns._node.name)
+            delattr(self.__class__, ns._node.name)
+    
+        for node in self.nodes:
+            self.__add_node_setter(NodeGaussSetter(self, node))
+        
+    def __add_node_setter(self, ns):
+
+        if not isinstance(ns, NodeGaussSetter):
+            raise exceptions.ValueError("Argument is not of type NodeGaussSetter")
+        
+        name = ns.__class__.__name__
+        fget = lambda self: self.__get_node_setter(name)
+        
+        setattr(self.__class__, name, property(fget))
+        setattr(self, '__nodesetter_' + name, ns)                   
+
+    def __get_node_setter(self, name):
+        return getattr(self, '__nodesetter_' + name)   
         
     @staticmethod
     def parseFinesseText(text):    
         raise NotImplementedError("This function is not implemented")
-    
-    def setAttr(name, value):    
-        raise NotImplementedError("This function is not implemented")
-        
+            
     def getFinesseText(self):
         """ Base class for individual finesse optical components """    
         raise NotImplementedError("This function is not implemented")
         
     def getQGraphicsItem(self):    
         return None      
-        
-    def _addNode(self, name):
-        """ Adds a node in sequential order to the component, i.e. add them
-        n1, n2, n3, n4... etc. by the name of the node"""
-            
-        n = self._kat.nodes.createNode(name)
-        
-        if n == None:
-            raise exceptions.RuntimeError("createNode did not return a node for '{0}'".format(name))
-        else:
-            n.connect(self)
-                
-            self._nodes.append(n)
-        
-        return n
-        
-    def getNodes(self):
-        """ Returns a copy of the nodes the component has """
-        return self._nodes[:]        
-            
-    def __getname(self):
-        return self.__name      
-        
-    name = property(__getname)
+    
+    @property
+    def nodes(self): return self._kat.nodes.getComponentNodes(self) 
+    
+    @property    
+    def name(self): return self.__name      
+    
+    @property
+    def id(self): return self.__id
+    
+    
     
 class Param(float):
     def __new__(self,name,value):
@@ -97,7 +140,7 @@ class mirror(Component):
         self.__ybeta = float(ybeta)
     
     @property
-    def r_ap(self): return Param('r_ap', self.__mass)
+    def r_ap(self): return Param('r_ap', self.__r_ap)
     @r_ap.setter
     def r_ap(self,value): self.__aperture = float(value)
 
@@ -169,14 +212,10 @@ class mirror(Component):
         
     def getFinesseText(self):        
         rtn = []
-        nodes = self.getNodes()
-        
-        if len(nodes) != 2:
-            raise exceptions.RuntimeError("Not enough nodes for mirror")
             
         rtn.append('m {0} {1} {2} {3} {4} {5}'.format(
                 self.name, self.__R, self.__T, self.__phi,
-                nodes[0].name, nodes[1].name))
+                self.nodes[0].name, self.nodes[1].name))
 
         if self.r_ap != 0: rtn.append("attr {0} r_ap {1}".format(self.name,self.__r_ap))            
         if self.mass != 0: rtn.append("attr {0} mass {1}".format(self.name,self.__mass))
@@ -189,8 +228,7 @@ class mirror(Component):
         
     def getQGraphicsItem(self):
         if self._svgItem == None:
-            nodes = self.getNodes()
-            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,nodes[0]), (14,15,nodes[1])])
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
             
         return self._svgItem
    
@@ -232,12 +270,10 @@ class space(Component):
             raise exceptions.RuntimeError("Space Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        nodes = self.getNodes()
-        
         if self.__n == 1:
-            return 's {0} {1} {2} {3}'.format(self.name, self.__L, nodes[0].name, nodes[1].name)            
+            return 's {0} {1} {2} {3}'.format(self.name, self.__L, self.nodes[0].name, self.nodes[1].name)            
         else:
-            return 's {0} {1} {2} {3} {4}'.format(self.name, self.__L, self.__n, nodes[0].name, nodes[1].name)            
+            return 's {0} {1} {2} {3} {4}'.format(self.name, self.__L, self.__n, self.nodes[0].name, self.nodes[1].name)            
        
     def getQGraphicsItem(self):
         if self._QItem == None:
@@ -245,19 +281,19 @@ class space(Component):
         
         return self._QItem  
 
-    def changeNode(self, node_old, node_new):
-        '''
-        Called when a space's node has been connected
-        to another components node
-        '''
-        node_new.connect(self)
-        node_old.disconnect(self)
+    # def changeNode(self, node_old, node_new):
+        # '''
+        # Called when a space's node has been connected
+        # to another components node
+        # '''
+        # node_new.connect(self)
+        # node_old.disconnect(self)
         
-        if self._nodes[0] == node_old:
-            self._nodes[0] = node_new
+        # if self._nodes[0] == node_old:
+            # self._nodes[0] = node_new
         
-        if self._nodes[1] == node_old:
-            self._nodes[1] = node_new
+        # if self._nodes[1] == node_old:
+            # self._nodes[1] = node_newf
 
     
 class laser(Component):
@@ -302,15 +338,11 @@ class laser(Component):
             raise exceptions.FinesseParse("Laser Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
-        nodes = self.getNodes()
-        
-        return 'l {0} {1} {2} {3} {4}'.format(self.name, self.__power, self.__f_offset, self.__phase, nodes[0].name)            
+        return 'l {0} {1} {2} {3} {4}'.format(self.name, self.__power, self.__f_offset, self.__phase, self.nodes[0].name)            
          
     def getQGraphicsItem(self):
         if self._svgItem == None:
-            nodes = self.getNodes()
-            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg",
-                                                   self,[(65,25,nodes[0])])
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg", self, [(65,25,self.nodes[0])])
             
         return self._svgItem
             

@@ -43,7 +43,8 @@ from pykat.commands import Command, xaxis
 from pykat.gui.gui import pyKatGUI
 
 NO_GUI = False
-        
+NO_BLOCK = "NO_BLOCK"
+
 class katRun(object):
     def __init__(self):
         self.runDateTime = datetime.datetime.now()
@@ -54,12 +55,9 @@ class katRun(object):
         self.katScript = None
         self.katVersion = None
         
-    def saveKatRun(self, run, filename):
-        if not isinstance(run, katRun):
-            raise BasePyKatException("run object must be a katRun type")
-        
+    def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
-            pickle.dump(run, outfile, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self, outfile)
     
     @staticmethod
     def loadKatRun(filename):
@@ -67,11 +65,21 @@ class katRun(object):
             return pickle.load(infile)
         
         
+class Block:
+    def __init__(self, name):
+        self.__name = name
+        self.contents = [] # List of objects and strings of finesse code
+        self.enabled = True 
+        
+    @property
+    def name(self): return self.__name
+    
 class kat(object):                    
         
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
         
         self.scene = None # scene object for GUI
+        self.__blocks = {} # dictionary of blocks that are used
         self.__components = {}  # dictionary of optical components      
         self.__detectors = {}   # dictionary of detectors
         self.__commands = {}    # dictionary of commands
@@ -83,7 +91,9 @@ class kat(object):
         self.__tempdir = tempdir
         self.__tempname = tempname
         self.pykatgui = None
-        # Various         
+        
+        # Various options for running finesse, typicaly the commands with just 1 input
+        # and have no name attached to them.
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = None
@@ -128,10 +138,14 @@ class kat(object):
         
     def parseCommands(self, commands):
         blockComment = False
-        self.__currentTag= ""
 
+        self.__currentTag= NO_BLOCK
+        
+        if not (NO_BLOCK in self.__blocks):
+            self.__blocks[NO_BLOCK] = Block(NO_BLOCK)
+        
         commands=self.remove_comments(commands)
-
+        
         for line in commands.split("\n"):
             #for line in commands:
             if len(line.strip()) >= 2:
@@ -142,11 +156,19 @@ class kat(object):
                 if values[0] == "%%%":
                     if values[1] == "FTblock":
                         newTag = values[2]
-                        if newTag != self.__currentTag and self.__currentTag: 
+                        
+                        if self.__currentTag != None and newTag != self.__currentTag: 
                             warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
+                            
+                        if newTag in self.__blocks:
+                            raise pkex.BasePyKatException("Block `{0}` has already been read")
+                            
+                        self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
                         self.__currentTag = newTag                            
+                        
                     if values[1] == "FTend":
-                        self.__currentTag = ""
+                        self.__currentTag = NO_BLOCK
+                        
                     continue
                 #warnings.warn("current tag {0}".format(self.__currentTag))    
 
@@ -163,21 +185,26 @@ class kat(object):
                     continue
                 
                 first = line.split(" ",1)[0]
+                obj = None
                 
                 if(first == "m"):
-                    self.add(pykat.components.mirror.parseFinesseText(line))
+                    obj = pykat.components.mirror.parseFinesseText(line)
                 elif(first == "s"):
-                    self.add(pykat.components.space.parseFinesseText(line))
+                    obj = pykat.components.space.parseFinesseText(line)
                 elif(first == "l"):
-                    self.add(pykat.components.laser.parseFinesseText(line))
+                    obj = pykat.components.laser.parseFinesseText(line)
                 elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
-                    self.add(pykat.commands.xaxis.parseFinesseText(line))
-                    #elif(first[0:2] == "pd"):
-                    #self.add(pykat.detectors.photodiode.parseFinesseText(line))
+                    obj = pykat.commands.xaxis.parseFinesseText(line)
                 else:
                     print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
-                    self.__extra_lines.append(line + "\n")
-        self.__currentTag= ""
+                    obj = line
+                    # manually add the line to the block contents
+                    self.__blocks[self.__currentTag].contents.append(line) 
+                
+                if not isinstance(obj, str):
+                    self.add(obj)
+                    
+        self.__currentTag = NO_BLOCK 
             
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
         """ 
@@ -314,10 +341,11 @@ class kat(object):
             print fe
             
         
-    def add(self, obj) :
-        print type(obj)
+    def add(self, obj):
         try:
             obj.tag = self.__currentTag
+            self.__blocks[self.__currentTag].contents.append(obj)
+            
             if isinstance(obj, Component):
                 
                 if obj.name in self.__components :
@@ -378,37 +406,28 @@ class kat(object):
         
         out = []    
         
-        for key in self.__components:       
-            txt = self.__components[key].getFinesseText() 
+        for key in self.__blocks:
+            objs = self.__blocks[key].contents
             
-            if txt != None:
-                if isinstance(txt,list):
-                    for t in txt: out.append(t+ "\n")
-                else:
-                    out.append(txt + "\n")
+            out.append("%%% FTblock " + key + "\n")
             
-        
-        for key in self.__detectors:
-            txt = self.__detectors[key].getFinesseText()
-            
-            if txt != None:
-                if isinstance(txt,list):
-                    for t in txt: out.append(t+ "\n")
-                else:
-                    out.append(txt + "\n")
+            for obj in objs:
+                if isinstance(obj, str):
+                    out.append(obj + '\n')
+                    
+                elif isinstance(obj, Component) or isinstance(obj, Detector) or isinstance(obj, Command):
+                    txt = obj.getFinesseText() 
+                    
+                    if txt != None:
+                        if isinstance(txt,list):
+                            for t in txt: out.append(t + "\n")
+                        else:
+                            out.append(txt + "\n")
+                            
+            out.append("%%% FTend " + key + "\n")
         
         if self.noxaxis != None and self.noxaxis == True:
             out.append("noxaxis\n")
-
-        for key in self.__commands:        
-            if self.noxaxis == None or (self.noxaxis == True and isinstance(self.__commands[key], xaxis)):
-                txt = self.__commands[key].getFinesseText()
-                
-                if txt != None:
-                    if isinstance(txt,list):
-                        for t in txt: out.append(t+ "\n")
-                    else:
-                        out.append(txt + "\n")
             
         # now loop through all the nodes and get any gauss commands
         for key in self.nodes.getNodes():
@@ -422,14 +441,7 @@ class kat(object):
         
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.maxtem != None: out.append("maxtem {0}\n".format(self.maxtem))            
-        
-        # There maybe extra lines we want to include in the kat
-        # script which aren't parseable into components, detectors
-        # or commands. Typically when something hasn't been fully
-        # supported yet. So bung these extra lines on at the end
-        for lines in self.__extra_lines:
-            out.append(lines)
-        
+
         # ensure we don't do any plotting. That should be handled
         # by user themselves
         out.append("gnuterm no\n")
