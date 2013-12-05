@@ -48,56 +48,82 @@ class Detector(object) :
     name = property(__getname)
 
 class photodiode(Detector):
+
+    class f(list):
+        def __init__(self, values=None):
+            print "tadaaaaaaaaaaaaaaa"
+            if values is None:
+                self.values = []
+            else:
+                self.values = values
+
+        def __getitem__(self,key):
+            return self.values[key]
+
+        def __setitem__(self,key,value):
+            self.values[key] = SIfloat(value)
+
+    class phi(list):
+        def __init__(self, values=None):
+            print values
+            if values is None:
+                self.values = []
+            else:
+                self.values = values
+
+        def __getitem__(self, key): # probably not needed
+            print "boom"
+            if self.values[key]=="max":
+                return self.values[key]
+            else:
+                return float(self.values[key])
             
-    def __init__(self, name, node, type, num_demods, demods):
-        
+        def __setitem__(self,key,value):
+            if value=="max":
+                self.values[key] = value
+            else:
+                self.values[key] = SIfloat(value)
+                
+    
+    def __init__(self, name, node, senstype, num_demods, demods):        
         Detector.__init__(self, name, node)
         if num_demods>2:
             raise NotImplementedError("pd with more than two demodulations not implemented yet")   
         self.num_demods = num_demods
-        self.type = type
-        self
-
-    @property
-    def num_demods(self): return Param('num_demods', self.__num_demods)
-    @num_demods.setter
-    def num_demods(self,value): self.__num_demods = int(value)
-    @property
-    def type(self): return Param('type', self.__type)
-    @type.setter
-    def type(self,value): self.__type = value
-    @property
-    def f1(self): return Param('f1', self.__f1)
-    @f1.setter
-    def f1(self,value): self.__f1 = SIfloat(value)
-    @property
-    def phi1(self): return Param('phi1', self.__phi1)
-    @phi1.setter
-    def phi1(self,value): self.__phi1 = SIfloat(value)    
-
+        self.senstype = senstype
+        # every second element into f (starting at 1)
+        self.f(demods[::2])
+        print self.f[1]
+        # every second element into phi (starting at 2)
+        self.phi([1,2])
+        print self.phi[1]
+        for i in demods[1::2]:
+            self.phi.append(i)
+        
     @staticmethod
     def parseFinesseText(text): 
         values = text.split(" ")
 
         if values[0][0:2] != "pd":
             raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))
-        if len(value[0])==2:
+        if len(values[0])==2:
             __num_demods=0
-            __type=""
-        elif len(value[0])==3 or len(value[0])==4:
-            if value[0][3]=="S":
-                __type="S"
-            elif value[0][3]=="N":
-                __type="N"
+            __senstype=""
+        elif len(values[0])==3 or len(values[0])==4:
+            print len(values[0])
+            if values[0][2]=="S":
+                __senstype="S"
+            elif values[0][2]=="N":
+                __senstype="N"
             else:
                 try:
-                    __num_demods=int(values[0][3])
-                    __type=""
+                    __num_demods=int(values[0][2])
+                    __senstype=""
                 except ValueError:
                     raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))
-            if len(value[0])==4:
+            if len(values[0])==4:
                 try:
-                    __num_demods=int(values[0][4])
+                    __num_demods=int(values[0][3])
                 except ValueError:
                     raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))                
         else:
@@ -107,9 +133,9 @@ class photodiode(Detector):
             raise exceptions.FinesseParse("'{0}' number of demodulations must be >0 and <5".format(text))
 
         values.pop(0) # remove initial value
-        
+
         if len(values) == 2 * __num_demods + 1 or len(values) == 2 * __num_demods + 2:
-            return photodiode(value[0], values[-1], __type, __num_demods, values[1:len(values-1)])
+            return photodiode(values[0], values[-1], __senstype, __num_demods, values[1:len(values)-1])
         else:
             raise exceptions.FinesseParse("Photodiode code format incorrect '{0}'".format(text))
 

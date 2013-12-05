@@ -315,6 +315,7 @@ class kat(object):
             
         
     def add(self, obj) :
+        print type(obj)
         try:
             obj.tag = self.__currentTag
             if isinstance(obj, Component):
