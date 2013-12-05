@@ -157,18 +157,17 @@ class photodiode(Detector):
         #raise NotImplementedError("This function is not implemented")   
         
     def getFinesseText(self) :
-        print "a"
         if self.enabled:
-            print "b"    
             rtn = []
             __f_phi=range(len(self.f)+len(self.phi))
             __f_phi[::2]=self.f
             __f_phi[1::2]=self.phi
+            __f_phi_str = " ".join(map(str, __f_phi))
             
             if self._alternate_beam:
-                rtn.append("pd{0}{1} {2} {3} {4}".format(self.sensype, self.num_demods, __f_phi, self.name, self.node.name))
+                rtn.append("pd{0}{1} {2} {3} {4}".format(self.senstype, self.num_demods, self.name, __f_phi_str,  self.node.name))
             else:
-                rtn.append("pd{0}{1} {2} {3} {4}*".format(self.senstype, self.num_demods, __f_phi, self.name, self.node.name))
+                rtn.append("pd{0}{1} {2} {3} {4}*".format(self.senstype, self.num_demods, self.name, __f_phi_str,  self.node.name))
             
             if self.noplot:
                 rtn.append("noplot {0}".format(self.name))
