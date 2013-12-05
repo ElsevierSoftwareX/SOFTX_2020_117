@@ -141,7 +141,7 @@ class NodeNetwork(object):
         name = node.name
         fget = lambda self: self.__get_node_attr(name)
         
-        setattr(self.__class__, name, property(fget))
+        setattr(self, name, property(fget))
         setattr(self, '__node_' + name, node)                   
     
     def __remove_node_attr(self, node):
@@ -150,23 +150,21 @@ class NodeNetwork(object):
         
         name = node.name
         detattr(self, '__node_' + name)
-        delattr(self.__class__, name)
+        delattr(self, name)
         
     def __get_node_attr(self, name):
         return getattr(self, '__node_' + name)        
         
 class Node(object):
-    class gauss_version:
-        w0_z = 1
-        z_zR = 2
-        
+
     def __init__(self, name, network, id):
         self._detectors = []
         self.__name = name
         self._item = None
         self._network = network
-        self.__gauss = None
-        self.__gauss_version = None
+        self.__q_x = None
+        self.__q_y = None
+        self.__q_comp = None
         self.__id = id
         
     @property
@@ -179,25 +177,46 @@ class Node(object):
     def components(self): return self._network.getNodeComponents(self)
     
     @property
-    def gauss(self): return self.__gauss
+    def q(self):
+        if self.__q_x == self.__q_y:
+            return self.__q_x
+        else:
+            return (self.__q_x, self.__q_y)
+            
+    @property
+    def qx(self): return self.__q_x
+    @property
+    def qy(self): return self.__q_y
     
     def removeGauss():
-        self.__gauss_version = None
-        self.__gauss = None
+        self.__q_x = None
+        self.__q_y = None
+        self.__q_comp = None
+    
+    def setGauss(self, component, *args):
+        self.__q_comp = component
         
-    def gauss_w0_z(self, w0, z, w0y=None, zy=None):
-        self.__gauss = []
-        self.__gauss.append(w0)
-        self.__gauss.append(z)
-        
-        if w0y != None and zy != None:
-            self.__gauss.append(w0y)
-            self.__gauss.append(zy)
-            
-        self.__gauss_version = Node.gauss_version.w0_z
+        if len(args) == 1:
+            self.__q_x = args[0]
+            self.__q_y = args[0]
+        elif len(args) == 2:
+            self.__q_x = args[0]
+            self.__q_y = args[1]
+        else:
+            raise pkex.BasePyKatException("Must specify either 1 Gaussian beam parameter or 2 for astigmatic beams")
         
     def getFinesseText(self):    
-        return []
+        if self.__q_x is None or self.__q_y is None or self.__q_comp is None:
+            return []
+            
+        rtn = []
+        
+        if self.__q_x == self.__q_y:
+            rtn.append("gauss* g_{node} {comp} {node} {z} {zr}".format(node=self.name, comp=self.__q_comp.name, z=self.__q_x.real, zr=self.__q_x.imag))
+        else:
+            rtn.append("gauss* g_{node} {comp} {node} {zx} {zrx} {zy} {zry}".format(node=self.name, comp=self.__q_comp.name, zx=self.__q_x.real, zrx=self.__q_x.imag, zy=self.__q_y.real, zry=self.__q_y.imag))
+            
+        return rtn
         
     def isConnected(self):
         if (self.components[0] is not None) and (self.self.components[1] is not None):

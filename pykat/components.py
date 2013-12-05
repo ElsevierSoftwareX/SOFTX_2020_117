@@ -23,17 +23,37 @@ class NodeGaussSetter:
         if not isinstance(component, Component):
             raise pkex.BasePyKatException("Value passed is not a Component")
         
-        if not isinstance(node, Node):
+        if not isinstance(node, pykat.node_network.Node):
             raise pkex.BasePyKatException("Value passed is not a Node")        
             
-        self._comp = component
-        self._node = node
+        self.__comp = component
+        self.__node = node
+    
+    @property
+    def node(self): return self.__node
+    
+    @property
+    def q(self): return self.__node.qx
+    @q.setter
+    def q(self, value):
+        node.setGauss(self.__comp, value)
+        
+    @property
+    def qx(self): return self.__node.qx
+    @qx.setter
+    def qx(self, value):
+        node.setGauss(self.__comp, value)
+    
+    @property
+    def qy(self): return self.__node.qy
+    @qy.setter
+    def qy(self, value):
+        node.setGauss(self.__comp, self.qx, value)
         
 class Component(object) :
     def __init__(self, name):
         self.__name = name
         self._svgItem = None
-        self._nodes = None
         self._requested_node_names = []
         self._kat = None
         self.tag = None
@@ -59,32 +79,34 @@ class Component(object) :
         
     def __on_node_change(self):
         # need to update the node gauss parameter setter members 
-        #self.__update_node_setters()
-        return
+        self.__update_node_setters()
         
     def __update_node_setters(self):
         # check if any node setters have already been added. If so we
         # need to remove them. This function should get called if the nodes
         # are updated, either by some function call or the GUI
         key_rm = [k for k in self.__dict__ if k.startswith("__nodesetter_", 0, 13)]
+        
         # now we have a list of which to remove
         for key in key_rm:
             ns = self.__dict__[key]
             detattr(self, '__nodesetter_' + ns._node.name)
-            delattr(self.__class__, ns._node.name)
-    
+            delattr(self, ns._node.name)
+        
         for node in self.nodes:
-            self.__add_node_setter(NodeGaussSetter(self, node))
+            if type(node) != pykat.node_network.DumpNode:
+                ns = NodeGaussSetter(self, node)
+                self.__add_node_setter(ns)
         
     def __add_node_setter(self, ns):
 
         if not isinstance(ns, NodeGaussSetter):
             raise exceptions.ValueError("Argument is not of type NodeGaussSetter")
         
-        name = ns.__class__.__name__
+        name = ns.node.name
         fget = lambda self: self.__get_node_setter(name)
         
-        setattr(self.__class__, name, property(fget))
+        setattr(self, name, property(fget))
         setattr(self, '__nodesetter_' + name, ns)                   
 
     def __get_node_setter(self, name):
