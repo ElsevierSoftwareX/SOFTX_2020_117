@@ -56,13 +56,14 @@ class photodiode(Detector):
             if values==None:
                 values = []
             list.__init__(self,[SIfloat(value) for value in values])
-            
+
+        """    
         def __setitem__(self, key, value):
             list.__setitem__(self,key, SIfloat(value))
 
         def append(self, value):
             list.append(self,SIfloat(value))
-            
+        """    
         ### todo add append with SIfloat
             
     class __Phi(list):
@@ -82,13 +83,13 @@ class photodiode(Detector):
                 return list.__getitem__(self,key)
             else:
                 return float(list.__getitem__(self,key))
-            
+        """    
         def __setitem__(self,key,value):
             list.__setitem__(self,key, self.__convertValue(value))
 
         def append(self, value):
             list.append(self,self.__convertValue(value))
-
+        """
         ### todo add append with convertValue
 
             
