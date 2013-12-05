@@ -51,53 +51,48 @@ class Detector(object) :
 
 class photodiode(Detector):
 
-    class F:
+    class __F(list):
         def __init__(self, values=None):
-            if values is None:
-                self.values = []
-            else:
-                self.values = values
-
-        def __len__(self):
-            return len(self.values)
-
-        def __getitem__(self, key):
-            # if key is of invalid type or value, the list values will raise the error
-            return self.values[key]
-
+            if values==None:
+                values = []
+            list.__init__(self,[SIfloat(value) for value in values])
+            
         def __setitem__(self, key, value):
-            print "setting"
-            self.values[key] = SIfloat(value)
+            list.__setitem__(self,key, SIfloat(value))
 
-    
-    class Phi():
-        def __init__(self, values=None):
-            print values
-            if values is None:
-                self.values = []
+        ### todo add append with SIfloat
+            
+    class __Phi(list):
+        def __convertValue(self, value):
+            if value=="max":
+                return value                
             else:
-                self.values = values
+                return SIfloat(value)
+                
+        def __init__(self, values=None):
+            if values==None:
+                values = []
+            list.__init__(self,[self.__convertValue(value) for value in values])
 
         def __getitem__(self, key): # probably not needed
-            print "boom"
-            if self.values[key]=="max":
-                return self.values[key]
+            if list.__getitem__(self,key)=="max":
+                return list.__getitem__(self,key)
             else:
-                return float(self.values[key])
+                return float(list.__getitem__(self,key))
             
         def __setitem__(self,key,value):
-            if value=="max":
-                self.values[key] = value
-            else:
-                self.values[key] = SIfloat(value)
-        def append(self, value):
-            self.values.append(value)
+            list.__setitem__(self,key, self.__convertValue(value))
+
+        ### todo add append with convertValue
+
+            
+    @property
+    def f(self): return self.__f
 
     @property
-    def f(self): return self.F('f', self.__f)
-    @f.setter
-    def f(self, key, value): self.__f[key]=value
+    def phi(self): return self.__phi
 
+        
     def __init__(self, name, node, senstype=None, num_demods=0, demods=[]):        
         Detector.__init__(self, name, node)
         if num_demods>2:
@@ -106,15 +101,12 @@ class photodiode(Detector):
         self.senstype = senstype
         # every second element into f (starting at 1)
         
-        self.__f = self.F(demods[::2])
+        self.__f = self.__F(demods[::2])
         
         # Every second element into phi (starting at 2)
-        self.__phi = self.Phi()
+        self.__phi = self.__Phi()
         for i in demods[1::2]:
-            self.__phi.append(i)
-        print self.__phi
-        print self.__phi[0]
-        
+            self.__phi.append(i)        
 
     @staticmethod
     def parseFinesseText(text): 
