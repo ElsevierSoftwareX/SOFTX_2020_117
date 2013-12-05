@@ -79,6 +79,7 @@ class kat(object):
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
         
         self.scene = None # scene object for GUI
+        self.verbose = True
         self.__blocks = {} # dictionary of blocks that are used
         self.__components = {}  # dictionary of optical components      
         self.__detectors = {}   # dictionary of detectors
@@ -206,7 +207,8 @@ class kat(object):
                 elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
                     after_process.append(line)
                 else:
-                    print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
+                    if self.verbose:
+                        print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                     obj = line
                     # manually add the line to the block contents
                     self.__blocks[self.__currentTag].contents.append(line) 
@@ -273,7 +275,8 @@ class kat(object):
                 cmd.append('--no-backspace')
 
             cmd.append(katfile.name)
-            print cmd
+            if self.verbose:
+                print cmd
             p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
