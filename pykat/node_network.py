@@ -254,6 +254,6 @@ class Node(object):
     
 class DumpNode(Node):
     def __init__(self):
-        Node.__init__(self, 'dump', None)
+        Node.__init__(self, 'dump', None, -1)
         
         

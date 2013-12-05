@@ -413,7 +413,7 @@ class kat(object):
             
             for obj in objs:
                 if isinstance(obj, str):
-                    out.append(lines + '\n')
+                    out.append(obj + '\n')
                     
                 elif isinstance(obj, Component) or isinstance(obj, Detector) or isinstance(obj, Command):
                     txt = obj.getFinesseText() 
