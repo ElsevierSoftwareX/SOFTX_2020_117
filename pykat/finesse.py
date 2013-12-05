@@ -107,7 +107,10 @@ class kat(object):
         
         if kat_file != None:
             self.loadKatFile(kat_file)
-            
+        
+        cls = type(self)
+        self.__class__ = type(cls.__name__, (cls,), {})
+        
     @property
     def maxtem(self): return self.__maxtem
     @maxtem.setter
@@ -202,7 +205,7 @@ class kat(object):
                     obj = line
                     # manually add the line to the block contents
                     self.__blocks[self.__currentTag].contents.append(line) 
-                print obj
+                
                 if not isinstance(obj, str):
                     self.add(obj)
                     

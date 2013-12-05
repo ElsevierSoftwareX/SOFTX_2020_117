@@ -17,38 +17,36 @@ from pykat.SIfloat import *
 
 next_component_id = 1
 
-class NodeGaussSetter:
-    def __init__(self, component, node):
-    
-        if not isinstance(component, Component):
-            raise pkex.BasePyKatException("Value passed is not a Component")
-        
-        if not isinstance(node, pykat.node_network.Node):
-            raise pkex.BasePyKatException("Value passed is not a Node")        
-            
+class NodeGaussSetter(object):
+    def __init__(self, component, node):                
         self.__comp = component
         self.__node = node
     
     @property
-    def node(self): return self.__node
+    def node(self):
+        return self.__node
     
     @property
-    def q(self): return self.__node.qx
+    def q(self):
+        return self.__node.qx
+        
     @q.setter
     def q(self, value):
-        node.setGauss(self.__comp, value)
+        self.__node.setGauss(self.__comp, value)
         
     @property
-    def qx(self): return self.__node.qx
+    def qx(self):
+        return self.__node.qx
     @qx.setter
     def qx(self, value):
-        node.setGauss(self.__comp, value)
+        self.__node.setGauss(self.__comp, value)
     
     @property
-    def qy(self): return self.__node.qy
+    def qy(self):
+        return self.__node.qy
     @qy.setter
     def qy(self, value):
-        node.setGauss(self.__comp, self.qx, value)
+        self.__node.setGauss(self.__comp, self.qx, value)
         
 class Component(object) :
     def __init__(self, name):
@@ -63,6 +61,12 @@ class Component(object) :
         self.__id = next_component_id
         next_component_id += 1
         
+        # This creates an instance specific class for the component
+        # this enables us to add properties to instances rather than
+        # all classes
+        cls = type(self)
+        self.__class__ = type(cls.__name__, (cls,), {})
+            
     def _on_kat_add(self, kat):
         """
         Called when this component has been added to a kat object.
@@ -106,7 +110,7 @@ class Component(object) :
         name = ns.node.name
         fget = lambda self: self.__get_node_setter(name)
         
-        setattr(self, name, property(fget))
+        setattr(self.__class__, name, property(fget))
         setattr(self, '__nodesetter_' + name, ns)                   
 
     def __get_node_setter(self, name):

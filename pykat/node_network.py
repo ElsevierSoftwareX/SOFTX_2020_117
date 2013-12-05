@@ -19,6 +19,9 @@ class NodeNetwork(object):
         self.__componentCallback = {}
         self.__node_id = 1
         
+        cls = type(self)
+        self.__class__ = type(cls.__name__, (cls,), {})
+        
     def registerComponentNodes(self, comp, node_names, change_callback):
         """
         For a given component we create some nodes or get existing ones and 
@@ -141,7 +144,7 @@ class NodeNetwork(object):
         name = node.name
         fget = lambda self: self.__get_node_attr(name)
         
-        setattr(self, name, property(fget))
+        setattr(self.__class__, name, property(fget))
         setattr(self, '__node_' + name, node)                   
     
     def __remove_node_attr(self, node):
@@ -149,7 +152,7 @@ class NodeNetwork(object):
             raise exceptions.ValueError("Argument is not of type Node")
         
         name = node.name
-        detattr(self, '__node_' + name)
+        detattr(self.__class__, '__node_' + name)
         delattr(self, name)
         
     def __get_node_attr(self, name):
