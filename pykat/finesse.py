@@ -198,11 +198,10 @@ class kat(object):
                 else:
                     print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                     obj = line
-                
-                self.__blocks[self.__currentTag].contents.append(obj)
+                    # manually add the line to the block contents
+                    self.__blocks[self.__currentTag].contents.append(line) 
                 
                 if not isinstance(obj, str):
-                    self.__blocks[self.__currentTag].contents.append(obj)
                     self.add(obj)
                     
         self.__currentTag = NO_BLOCK 
@@ -342,10 +341,10 @@ class kat(object):
             print fe
             
         
-    def add(self, obj) :
-        print type(obj)
+    def add(self, obj):
         try:
             obj.tag = self.__currentTag
+            self.__blocks[self.__currentTag].contents.append(obj)
             
             if isinstance(obj, Component):
                 
@@ -409,8 +408,8 @@ class kat(object):
         
         for key in self.__blocks:
             objs = self.__blocks[key].contents
-            print key, objs
-            out.append("%%% FTblock " + key)
+            
+            out.append("%%% FTblock " + key + "\n")
             
             for obj in objs:
                 if isinstance(obj, str):
@@ -425,7 +424,7 @@ class kat(object):
                         else:
                             out.append(txt + "\n")
                             
-            out.append("%%% FTend " + key)
+            out.append("%%% FTend " + key + "\n")
         
         if self.noxaxis != None and self.noxaxis == True:
             out.append("noxaxis\n")

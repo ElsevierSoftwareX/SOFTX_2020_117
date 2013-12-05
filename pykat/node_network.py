@@ -35,8 +35,8 @@ class NodeNetwork(object):
         list = []
         
         for name in node_names:
-            n = createNode(name)
-            self.connectNodeToComp(node, comp, do_callback=False)
+            n = self.createNode(name)
+            self.connectNodeToComp(n, comp, do_callback=False)
             list.append(n)
         
         self.__componentNodes[comp.id] = tuple(list)

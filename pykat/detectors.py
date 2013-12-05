@@ -19,6 +19,7 @@ class Detector(object) :
         self.noplot = False
         self.enabled = True
         self.tag = None
+        self.__node = None
         
         if node.find('*'):
             self._alternate_beam = True
@@ -27,7 +28,7 @@ class Detector(object) :
         self.__requested_node = node
 
     def _on_kat_add(self, kat):
-        self._node = kat.nodes.createNode(self.__requested_node)
+        self.__node = kat.nodes.createNode(self.__requested_node)
     
     @staticmethod
     def parseFinesseText(text):    
@@ -40,8 +41,8 @@ class Detector(object) :
     def getQGraphicsItem(self):    
         return None
     
-    def getNodes(self):
-        return [self._node]
+    @property 
+    def node(self): return self.__node
         
     def __getname(self):
         return self.__name        
@@ -86,7 +87,7 @@ class photodiode(Detector):
                 self.values[key] = SIfloat(value)
                 
     
-    def __init__(self, name, node, senstype, num_demods, demods):        
+    def __init__(self, name, node, senstype=None, num_demods=0, demods=[]):        
         Detector.__init__(self, name, node)
         if num_demods>2:
             raise NotImplementedError("pd with more than two demodulations not implemented yet")   
@@ -94,10 +95,10 @@ class photodiode(Detector):
         self.senstype = senstype
         # every second element into f (starting at 1)
         self.f(demods[::2])
-        print self.f[1]
+        
         # every second element into phi (starting at 2)
         self.phi([1,2])
-        print self.phi[1]
+        
         for i in demods[1::2]:
             self.phi.append(i)
         
@@ -148,9 +149,9 @@ class photodiode(Detector):
             rtn = []
             
             if self._alternate_beam:
-                rtn.append("pd {0} {1}".format(self.name, self._node.name))
+                rtn.append("pd {0} {1}".format(self.name, self.node.name))
             else:
-                rtn.append("pd {0} {1}*".format(self.name, self._node.name))
+                rtn.append("pd {0} {1}*".format(self.name, self.node.name))
             
             if self.noplot:
                 rtn.append("noplot {0}".format(self.name))
@@ -161,7 +162,7 @@ class photodiode(Detector):
     
     def getQGraphicsItem(self):
         if self._svgItem == None:
-            self._svgItem = ComponentQGraphicsItem(":/resources/photodiode_red.svg",self,[(-5,11,self._node)])
+            self._svgItem = ComponentQGraphicsItem(":/resources/photodiode_red.svg",self,[(-5,11,self.node)])
         
         return self._svgItem    
         
