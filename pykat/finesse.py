@@ -76,7 +76,7 @@ class Block:
     
 class kat(object):                    
         
-    def __init__(self, kat_file=None, kat_code=None, katdir="", katname=""):
+    def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
         
         self.scene = None # scene object for GUI
         self.__blocks = {} # dictionary of blocks that are used
@@ -88,6 +88,8 @@ class kat(object):
         self.nodes = NodeNetwork(self)  
         self.__katdir = katdir
         self.__katname = katname
+        self.__tempdir = tempdir
+        self.__tempname = tempname
         self.pykatgui = None
         
         # Various options for running finesse, typicaly the commands with just 1 input
@@ -132,7 +134,7 @@ class kat(object):
     
     def parseKatCode(self, code):
         #commands = code.split("\n")
-        self.parseCommands(commands)
+        self.parseCommands(code)
         
     def parseCommands(self, commands):
         blockComment = False
@@ -197,10 +199,10 @@ class kat(object):
                     print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                     obj = line
                 
-                self.__block[self.__currentTag].contents.append(obj)
+                self.__blocks[self.__currentTag].contents.append(obj)
                 
-                if not isinstance(line, str):
-                    self.__block[self.__currentTag].contents.append(obj)
+                if not isinstance(obj, str):
+                    self.__blocks[self.__currentTag].contents.append(obj)
                     self.add(obj)
                     
         self.__currentTag = NO_BLOCK 
@@ -239,7 +241,12 @@ class kat(object):
                 raise MissingFinesse()
             
             # create a kat file which we will write the script into
-            katfile = tempfile.NamedTemporaryFile(suffix=".kat")
+            if self.__tempname == None:
+                katfile = tempfile.NamedTemporaryFile(suffix=".kat", dir=self.__tempdir)
+            else:
+                filepath =os.path.join(self.__tempdir, self.__tempname+".kat" )
+                katfile = open( filepath, 'w' ) 
+                
             katfile.writelines(r.katScript)
             katfile.flush()
             
@@ -249,6 +256,7 @@ class kat(object):
                 cmd.append('--no-backspace')
 
             cmd.append(katfile.name)
+            print cmd
             p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
@@ -399,7 +407,8 @@ class kat(object):
         out = []    
         
         for key in self.__blocks:
-            objs = self.__blocks[key]
+            objs = self.__blocks[key].contents
+            print key, objs
             out.append("%%% FTblock " + key)
             
             for obj in objs:

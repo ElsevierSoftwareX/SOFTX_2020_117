@@ -49,25 +49,73 @@ class Detector(object) :
     name = property(__getname)
 
 class photodiode(Detector):
-    class demodulation:
-        def __init__(self, f, phase):
-            self.frequency = f
-            self.phase = phase
+            
+    def __init__(self, name, node, type, num_demods, demods):
         
-    def __init__(self, name, node, demods):
         Detector.__init__(self, name, node)
-        
-        self._num_demods = len(demods)
-        
-        for d in demods:
-            if not isinstance(d, photodiode.demodulation):
-                raise ValueError("demods array has something other than a demodulation in it")
-                
-            self._demods.append(d)
+        if num_demods>2:
+            raise NotImplementedError("pd with more than two demodulations not implemented yet")   
+        self.num_demods = num_demods
+        self.type = type
+        self
+
+    @property
+    def num_demods(self): return Param('num_demods', self.__num_demods)
+    @num_demods.setter
+    def num_demods(self,value): self.__num_demods = int(value)
+    @property
+    def type(self): return Param('type', self.__type)
+    @type.setter
+    def type(self,value): self.__type = value
+    @property
+    def f1(self): return Param('f1', self.__f1)
+    @f1.setter
+    def f1(self,value): self.__f1 = SIfloat(value)
+    @property
+    def phi1(self): return Param('phi1', self.__phi1)
+    @phi1.setter
+    def phi1(self,value): self.__phi1 = SIfloat(value)    
 
     @staticmethod
-    def parseFinesseText(text):    
-        raise NotImplementedError("This function is not implemented")   
+    def parseFinesseText(text): 
+        values = text.split(" ")
+
+        if values[0][0:2] != "pd":
+            raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))
+        if len(value[0])==2:
+            __num_demods=0
+            __type=""
+        elif len(value[0])==3 or len(value[0])==4:
+            if value[0][3]=="S":
+                __type="S"
+            elif value[0][3]=="N":
+                __type="N"
+            else:
+                try:
+                    __num_demods=int(values[0][3])
+                    __type=""
+                except ValueError:
+                    raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))
+            if len(value[0])==4:
+                try:
+                    __num_demods=int(values[0][4])
+                except ValueError:
+                    raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))                
+        else:
+            raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))
+
+        if __num_demods<0 or __num_demods>5:
+            raise exceptions.FinesseParse("'{0}' number of demodulations must be >0 and <5".format(text))
+
+        values.pop(0) # remove initial value
+        
+        if len(values) == 2 * __num_demods + 1 or len(values) == 2 * __num_demods + 2:
+            return photodiode(value[0], values[-1], __type, __num_demods, values[1:len(values-1)])
+        else:
+            raise exceptions.FinesseParse("Photodiode code format incorrect '{0}'".format(text))
+
+        #return photodiode("name", "node", demods)   
+        #raise NotImplementedError("This function is not implemented")   
         
     def getFinesseText(self) :
         if self.enabled:    

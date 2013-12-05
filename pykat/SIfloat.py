@@ -1,16 +1,14 @@
 import os
 import re
 
-"""
-class SIfloat(value):
-     def __init__(self, value):
-        self.__value = value
-"""     
-
 #staticmethod
 def SIfloat(value):
-    value=str(value)
-
+    if type(value)==list:
+        return [convertToFloat(s) for s in value]
+    else:
+        return convertToFloat(value)
+    
+def convertToFloat(value):
     __prefix = {'y': 1e-24,  # yocto
                 'z': 1e-21,  # zepto
                 'a': 1e-18,  # atto
@@ -30,7 +28,7 @@ def SIfloat(value):
                 'Z': 1e21,   # zetta
                 'Y': 1e24,   # yotta
                 }
+    value = str(value)
     for i, j in __prefix.iteritems():
         value=value.replace(i, str(j))
     return float(value)
-    

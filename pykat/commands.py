@@ -86,7 +86,7 @@ class xaxis(Command):
         if numpy.size(limits) != 2 :
             raise exceptions.ValueError("limits input should be a 2x1 vector of limits for the xaxis")
             
-        self.limits = numpy.array(limits).astype(float)
+        self.limits = numpy.array(SIfloat(limits)).astype(float)
         
         if steps <= 0 :
             raise exceptions.ValueError("steps value should be > 0")            
