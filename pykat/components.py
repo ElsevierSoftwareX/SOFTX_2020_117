@@ -269,11 +269,11 @@ class space(Component):
     @property
     def L(self): return Param('L', self.__L)
     @L.setter
-    def L(self,value): self.__L = float(value)
+    def L(self,value): self.__L = SIfloat(value)
     @property
     def n(self): return Param('n', self.__n)
     @n.setter
-    def n(self,value): self.__n = float(value)
+    def n(self,value): self.__n = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
