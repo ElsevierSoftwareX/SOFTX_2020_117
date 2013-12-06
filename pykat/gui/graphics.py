@@ -8,6 +8,7 @@ Created on Fri Feb 01 09:13:03 2013
 from PyQt4.QtGui import *
 from PyQt4.Qt import *
 from PyQt4 import QtSvg
+from PyQt4.QtSvg import QGraphicsSvgItem
 import pykat.components
 import exceptions
 
