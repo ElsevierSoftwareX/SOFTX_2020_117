@@ -42,6 +42,9 @@ from pykat.components import Component
 from pykat.commands import Command, xaxis
 from pykat.gui.gui import pyKatGUI
 
+from PyQt4.QtCore import QCoreApplication
+from PyQt4.QtGui import QApplication
+
 NO_GUI = False
 NO_BLOCK = "NO_BLOCK"
 
@@ -474,12 +477,20 @@ class kat(object):
         if NO_GUI:
             print  "No PyQt4 module was installed so cannot open a GUI"
         else:
+            self.app = QCoreApplication.instance() 
+            created = False
+            
+            if self.app == None:
+                created = True
+                self.app = QApplication([""])
+                
             if self.pykatgui == None:
-                #self.app = QtGui.QApplication([""])
                 self.pykatgui = pyKatGUI(self)
                 self.pykatgui.main()
             else:
                 self.pykatgui.show()
+                
+            if created: self.app.exec_()
     
     def getComponents(self):
         return self.__components.values()
