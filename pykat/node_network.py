@@ -47,17 +47,54 @@ class NodeNetwork(object):
         
         change_callback()
     
+    def replaceNode(self, comp, node_old, node_new):
+        
+        if node_new.components.count(None) == 0:
+            raise pkex.BasePyKatException("New node already connected to two components")
+            
+        if comp not in node_old.components:
+            raise pkex.BasePyKatException("Old node not attached to component")
+        
+        if comp in node_new.components:
+            raise pkex.BasePyKatException("New node already attached to component")
+        
+        # add component to new node component list
+        new_node_comps = list(node_new.components)
+        new_node_comps[new_node_comps.index(None)] = comp
+        self.__nodeComponents[node_new.id] = tuple(new_node_comps)
+        
+        # remove component from old node list
+        old_node_comps = list(node_old.components)
+        old_node_comps[old_node_comps.index(comp)] = None
+        self.__nodeComponents[node_old.id] = tuple(old_node_comps)
+        
+        comp_nodes = list(comp.nodes)
+        comp_nodes[comp_nodes.index(node_old)] = node_new
+        self.__componentNodes[comp.id] = tuple(comp_nodes)
+        
+        # if old node is no longer connected to anything then delete it
+        if node_old.components.count(None) == 2:
+            self.removeNode(node_old)
+            
+        self.__componentCallback[comp.id]()
+            
     def connectNodeToComp(self, node, comp, do_callback=True):
         if node.id in self.__nodeComponents:
             comps = self.__nodeComponents[node.id]
         else:
-            comps = ()
+            comps = (None,) * 2
         
-        if len(comps) >= 2:
+        if len(comps) >= 2 and comps[0] != None and comps[1] != None:
             raise pkex.BasePyKatException("Node is already connected to 2 components")
         
         l = list(comps)
-        l.append(comp)
+        
+        if l[0] == None:
+            l[0] = comp
+        elif l[1] == None:
+            l[1] = comp
+        else:
+            raise pkex.BasePyKatException("Connected to two coponents already")
         
         self.__nodeComponents[node.id] = tuple(l)
         
@@ -76,6 +113,7 @@ class NodeNetwork(object):
             self.__node_id += 1
             self.__add_node_attr(n) # add node as a member of this object, e.g. kat.nodes.n
             self.__nodes[node_name] = n
+            self.__nodeComponents[n.id] = (None, None)
             return n
         
     def removeNode(self, node):
@@ -133,8 +171,11 @@ class NodeNetwork(object):
             print "node: {0} connected:{1} {2}->{3} {4}".format(
                     n.name,n.isConnected(),comp1, comp2, detectors)
     
-    def getComponentNodes(self, comp): return self.__componentNodes[comp.id]
-    def getNodeComponents(self, node): return self.__nodeComponents[node.id]
+    def getComponentNodes(self, comp):
+        return self.__componentNodes[comp.id]
+    
+    def getNodeComponents(self, node):
+        return self.__nodeComponents[node.id]
     
     def __add_node_attr(self, node):
 
@@ -152,8 +193,8 @@ class NodeNetwork(object):
             raise exceptions.ValueError("Argument is not of type Node")
         
         name = node.name
-        detattr(self.__class__, '__node_' + name)
-        delattr(self, name)
+        delattr(self, '__node_' + name)
+        delattr(self.__class__, name)
         
     def __get_node_attr(self, name):
         return getattr(self, '__node_' + name)        
@@ -222,7 +263,7 @@ class Node(object):
         return rtn
         
     def isConnected(self):
-        if (self.components[0] is not None) and (self.self.components[1] is not None):
+        if (self.components[0] is not None) and (self.components[1] is not None):
             return True
         else:
             return False
@@ -256,7 +297,7 @@ class Node(object):
             if comps[1] == None:
                 ix = -1
             else:
-                ix = comps[1].getNodes().index(self)
+                ix = comps[1].nodes.index(self)
                 
             return [True, comps[1], ix]
             
@@ -264,7 +305,7 @@ class Node(object):
             if comps[0] == None:
                 ix = -1
             else:
-                ix = comps[0].getNodes().index(self)
+                ix = comps[0].nodes.index(self)
                 
             return [True, comps[0], ix]
         else:
