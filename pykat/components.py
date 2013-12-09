@@ -32,21 +32,21 @@ class NodeGaussSetter(object):
         
     @q.setter
     def q(self, value):
-        self.__node.setGauss(self.__comp, value)
+        self.__node.setGauss(self.__comp, complex(value))
         
     @property
     def qx(self):
         return self.__node.qx
     @qx.setter
     def qx(self, value):
-        self.__node.setGauss(self.__comp, value)
+        self.__node.setGauss(self.__comp, complex(value))
     
     @property
     def qy(self):
         return self.__node.qy
     @qy.setter
     def qy(self, value):
-        self.__node.setGauss(self.__comp, self.qx, value)
+        self.__node.setGauss(self.__comp, self.qx, complex(value))
         
 class Component(object) :
     def __init__(self, name):
