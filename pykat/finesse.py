@@ -194,7 +194,7 @@ class kat(object):
                 first = line.split(" ",1)[0]
                 obj = None
                 
-                if(first == "m"):
+                if(first == "m" or first == "m1" or first == "m2"):
                     obj = pykat.components.mirror.parseFinesseText(line)
                 elif(first == "s"):
                     obj = pykat.components.space.parseFinesseText(line)

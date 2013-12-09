@@ -155,60 +155,61 @@ class mirror(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
 
-        self.__r_ap = float(r_ap)        
-        self.__mass = float(mass)
-        self.__R = float(R)
-        self.__T = float(T)
-        self.__phi = float(phi)
-        self.__Rcx = float(Rcx)
-        self.__Rcy = float(Rcy)
-        self.__xbeta = float(xbeta)
-        self.__ybeta = float(ybeta)
+        
+        self.__r_ap = SIfloat(r_ap)        
+        self.__mass = SIfloat(mass)
+        self.__R = SIfloat(R)
+        self.__T = SIfloat(T)
+        self.__phi = SIfloat(phi)
+        self.__Rcx = SIfloat(Rcx)
+        self.__Rcy = SIfloat(Rcy)
+        self.__xbeta = SIfloat(xbeta)
+        self.__ybeta = SIfloat(ybeta)
     
     @property
     def r_ap(self): return Param('r_ap', self.__r_ap)
     @r_ap.setter
-    def r_ap(self,value): self.__aperture = float(value)
+    def r_ap(self,value): self.__aperture = SIfloat(value)
 
     @property
     def mass(self): return Param('mass', self.__mass)
     @mass.setter
-    def mass(self,value): self.__mass = float(value)
+    def mass(self,value): self.__mass = SIfloat(value)
     
     @property
     def R(self): return Param('R', self.__R)
     @R.setter
-    def R(self,value): self.__R = float(value)
+    def R(self,value): self.__R = SIfloat(value)
     
     @property
     def T(self): return Param('T', self.__T)
     @T.setter
-    def T(self,value): self.__T = float(value)
+    def T(self,value): self.__T = SIfloat(value)
         
     @property
     def phi(self): return Param('phi', self.__phi)
     @phi.setter
-    def phi(self,value): self.__phi = float(value)
+    def phi(self,value): self.__phi = SIfloat(value)
     
     @property
     def Rcx(self): return Param('Rcx', self.__Rcx)
     @Rcx.setter
-    def Rcx(self,value): self.__Rcx = float(value)
+    def Rcx(self,value): self.__Rcx = SIfloat(value)
     
     @property
     def Rcy(self): return Param('Rcy', self.__Rcy)
     @Rcy.setter
-    def Rcy(self,value): self.__Rcy = float(value)
+    def Rcy(self,value): self.__Rcy = SIfloat(value)
     
     @property
     def xbeta(self): return Param('xbeta', self.__xbeta)
     @xbeta.setter
-    def xbeta(self,value): self.__xbeta = float(value)
+    def xbeta(self,value): self.__xbeta = SIfloat(value)
     
     @property
     def ybeta(self): return Param('ybeta', self.__ybeta)
     @ybeta.setter
-    def ybeta(self,value): self.__ybeta = float(value)
+    def ybeta(self,value): self.__ybeta = SIfloat(value)
     
     @property
     def Rc(self):
@@ -219,14 +220,14 @@ class mirror(Component):
     
     @Rc.setter
     def Rc(self,value):
-        self.Rcx = float(value)
-        self.Rcy = float(value)
+        self.Rcx = SIfloat(value)
+        self.Rcy = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
         values = text.split(" ")
 
-        if values[0] != "m":
+        if values[0] != "m" and values[0] != "m1" and values[0] != "m2":
             raise exceptions.RuntimeError("'{0}' not a valid Finesse mirror command".format(text))
 
         values.pop(0) # remove initial value
@@ -234,8 +235,15 @@ class mirror(Component):
         if len(values) != 6:
             raise exceptions.RuntimeError("Mirror Finesse code format incorrect '{0}'".format(text))
 
-        return mirror(values[0], values[4], values[5], R=values[1], T=values[2], phi=values[3])
-        
+        if len(values[0])==1:
+            return mirror(values[0], values[4], values[5], R=values[1], T=values[2], phi=values[3])
+        else:
+            if values[0][1]==1:
+                return mirror(values[0], values[4], values[5], R=1.0-SIfloat(values[1])-SIfloat(values[2]), T=values[1], phi=values[3])
+            else:
+                return mirror(values[0], values[4], values[5], R=values[1], T=1.0-SIfloat(values[1])-SIfloat(values[2]), phi=values[3])
+
+            
     def getFinesseText(self):        
         rtn = []
             
