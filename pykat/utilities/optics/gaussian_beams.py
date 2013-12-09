@@ -33,7 +33,7 @@ class gauss_param(object):
             if "q" in kwargs:
                 self.__q = complex(kwargs["q"])        
             else:
-                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and wz, to define the beam parameter")
+                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and wz or q, to define the beam parameter")
                 
         elif len(kwargs) == 2:        
             
@@ -45,7 +45,7 @@ class gauss_param(object):
                 one_q = 1 / kwargs["rc"] - 1j * self.__lamda / (math.pi * self.__nr * kwargs["wz"]**2)
                 q = 1/one_q
             else:
-                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and wz, to define the beam parameter")
+                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and wz or q, to define the beam parameter")
                 
             self.__q = q
         else:
