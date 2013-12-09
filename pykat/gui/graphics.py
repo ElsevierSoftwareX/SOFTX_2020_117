@@ -8,6 +8,7 @@ Created on Fri Feb 01 09:13:03 2013
 from PyQt4.QtGui import *
 from PyQt4.Qt import *
 from PyQt4 import QtSvg
+from PyQt4.QtSvg import QGraphicsSvgItem
 import pykat.components
 import exceptions
 
@@ -56,16 +57,16 @@ class SpaceQGraphicsItem(QGraphicsLineItem):
     @property
     def space(self): return self.__space
     
-    def refresh(self):    
-        nodes = self.__space.getNodes()
-            
+    def refresh(self):
+        nodes = self.__space.nodes
+                
         conn = nodes[0].amIConnected(self.__space)
         
         x1 = 0
         y1 = 0
         x2 = 0
         y2 = 0
-        
+                
         if conn[0]:
             if conn[1] != None:
                 if self.__n1 is not None:
@@ -178,7 +179,7 @@ class ComponentQGraphicsItem(QtSvg.QGraphicsSvgItem):
     def itemChange(self, change, value):
         # if the item is moved then update any spaces attached to it
         if change == QGraphicsItem.ItemPositionHasChanged:
-            nodes = self.__component.getNodes()
+            nodes = self.__component.nodes
             
             for n in nodes:
                 conn = n.amIConnected(self.__component)

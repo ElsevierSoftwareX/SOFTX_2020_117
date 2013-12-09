@@ -32,21 +32,21 @@ class NodeGaussSetter(object):
         
     @q.setter
     def q(self, value):
-        self.__node.setGauss(self.__comp, value)
+        self.__node.setGauss(self.__comp, complex(value))
         
     @property
     def qx(self):
         return self.__node.qx
     @qx.setter
     def qx(self, value):
-        self.__node.setGauss(self.__comp, value)
+        self.__node.setGauss(self.__comp, complex(value))
     
     @property
     def qy(self):
         return self.__node.qy
     @qy.setter
     def qy(self, value):
-        self.__node.setGauss(self.__comp, self.qx, value)
+        self.__node.setGauss(self.__comp, self.qx, complex(value))
         
 class Component(object) :
     def __init__(self, name):
@@ -94,8 +94,8 @@ class Component(object) :
         # now we have a list of which to remove
         for key in key_rm:
             ns = self.__dict__[key]
-            detattr(self, '__nodesetter_' + ns._node.name)
-            delattr(self, ns._node.name)
+            delattr(self, '__nodesetter_' + ns.node.name)
+            delattr(self.__class__, ns.node.name)
         
         for node in self.nodes:
             if type(node) != pykat.node_network.DumpNode:
@@ -313,22 +313,7 @@ class space(Component):
         if self._QItem == None:
             self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self)
         
-        return self._QItem  
-
-    # def changeNode(self, node_old, node_new):
-        # '''
-        # Called when a space's node has been connected
-        # to another components node
-        # '''
-        # node_new.connect(self)
-        # node_old.disconnect(self)
-        
-        # if self._nodes[0] == node_old:
-            # self._nodes[0] = node_new
-        
-        # if self._nodes[1] == node_old:
-            # self._nodes[1] = node_newf
-
+        return self._QItem          
     
 class laser(Component):
     def __init__(self,name,node,P=1,f_offset=0,phase=0):

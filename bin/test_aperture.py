@@ -28,7 +28,6 @@ for tem in maxtem:
     r = kat.run()
     pl.plot(r.x/1e-3, r.y, label="maxtem={0}".format(tem))
 
-    
 pl.ylabel("Reflected Power [W]")
 pl.xlabel("Mirror aperture [mm]")
 pl.legend()

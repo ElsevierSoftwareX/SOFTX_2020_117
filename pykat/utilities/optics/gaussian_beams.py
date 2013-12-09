@@ -14,6 +14,7 @@ class gauss_param(object):
         q = gauss_param(w0=w0, z=z)
         q = gauss_param(z=z, zr=zr)
         q = gauss_param(wz=wz, rc=rc)
+        q = gauss_param(q=a) # where a is a complex number
         
         or change default wavelength and refractive index with:
         
@@ -27,6 +28,13 @@ class gauss_param(object):
         
         if len(args) == 1:
             self.__q = args[0]
+        
+        elif len(kwargs) == 1:
+            if "q" in kwargs:
+                self.__q = complex(kwargs["q"])        
+            else:
+                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and wz, to define the beam parameter")
+                
         elif len(kwargs) == 2:        
             
             if "w0" in kwargs and "z" in kwargs:

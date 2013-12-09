@@ -5,7 +5,7 @@ Created on Tue Jan 29 11:35:48 2013
 @author: Daniel
 """
 
-from pykat.components import Component
+from pykat.components import Component, space
 from pykat.detectors import Detector
 
 from PyQt4 import QtGui, QtCore
@@ -16,11 +16,11 @@ import qt_gui
 import functools
 
 class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
-    def __init__(self, kat,parent=None):
+    def __init__(self, kat, parent=None):
         super(pyKatGUI, self).__init__(parent)
         
         self.setupUi(self)
-        self.graphicsView = pyKatGraphicsView(self.centralwidget)
+        self.graphicsView = pyKatGraphicsView(self.centralwidget, kat)
         self.graphicsView.setObjectName("graphicsView")
         self.graphicsView.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.graphicsView.viewport().setMouseTracking(True)
@@ -41,8 +41,11 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
         self.actionExport_to_SVG.triggered.connect(lambda: self.exportToSVG())
         self.actionClose.triggered.connect(lambda: self.close)
 
-        self.kat = kat        
+        self._kat = kat        
         
+    @property
+    def kat(self): return self._kat
+    
     def main(self):
         self.show()
         
@@ -52,7 +55,6 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
         return self.__scene
 
     def addComponentsToScene(self):
-        
         for c in self.kat.getComponents():
             self.addComponentToScene(c)
                 
@@ -120,7 +122,27 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
 
         self.kat.add(l)
         self.addComponentToScene(l,x,y)   
+     
+    def disconnect(self, node):
+        comps = self.kat.nodes.getNodeComponents(node)
         
+        spaces = [c for c in comps if isinstance(c, space)]
+        
+        if len(spaces) > 0:
+            dis_comp = spaces[0]
+        else:
+            dis_comp = comps[0]
+        
+        new_node_name = self.kat.getNewNodeNames("n", 1)
+        new_node = self.kat.nodes.createNode(new_node_name[0])
+        
+        self.kat.nodes.replaceNode(dis_comp, node, new_node)
+        
+        # refresh all the graphics that might be affected
+        for c in node.components + new_node.components:
+            if c != None:
+                c.getQGraphicsItem().refresh()
+    
 class pyKatGraphicsScene(QGraphicsScene):
     def drawBackground(self, painter, rect):
         size = 10
@@ -149,9 +171,9 @@ class pyKatGraphicsScene(QGraphicsScene):
             painter.drawLine(y, rect.top(), y, rect.bottom())
                     
 class pyKatGraphicsView(QGraphicsView):
-    def __init__(self,val):
-        QGraphicsView.__init__(self,val)
-        
+    def __init__(self, val, kat):
+        QGraphicsView.__init__(self, val)
+        self._kat = kat
         self.__selected_item = None
         self.__prev_pt = None
         self.setMouseTracking(True)
@@ -189,8 +211,11 @@ class pyKatGraphicsView(QGraphicsView):
                 menu.addAction("Delete")
             if isinstance(item,NodeQGraphicItem):
                 menu.addSeparator()
-                menu.addAction("Disconnect")
+                comps = self._kat.nodes.getNodeComponents(item.node)
                 
+                if(comps.count(None) == 0):
+                    action = menu.addAction("Disconnect")
+                    action.triggered.connect(functools.partial(gui.disconnect, item.node))
 
         menu.popup(ev.globalPos());        
         
@@ -244,8 +269,7 @@ class pyKatGraphicsView(QGraphicsView):
             # connect space of node dragged to the component node
             # the space node that has been dragged gets deleted and we
             # replace it with the components
-            space.changeNode(node_s, node_c)
-            node_s.remove() # now remove from node network completly
+            self._kat.nodes.replaceNode(space, node_s, node_c)
             
             # then refresh the graphical items
             qspace.refresh()
