@@ -227,7 +227,6 @@ class mirror(Component):
     def parseFinesseText(text):
         values = text.split(" ")
 
-        #if values[0] != "m" and values[0] != "m1" and values[0] != "m2":
         if values[0] != "m" and values[0] != "m1" and values[0] != "m2":
             raise exceptions.RuntimeError("'{0}' not a valid Finesse mirror command".format(text))
         
