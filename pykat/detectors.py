@@ -64,7 +64,6 @@ class photodiode(Detector):
         def append(self, value):
             list.append(self,SIfloat(value))
         """    
-        ### todo add append with SIfloat
             
     class __Phi(list):
         def __convertValue(self, value):
@@ -90,8 +89,6 @@ class photodiode(Detector):
         def append(self, value):
             list.append(self,self.__convertValue(value))
         """
-        ### todo add append with convertValue
-
             
     @property
     def f(self): return self.__f
@@ -106,15 +103,17 @@ class photodiode(Detector):
             raise NotImplementedError("pd with more than two demodulations not implemented yet")   
         self.num_demods = num_demods
         self.senstype = senstype
+
         # every second element into f (starting at 1)
-        
         self.__f = self.__F(demods[::2])
         
         # Every second element into phi (starting at 2)
-        self.__phi = self.__Phi()
+        self.__phi = self.__Phi(demods[1::2])
+        """
         for i in demods[1::2]:
             self.__phi.append(i)        
-
+        """
+        
     @staticmethod
     def parseFinesseText(text): 
         values = text.split(" ")
@@ -125,7 +124,6 @@ class photodiode(Detector):
             __num_demods=0
             __senstype=""
         elif len(values[0])==3 or len(values[0])==4:
-            print len(values[0])
             if values[0][2]=="S":
                 __senstype="S"
             elif values[0][2]=="N":

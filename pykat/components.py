@@ -229,18 +229,19 @@ class mirror(Component):
 
         if values[0] != "m" and values[0] != "m1" and values[0] != "m2":
             raise exceptions.RuntimeError("'{0}' not a valid Finesse mirror command".format(text))
-
-        values.pop(0) # remove initial value
         
-        if len(values) != 6:
+        if len(values) != 7:
             raise exceptions.RuntimeError("Mirror Finesse code format incorrect '{0}'".format(text))
 
         if len(values[0])==1:
+            values.pop(0) # remove initial value
             return mirror(values[0], values[4], values[5], R=values[1], T=values[2], phi=values[3])
         else:
-            if values[0][1]==1:
+            if values[0][1]=="1":
+                values.pop(0) # remove initial value
                 return mirror(values[0], values[4], values[5], R=1.0-SIfloat(values[1])-SIfloat(values[2]), T=values[1], phi=values[3])
             else:
+                values.pop(0) # remove initial value
                 return mirror(values[0], values[4], values[5], R=values[1], T=1.0-SIfloat(values[1])-SIfloat(values[2]), phi=values[3])
 
             
