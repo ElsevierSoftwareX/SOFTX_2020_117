@@ -125,12 +125,12 @@ class Component(object):
         """Parses Finesse syntax"""
         raise NotImplementedError("This function is not implemented")
 
-    @staticmethod
     @abc.abstractmethod
     def getFinesseText(self):
         """ Base class for individual Finesse optical components """    
         raise NotImplementedError("This function is not implemented")
 
+    @abc.abstractmethod
     def getQGraphicsItem(self):    
         return None      
     
@@ -272,7 +272,7 @@ class mirror(AbstractMirrorComponent):
                 self.name, self.R, self.T, self.phi,
                 self.nodes[0].name, self.nodes[1].name))
 
-        rtn.append(super(mirror, self).getAttributeText())
+        rtn.extend(super(mirror, self).getAttributeText())
         
         return rtn
         

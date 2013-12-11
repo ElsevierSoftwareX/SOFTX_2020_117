@@ -446,7 +446,8 @@ class kat(object):
                     
                     if txt != None:
                         if isinstance(txt,list):
-                            for t in txt: out.append(t + "\n")
+                            for t in txt:
+                                out.append(t + "\n")
                         else:
                             out.append(txt + "\n")
                             

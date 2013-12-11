@@ -132,3 +132,13 @@ class gauss_param(object):
         
     def __eq__(self, q):
         return complex(q) == self.__q
+        
+    @property
+    def real(self): return self.__q.real
+    @real.setter
+    def real(self, value): self.__q.real = SIfloat(value)
+    
+    @property
+    def imag(self): return self.__q.imag
+    @imag.setter
+    def imag(self, value): self.__q.imag = SIfloat(value)
