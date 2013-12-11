@@ -328,7 +328,7 @@ class beamSplitter(AbstractMirrorComponent):
                 self.nodes[1].name, self.nodes[2].name,
                 self.nodes[3].name))
 
-        rtn.append(super(beamSplitter, self).getAttributeText())
+        rtn.extend(super(beamSplitter, self).getAttributeText())
         
         return rtn
         
