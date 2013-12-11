@@ -97,7 +97,7 @@ class photodiode(Detector):
     def phi(self): return self.__phi
 
         
-    def __init__(self, name, node, senstype=None, num_demods=0, demods=[]):        
+    def __init__(self, name, node, senstype="", num_demods=0, demods=[]):        
         Detector.__init__(self, name, node)
         if num_demods>2:
             raise NotImplementedError("pd with more than two demodulations not implemented yet")   
