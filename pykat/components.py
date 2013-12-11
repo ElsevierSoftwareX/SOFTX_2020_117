@@ -9,6 +9,7 @@ import pykat.exceptions as pkex
 import pykat
 from pykat.node_network import *
 from pykat.exceptions import *
+import abc
 
 import pykat.gui.resources
 import pykat.gui.graphics
@@ -48,7 +49,9 @@ class NodeGaussSetter(object):
     def qy(self, value):
         self.__node.setGauss(self.__comp, self.qx, complex(value))
         
-class Component(object) :
+class Component(object):
+    __metaclass__ = abc.ABCMeta
+    
     def __init__(self, name):
         self.__name = name
         self._svgItem = None
@@ -117,13 +120,17 @@ class Component(object) :
         return getattr(self, '__nodesetter_' + name)   
         
     @staticmethod
-    def parseFinesseText(text):    
+    @abc.abstractmethod
+    def parseFinesseText(text):
+        """Parses Finesse syntax"""
         raise NotImplementedError("This function is not implemented")
-            
+
+    @staticmethod
+    @abc.abstractmethod
     def getFinesseText(self):
-        """ Base class for individual finesse optical components """    
+        """ Base class for individual Finesse optical components """    
         raise NotImplementedError("This function is not implemented")
-        
+
     def getQGraphicsItem(self):    
         return None      
     
@@ -136,8 +143,6 @@ class Component(object) :
     @property
     def id(self): return self.__id
     
-    
-    
 class Param(float):
     def __new__(self,name,value):
         return float.__new__(self,SIfloat(value))
@@ -146,18 +151,13 @@ class Param(float):
         self.__name = name
         
     name = property(lambda self: self.__name)
-           
-class mirror(Component):
-    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0, r_ap=0):
-        
-        Component.__init__(self,name)
-        
-        self._requested_node_names.append(node1)
-        self._requested_node_names.append(node2)
 
-        
-        self.__r_ap = SIfloat(r_ap)        
-        self.__mass = SIfloat(mass)
+class AbstractMirrorComponent(Component):
+    __metaclass__ = abc.ABCMeta
+    
+    def __init__(self, name, R=0, T=0, phi=0, Rcx=0, Rcy=0, xbeta=0, ybeta=0, mass=0, r_ap=0):
+        super(AbstractMirrorComponent, self).__init__(name)
+
         self.__R = SIfloat(R)
         self.__T = SIfloat(T)
         self.__phi = SIfloat(phi)
@@ -165,7 +165,21 @@ class mirror(Component):
         self.__Rcy = SIfloat(Rcy)
         self.__xbeta = SIfloat(xbeta)
         self.__ybeta = SIfloat(ybeta)
-    
+        self.__mass = SIfloat(mass)
+        self.__r_ap = SIfloat(r_ap)
+
+    def getAttributeText(self):
+        rtn = []
+        
+        if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.__Rcx))
+        if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.__Rcy))
+        if self.xbeta != 0: rtn.append("attr {0} xbeta {1}".format(self.name,self.__xbeta))
+        if self.ybeta != 0: rtn.append("attr {0} ybeta {1}".format(self.name,self.__ybeta))
+        if self.mass != 0: rtn.append("attr {0} mass {1}".format(self.name,self.__mass))
+        if self.r_ap != 0: rtn.append("attr {0} r_ap {1}".format(self.name,self.__r_ap))
+        
+        return rtn
+        
     @property
     def r_ap(self): return Param('r_ap', self.__r_ap)
     @r_ap.setter
@@ -222,6 +236,13 @@ class mirror(Component):
     def Rc(self,value):
         self.Rcx = SIfloat(value)
         self.Rcy = SIfloat(value)
+
+class mirror(AbstractMirrorComponent):
+    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0, r_ap=0):
+        super(mirror, self).__init__(name, R, T, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
+        
+        self._requested_node_names.append(node1)
+        self._requested_node_names.append(node2)
     
     @staticmethod
     def parseFinesseText(text):
@@ -244,20 +265,14 @@ class mirror(Component):
                 values.pop(0) # remove initial value
                 return mirror(values[0], values[4], values[5], R=values[1], T=1.0-SIfloat(values[1])-SIfloat(values[2]), phi=values[3])
 
-            
     def getFinesseText(self):        
         rtn = []
             
         rtn.append('m {0} {1} {2} {3} {4} {5}'.format(
-                self.name, self.__R, self.__T, self.__phi,
+                self.name, self.R, self.T, self.phi,
                 self.nodes[0].name, self.nodes[1].name))
 
-        if self.r_ap != 0: rtn.append("attr {0} r_ap {1}".format(self.name,self.__r_ap))            
-        if self.mass != 0: rtn.append("attr {0} mass {1}".format(self.name,self.__mass))
-        if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.__Rcx))
-        if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.__Rcy))
-        if self.xbeta != 0: rtn.append("attr {0} xbeta {1}".format(self.name,self.__xbeta))
-        if self.ybeta != 0: rtn.append("attr {0} ybeta {1}".format(self.name,self.__ybeta))
+        rtn.append(super(mirror, self).getAttributeText())
         
         return rtn
         
@@ -267,75 +282,21 @@ class mirror(Component):
             
         return self._svgItem
 
-class beamSplitter(Component):
-    def __init__(self,name,node1,node2,node3,node4,R=0,T=0,phi=0,alpha=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0):
-        Component.__init__(self,name)
+class beamSplitter(AbstractMirrorComponent):
+    def __init__(self, name, node1, node2, node3, node4, R = 0, T = 0, phi = 0, alpha = 0, Rcx = 0, Rcy = 0, xbeta = 0, ybeta = 0, mass = 0, r_ap = 0):
+        super(beamSplitter, self).__init__(name, R, T, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._requested_node_names.append(node3)
         self._requested_node_names.append(node4)
              
-        self.__R = SIfloat(R)
-        self.__T = SIfloat(T)
         self.__alpha = SIfloat(alpha)
-        self.__phi = SIfloat(phi)
-        self.__Rcx = SIfloat(Rcx)
-        self.__Rcy = SIfloat(Rcy)
-        self.__xbeta = SIfloat(xbeta)
-        self.__ybeta = SIfloat(ybeta)
-    
-    @property
-    def R(self): return Param('R', self.__R)
-    @R.setter
-    def R(self,value): self.__R = SIfloat(value)
-    
-    @property
-    def T(self): return Param('T', self.__T)
-    @T.setter
-    def T(self,value): self.__T = SIfloat(value)
-        
-    @property
-    def phi(self): return Param('phi', self.__phi)
-    @phi.setter
-    def phi(self,value): self.__phi = SIfloat(value)
     
     @property
     def alpha(self): return Param('alpha', self.__alpha)
     @alpha.setter
     def alpha(self,value): self.__alpha = SIfloat(value)
-    
-    @property
-    def Rcx(self): return Param('Rcx', self.__Rcx)
-    @Rcx.setter
-    def Rcx(self,value): self.__Rcx = SIfloat(value)
-    
-    @property
-    def Rcy(self): return Param('Rcy', self.__Rcy)
-    @Rcy.setter
-    def Rcy(self,value): self.__Rcy = SIfloat(value)
-    
-    @property
-    def xbeta(self): return Param('xbeta', self.__xbeta)
-    @xbeta.setter
-    def xbeta(self,value): self.__xbeta = SIfloat(value)
-    
-    @property
-    def ybeta(self): return Param('ybeta', self.__ybeta)
-    @ybeta.setter
-    def ybeta(self,value): self.__ybeta = SIfloat(value)
-    
-    @property
-    def Rc(self):
-        if self.Rcx == self.Rcy:
-            return self.Rcx
-        else:
-            return [self.Rcx, self.Rcy]
-    
-    @Rc.setter
-    def Rc(self,value):
-        self.Rcx = SIfloat(value)
-        self.Rcy = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -358,19 +319,16 @@ class beamSplitter(Component):
                 values.pop(0) # remove initial value
                 return beamSplitter(values[0], values[5], values[6], values[7], values[8], values[1], 1.0 - SIfloat(values[1]) - SIfloat(values[2]), values[3], values[4])
             
-    def getFinesseText(self):        
+    def getFinesseText(self):
         rtn = []
             
         rtn.append('bs {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
-                self.name, self.__R, self.__T, self.__phi,
-                self.__alpha, self.nodes[0].name,
+                self.name, self.R, self.T, self.phi,
+                self.alpha, self.nodes[0].name,
                 self.nodes[1].name, self.nodes[2].name,
                 self.nodes[3].name))
 
-        if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.__Rcx))
-        if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.__Rcy))
-        if self.xbeta != 0: rtn.append("attr {0} xbeta {1}".format(self.name,self.__xbeta))
-        if self.ybeta != 0: rtn.append("attr {0} ybeta {1}".format(self.name,self.__ybeta))
+        rtn.append(super(beamSplitter, self).getAttributeText())
         
         return rtn
         
