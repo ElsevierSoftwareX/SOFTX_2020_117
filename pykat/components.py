@@ -266,7 +266,120 @@ class mirror(Component):
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
             
         return self._svgItem
-   
+
+class beamSplitter(Component):
+    def __init__(self,name,node1,node2,node3,node4,R=0,T=0,phi=0,alpha=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0):
+        Component.__init__(self,name)
+        
+        self._requested_node_names.append(node1)
+        self._requested_node_names.append(node2)
+        self._requested_node_names.append(node3)
+        self._requested_node_names.append(node4)
+             
+        self.__R = SIfloat(R)
+        self.__T = SIfloat(T)
+        self.__alpha = SIfloat(alpha)
+        self.__phi = SIfloat(phi)
+        self.__Rcx = SIfloat(Rcx)
+        self.__Rcy = SIfloat(Rcy)
+        self.__xbeta = SIfloat(xbeta)
+        self.__ybeta = SIfloat(ybeta)
+    
+    @property
+    def R(self): return Param('R', self.__R)
+    @R.setter
+    def R(self,value): self.__R = SIfloat(value)
+    
+    @property
+    def T(self): return Param('T', self.__T)
+    @T.setter
+    def T(self,value): self.__T = SIfloat(value)
+        
+    @property
+    def phi(self): return Param('phi', self.__phi)
+    @phi.setter
+    def phi(self,value): self.__phi = SIfloat(value)
+    
+    @property
+    def alpha(self): return Param('alpha', self.__alpha)
+    @alpha.setter
+    def alpha(self,value): self.__alpha = SIfloat(value)
+    
+    @property
+    def Rcx(self): return Param('Rcx', self.__Rcx)
+    @Rcx.setter
+    def Rcx(self,value): self.__Rcx = SIfloat(value)
+    
+    @property
+    def Rcy(self): return Param('Rcy', self.__Rcy)
+    @Rcy.setter
+    def Rcy(self,value): self.__Rcy = SIfloat(value)
+    
+    @property
+    def xbeta(self): return Param('xbeta', self.__xbeta)
+    @xbeta.setter
+    def xbeta(self,value): self.__xbeta = SIfloat(value)
+    
+    @property
+    def ybeta(self): return Param('ybeta', self.__ybeta)
+    @ybeta.setter
+    def ybeta(self,value): self.__ybeta = SIfloat(value)
+    
+    @property
+    def Rc(self):
+        if self.Rcx == self.Rcy:
+            return self.Rcx
+        else:
+            return [self.Rcx, self.Rcy]
+    
+    @Rc.setter
+    def Rc(self,value):
+        self.Rcx = SIfloat(value)
+        self.Rcy = SIfloat(value)
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split(" ")
+
+        if values[0] != "bs" and values[0] != "bs1" and values[0] != "bs2":
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse beam splitter command".format(text))
+        
+        if len(values) != 10:
+            raise exceptions.RuntimeError("Beam splitter Finesse code format incorrect '{0}'".format(text))
+
+        if len(values[0])==1:
+            values.pop(0) # remove initial value
+            return beamSplitter(values[0], values[5], values[6], values[7], values[8], values[1], values[2], values[3], values[4])
+        else:
+            if values[0][1]=="1":
+                values.pop(0) # remove initial value
+                return beamSplitter(values[0], values[5], values[6], values[7], values[8], 1.0 - SIfloat(values[1]) - SIfloat(values[2]), values[1], values[3], values[4])
+            else:
+                values.pop(0) # remove initial value
+                return beamSplitter(values[0], values[5], values[6], values[7], values[8], values[1], 1.0 - SIfloat(values[1]) - SIfloat(values[2]), values[3], values[4])
+            
+    def getFinesseText(self):        
+        rtn = []
+            
+        rtn.append('bs {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
+                self.name, self.__R, self.__T, self.__phi,
+                self.__alpha, self.nodes[0].name,
+                self.nodes[1].name, self.nodes[2].name,
+                self.nodes[3].name))
+
+        if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.__Rcx))
+        if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.__Rcy))
+        if self.xbeta != 0: rtn.append("attr {0} xbeta {1}".format(self.name,self.__xbeta))
+        if self.ybeta != 0: rtn.append("attr {0} ybeta {1}".format(self.name,self.__ybeta))
+        
+        return rtn
+        
+    def getQGraphicsItem(self):
+        if self._svgItem == None:
+            # FIXME: make proper SVG component for beam splitter
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
+            
+        return self._svgItem
    
 class space(Component):
     def __init__(self, name, node1, node2, L=0, n=1):

@@ -203,6 +203,8 @@ class kat(object):
                     obj = pykat.components.space.parseFinesseText(line)
                 elif(first == "l"):
                     obj = pykat.components.laser.parseFinesseText(line)
+                elif(first[0:2] == "bs"):
+                    obj = pykat.components.beamSplitter.parseFinesseText(line)
                 elif(first[0:2] == "pd"):
                     obj = pykat.detectors.photodiode.parseFinesseText(line)
                 elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
