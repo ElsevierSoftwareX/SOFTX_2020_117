@@ -479,19 +479,40 @@ class grating(Component):
         values.pop(0) # remove initial value
         
         if n == 2:
+            if len(values) != 4:
+                raise exceptions.RuntimeError("Two port grating must have 2 nodes defined")
+
             return grating(values[0], values[2], values[3], None, None, n, values[1])
         elif n == 3:
+            if len(values) != 5:
+                raise exceptions.RuntimeError("Three port grating must have 3 nodes defined")
+            
             return grating(values[0], values[2], values[3], values[4], None, n, values[1])
         else:
+            if len(values) != 6:
+                raise exceptions.RuntimeError("Four port grating must have 4 nodes defined")
+            
             return grating(values[0], values[2], values[3], values[4], values[5], n, values[1])
         
     def getFinesseText(self):
+        rtn = []
+        
         if self.__n == 2:
-            return 'gr{0} {1} {2} {3} {4}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name)            
+            rtn.append('gr{0} {1} {2} {3} {4}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name))
         elif self.__n == 3:
-            return 'gr{0} {1} {2} {3} {4} {5}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name)
+            rtn.append('gr{0} {1} {2} {3} {4} {5}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name))
         else:
-            return 'gr{0} {1} {2} {3} {4}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, self.nodes[3].name)
+            rtn.append('gr{0} {1} {2} {3} {4} {5} {6}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, self.nodes[3].name))
+        
+        if self.eta_0 != 0: rtn.append("attr {0} eta_0 {1}".format(self.name,self.__eta_0))
+        if self.eta_1 != 0: rtn.append("attr {0} eta_1 {1}".format(self.name,self.__eta_1))
+        if self.eta_2 != 0: rtn.append("attr {0} eta_2 {1}".format(self.name,self.__eta_2))
+        if self.eta_3 != 0: rtn.append("attr {0} eta_3 {1}".format(self.name,self.__eta_3))
+        if self.rho_0 != 0: rtn.append("attr {0} rho_0 {1}".format(self.name,self.__rho_0))
+        if self.alpha != 0: rtn.append("attr {0} alpha {1}".format(self.name,self.__alpha))
+        # TODO: implement Rcx, Rcy, Rc
+        
+        return rtn
        
     def getQGraphicsItem(self):
         if self._QItem == None:
