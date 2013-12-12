@@ -1,0 +1,40 @@
+#
+#-----------------------------------------------------------------------
+# ASC_01.kat
+#
+# This file is an part of the Finesse ASC signal validation. 
+#
+# Checking setup.
+#                                                    
+# 01.02.2013, Andreas Freise
+#----------------------------------------------------------------------
+#
+#
+
+l psl 1.0 0 npsl /* toll*/ % P=1W input laser
+mod EOM 9M 0.001 1 pm 0 npsl nEOM1
+s s1 0 nEOM1 npo1
+
+bs1 po 0.5 0 0 45 npo1 dump npo2 nWFS1 % 50:50 pick-off mirror
+s s2 0 npo2 nL1
+
+lens ITM_TL 10000G nL1 nL2  % thermal lens in ITM
+s ITMsub 0 nL2 nITM1  
+
+m1 ITM 0.02 0 0 nITM1 nITM2  
+attr ITM Rc -2500  
+s s_cav 5000 nITM2 nETM1    
+m1 ETM 0.001 0 0 nETM1 nETM2
+attr ETM Rc 2700   
+cav c1 ITM nITM2 ETM nETM1
+
+s spo1 1n nWFS1 nL1_in
+lens L1 1250 nL1_in nL1_out 
+s spo2 5000 nL1_out nWFS2 
+
+%const ETM_phi 22.63754342 % on resonance
+% now 0.1/1064*360 + 22.63754342 =  22.6713780064662
+%const ETM_phi 22.6713780064662 % 1e-10m off resonance
+
+phase 0
+
