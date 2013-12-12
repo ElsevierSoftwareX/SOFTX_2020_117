@@ -68,7 +68,7 @@ class gauss_param(object):
     
     @property
     def wz(self):
-        return math.sqrt(self.__lambda /(self.__nr * math.pi) * abs(self.__q) / self.__q.imag)
+        return self.w0 * math.sqrt(1 + (self.__q.real/self.__q.imag)**2)
     
     @property
     def w0(self):
