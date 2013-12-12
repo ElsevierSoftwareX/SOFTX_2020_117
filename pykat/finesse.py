@@ -230,6 +230,20 @@ class kat(object):
                 pykat.commands.gauss.parseFinesseText(line)
             
         self.__currentTag = NO_BLOCK 
+
+    def saveScript(self, filename=None):
+        """
+        Saves the current kat object to a Finesse input file
+        """
+        try:
+            katScript = "".join(self.generateKatScript())       
+            katfile = open(filename,'w')
+            katfile.writelines(katScript)
+            katfile.flush()
+            katfile.close()
+
+        except BasePyKatException as ex:
+            print ex
             
     def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
         """ 
