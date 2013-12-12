@@ -341,14 +341,13 @@ class beamSplitter(AbstractMirrorComponent):
    
 class space(Component):
     def __init__(self, name, node1, node2, L=0, n=1):
-        Component.__init__(self,name,)
+        Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         
         self.__L = SIfloat(L)
         self.__n = SIfloat(n)
-        self._QItem = None
         
     @property
     def L(self): return Param('L', self.__L)
@@ -385,7 +384,141 @@ class space(Component):
         if self._QItem == None:
             self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self)
         
-        return self._QItem          
+        return self._QItem
+
+class grating(Component):
+    def __init__(self, name, node1, node2, node3 = None, node4 = None, n = 2, d = 0, eta_0 = 0, eta_1 = 0, eta_2 = 0, eta_3 = 0, rho_0 = 0, alpha = 0): # TODO: implement Rcx, Rcy and Rc
+        Component.__init__(self, name)
+        
+        self._requested_node_names.append(node1)
+        self._requested_node_names.append(node2)
+
+        if n > 2:
+            if node3 != None:
+                self._requested_node_names.append(node3)
+            else:
+                raise exceptions.RuntimeError("Grating node 3 not specified")
+
+        if n > 3:
+            if node4 != None:
+                self._requested_node_names.append(node4)
+            else:
+                raise exceptions.RuntimeError("Grating node 4 not specified")
+
+        if n > 4 or n < 2:
+            raise exceptions.RuntimeError("Grating must have between 2 and 4 ports")
+        
+        self.__n = n
+        self.__d = SIfloat(d)
+        self.__eta_0 = SIfloat(eta_0)
+        self.__eta_1 = SIfloat(eta_1)
+        self.__eta_2 = SIfloat(eta_2)
+        self.__eta_3 = SIfloat(eta_3)
+        self.__rho_0 = SIfloat(rho_0)
+        self.__alpha = SIfloat(alpha)
+    
+    @property
+    def n(self): return Param('n', self.__n)
+    @n.setter
+    def n(self, value):
+        if value < 2 or value > 4:
+            raise exceptions.RuntimeError("Grating must have between 2 and 4 ports")
+        else:
+            self.__n = value
+    
+    @property
+    def d(self): return Param('d', self.__d)
+    @d.setter
+    def d(self, value): self.__d = SIfloat(value)
+    
+    @property
+    def eta_0(self): return Param('eta_0', self.__eta_0)
+    @eta_0.setter
+    def eta_0(self, value): self.__eta_0 = SIfloat(value)
+    
+    @property
+    def eta_1(self): return Param('eta_1', self.__eta_1)
+    @eta_1.setter
+    def eta_1(self, value): self.__eta_1 = SIfloat(value)
+    
+    @property
+    def eta_2(self): return Param('eta_2', self.__eta_2)
+    @eta_2.setter
+    def eta_2(self, value): self.__eta_2 = SIfloat(value)
+    
+    @property
+    def eta_3(self): return Param('eta_3', self.__eta_3)
+    @eta_3.setter
+    def eta_3(self, value): self.__eta_3 = SIfloat(value)
+    
+    @property
+    def rho_0(self): return Param('rho_0', self.__rho_0)
+    @rho_0.setter
+    def rho_0(self, value): self.__rho_0 = SIfloat(value)
+    
+    @property
+    def alpha(self): return Param('alpha', self.__alpha)
+    @alpha.setter
+    def alpha(self, value): self.__alpha = SIfloat(value)
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split(" ")
+
+        if values[0][0 : 2] != "gr":
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse grating command".format(text))
+
+        if len(values[0]) > 2:
+            if int(values[0][2]) > 4 or int(values[0][2]) < 2:
+                raise exceptions.RuntimeError("Grating must have between 2 and 4 ports")
+            else:
+                n = int(values[0][2])
+        else:
+            n = 2
+
+        values.pop(0) # remove initial value
+        
+        if n == 2:
+            if len(values) != 4:
+                raise exceptions.RuntimeError("Two port grating must have 2 nodes defined")
+
+            return grating(values[0], values[2], values[3], None, None, n, values[1])
+        elif n == 3:
+            if len(values) != 5:
+                raise exceptions.RuntimeError("Three port grating must have 3 nodes defined")
+            
+            return grating(values[0], values[2], values[3], values[4], None, n, values[1])
+        else:
+            if len(values) != 6:
+                raise exceptions.RuntimeError("Four port grating must have 4 nodes defined")
+            
+            return grating(values[0], values[2], values[3], values[4], values[5], n, values[1])
+        
+    def getFinesseText(self):
+        rtn = []
+        
+        if self.__n == 2:
+            rtn.append('gr{0} {1} {2} {3} {4}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name))
+        elif self.__n == 3:
+            rtn.append('gr{0} {1} {2} {3} {4} {5}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name))
+        else:
+            rtn.append('gr{0} {1} {2} {3} {4} {5} {6}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, self.nodes[3].name))
+        
+        if self.eta_0 != 0: rtn.append("attr {0} eta_0 {1}".format(self.name,self.__eta_0))
+        if self.eta_1 != 0: rtn.append("attr {0} eta_1 {1}".format(self.name,self.__eta_1))
+        if self.eta_2 != 0: rtn.append("attr {0} eta_2 {1}".format(self.name,self.__eta_2))
+        if self.eta_3 != 0: rtn.append("attr {0} eta_3 {1}".format(self.name,self.__eta_3))
+        if self.rho_0 != 0: rtn.append("attr {0} rho_0 {1}".format(self.name,self.__rho_0))
+        if self.alpha != 0: rtn.append("attr {0} alpha {1}".format(self.name,self.__alpha))
+        # TODO: implement Rcx, Rcy, Rc
+        
+        return rtn
+       
+    def getQGraphicsItem(self):
+        if self._QItem == None:
+            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make SVG graphic for grating
+        
+        return self._QItem
     
 class laser(Component):
     def __init__(self,name,node,P=1,f_offset=0,phase=0):
