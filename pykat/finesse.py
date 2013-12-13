@@ -66,8 +66,19 @@ class katRun(object):
     def loadKatRun(filename):
         with open(filename,'r') as infile:
             return pickle.load(infile)
-        
-        
+    
+    def get(self, value): return self[value]
+    
+    def __getitem__(self, value):
+        if value in self.ylabels:
+            idx = self.ylabels.index(value)
+            if len(self.y.shape) == 1:
+                return self.y
+            else:
+                return self.y[:, idx]
+        else:
+            raise pkex.BasePyKatExeception("No output by the name {0} found", value)
+            
 class Block:
     def __init__(self, name):
         self.__name = name
@@ -213,8 +224,10 @@ class kat(object):
                     obj = pykat.components.lens.parseFinesseText(line)
                 elif(first[0:2] == "pd"):
                     obj = pykat.detectors.photodiode.parseFinesseText(line)
-                elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
+                elif(first == "xaxis" or first == "xaxis*"):
                     obj = pykat.commands.xaxis.parseFinesseText(line)
+                elif(first == "x2axis" or first == "x2axis*"):
+                    obj = pykat.commands.x2axis.parseFinesseText(line)
                 elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
                     after_process.append(line)
                 else:
@@ -251,13 +264,17 @@ class kat(object):
         except BasePyKatException as ex:
             print ex
             
-    def run(self, printout=1, printerr=1, save_output=False, save_kat=False,kat_name=None) :
+    def run(self, printout=0, printerr=0, save_output=False, save_kat=False,kat_name=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun object which is populated with the various
         data from the simulation run.
         """
         try:
+            print "--------------------------------------------------------------"
+            start = datetime.datetime.now()
+            print "Running kat - Started at " + str(start)
+            
             r = katRun()
             r.katScript = "".join(self.generateKatScript())       
             
@@ -295,28 +312,37 @@ class kat(object):
             katfile.flush()
             
             cmd=[kat_exec, '--perl1']
+            
             if self.__time_code:
                 cmd.append('--perf-timing')
-                cmd.append('--no-backspace')
+
+            cmd.append('--no-backspace')
+            # set default format so that less repeated numbers are printed to the
+            # output file, should speed up running and parsing of output files
+            cmd.append('-format=%.15g')
 
             cmd.append(katfile.name)
-            if self.verbose:
-                print cmd
+            
+            #if self.verbose:
+                #print cmd
+                
             p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
+            print "Finesse binary output:"
+            
             for line in iter(p.stderr.readline, ""):
-                err += line
-                vals = line.split("-")
+                #err += line 
                 
-                if len(vals) == 2:
-                    action = vals[0].strip()
-                    prc = vals[1].strip()[:-1]
-                    
-                    #sys.stdout.write("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b")
-                    sys.stdout.write("\r{0} {1}%".format(action, prc))
-                    sys.stdout.flush()
-                
+                if len(line) > 0:
+                    if line.rstrip().endswith('%'):
+                        vals = line.split("-")
+                        action = vals[0].strip()
+                        prc = vals[1].strip()[:-1]
+                        sys.stdout.write("\r{0} {1}%".format(action, prc))
+                    elif line[0] == '*':
+                        sys.stdout.write(line)
+                        
             [out,errpipe] = p.communicate()
             
             # get the version number
@@ -339,7 +365,7 @@ class kat(object):
             [r.x,r.y,hdr] = self.readOutFile(outfile)
             
             r.xlabel = hdr[0]
-            r.ylabels = hdr[1:]
+            r.ylabels = map(str.strip, hdr[1:])
             
             if save_output:        
                 newoutfile = "{0}.out".format(base)
@@ -382,9 +408,12 @@ class kat(object):
                 return [r, perfData]
             else:
                 return r
-                
+            
         except FinesseRunError as fe:
             print fe
+        finally:
+            print ""
+            print "Finished in " + str(datetime.datetime.now()-start)
             
         
     def add(self, obj):

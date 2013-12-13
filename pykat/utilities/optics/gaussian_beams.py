@@ -1,6 +1,7 @@
 import pykat.exceptions as pkex
 import numpy
 import math
+import copy
 
 class gauss_param(object):
     """
@@ -142,3 +143,48 @@ class gauss_param(object):
     def imag(self): return self.__q.imag
     @imag.setter
     def imag(self, value): self.__q.imag = SIfloat(value)
+    
+class HG_gauss_beam(object):
+    
+    def __init__(self, qx, qy=None, n=0, m=0):
+        self._qx = copy.deepcopy(qx)
+        self._2pi_qrt = math.pow(2.0/math.pi, 0.25)
+        
+        if qy == None:
+            self._q0 = copy.deepcopy(qx)
+        else:
+            self._q0 = copy.deepcopy(qy)
+    
+        self.n = n
+        self.m = m
+        self._calc_constants()
+        
+    @property
+    def n(self): return self._n
+    @n.setter
+    def n(self,value): 
+        self._n = float(value)
+        self._calc_constants()
+
+    @property
+    def m(self): return self._m
+    @m.setter
+    def m(self,value): 
+        self._m = float(value)
+        self._calc_constants()
+        
+    def _calc_constants(self):
+        self.__xpre_const = math.pow(2.0/math.pi, 0.25)
+        self.__xpre_const *= math.sqrt(1/(2**self._n * math.factorial(self._n)))
+        self.__xpre_const *= math.sqrt(1j*self._qx.imag / self._qx)
+        self.__xpre_const *= math.pow((1j*self._qx.imag * self._qx.conjugate)/(-1j*self._qx.imag * self._qx), self._n/2.0)
+        
+        self.__ypre_const = math.pow(2.0/math.pi, 0.25)
+        self.__ypre_const *= math.sqrt(1/(2**self._m * math.factorial(self._m)))
+        self.__ypre_const *= math.sqrt(1j*self._qy.imag / self._qy)
+        self.__ypre_const *= math.pow((1j*self._qy.imag * self._qy.conjugate)/(-1j*self._qy.imag * self._qy), self._m/2.0)
+                
+    def Unm(self, n, m, x, y):    
+        return self.__xpre_const * special
+        
+        

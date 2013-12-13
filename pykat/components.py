@@ -345,7 +345,7 @@ class space(Component):
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
-        
+        self._QItem = None
         self.__L = SIfloat(L)
         self.__n = SIfloat(n)
         

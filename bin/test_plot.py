@@ -39,7 +39,7 @@ kat.maxtem = 0
 out = kat.run(printout=0,printerr=0)
 
 pl.figure()
-pl.plot(out.x,out.y)
+pl.plot(out.x, out["pd_cav"])
 pl.xlabel(out.xlabel)
 pl.ylabel("Intensity [W]")
 pl.legend(out.ylabels)
