@@ -368,9 +368,9 @@ class space(Component):
         values.pop(0) # remove initial value
         
         if len(values) == 5:
-            return space(values[0],values[3],values[4],L=values[1],n=values[2])
+            return space(values[0], values[3], values[4], values[1], values[2])
         elif len(values) == 4:
-            return space(values[0],values[2],values[3],L=values[1])
+            return space(values[0], values[2], values[3], values[1])
         else:
             raise exceptions.RuntimeError("Space Finesse code format incorrect '{0}'".format(text))
         
@@ -517,6 +517,43 @@ class grating(Component):
     def getQGraphicsItem(self):
         if self._QItem == None:
             self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make SVG graphic for grating
+        
+        return self._QItem
+
+class isolator(Component):
+    def __init__(self, name, node1, node2, S = 0):
+        Component.__init__(self, name)
+        
+        self._requested_node_names.append(node1)
+        self._requested_node_names.append(node2)
+        
+        self.__S = SIfloat(S)
+        
+    @property
+    def S(self): return Param('S', self.__S)
+    @S.setter
+    def S(self, value): self.__S = SIfloat(value)
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split(" ")
+
+        if values[0] != "isol":
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse isolator command".format(text))
+
+        values.pop(0) # remove initial value
+        
+        if len(values) == 4:
+            return isolator(values[0], values[2], values[3], values[1])
+        else:
+            raise exceptions.RuntimeError("Isolator Finesse code format incorrect '{0}'".format(text))
+        
+    def getFinesseText(self):
+        return 'isol {0} {1} {2} {3}'.format(self.name, self.S, self.nodes[0].name, self.nodes[1].name)            
+
+    def getQGraphicsItem(self):
+        if self._QItem == None:
+            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make isolator graphic
         
         return self._QItem
     
