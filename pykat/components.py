@@ -556,6 +556,43 @@ class isolator(Component):
             self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make isolator graphic
         
         return self._QItem
+
+class lens(Component):
+    def __init__(self, name, node1, node2, f):
+        Component.__init__(self, name)
+        
+        self._requested_node_names.append(node1)
+        self._requested_node_names.append(node2)
+        
+        self.__f = SIfloat(f)
+        
+    @property
+    def f(self): return Param('f', self.__f)
+    @f.setter
+    def f(self, value): self.__f = SIfloat(value)
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split(" ")
+
+        if values[0] != "lens":
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse lens command".format(text))
+
+        values.pop(0) # remove initial value
+        
+        if len(values) == 4:
+            return lens(values[0], values[2], values[3], values[1])
+        else:
+            raise exceptions.RuntimeError("Lens Finesse code format incorrect '{0}'".format(text))
+        
+    def getFinesseText(self):
+        return 'lens {0} {1} {2} {3}'.format(self.name, self.f, self.nodes[0].name, self.nodes[1].name)            
+
+    def getQGraphicsItem(self):
+        if self._QItem == None:
+            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make lens graphic
+        
+        return self._QItem
     
 class laser(Component):
     def __init__(self,name,node,P=1,f_offset=0,phase=0):

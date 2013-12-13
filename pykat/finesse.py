@@ -209,6 +209,8 @@ class kat(object):
                     obj = pykat.components.grating.parseFinesseText(line)
                 elif(first[0:4] == "isol"):
                     obj = pykat.components.isolator.parseFinesseText(line)
+                elif(first[0:4] == "lens"):
+                    obj = pykat.components.lens.parseFinesseText(line)
                 elif(first[0:2] == "pd"):
                     obj = pykat.detectors.photodiode.parseFinesseText(line)
                 elif(first == "xaxis" or first == "x2axis" or first == "xaxis*" or first == "x2axis*"):
