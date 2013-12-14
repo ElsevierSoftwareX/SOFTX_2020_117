@@ -114,7 +114,7 @@ class kat(object):
         
         cls = type(self)
         self.__class__ = type(cls.__name__, (cls,), {})
-        self.logo()
+        #self.logo()
         
     @property
     def maxtem(self): return self.__maxtem
