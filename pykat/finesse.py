@@ -103,12 +103,12 @@ class katRun2D(object):
     def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split(" ")[0] == value]
+        idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split(" ")[0] == str(value)]
         
         if len(idx) > 0:
-            return self.z[:, idx].squeeze()
+            return self.z[idx].squeeze()
         else:
-            raise  pkex.BasePyKatException("No output by the name {0} found".format(value))
+            raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
       
 class Block:
     def __init__(self, name):

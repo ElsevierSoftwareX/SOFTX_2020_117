@@ -143,6 +143,8 @@ class Component(object):
     @property
     def id(self): return self.__id
     
+    def __str__(self): return self.name
+    
 class Param(float):
     def __new__(self,name,value):
         return float.__new__(self,SIfloat(value))
