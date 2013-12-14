@@ -143,6 +143,8 @@ class Component(object):
     @property
     def id(self): return self.__id
     
+    def __str__(self): return self.name
+    
 class Param(float):
     def __new__(self,name,value):
         return float.__new__(self,SIfloat(value))
@@ -345,7 +347,7 @@ class space(Component):
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
-        
+        self._QItem = None
         self.__L = SIfloat(L)
         self.__n = SIfloat(n)
         

@@ -43,12 +43,12 @@ class Detector(object) :
     
     @property 
     def node(self): return self.__node
-        
-    def __getname(self):
-        return self.__name        
-        
-    name = property(__getname)
+    
+    @property
+    def name(self): return self.__name        
 
+    def __str__(self): return self.name
+    
 class photodiode(Detector):
 
     class __F(list):

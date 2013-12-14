@@ -74,10 +74,11 @@ class attr():
         if comp == None:
             raise 
         # can list multiple attributes per command
-        
+       
 class xaxis(Command):
     
-    def __init__(self, scale, limits, comp, param, steps):
+    def __init__(self, scale, limits, comp, param, steps, axis_type="xaxis"):
+        self._axis_type = axis_type
         
         if scale == "lin":
             scale = Scale.linear
@@ -121,23 +122,43 @@ class xaxis(Command):
     def parseFinesseText(text):
         values = text.split(" ")
         
-        if values[0] != "xaxis" and values[0] != "xaxis*" and values[0] != "x2axis" and values[0] != "x2axis*":
+        if values[0] != "xaxis" and values[0] != "xaxis*":
             raise exceptions.RuntimeError("'{0}' not a valid Finesse xaxis command".format(text))
-
+        
+        axis_type = values[0]
+        
         values.pop(0) # remove initial value
         
         if len(values) != 6:
             raise exceptions.RuntimeError("xaxis Finesse code format incorrect '{0}'".format(text))
 
-        return xaxis(values[2], [values[3], values[4]], values[0], values[1], values[5])
+        return xaxis(values[2], [values[3], values[4]], values[0], values[1], values[5], axis_type=axis_type)
         
     def getFinesseText(self):
         # store either the component name of the string provided
         comp_name = self.__comp.name if isinstance(self.__comp, Component) else self.__comp
         param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
         
-        return 'xaxis {0} {1} {2} {3} {4} {5}'.format(
+        return '{axis_type} {0} {1} {2} {3} {4} {5}'.format(
                 comp_name, param_name, self.scale,
-                min(self.limits), max(self.limits), self.steps);
+                min(self.limits), max(self.limits), self.steps, axis_type=self._axis_type);
                 
+class x2axis(xaxis):
+    def __init__(self, scale, limits, comp, param, steps):
+        xaxis.__init__(self, scale, limits, comp, param, steps, axis_type="x2axis")        
+
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split(" ")
         
+        if values[0] != "x2axis" and values[0] != "x2axis*":
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse xaxis command".format(text))
+        
+        axis_type = values[0]
+        
+        values.pop(0) # remove initial value
+        
+        if len(values) != 6:
+            raise exceptions.RuntimeError("xaxis Finesse code format incorrect '{0}'".format(text))
+
+        return x2axis(values[2], [values[3], values[4]], values[0], values[1], values[5])
