@@ -34,7 +34,7 @@ import pykat
 import warnings
 import re
 
-from pykat.exceptions import *
+import pykat.exceptions as pkex
 
 from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
@@ -77,8 +77,39 @@ class katRun(object):
             else:
                 return self.y[:, idx]
         else:
-            raise pkex.BasePyKatExeception("No output by the name {0} found", value)
-            
+            raise  pkex.BasePyKatException("No output by the name {0} found", value)
+      
+class katRun2D(object):
+    def __init__(self):
+        self.runDateTime = datetime.datetime.now()
+        self.x = None
+        self.y = None
+        self.z = None
+        self.xlabel = None
+        self.ylabel = None
+        self.zlabels = None
+        self.katScript = None
+        self.katVersion = None
+        
+    def saveKatRun(self, filename):
+        with open(filename,'w') as outfile:
+            pickle.dump(self, outfile)
+    
+    @staticmethod
+    def loadKatRun(filename):
+        with open(filename,'r') as infile:
+            return pickle.load(infile)
+    
+    def get(self, value): return self[value]
+    
+    def __getitem__(self, value):
+        idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split(" ")[0] == value]
+        
+        if len(idx) > 0:
+            return self.z[:, idx].squeeze()
+        else:
+            raise  pkex.BasePyKatException("No output by the name {0} found".format(value))
+      
 class Block:
     def __init__(self, name):
         self.__name = name
@@ -270,13 +301,10 @@ class kat(object):
         It returns a katRun object which is populated with the various
         data from the simulation run.
         """
-        try:
-            print "--------------------------------------------------------------"
-            start = datetime.datetime.now()
-            print "Running kat - Started at " + str(start)
-            
-            r = katRun()
-            r.katScript = "".join(self.generateKatScript())       
+        
+        try:        
+            if not hasattr(self, "xaxis"):
+                raise pkex.BasePyKatException("No xaxis was defined")
             
             if len(self.__katdir) == 0:
                 # Get the environment variable for where Finesse is stored
@@ -300,6 +328,17 @@ class kat(object):
             # check if kat file exists and it is executable by user        
             if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
                 raise MissingFinesse()
+                
+            print "--------------------------------------------------------------"
+            start = datetime.datetime.now()
+            print "Running kat - Started at " + str(start)
+            
+            if hasattr(self, "x2axis"):
+                r = katRun2D()
+            else:
+                r = katRun()
+                
+            r.katScript = "".join(self.generateKatScript())   
             
             # create a kat file which we will write the script into
             if self.__tempname == None:
@@ -361,11 +400,6 @@ class kat(object):
             root = os.path.splitext(katfile.name)
             base = os.path.basename(root[0])            
             outfile = root[0] + ".out"
-                    
-            [r.x,r.y,hdr] = self.readOutFile(outfile)
-            
-            r.xlabel = hdr[0]
-            r.ylabels = map(str.strip, hdr[1:])
             
             if save_output:        
                 newoutfile = "{0}.out".format(base)
@@ -378,8 +412,20 @@ class kat(object):
                     
                 os.rename(outfile, newoutfile)
 
-                print "Output data saved to '{0}'".format(newoutfile)
+                print "\nOutput data saved to '{0}'".format(newoutfile)
+            
+            if hasattr(self, "x2axis"):
+                [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
                 
+                r.xlabel = hdr[0]
+                r.ylabel = hdr[1]
+                r.zlabels = map(str.strip, hdr[2:])
+            else:
+                [r.x,r.y,hdr] = self.readOutFile(outfile)
+            
+                r.xlabel = hdr[0]
+                r.ylabels = map(str.strip, hdr[1:])
+                            
             if save_kat:
                 if kat_name == None:
                     kat_name = "pykat_output"                
@@ -452,29 +498,38 @@ class kat(object):
 
     def readOutFile(self, filename):
         
-        outfile = open(filename,'r')
-        
-        # read first to lines to get to header line
-        outfile.readline()
-        outfile.readline()
-        
-        hdr = outfile.readline().replace('%','').replace('\n','').split(',')
-
-        data = np.loadtxt(filename,comments='%')
-        shape_len = len(data.shape)
-        
-        if shape_len > 1:
-            rows,cols = data.shape
-            x = data[:,0]
-            y = data[:,1:cols].squeeze()
-        else:
-            rows = 1
-            cols = data.shape[0]
+        with open(filename,'r') as outfile:
+            # read first to lines to get to header line
+            outfile.readline()
+            outfile.readline()
             
-            x = data[0]
-            y = data[1:cols].squeeze()
+            hdr = outfile.readline().replace('%','').replace('\n','').split(',')
         
-        return [x, y, hdr]
+        data = np.loadtxt(filename,comments='%',skiprows=4)
+        
+        if hasattr(self, "x2axis"):
+            # need to parse 2D outputs slightly different as they are effectively 2D matrices
+            # written in linear form
+            x = data[0::(1+self.x2axis.steps),0]
+            y = data[0:(1+self.x2axis.steps),1]
+            z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps)
+            
+            return [x, y, z, hdr]
+        else:
+            shape_len = len(data.shape)
+            
+            if shape_len > 1:
+                rows,cols = data.shape
+                x = data[:,0]
+                y = data[:,1:cols].squeeze()
+            else:
+                rows = 1
+                cols = data.shape[0]
+                
+                x = data[0]
+                y = data[1:cols].squeeze()
+            
+            return [x, y, hdr]
             
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
