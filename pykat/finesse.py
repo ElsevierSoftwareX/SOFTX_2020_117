@@ -156,6 +156,7 @@ class kat(object):
         
         cls = type(self)
         self.__class__ = type(cls.__name__, (cls,), {})
+        #self.logo()
         
     @property
     def maxtem(self): return self.__maxtem
@@ -176,7 +177,18 @@ class kat(object):
     def noxaxis(self): return self.__noxaxis
     @noxaxis.setter
     def noxaxis(self,value): self.__noxaxis = bool(value)
-       
+
+    def logo(self):
+        print """                                              ..-
+                          _                  '(
+    PyKat                 \\`.|\\.__...-\"\"""-_." )
+       ..+-----.._        /  ' `            .-'
+   . '            `:      7/* _/._\\    \\   (
+  (        '::;;+;;:      `-"' =" /,`"" `) /
+  L.        \\`:::a:f            c_/     n_'
+  ..`--...___`.  .    ,  
+   `^-....____:   +."""
+    
     def loadKatFile(self, katfile):
         commands=open(katfile).read()
         self.parseCommands(commands)
