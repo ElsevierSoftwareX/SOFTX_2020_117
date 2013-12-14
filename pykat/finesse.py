@@ -524,8 +524,11 @@ class kat(object):
             # written in linear form
             x = data[0::(1+self.x2axis.steps),0]
             y = data[0:(1+self.x2axis.steps),1]
+            # get rows and columns lined up so that we can reshape a single column of all x/y data
+            # into a matrix
             z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps)
-            
+            # once you do this the data for y and x axes need swapping
+            z = z.swapaxes(1,2)
             return [x, y, z, hdr]
         else:
             shape_len = len(data.shape)
