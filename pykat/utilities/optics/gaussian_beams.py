@@ -95,7 +95,7 @@ class gauss_param(object):
         return gauss_param(self.__lambda, self.__nr, self.__q * complex(a))
     
     def __imul__(self, a):
-        self.__q += complex(a)
+        self.__q *= complex(a)
         return self
         
     __rmul__ = __mul__
@@ -184,7 +184,8 @@ class HG_gauss_beam(object):
         self.__ypre_const *= math.sqrt(1j*self._qy.imag / self._qy)
         self.__ypre_const *= math.pow((1j*self._qy.imag * self._qy.conjugate)/(-1j*self._qy.imag * self._qy), self._m/2.0)
                 
-    def Unm(self, n, m, x, y):    
-        return self.__xpre_const * special
+    def Unm(self, n, m, x, y):  
+        # need to finish...
+        return self.__xpre_const
         
         

@@ -34,13 +34,13 @@ import pykat
 import warnings
 import re
 
-import pykat.exceptions as pkex
-
 from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
 from pykat.components import Component
 from pykat.commands import Command, xaxis
 from pykat.gui.gui import pyKatGUI
+
+import pykat.exceptions as pkex
 
 from PyQt4.QtCore import QCoreApplication
 from PyQt4.QtGui import QApplication
@@ -265,6 +265,8 @@ class kat(object):
                     obj = pykat.components.isolator.parseFinesseText(line)
                 elif(first[0:4] == "lens"):
                     obj = pykat.components.lens.parseFinesseText(line)
+                elif(first[0:3] == "mod"):
+                    obj = pykat.components.modulator.parseFinesseText(line)
                 elif(first[0:2] == "pd"):
                     obj = pykat.detectors.photodiode.parseFinesseText(line)
                 elif(first == "xaxis" or first == "xaxis*"):
@@ -310,12 +312,12 @@ class kat(object):
     def run(self, printout=0, printerr=0, save_output=False, save_kat=False,kat_name=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
-        It returns a katRun object which is populated with the various
+        It returns a katRun or katRun2D object which is populated with the various
         data from the simulation run.
         """
         
         try:        
-            if not hasattr(self, "xaxis"):
+            if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
                 raise pkex.BasePyKatException("No xaxis was defined")
             
             if len(self.__katdir) == 0:
@@ -404,7 +406,7 @@ class kat(object):
             r.runDateTime = datetime.datetime.now()
             
             if p.returncode != 0:
-                raise FinesseRunError(err, katfile.name)
+                raise pkex.FinesseRunError(err, katfile.name)
             
             if printout == 1: print out
             if printerr == 1: print err
@@ -467,7 +469,7 @@ class kat(object):
             else:
                 return r
             
-        except FinesseRunError as fe:
+        except pkex.FinesseRunError as fe:
             print fe
         finally:
             print ""
@@ -505,7 +507,7 @@ class kat(object):
                 
             obj._on_kat_add(self)
             
-        except BasePyKatException as ex:
+        except pkex.BasePyKatException as ex:
             print ex
 
     def readOutFile(self, filename):

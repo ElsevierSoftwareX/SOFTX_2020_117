@@ -56,14 +56,6 @@ class photodiode(Detector):
             if values==None:
                 values = []
             list.__init__(self,[SIfloat(value) for value in values])
-
-        """    
-        def __setitem__(self, key, value):
-            list.__setitem__(self,key, SIfloat(value))
-
-        def append(self, value):
-            list.append(self,SIfloat(value))
-        """    
             
     class __Phi(list):
         def __convertValue(self, value):
@@ -82,20 +74,12 @@ class photodiode(Detector):
                 return list.__getitem__(self,key)
             else:
                 return float(list.__getitem__(self,key))
-        """    
-        def __setitem__(self,key,value):
-            list.__setitem__(self,key, self.__convertValue(value))
-
-        def append(self, value):
-            list.append(self,self.__convertValue(value))
-        """
             
     @property
     def f(self): return self.__f
 
     @property
     def phi(self): return self.__phi
-
         
     def __init__(self, name, node, senstype="", num_demods=0, demods=[]):        
         Detector.__init__(self, name, node)
@@ -109,10 +93,6 @@ class photodiode(Detector):
         
         # Every second element into phi (starting at 2)
         self.__phi = self.__Phi(demods[1::2])
-        """
-        for i in demods[1::2]:
-            self.__phi.append(i)        
-        """
         
     @staticmethod
     def parseFinesseText(text): 

@@ -9,6 +9,7 @@ from numpy import min,max
 import exceptions
 from components import *
 from structs import *
+from pykat.param import Param, putter
 
 class Command(object):
     def __init__(self):
@@ -46,39 +47,14 @@ class gauss(object):
         
         if not values[0].startswith("gauss"):
             raise exceptions.RuntimeError("'{0}' not a valid Finesse gauss command".format(text))
-        
-        
-        
-class attr():
-    @staticmethod
-    def parseFinesseText(text, kat):  
-        values = text.split(" ")
-        
-        if values[0] != "attr":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse attr command".format(text))
-
-        values.pop(0) # remove initial value
-        
-        if len(values) < 3:
-            raise exceptions.RuntimeError("attr Finesse code format incorrect '{0}'".format(text))
-        
-        comp = None
-        comp_name = values[0]
-        values.pop(0)
-        
-        for c in kat.getComponents():
-            if c.name == comp_name:
-                comp = c
-                break
-        
-        if comp == None:
-            raise 
-        # can list multiple attributes per command
        
 class xaxis(Command):
     
     def __init__(self, scale, limits, comp, param, steps, axis_type="xaxis"):
         self._axis_type = axis_type
+        
+        self.x = putter("x1")
+        self.mx = putter("mx1")
         
         if scale == "lin":
             scale = Scale.linear
@@ -146,6 +122,8 @@ class xaxis(Command):
 class x2axis(xaxis):
     def __init__(self, scale, limits, comp, param, steps):
         xaxis.__init__(self, scale, limits, comp, param, steps, axis_type="x2axis")        
+        self.x = putter("x2")
+        self.mx = putter("mx2")
 
     @staticmethod
     def parseFinesseText(text):

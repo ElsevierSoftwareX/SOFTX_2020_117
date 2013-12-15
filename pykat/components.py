@@ -15,6 +15,7 @@ import pykat.gui.resources
 import pykat.gui.graphics
 from pykat.gui.graphics import *
 from pykat.SIfloat import *
+from pykat.param import Param, AttrParam
 
 next_component_id = 1
 
@@ -58,6 +59,7 @@ class Component(object):
         self._requested_node_names = []
         self._kat = None
         self.tag = None
+        self._params = []
         
         # store a unique ID for this component
         global next_component_id
@@ -69,7 +71,10 @@ class Component(object):
         # all classes
         cls = type(self)
         self.__class__ = type(cls.__name__, (cls,), {})
-            
+    
+    def _register_param(self, param):
+        self._params.append(param)
+        
     def _on_kat_add(self, kat):
         """
         Called when this component has been added to a kat object.
@@ -145,87 +150,66 @@ class Component(object):
     
     def __str__(self): return self.name
     
-class Param(float):
-    def __new__(self,name,value):
-        return float.__new__(self,SIfloat(value))
-         
-    def __init__(self,name,value):
-        self.__name = name
-        
-    name = property(lambda self: self.__name)
-
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
     
     def __init__(self, name, R=0, T=0, phi=0, Rcx=0, Rcy=0, xbeta=0, ybeta=0, mass=0, r_ap=0):
         super(AbstractMirrorComponent, self).__init__(name)
 
-        self.__R = SIfloat(R)
-        self.__T = SIfloat(T)
-        self.__phi = SIfloat(phi)
-        self.__Rcx = SIfloat(Rcx)
-        self.__Rcy = SIfloat(Rcy)
-        self.__xbeta = SIfloat(xbeta)
-        self.__ybeta = SIfloat(ybeta)
-        self.__mass = SIfloat(mass)
-        self.__r_ap = SIfloat(r_ap)
-
-    def getAttributeText(self):
-        rtn = []
-        
-        if self.Rcx != 0: rtn.append("attr {0} Rcx {1}".format(self.name,self.__Rcx))
-        if self.Rcy != 0: rtn.append("attr {0} Rcy {1}".format(self.name,self.__Rcy))
-        if self.xbeta != 0: rtn.append("attr {0} xbeta {1}".format(self.name,self.__xbeta))
-        if self.ybeta != 0: rtn.append("attr {0} ybeta {1}".format(self.name,self.__ybeta))
-        if self.mass != 0: rtn.append("attr {0} mass {1}".format(self.name,self.__mass))
-        if self.r_ap != 0: rtn.append("attr {0} r_ap {1}".format(self.name,self.__r_ap))
-        
-        return rtn
+        self.__R = Param("R", self, SIfloat(R))
+        self.__T = Param("T", self, SIfloat(T))
+        self.__phi = Param("phi", self, SIfloat(phi))
+        self.__Rcx = AttrParam("Rcx", self, SIfloat(Rcx))
+        self.__Rcy = AttrParam("Rcy", self, SIfloat(Rcy))
+        self.__xbeta = AttrParam("xbeta", self, SIfloat(xbeta))
+        self.__ybeta = AttrParam("ybeta", self, SIfloat(ybeta))
+        self.__mass = AttrParam("mass", self, SIfloat(mass))
+        self.__r_ap = AttrParam("r_ap", self, SIfloat(r_ap))
         
     @property
-    def r_ap(self): return Param('r_ap', self.__r_ap)
+    def r_ap(self): return self.__r_ap
     @r_ap.setter
-    def r_ap(self,value): self.__aperture = SIfloat(value)
+    def r_ap(self,value): self.__r_ap.value = SIfloat(value)
 
     @property
-    def mass(self): return Param('mass', self.__mass)
+    def mass(self): return self.__mass
     @mass.setter
-    def mass(self,value): self.__mass = SIfloat(value)
+    def mass(self,value): self.__mass.value = SIfloat(value)
     
     @property
-    def R(self): return Param('R', self.__R)
+    def R(self): return self.__R
     @R.setter
-    def R(self,value): self.__R = SIfloat(value)
+    def R(self,value): self.__R.value = SIfloat(value)
     
     @property
-    def T(self): return Param('T', self.__T)
+    def T(self): return self.__T
     @T.setter
-    def T(self,value): self.__T = SIfloat(value)
+    def T(self,value): self.__T.value = SIfloat(value)
         
     @property
-    def phi(self): return Param('phi', self.__phi)
+    def phi(self): return self.__phi
     @phi.setter
-    def phi(self,value): self.__phi = SIfloat(value)
+    def phi(self,value): self.__phi.value = SIfloat(value)
     
     @property
-    def Rcx(self): return Param('Rcx', self.__Rcx)
+    def Rcx(self): return self.__Rcx
     @Rcx.setter
-    def Rcx(self,value): self.__Rcx = SIfloat(value)
+    def Rcx(self,value): self.__Rcx.value = SIfloat(value)
     
     @property
-    def Rcy(self): return Param('Rcy', self.__Rcy)
+    def Rcy(self): return self.__Rcy
     @Rcy.setter
-    def Rcy(self,value): self.__Rcy = SIfloat(value)
+    def Rcy(self,value): self.__Rcy.value = SIfloat(value)
     
     @property
-    def xbeta(self): return Param('xbeta', self.__xbeta)
+    def xbeta(self): return self.__xbeta
     @xbeta.setter
-    def xbeta(self,value): self.__xbeta = SIfloat(value)
+    def xbeta(self,value): self.__xbeta.value = SIfloat(value)
     
     @property
-    def ybeta(self): return Param('ybeta', self.__ybeta)
+    def ybeta(self): return self.__ybeta
     @ybeta.setter
-    def ybeta(self,value): self.__ybeta = SIfloat(value)
+    def ybeta(self,value): self.__ybeta.value = SIfloat(value)
     
     @property
     def Rc(self):
@@ -236,8 +220,8 @@ class AbstractMirrorComponent(Component):
     
     @Rc.setter
     def Rc(self,value):
-        self.Rcx = SIfloat(value)
-        self.Rcy = SIfloat(value)
+        self.Rcx.value = SIfloat(value)
+        self.Rcy.value = SIfloat(value)
 
 class mirror(AbstractMirrorComponent):
     def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0, r_ap=0):
@@ -271,11 +255,12 @@ class mirror(AbstractMirrorComponent):
         rtn = []
             
         rtn.append('m {0} {1} {2} {3} {4} {5}'.format(
-                self.name, self.R, self.T, self.phi,
+                self.name, self.R.value, self.T.value, self.phi.value,
                 self.nodes[0].name, self.nodes[1].name))
 
-        rtn.extend(super(mirror, self).getAttributeText())
-        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+                    
         return rtn
         
     def getQGraphicsItem(self):
@@ -293,12 +278,12 @@ class beamSplitter(AbstractMirrorComponent):
         self._requested_node_names.append(node3)
         self._requested_node_names.append(node4)
              
-        self.__alpha = SIfloat(alpha)
+        self.__alpha = AttrParam("alpha", self, SIfloat(alpha))
     
     @property
-    def alpha(self): return Param('alpha', self.__alpha)
+    def alpha(self): return self.__alpha
     @alpha.setter
-    def alpha(self,value): self.__alpha = SIfloat(value)
+    def alpha(self,value): self.__alpha.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -325,13 +310,14 @@ class beamSplitter(AbstractMirrorComponent):
         rtn = []
             
         rtn.append('bs {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
-                self.name, self.R, self.T, self.phi,
-                self.alpha, self.nodes[0].name,
+                self.name, self.R.value, self.T.value, self.phi.value,
+                self.alpha.value, self.nodes[0].name,
                 self.nodes[1].name, self.nodes[2].name,
                 self.nodes[3].name))
 
-        rtn.extend(super(beamSplitter, self).getAttributeText())
-        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+            
         return rtn
         
     def getQGraphicsItem(self):
@@ -348,17 +334,17 @@ class space(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._QItem = None
-        self.__L = SIfloat(L)
-        self.__n = SIfloat(n)
+        self.__L = Param("L", self, SIfloat(L))
+        self.__n = Param("n", self, SIfloat(n))
         
     @property
-    def L(self): return Param('L', self.__L)
+    def L(self): return self.__L
     @L.setter
-    def L(self,value): self.__L = SIfloat(value)
+    def L(self,value): self.__L,value = SIfloat(value)
     @property
-    def n(self): return Param('n', self.__n)
+    def n(self): return self.__n
     @n.setter
-    def n(self,value): self.__n = SIfloat(value)
+    def n(self,value): self.__n.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -377,11 +363,18 @@ class space(Component):
             raise exceptions.RuntimeError("Space Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
+        rtn = []
+        
         if self.__n == 1:
-            return 's {0} {1} {2} {3}'.format(self.name, self.__L, self.nodes[0].name, self.nodes[1].name)            
+            rtn.append('s {0} {1} {2} {3}'.format(self.name, self.__L.value, self.nodes[0].name, self.nodes[1].name))
         else:
-            return 's {0} {1} {2} {3} {4}'.format(self.name, self.__L, self.__n, self.nodes[0].name, self.nodes[1].name)            
+            rtn.append('s {0} {1} {2} {3} {4}'.format(self.name, self.__L.value, self.__n.value, self.nodes[0].name, self.nodes[1].name))
        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+            
+        return rtn
+        
     def getQGraphicsItem(self):
         if self._QItem == None:
             self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self)
@@ -411,13 +404,13 @@ class grating(Component):
             raise exceptions.RuntimeError("Grating must have between 2 and 4 ports")
         
         self.__n = n
-        self.__d = SIfloat(d)
-        self.__eta_0 = SIfloat(eta_0)
-        self.__eta_1 = SIfloat(eta_1)
-        self.__eta_2 = SIfloat(eta_2)
-        self.__eta_3 = SIfloat(eta_3)
-        self.__rho_0 = SIfloat(rho_0)
-        self.__alpha = SIfloat(alpha)
+        self.__d = Param("d", self, SIfloat(d))
+        self.__eta_0 = AttrParam("eta_0", self, SIfloat(eta_0))
+        self.__eta_1 = AttrParam("eta_1", self, SIfloat(eta_1))
+        self.__eta_2 = AttrParam("eta_2", self, SIfloat(eta_2))
+        self.__eta_3 = AttrParam("eta_3", self, SIfloat(eta_3))
+        self.__rho_0 = AttrParam("rho_0", self, SIfloat(rho_0))
+        self.__alpha = AttrParam("alpha", self, SIfloat(alpha))
     
     @property
     def n(self): return Param('n', self.__n)
@@ -429,39 +422,39 @@ class grating(Component):
             self.__n = value
     
     @property
-    def d(self): return Param('d', self.__d)
+    def d(self): return self.__d
     @d.setter
-    def d(self, value): self.__d = SIfloat(value)
+    def d(self, value): self.__d.value = SIfloat(value)
     
     @property
-    def eta_0(self): return Param('eta_0', self.__eta_0)
+    def eta_0(self): return self.__eta_0
     @eta_0.setter
-    def eta_0(self, value): self.__eta_0 = SIfloat(value)
+    def eta_0(self, value): self.__eta_0.value = SIfloat(value)
     
     @property
-    def eta_1(self): return Param('eta_1', self.__eta_1)
+    def eta_1(self): return self.__eta_1
     @eta_1.setter
-    def eta_1(self, value): self.__eta_1 = SIfloat(value)
+    def eta_1(self, value): self.__eta_1.value = SIfloat(value)
     
     @property
-    def eta_2(self): return Param('eta_2', self.__eta_2)
+    def eta_2(self): return self.__eta_2
     @eta_2.setter
-    def eta_2(self, value): self.__eta_2 = SIfloat(value)
+    def eta_2(self, value): self.__eta_2.value = SIfloat(value)
     
     @property
-    def eta_3(self): return Param('eta_3', self.__eta_3)
+    def eta_3(self): return self.__eta_3
     @eta_3.setter
-    def eta_3(self, value): self.__eta_3 = SIfloat(value)
+    def eta_3(self, value): self.__eta_3.value = SIfloat(value)
     
     @property
-    def rho_0(self): return Param('rho_0', self.__rho_0)
+    def rho_0(self): return self.__rho_0
     @rho_0.setter
-    def rho_0(self, value): self.__rho_0 = SIfloat(value)
+    def rho_0(self, value): self.__rho_0.value = SIfloat(value)
     
     @property
-    def alpha(self): return Param('alpha', self.__alpha)
+    def alpha(self): return self.__alpha
     @alpha.setter
-    def alpha(self, value): self.__alpha = SIfloat(value)
+    def alpha(self, value): self.__alpha.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -500,19 +493,14 @@ class grating(Component):
         rtn = []
         
         if self.__n == 2:
-            rtn.append('gr{0} {1} {2} {3} {4}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name))
+            rtn.append('gr{0} {1} {2} {3} {4}'.format(self.__n, self.name, self.__d.value, self.nodes[0].name, self.nodes[1].name))
         elif self.__n == 3:
-            rtn.append('gr{0} {1} {2} {3} {4} {5}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name))
+            rtn.append('gr{0} {1} {2} {3} {4} {5}'.format(self.__n, self.name, self.__d.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name))
         else:
-            rtn.append('gr{0} {1} {2} {3} {4} {5} {6}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, self.nodes[3].name))
+            rtn.append('gr{0} {1} {2} {3} {4} {5} {6}'.format(self.__n, self.name, self.__d.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, self.nodes[3].name))
         
-        if self.eta_0 != 0: rtn.append("attr {0} eta_0 {1}".format(self.name,self.__eta_0))
-        if self.eta_1 != 0: rtn.append("attr {0} eta_1 {1}".format(self.name,self.__eta_1))
-        if self.eta_2 != 0: rtn.append("attr {0} eta_2 {1}".format(self.name,self.__eta_2))
-        if self.eta_3 != 0: rtn.append("attr {0} eta_3 {1}".format(self.name,self.__eta_3))
-        if self.rho_0 != 0: rtn.append("attr {0} rho_0 {1}".format(self.name,self.__rho_0))
-        if self.alpha != 0: rtn.append("attr {0} alpha {1}".format(self.name,self.__alpha))
-        # TODO: implement Rcx, Rcy, Rc
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
         
         return rtn
        
@@ -529,12 +517,12 @@ class isolator(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         
-        self.__S = SIfloat(S)
+        self.__S = Param("S",self,SIfloat(S))
         
     @property
-    def S(self): return Param('S', self.__S)
+    def S(self): return self.__S
     @S.setter
-    def S(self, value): self.__S = SIfloat(value)
+    def S(self, value): self.__S.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -551,7 +539,12 @@ class isolator(Component):
             raise exceptions.RuntimeError("Isolator Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        return 'isol {0} {1} {2} {3}'.format(self.name, self.S, self.nodes[0].name, self.nodes[1].name)            
+        rtn = ['isol {0} {1} {2} {3}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name)]
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+            
+        return rtn
 
     def getQGraphicsItem(self):
         if self._QItem == None:
@@ -566,12 +559,12 @@ class lens(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         
-        self.__f = SIfloat(f)
+        self.__f = Param("f", self, SIfloat(f))
         
     @property
-    def f(self): return Param('f', self.__f)
+    def f(self): return self.__f
     @f.setter
-    def f(self, value): self.__f = SIfloat(value)
+    def f(self, value): self.__f.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -588,38 +581,121 @@ class lens(Component):
             raise exceptions.RuntimeError("Lens Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        return 'lens {0} {1} {2} {3}'.format(self.name, self.f, self.nodes[0].name, self.nodes[1].name)            
-
+        rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+            
+        return rtn
+        
     def getQGraphicsItem(self):
         if self._QItem == None:
             self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make lens graphic
         
         return self._QItem
+        
+class modulator(Component):
+    def __init__(self, name, f, midx, order, modulation_type, node1, node2, phase=0):
+        Component.__init__(self, name)
+        
+        self._requested_node_names.append(node1)
+        self._requested_node_names.append(node2)
+        
+        self.__f = Param("f", self, SIfloat(f))
+        self.__midx = Param("midx", self, SIfloat(midx))
+        self.__phase = Param("phase", self, SIfloat(phase))
+        self.__order = order
+        self.type = modulation_type
+        
+            
+    @property 
+    def f(self): return self.__f
+    @f.setter
+    def f(self, value): self.__f.value = SIfloat(value)
     
+    @property 
+    def midx(self): return self.__midx
+    @midx.setter
+    def midx(self, value): self.__midx.value = SIfloat(value)
+    
+    @property 
+    def phase(self): return self.__phase
+    @phase.setter
+    def phase(self, value): self.__phase.value = SIfloat(value)
+    
+    @property 
+    def order(self): return self.__order
+    @order.setter
+    def order(self, value):
+        if order <= 1 and order > 6:
+            raise pkex.BasePyKatException("modulator order must be between 1 and 6")
+            
+        self.__order = int(value)
+    
+    @property 
+    def type(self): return self.__type
+    @type.setter
+    def type(self, value):
+        if value != "am" and value != "pm":
+            raise pkex.BasePyKatException("Modulator type must be am (amplitude modulation) or pm (phase modulation)")
+            
+        self.__type = str(value)
+    
+    @staticmethod
+    def parseFinesseText(text):
+        v = text.split(" ")
+
+        if v[0] != "mod":
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse modulator command".format(text))
+
+        v.pop(0) # remove initial value
+        
+        if len(v) == 7:
+            return modulator(v[0], v[1], v[2], v[3], v[4], v[5], v[6])
+        if len(v) == 8:
+            return modulator(v[0], v[1], v[2], v[3], v[4], v[6], v[7], phase=v[5])
+        else:
+            raise pkex.BasePyKatException("Modulator Finesse code format incorrect '{0}'".format(text))
+        
+    def getFinesseText(self):
+        rtn = ['mod {0} {1} {2} {3} {4} {5} {6} {7}'.format(self.name, self.f, self.midx, self.order, self.type, self.phase, self.nodes[0].name, self.nodes[1].name)]
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+            
+        return rtn
+        
+    def getQGraphicsItem(self):
+        if self._QItem == None:
+            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make lens graphic
+        
+        return self._QItem
+
 class laser(Component):
     def __init__(self,name,node,P=1,f_offset=0,phase=0):
         Component.__init__(self,name)
         
         self._requested_node_names.append(node)
         
-        self.__power = float(P)
-        self.__f_offset = float(f_offset)
-        self.__phase = float(phase)
+        self.__power = Param("P", self, SIfloat(P))
+        self.__f_offset = Param("f", self, SIfloat(f_offset))
+        self.__phase = Param("phase", self, SIfloat(phase))
+        self.__noise = AttrParam("noise", self, 0)
         
     @property
-    def power(self): return Param('P', self.__power)
+    def power(self): return self.__power
     @power.setter
-    def power(self,value): self.__power = float(value)
+    def power(self,value): self.__power.value = float(value)
     
     @property
-    def f_offset(self): return Param('f', self.__f_offset)
-    @f_offset.setter
-    def f_offset(self,value): self.__f_offset = float(value)
+    def f(self): return self.__f_offset
+    @f.setter
+    def f(self,value): self.__f_offset.value = float(value)
     
     @property
-    def phase(self): return Param('phase', self.__phase)
+    def phase(self): return self.__phase
     @phase.setter
-    def phase(self,value): self.__phase = float(value)
+    def phase(self,value): self.__phase.value = float(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -638,7 +714,12 @@ class laser(Component):
             raise exceptions.FinesseParse("Laser Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
-        return 'l {0} {1} {2} {3} {4}'.format(self.name, self.__power, self.__f_offset, self.__phase, self.nodes[0].name)            
+        rtn = ['l {0} {1} {2} {3} {4}'.format(self.name, self.__power.value, self.__f_offset.value, self.__phase.value, self.nodes[0].name)]
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+        
+        return rtn
          
     def getQGraphicsItem(self):
         if self._svgItem == None:

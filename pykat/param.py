@@ -1,7 +1,8 @@
+from pykat.SIfloat import SIfloat
 import abc
 import pykat.exceptions as pkex
 
-class puttable(object):
+class putable(object):
     """
     Objects that inherit this should be able to have something `put` to it.
     Essentially this means you could write Finesse commands like
@@ -10,12 +11,17 @@ class puttable(object):
     """
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, component_name, parameter_name):
+    def __init__(self, component_name, parameter_name, isPutable=True):
         self._parameter_name = parameter_name
         self._component_name = component_name
         self._putter = None
+        self._isPutable  = isPutable
+    
+    @property
+    def isPutable(self): return self._isPutable
     
     def put(self, var):
+        print "put"
         if not isinstance(var, putter):
             raise pkex.BasePyKatException("var was not something that can be `put` as a value")
         
@@ -25,7 +31,7 @@ class puttable(object):
         self._putter = var
         self._putter.put_count += 1
         
-    def getPutFinesseText(self):
+    def _getPutFinesseText(self):
         rtn = []
         # if something is being put to this 
         if self._putter != None:
@@ -35,29 +41,45 @@ class puttable(object):
             
 class putter(object):
     """
-    If an object can be put to something that is puttable it should inherit this
+    If an object can be put to something that is putable it should inherit this
     object.
     """
-    __metaclass__ = abc.ABCMeta
     
-    def __init__(self, put_name):
+    def __init__(self, put_name, isPutter=True):
         self._put_name = put_name
         self.put_count = 0
-        
+        self._isPutter = isPutter
+    
+    @property
+    def isPutter(self): return self._isPutter
+    
     def put_name(self): return self._put_name
     
         
-class Param(puttable, putter):         
-    def __init__(self, name, owner, value):
+class Param(putable, putter):
+
+    def __init__(self, name, owner, value, isPutable=True, isPutter=True, isTunable=True, var_name=None):
         self._name = name
         self._owner = owner
         self._value = value
+        self._isPutter = isPutter
+        self._isTunable = isTunable
+        self._owner._register_param(self)
         
-        putter.__init__(self,"var_{0}_{1}".format(owner.name, name))
-        puttable.__init__(self, owner.name, name)
+        if isPutter:
+            if var_name == None:
+                var_name = "var_{0}_{1}".format(owner.name, name)
+                
+            putter.__init__(self, var_name, isPutter)
+            
+        if isPutable:
+            putable.__init__(self, owner.name, name, isPutable)
         
     @property
     def name(self): return self._name
+    
+    @property
+    def isTuneable(self): return self._isTunable
     
     @property
     def value(self): return self._value
@@ -65,15 +87,17 @@ class Param(puttable, putter):
     def value(self, value):
         self._value = value
     
+    def __str__(self): return str(self.value)
     def __float__(self): return self.value
         
     def getFinesseText(self):
         rtn = []
-        rtn.extend(self.getPutFinesseText())
+        
+        if self.isPutable: rtn.extend(self._getPutFinesseText())
         
         # if this parameter is being put somewhere then we need to
         # set it as a variable
-        if self.put_count > 0:
+        if self.isPutter and self.put_count > 0:
             rtn.append("set {put_name} {comp} {param}".format(put_name=self.put_name(), comp=self._owner.name, param=self.name))
         
         return rtn
@@ -116,28 +140,28 @@ class Param(puttable, putter):
         
     def __eq__(self, q):
         return float(q) == self.value
+    def __ne__(self, q):
+        return float(q) != self.value
+    def __lt__(self, q):
+        return float(q) > self.value
+    def __gt__(self, q):
+        return float(q) < self.value        
         
-class Beer(object):
-    def __init__(self, temp, name):
-        
-        self._name = name
-        
-        self._T = Param('T', self, temp)
+class AttrParam(Param):
+    """
+    Certain parameters of a component are set using the Finesse `attr` command.
     
-    @property
-    def name(self): return self._name
-        
-    @property
-    def T(self): return self._T
+    This inherits directly from a Param object so can be set whether this attribute
+    is putable or a putter.
     
-    @T.setter
-    def T(self,value): self._T.value = float(value) 
+    If the value pf the parameter is not 0 the attr command will be printed.
+    """
+    def getFinesseText(self):
+        rtn = []
         
-
-b = Beer(1,"b")
-c = Beer(2,"c")
-
-c.T.put(b.T)
-
-print c.T.getFinesseText()
-print b.T.getFinesseText()
+        if self.value != 0:
+            rtn.append("attr {0} {1} {2}".format(self._owner.name, self.name, self.value))
+            
+        rtn.extend(super(AttrParam, self).getFinesseText())
+        
+        return rtn
