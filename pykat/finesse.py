@@ -129,7 +129,6 @@ class kat(object):
         self.__components = {}  # dictionary of optical components      
         self.__detectors = {}   # dictionary of detectors
         self.__commands = {}    # dictionary of commands
-        self.__extra_lines = [] # an array of strings which are just normal finesse code to include when running
         self.__gui = None
         self.nodes = NodeNetwork(self)  
         self.__katdir = katdir
@@ -140,6 +139,8 @@ class kat(object):
         
         # Various options for running finesse, typicaly the commands with just 1 input
         # and have no name attached to them.
+        self.retrace = None
+        self.deriv_h = None
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = None
@@ -274,6 +275,27 @@ class kat(object):
                     obj = pykat.commands.x2axis.parseFinesseText(line)
                 elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
                     after_process.append(line)
+                elif(first == "noxaxis"):
+                    self.noxaxis = True
+                elif(first == "phase"):
+                    v = line.split(" ")
+                    if len(v) != 2:
+                        raise pkex.BasePyKatException("Phase command `{0}` is incorrect.".format(line))
+                    else:
+                        self.phase = int(v[1])
+                elif(first == "retrace"):
+                    v = line.split(" ")
+                    if len(v) > 2:
+                        raise pkex.BasePyKatException("Retrace command `{0}` is incorrect.".format(line))
+                    elif len(v) == 2:
+                        self.retrace = v[1]
+                        
+                elif(first == "deriv_h"):
+                    v = line.split(" ")
+                    if len(v) != 2:
+                        raise pkex.BasePyKatException("Deriv_h command `{0}` is incorrect.".format(line))
+                    else:
+                        self.deriv_h = float(v[1])
                 else:
                     if self.verbose:
                         print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
