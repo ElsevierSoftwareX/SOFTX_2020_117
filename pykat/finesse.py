@@ -382,10 +382,10 @@ class kat(object):
             p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
-            if self.verbose: print "Finesse binary output:"
+            #if self.verbose: print "Finesse output:"
             
             for line in iter(p.stderr.readline, ""):
-                #err += line 
+                err += line 
                 
                 if len(line) > 0:
                     if line.rstrip().endswith('%'):
@@ -393,8 +393,8 @@ class kat(object):
                         action = vals[0].strip()
                         prc = vals[1].strip()[:-1]
                         sys.stdout.write("\r{0} {1}%".format(action, prc))
-                    elif line[0] == '*':
-                        sys.stdout.write(line)
+                        #elif line[0] == '*':
+                        #sys.stdout.write(line)
                         
             [out,errpipe] = p.communicate()
             
