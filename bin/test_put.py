@@ -17,14 +17,18 @@ kat = finesse.kat()
 
 kat.parseCommands(code)
 
-kat.add(photodiode('pd_ref','n3', num_demods=1, demods=[10,0]))
+kat.add(pd('pdp',1,'n3'))
+kat.add(pd('pdm',1,'n3'))
 
-kat.add(xaxis("lin", [0, 1000], "pd_ref", "f1", 100))
+kat.add(xaxis("lin", [0, 1000], kat.eom, "f", 100))
+
+kat.pdp.f1.put(kat.xaxis.x)
+kat.pdm.f1.put(kat.xaxis.mx)
 
 out = kat.run(printout=0, printerr=0)
 
 pl.figure()
-pl.plot(out.x, out["pd_ref"])
+pl.plot(out.x, out["pdp"], out.x, out["pdm"])
 pl.xlabel(out.xlabel)
 pl.ylabel("Intensity [W]")
 pl.legend(out.ylabels)

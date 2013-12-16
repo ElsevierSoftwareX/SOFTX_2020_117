@@ -21,7 +21,7 @@ class putable(object):
     def isPutable(self): return self._isPutable
     
     def put(self, var):
-        print "put"
+    
         if not isinstance(var, putter):
             raise pkex.BasePyKatException("var was not something that can be `put` as a value")
         
@@ -103,31 +103,31 @@ class Param(putable, putter):
         return rtn
         
     def __mul__(self, a):
-        return float(self) * a
+        return self.value * a
     
     def __imul__(self, a):
-        return self.value * float(a)
+        return self.value * (a)
         
     __rmul__ = __mul__
     
     def __add__(self, a):
-        return self.value + flota(a)
+        return self.value + (a)
     
     def __iadd__(self, a):
-        return self.value + float(a)
+        return self.value + (a)
         
     __radd__ = __add__
     
     def __sub__(self, a):
-        return self.value - float(a)
+        return self.value - (a)
     
     def __isub__(self, a):
-        return self.value - float(a)
+        return self.value - (a)
         
     __rsub__ = __sub__
     
     def __div__(self, a):
-        return self.value / float(a)
+        return self.value / (a)
     
     def __idiv__(self, a):
         return self.value / complex(a)
@@ -139,13 +139,13 @@ class Param(putable, putter):
         return -self.value
         
     def __eq__(self, q):
-        return float(q) == self.value
+        return (q) == self.value
     def __ne__(self, q):
-        return float(q) != self.value
+        return (q) != self.value
     def __lt__(self, q):
-        return float(q) > self.value
+        return (q) > self.value
     def __gt__(self, q):
-        return float(q) < self.value        
+        return (q) < self.value        
         
 class AttrParam(Param):
     """

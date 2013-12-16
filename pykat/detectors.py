@@ -20,13 +20,17 @@ class Detector(object) :
         self.enabled = True
         self.tag = None
         self.__node = None
+        self._params = []
         
         if node.find('*'):
             self._alternate_beam = True
             node.replace('*','')
         
         self.__requested_node = node
-
+    
+    def _register_param(self, param):
+        self._params.append(param)
+        
     def _on_kat_add(self, kat):
         self.__node = kat.nodes.createNode(self.__requested_node)
     
@@ -43,12 +47,140 @@ class Detector(object) :
     
     @property 
     def node(self): return self.__node
+    @node.setter
+    def node(self, value):
+        if value in self._kat.nodes:
+            self.__node = self._kat.nodes[value]
+        else:
+            raise pkex.BasePyKatException("There is no node called " + value)
     
     @property
     def name(self): return self.__name        
 
     def __str__(self): return self.name
+
+class pd(Detector):
     
+    def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, **kwargs):
+        Detector.__init__(self, name, node_name)
+        
+        self.__num_demods = num_demods
+        self.__senstype = senstype
+        self.__alternate_beam = alternate_beam
+        # create the parameters for all 5 demodulations regardless
+        # of how many the user specifies. Later we add properties to
+        # those which correspond to the number of demodulations
+        
+        self.__f1 = Param("f1", self, 0)
+        self.__f2 = Param("f2", self, 0)
+        self.__f3 = Param("f3", self, 0)
+        self.__f4 = Param("f4", self, 0)
+        self.__f5 = Param("f5", self, 0)
+        
+        self.__phi1 = Param("phi1", self, None)
+        self.__phi2 = Param("phi2", self, None)
+        self.__phi3 = Param("phi3", self, None)
+        self.__phi4 = Param("phi4", self, None)
+        self.__phi5 = Param("phi5", self, None)
+        
+        # define new class for assigning new attributes
+        cls = type(self)
+        self.__class__ = type(cls.__name__, (cls,), {})
+    
+        self.__set_demod_attrs()
+        
+    @property
+    def senstype(self): return self.__senstype
+    @senstype.setter
+    def senstype(self,value):
+        if value == "": value = None
+        
+        if value != "S" and value != "N" and value != None: 
+            raise pkex.BasePyKatException("Photodiode sensitivity type can either be 'N', 'S' or None.")
+            
+        self.__senstype = value
+        
+    @property
+    def num_demods(self): return self.__num_demods
+    @num_demods.setter
+    def num_demods(self, value): 
+        if value < 0 or value > 5:
+            raise pkex.BasePyKatException("Number of demodulations must be between 0 and 5")
+        
+        self.__num_demods = value
+        self.__set_demod_attrs()
+    
+    def __get_fphi(self, name):
+        return getattr(self, '_'+ self.__class__.__name__ +'__' + name)
+    
+    def __set_f(self, num, value):
+        setattr(self, '_'+ self.__class__.__name__ +'__f' + name, float(value))
+    
+    def __set_phi(self, num, value):
+        if value == None and num != self.num_demods:
+            # check if we are setting no phase that this is only on the last
+            # demodulation phase.
+            raise pkex.BasePyKatException("Only last demodulation phase can be set to None")
+        elif isinstance(value, str) and not isinstance(value,float) and value.lower() != "max":
+            raise pkex.BasePyKatException("Demodulation phase can only be set to a 'max' or a number (or None if the last demodulation phase)")
+            
+        setattr(self, '_'+ self.__class__.__name__ +'__phi' + name, value)
+        
+    def __set_demod_attrs(self):
+        """
+        For the set number of demodulations the correct number of 
+        Parameters are created.
+        """
+        
+        # if there are demodulations present then we want to add
+        # the various parameters so they are available for users
+        # to play with.
+        if self.__num_demods > 0:
+            for i in range(1,6):
+                name = str(i)
+                if i <= self.num_demods:
+                    if not hasattr(self, "f"+name):
+                        setattr(self.__class__, "f"+name, property(fget=lambda self, i=i: self.__get_fphi('f'+str(i)), fset=lambda self, value, i=i: self.__set_f(str(i), value)))
+                    
+                    if not hasattr(self, "phi"+name):
+                        setattr(self.__class__, "phi"+name, property(fget=lambda self, i=i: self.__get_fphi('phi'+str(i)), fset=lambda self, value, i=i: self.__set_phi(str(i), value)))
+                else:
+                    if hasattr(self, "f"+name):
+                        delattr(self.__class__, "f"+name)
+                    if hasattr(self, "phi"+name):
+                        delattr(self.__class__, "phi"+name)
+        else:
+            return
+    
+    def getFinesseText(self) :
+        rtn = []
+        
+        if self.enabled:
+            alt_str = ""
+            fphi_str = ""
+            
+            if self.__alternate_beam:
+                alt_str = "*"
+                
+            for n in range(1, 1+self.num_demods):
+                fphi_str += str(self.__getattribute__("f"+str(n)))
+                phi_val = self.__getattribute__("phi"+str(n))
+                
+                if phi_val != None:
+                    fphi_str += " " + str(phi_val)
+            
+            senstype = self.senstype
+            
+            if senstype == None:
+                senstype = ""
+                
+            rtn.append("pd{0}{1} {2} {3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+            
+        return rtn
+            
 class photodiode(Detector):
 
     class __F(list):
@@ -83,8 +215,10 @@ class photodiode(Detector):
         
     def __init__(self, name, node, senstype="", num_demods=0, demods=[]):        
         Detector.__init__(self, name, node)
+        
         if num_demods>2:
             raise NotImplementedError("pd with more than two demodulations not implemented yet")   
+            
         self.num_demods = num_demods
         self.senstype = senstype
 

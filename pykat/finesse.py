@@ -77,7 +77,7 @@ class katRun(object):
             else:
                 return self.y[:, idx]
         else:
-            raise  pkex.BasePyKatException("No output by the name {0} found", value)
+            raise  pkex.BasePyKatException("No output by the name {0} found".format(value))
       
 class katRun2D(object):
     def __init__(self):
@@ -156,7 +156,6 @@ class kat(object):
         
         cls = type(self)
         self.__class__ = type(cls.__name__, (cls,), {})
-        #self.logo()
         
     @property
     def maxtem(self): return self.__maxtem
@@ -503,7 +502,7 @@ class kat(object):
                 self.__add_command(obj)
                 
             else :
-                raise BasePyKatException("Object {0} could not be added".format(obj))
+                raise pkex.BasePyKatException("Object {0} could not be added".format(obj))
                 
             obj._on_kat_add(self)
             
@@ -682,7 +681,6 @@ class kat(object):
 
     def __get_detector(self, name):
         return getattr(self, '__det_' + name) 
-        
         
     def __add_command(self, com):
 

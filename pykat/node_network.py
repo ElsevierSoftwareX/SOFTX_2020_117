@@ -200,6 +200,13 @@ class NodeNetwork(object):
     def __get_node_attr(self, name):
         return getattr(self, '__node_' + name)        
         
+    def __getitem__(self, value):
+        return self.__nodes[str(value)]
+        
+    def __contains__(self, value):
+        return value in self.__nodes
+        
+    
 class Node(object):
 
     def __init__(self, name, network, id):
@@ -211,7 +218,9 @@ class Node(object):
         self.__q_y = None
         self.__q_comp = None
         self.__id = id
-        
+    
+    def __str__(self): return self.__name
+    
     @property
     def id(self): return self.__id
     
