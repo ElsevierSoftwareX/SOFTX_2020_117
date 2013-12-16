@@ -344,8 +344,8 @@ class kat(object):
             if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
                 raise MissingFinesse()
                 
-            print "--------------------------------------------------------------"
-            print "Running kat - Started at " + str(start)
+            if self.verbose: print "--------------------------------------------------------------"
+            if self.verbose: print "Running kat - Started at " + str(start)
             
             if hasattr(self, "x2axis"):
                 r = katRun2D()
@@ -382,7 +382,7 @@ class kat(object):
             p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
-            print "Finesse binary output:"
+            if self.verbose: print "Finesse binary output:"
             
             for line in iter(p.stderr.readline, ""):
                 #err += line 
@@ -426,7 +426,7 @@ class kat(object):
                     
                 os.rename(outfile, newoutfile)
 
-                print "\nOutput data saved to '{0}'".format(newoutfile)
+                if self.verbose: print "\nOutput data saved to '{0}'".format(newoutfile)
             
             if hasattr(self, "x2axis"):
                 [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
@@ -452,7 +452,7 @@ class kat(object):
                   
                 os.rename(katfile.name, newkatfile)         
                 
-                print "Kat file saved to '{0}'".format(newkatfile)
+                if self.verbose: print "Kat file saved to '{0}'".format(newkatfile)
                 
 
             katfile.close()
@@ -472,8 +472,8 @@ class kat(object):
         except pkex.FinesseRunError as fe:
             print fe
         finally:
-            print ""
-            print "Finished in " + str(datetime.datetime.now()-start)
+            if self.verbose: print ""
+            if self.verbose: print "Finished in " + str(datetime.datetime.now()-start)
             
         
     def add(self, obj):
