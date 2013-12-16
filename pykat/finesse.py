@@ -146,7 +146,7 @@ class kat(object):
         self.__time_code = None
         
         if kat_code != None and kat_file != None:
-            raise BasePyKatException("Specify either a Kat file or some Kat code, not both.")
+            raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
         
         if kat_code != None:
             self.parseCommands(kat_code)
@@ -179,8 +179,8 @@ class kat(object):
 
     def logo(self):
         print """                                              ..-
-                          _                  '(
-    PyKat                 \\`.|\\.__...-\"\"""-_." )
+    PyKat                 _                  '(
+                          \\`.|\\.__...-\"\"""-_." )
        ..+-----.._        /  ' `            .-'
    . '            `:      7/* _/._\\    \\   (
   (        '::;;+;;:      `-"' =" /,`"" `) /
@@ -305,7 +305,7 @@ class kat(object):
             katfile.flush()
             katfile.close()
 
-        except BasePyKatException as ex:
+        except pkex.BasePyKatException as ex:
             print ex
             
     def run(self, printout=0, printerr=0, save_output=False, save_kat=False,kat_name=None) :
@@ -314,6 +314,8 @@ class kat(object):
         It returns a katRun or katRun2D object which is populated with the various
         data from the simulation run.
         """
+        start = datetime.datetime.now()
+
         
         try:        
             if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
@@ -343,7 +345,6 @@ class kat(object):
                 raise MissingFinesse()
                 
             print "--------------------------------------------------------------"
-            start = datetime.datetime.now()
             print "Running kat - Started at " + str(start)
             
             if hasattr(self, "x2axis"):
@@ -483,7 +484,7 @@ class kat(object):
             if isinstance(obj, Component):
                 
                 if obj.name in self.__components :
-                    raise BasePyKatException("A component with name '{0}' has already been added".format([obj.name]))            
+                    raise pkex.BasePyKatException("A component with name '{0}' has already been added".format([obj.name]))            
                             
                 self.__components[obj.name] = obj
                 self.__add_component(obj)
@@ -491,7 +492,7 @@ class kat(object):
             elif isinstance(obj, Detector):
                 
                 if obj.name in self.__detectors :
-                        raise BasePyKatException("A detector '{0}' has already been added".format(obj.name))
+                        raise pkex.BasePyKatException("A detector '{0}' has already been added".format(obj.name))
                         
                 self.__detectors[obj.name] = obj
                 self.__add_detector(obj)
