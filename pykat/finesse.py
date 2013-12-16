@@ -274,6 +274,8 @@ class kat(object):
                     obj = pykat.commands.x2axis.parseFinesseText(line)
                 elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
                     after_process.append(line)
+                elif(first == "noxaxis"):
+                    self.noxaxis = True
                 else:
                     if self.verbose:
                         print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
