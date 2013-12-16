@@ -285,10 +285,11 @@ class kat(object):
                         self.phase = int(v[1])
                 elif(first == "retrace"):
                     v = line.split(" ")
-                    if len(v) != 2:
+                    if len(v) > 2:
                         raise pkex.BasePyKatException("Retrace command `{0}` is incorrect.".format(line))
-                    else:
-                        self.retrace = int(v[1])
+                    elif len(v) == 2:
+                        self.retrace = v[1]
+                        
                 elif(first == "deriv_h"):
                     v = line.split(" ")
                     if len(v) != 2:
