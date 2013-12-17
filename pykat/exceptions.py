@@ -26,5 +26,6 @@ class FinesseRunError(BasePyKatException) :
         self.__err = err
         self.__kat = kat
         
-        BasePyKatException.__init__(self, "Finesse returned an error running {1}: {0}".format(self.__err, self.__kat))
+        BasePyKatException.__init__(self, "Finesse error (file {1}):\n{0}".format(self.__err, self.__kat))
+        #BasePyKatException.__init__(self, "{0}".format(self.__err))
         

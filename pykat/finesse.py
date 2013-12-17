@@ -225,7 +225,7 @@ class kat(object):
                             warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
                             
                         if newTag in self.__blocks:
-                            raise pkex.BasePyKatException("Block `{0}` has already been read")
+                            raise pkex.BasePyKatException("Block `{0}` has already been read").format(newTag)
                             
                         self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
                         self.__currentTag = newTag                            
@@ -577,8 +577,9 @@ class kat(object):
         
         for key in self.__blocks:
             objs = self.__blocks[key].contents
-            
-            out.append("%%% FTblock " + key + "\n")
+
+            if key != NO_BLOCK:
+                out.append("%%% FTblock " + key + "\n")
             
             for obj in objs:
                 if isinstance(obj, str):
@@ -593,8 +594,9 @@ class kat(object):
                                 out.append(t + "\n")
                         else:
                             out.append(txt + "\n")
-                            
-            out.append("%%% FTend " + key + "\n")
+
+            if key != NO_BLOCK:
+                out.append("%%% FTend " + key + "\n")
         
         if self.noxaxis != None and self.noxaxis == True:
             out.append("noxaxis\n")
