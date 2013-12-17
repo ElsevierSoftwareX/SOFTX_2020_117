@@ -225,7 +225,7 @@ class kat(object):
                             warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
                             
                         if newTag in self.__blocks:
-                            raise pkex.BasePyKatException("Block `{0}` has already been read").format(newTag)
+                            raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
                             
                         self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
                         self.__currentTag = newTag                            
