@@ -71,6 +71,7 @@ class katRun(object):
     
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split(" ")[0] == str(value)]
+        print idx
         
         if len(idx) == 1 and len(self.y.shape) == 1:
             return self.y.squeeze()
