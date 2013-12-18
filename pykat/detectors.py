@@ -10,6 +10,8 @@ import pykat.gui.resources
 from pykat.utils import *
 from pykat.gui.graphics import *
 from pykat.node_network import *
+from pykat.param import Param, ScaleParam
+
 
 class Detector(object) :
     def __init__(self, name,node):
@@ -22,6 +24,7 @@ class Detector(object) :
         self.__node = None
         self._params = []
         self._mask = {}
+        self.__scale = ScaleParam("scale", self, SIfloat(1.0))
         
         if node.find('*'):
             self._alternate_beam = True
@@ -46,6 +49,13 @@ class Detector(object) :
     def getQGraphicsItem(self):    
         return None
     
+
+    @property 
+    def scale(self): return self.__scale
+    @scale.setter
+    def sclae(self, value):
+        self.__scale = SIfloat(value)
+
     @property 
     def node(self): return self.__node
     @node.setter
