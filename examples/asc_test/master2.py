@@ -26,6 +26,10 @@ def main():
     
     # shall we clear the workspace?
     # %reset -f
+
+    # making these global during testing and debugging
+    global kat
+    global out
     
     kat = finesse.kat(tempdir=".",tempname="test")
     kat.verbose = False
@@ -48,21 +52,20 @@ def main():
     print "--------------------------------------------------------"
     print " 5. checking wavefront tilt for ITM/ETM tilt of 0.1nrad"
     
+    kat.ETM.phi=result['phi_tuned']
     
     out = tilt(kat)
     #(tilt_l, tilt_u) = asc_tilt.run(kat)
     
-    kat.ETM.phi=result['phi_tuned']
     
 
 
 
 def tilt(tmpkat):
-
     kat = copy.deepcopy(tmpkat)
 
-    
     code_det = """
+    attr ITM ybeta 0.1n
     beam PDrefl_car 0 nWFS2
     beam PDrefl_up 9M nWFS2
     beam PDrefl_low -9M nWFS2
@@ -71,10 +74,13 @@ def tilt(tmpkat):
     """
     kat.parseKatCode(code_det)
     kat.noxaxis = True
+
+    #kat.PDrefl_p.enabled = False
+    #kat.PDrefl_q.enabled = False
     
     out = kat.run(printout=0,printerr=0)
-    tilt_l = out.y[0]
-    tilt_u = out.y[0]
+    #tilt_l = out.y[0]
+    #tilt_u = out.y[0]
     return (out)
     #return (tilt_l, tilt_u)
 
