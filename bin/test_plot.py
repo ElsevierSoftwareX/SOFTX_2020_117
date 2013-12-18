@@ -14,16 +14,17 @@ m m1 0.5 0.5 0 n2 n3
 s s2 10 1 n3 n4
 m m2 0.5 0.5 0 n4 n5
 s s3 10 1 n5 n6
+
+yaxis abs:deg
 """
 
-#kat = finesse.kat(katexe='/Users/adf/work/bin/kat')
 kat = finesse.kat()
 
 kat.parseCommands(code)
 
 kat.add(cavity('cav1', 'm1', 'n3', 'm2', 'n4'))
 
-kat.add(photodiode('pd_cav','n4'))
+kat.add(photodiode('pd_cav','n4',num_demods=1, demods=[1]))
 kat.add(photodiode('pd_ref','n2'))
 kat.add(photodiode('pd_trs','n5'))
 
@@ -40,6 +41,7 @@ out = kat.run(printout=0,printerr=0)
 
 pl.figure()
 pl.plot(out.x, out["pd_cav"])
+pl.plot(out.x, out["pd_ref"])
 pl.xlabel(out.xlabel)
 pl.ylabel("Intensity [W]")
 pl.legend(out.ylabels)

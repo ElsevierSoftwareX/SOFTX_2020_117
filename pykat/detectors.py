@@ -21,6 +21,7 @@ class Detector(object) :
         self.tag = None
         self.__node = None
         self._params = []
+        self._mask = {}
         
         if node.find('*'):
             self._alternate_beam = True
@@ -59,8 +60,18 @@ class Detector(object) :
 
     def __str__(self): return self.name
 
-class pd(Detector):
+    def mask(self, n, m, factor):
+        id = str(n)+"_"+str(m)
+        
+        # if the mask is 1 then remove this so it doesn't get 
+        # printed as by default the value is 1.0
+        if id in self._mask and factor == 1.0:
+            del self._mask[id]
+                
+        self._mask[id] = factor
     
+class pd(Detector):
+
     def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, **kwargs):
         Detector.__init__(self, name, node_name)
         

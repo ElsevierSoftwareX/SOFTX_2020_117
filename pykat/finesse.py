@@ -70,14 +70,16 @@ class katRun(object):
     def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        if value in self.ylabels:
-            idx = self.ylabels.index(value)
-            if len(self.y.shape) == 1:
-                return self.y
-            else:
-                return self.y[:, idx]
+        idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split(" ")[0] == str(value)]
+        
+        if len(idx) == 1 and len(self.y.shape) == 1:
+            return self.y.squeeze()
+        elif len(idx) > 0:
+            return self.y[:,idx].squeeze()
+        elif len(idx) == 1:
+            return self.y[idx].squeeze()
         else:
-            raise  pkex.BasePyKatException("No output by the name {0} found".format(value))
+            raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
       
 class katRun2D(object):
     def __init__(self):
