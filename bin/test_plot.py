@@ -24,9 +24,10 @@ kat.parseCommands(code)
 
 kat.add(cavity('cav1', 'm1', 'n3', 'm2', 'n4'))
 
-kat.add(photodiode('pd_cav','n4',num_demods=1, demods=[1]))
 kat.add(photodiode('pd_ref','n2'))
 kat.add(photodiode('pd_trs','n5'))
+kat.add(photodiode('pd_cav','n4', num_demods=1, demods=[1]))
+
 
 kat.add(xaxis("lin", [0, 360], kat.m2, kat.m2.phi, 100))
 
@@ -41,7 +42,6 @@ out = kat.run(printout=0,printerr=0)
 
 pl.figure()
 pl.plot(out.x, out["pd_cav"])
-pl.plot(out.x, out["pd_ref"])
 pl.xlabel(out.xlabel)
 pl.ylabel("Intensity [W]")
 pl.legend(out.ylabels)
