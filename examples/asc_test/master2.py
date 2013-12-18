@@ -2,6 +2,7 @@
 from pykat import finesse
 from pykat.commands import *
 import pylab as pl
+import numpy as np
 import shelve
 import copy
 
@@ -51,7 +52,10 @@ def main():
     
     print "--------------------------------------------------------"
     print " 5. checking wavefront tilt for ITM/ETM tilt of 0.1nrad"
-    
+
+    #kat.PDrefl_p.enabled = False
+    #kat.PDrefl_q.enabled = False
+
     kat.ETM.phi=result['phi_tuned']
     
     out = tilt(kat)
@@ -62,25 +66,82 @@ def main():
 
 
 def tilt(tmpkat):
+
+    def compute_tilt(tmpkat):
+        kat = copy.deepcopy(tmpkat)
+        out = kat.run(printout=0,printerr=0)
+
+        # compute x range in meters
+        beamsize = out["w0y"][0,0] 
+        xrange = beamsize*(out.x.max()-out.x.min())
+        stepsize=xrange/(len(out.x)-1)
+        print " Beamsize %e m" % beamsize
+        print " Measurement range: %e m, stepszie: %e m" % (xrange, stepsize)
+        # compute difference in angle between wavefront of carrier and sidebands
+        diff_l = (out["PDrefl_low"][:,1]-out["PDrefl_car"][:,1])/stepsize
+        diff_u = (out["PDrefl_up"][:,1]-out["PDrefl_car"][:,1])/stepsize
+        tilt_l = diff_l[1:-1]-diff_l[0:-2]
+        tilt_u = diff_u[1:-1]-diff_u[0:-2]
+        print " Tilt (upper  - car), mean: %e m/deg, stddev %e m/deg" % (np.mean(tilt_u), np.std(tilt_u))
+        print " Tilt (lower  - car), mean: %e m/deg, stddev %e m/deg" % (np.mean(tilt_l), np.std(tilt_l))
+        return (np.mean(tilt_l), np.mean(tilt_u))
+
+
     kat = copy.deepcopy(tmpkat)
 
-    code_det = """
-    attr ITM ybeta 0.1n
+    code_WFS1 = """
+    beam PDrefl_car 0 nWFS1
+    beam PDrefl_up 9M nWFS1
+    beam PDrefl_low -9M nWFS1
+    bp w0y y w0 nWFS1
+    """
+
+    code_WFS2 = """
     beam PDrefl_car 0 nWFS2
     beam PDrefl_up 9M nWFS2
     beam PDrefl_low -9M nWFS2
     bp w0y y w0 nWFS2
+    """
+    
+    code_comm = """
+    xaxis PDrefl_car y lin -1 1 100
+    put PDrefl_up y $x1
+    put PDrefl_low y $x1
     yaxis abs:deg
     """
-    kat.parseKatCode(code_det)
-    kat.noxaxis = True
 
-    #kat.PDrefl_p.enabled = False
-    #kat.PDrefl_q.enabled = False
+    print " WFS1:"
+    print " ITM ybeta 0.1nm"
+    kat.parseKatCode(code_comm)
+    kat.parseKatCode(code_WFS1)
+    kat.ITM.ybeta=1e-10
+    kat.ETM.ybeta=0.0
     
-    out = kat.run(printout=0,printerr=0)
-    #tilt_l = out.y[0]
-    #tilt_u = out.y[0]
+    (a1, a2) = compute_tilt(kat)
+
+    print " ETM ybeta 0.1nm"
+    kat.ITM.ybeta=0.0
+    kat.ETM.ybeta=1e-10
+    (a3, a4) = compute_tilt(kat)
+
+
+    
+    print " WFS2:"
+    print " ITM ybeta 0.1nm"
+    kat = copy.deepcopy(tmpkat)
+    kat.parseKatCode(code_comm)
+    kat.parseKatCode(code_WFS2)
+    kat.ITM.ybeta=1e-10
+    kat.ETM.ybeta=0.0
+    
+    (a5, a6) = compute_tilt(kat)
+
+    print " ETM ybeta 0.1nm"
+    kat.ITM.ybeta=0.0
+    kat.ETM.ybeta=1e-10
+    (a6, a7) = compute_tilt(kat)
+
+    out={}
     return (out)
     #return (tilt_l, tilt_u)
 
