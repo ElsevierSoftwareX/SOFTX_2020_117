@@ -73,11 +73,13 @@ class katRun(object):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split(" ")[0] == str(value)]
         
         if len(idx) == 1 and len(self.y.shape) == 1:
-            return self.y.squeeze()
+            return self.y
+        elif len(idx) > 0 and len(self.y.shape) == 1:
+            return self.y[idx]
         elif len(idx) > 0:
             return self.y[:,idx].squeeze()
         elif len(idx) == 1:
-            return self.y[idx].squeeze()
+            return self.y[:,idx].squeeze()
         else:
             raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
       
