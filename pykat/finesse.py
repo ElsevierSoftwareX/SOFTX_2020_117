@@ -71,7 +71,6 @@ class katRun(object):
     
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split(" ")[0] == str(value)]
-        print idx
         
         if len(idx) == 1 and len(self.y.shape) == 1:
             return self.y
@@ -419,9 +418,9 @@ class kat(object):
                         vals = line.split("-")
                         action = vals[0].strip()
                         prc = vals[1].strip()[:-1]
-                        sys.stdout.write("\r{0} {1}%".format(action, prc))
-                        #elif line[0] == '*':
-                        #sys.stdout.write(line)
+                        if self.verbose: sys.stdout.write("\r{0} {1}%".format(action, prc))
+                    elif line[0:3] == '** ':
+                        if self.verbose: sys.stdout.write(line)
                         
             [out,errpipe] = p.communicate()
             
