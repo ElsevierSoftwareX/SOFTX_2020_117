@@ -345,7 +345,7 @@ class space(Component):
     @property
     def L(self): return self.__L
     @L.setter
-    def L(self,value): self.__L,value = SIfloat(value)
+    def L(self,value): self.__L.value = SIfloat(value)
     @property
     def n(self): return self.__n
     @n.setter
