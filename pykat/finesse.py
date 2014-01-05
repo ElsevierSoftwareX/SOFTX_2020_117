@@ -271,7 +271,7 @@ class kat(object):
                     obj = pykat.components.lens.parseFinesseText(line)
                 elif(first[0:3] == "mod"):
                     obj = pykat.components.modulator.parseFinesseText(line)
-                elif(first[0:2] == "pd"):
+                elif(first[0:2] == "pd" and first != "pdtype"):
                     obj = pykat.detectors.photodiode.parseFinesseText(line)
                 elif(first == "xaxis" or first == "xaxis*"):
                     obj = pykat.commands.xaxis.parseFinesseText(line)
@@ -339,6 +339,8 @@ class kat(object):
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
         data from the simulation run.
+        printoutput=1 prints the Finesse banner
+        printerr shows the Finesse progress (set kat.verbose=1 to see warnings and errors)
         """
         start = datetime.datetime.now()
 
@@ -389,8 +391,11 @@ class kat(object):
                 
             katfile.writelines(r.katScript)
             katfile.flush()
-            
-            cmd=[kat_exec, '--perl1']
+
+            if printout == 1:
+                cmd=[kat_exec]
+            else:
+                cmd=[kat_exec, '--perl1']
             
             if self.__time_code:
                 cmd.append('--perf-timing')
@@ -409,21 +414,23 @@ class kat(object):
             err = ""
             
             #if self.verbose: print "Finesse output:"
-            
+ 
             for line in iter(p.stderr.readline, ""):
-                err += line 
                 
-                if len(line) > 0:
+                if len(line) > 0 and printerr == 1:
                     if line.rstrip().endswith('%'):
                         vals = line.split("-")
                         action = vals[0].strip()
                         prc = vals[1].strip()[:-1]
-                        if self.verbose: sys.stdout.write("\r{0} {1}%".format(action, prc))
+                        sys.stdout.write("\r{0} {1}%".format(action, prc))
                     elif line[0:3] == '** ':
                         if self.verbose: sys.stdout.write(line)
-                        
+
             [out,errpipe] = p.communicate()
-            
+            if printout == 1: 
+                print out
+            print ""
+
             # get the version number
             ix = out.find('build ') + 6
             ix2 = out.find(')',ix)
@@ -434,8 +441,8 @@ class kat(object):
             if p.returncode != 0:
                 raise pkex.FinesseRunError(err, katfile.name)
             
-            if printout == 1: print out
-            if printerr == 1: print err
+            #if printout == 1: print out
+            #if printerr == 1: print err
 
             root = os.path.splitext(katfile.name)
             base = os.path.basename(root[0])            
