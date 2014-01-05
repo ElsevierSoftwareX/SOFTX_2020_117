@@ -429,7 +429,8 @@ class kat(object):
             [out,errpipe] = p.communicate()
             if printout == 1: 
                 print out
-            print ""
+            else:
+                if printerr == 1: print ""
 
             # get the version number
             ix = out.find('build ') + 6
