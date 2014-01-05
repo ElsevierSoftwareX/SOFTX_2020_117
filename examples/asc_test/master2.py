@@ -2,9 +2,13 @@
 from pykat import finesse
 from pykat.commands import *
 import pylab as pl
+import scipy
+from scipy.optimize import minimize_scalar
 import numpy as np
 import shelve
 import copy
+import sys
+
 
 def main():
 
@@ -29,8 +33,8 @@ def main():
     # %reset -f
 
     # making these global during testing and debugging
-    global kat
-    global out
+    #global kat
+    #global out
     
     kat = finesse.kat(tempdir=".",tempname="test")
     kat.verbose = False
@@ -49,9 +53,8 @@ def main():
     kat.maxtem=3
     Lambda=1064.0e-9
     
-    
     print "--------------------------------------------------------"
-    print " 5. checking wavefront tilt for ITM/ETM tilt of 0.1nrad"
+    print " 5. checking wavefronts for ITM/ETM tilt of 0.1nrad"
 
     # this does not work yet due to the scale command
     #kat.PDrefl_p.enabled = False
@@ -61,11 +64,137 @@ def main():
     tilt(kat)
 
     print "--------------------------------------------------------"
-    print " 6. wavefront tilt from center of gravity calculation"
+    print " 6. compute beam tilt from center of gravity calculation"
     gravity_tilt(kat)
 
+    print "--------------------------------------------------------"
+    print " 7. compute optimal demodulation phase of WFS1 and WFS2"
 
+    code_WFS1 = """
+    pd1 WFS1_I 9M 0 nWFS1
+    pdtype WFS1_I y-split
+    pd1 WFS1_Q 9M 90 nWFS1
+    pdtype WFS1_Q y-split
+    scale 2 WFS1_I % compensate the 0.5 gain of the demodulation
+    scale 2 WFS1_Q % compensate the 0.5 gain of the demodulation
+    """
+    code_WFS2 = """
+    pd1 WFS2_I 9M 0 nWFS2
+    pdtype WFS2_I y-split
+    pd1 WFS2_Q 9M 90 nWFS2
+    pdtype WFS2_Q y-split
+    scale 2 WFS2_I % compensate the 0.5 gain of the demodulation
+    scale 2 WFS2_Q % compensate the 0.5 gain of the demodulation
+    """
+    kat.parseKatCode(code_WFS1)
+    kat.parseKatCode(code_WFS2)
     
+    (WFS1_phase, WFS2_phase) = asc_phases(kat)
+    kat.WFS1_I.phi[0]=WFS1_phase
+    kat.WFS1_Q.phi[0]=WFS1_phase+90.0
+    kat.WFS2_I.phi[0]=WFS2_phase
+    kat.WFS2_Q.phi[0]=WFS2_phase+90.0
+    result['WFS1_phase']=WFS1_phase
+    result['WFS2_phase']=WFS2_phase
+
+    print "--------------------------------------------------------"
+    print " 8. compute ASC signal matrix at WFS1 and WFS2"
+    signal = asc_signal(kat)
+    
+    print "--------------------------------------------------------"
+    print " Saving results in temp. files to be read by master2.py"
+    tmpkatfile = "asc_base3.kat"
+    tmpresultfile = "myshelf2.dat"
+    print " kat object saved in: {0}".format(tmpkatfile)
+    print " current results saved in: {0}".format(tmpresultfile)
+    # first the current kat file
+    kat.saveScript(tmpkatfile)
+    # now the result variables:
+    tmpfile = shelve.open(tmpresultfile)
+    tmpfile['result']=result
+    tmpfile.close()
+
+
+def asc_signal(tmpkat):
+    kat = copy.deepcopy(tmpkat)
+
+    code_lock = """
+    set err PDrefl_p re
+    lock z $err 900 1p
+    put* ETM phi $z
+    noplot z
+    """
+    
+    kat.parseKatCode(code_lock)
+    kat.parseKatCode('yaxis abs')
+    kat.noxaxis = True
+    kat.maxtem=1
+
+    signal=np.zeros((2, 2))
+    kat.ITM.ybeta=1e-10
+    kat.ETM.ybeta=0.0
+    out = kat.run(printout=0,printerr=0)
+    WFS1_idx=out.ylabels.index("WFS1_I")
+    WFS2_idx=out.ylabels.index("WFS2_I")
+    signal[0,0] = out.y[WFS1_idx]
+    signal[1,0] = out.y[WFS2_idx]
+
+    kat.ITM.ybeta=0.0
+    kat.ETM.ybeta=-1e-10
+    out = kat.run(printout=0,printerr=0)
+    signal[0,1] = out.y[WFS1_idx]
+    signal[1,1] = out.y[WFS2_idx]
+    signal = signal *1e10
+    sensors=('WFS1', 'WFS2')
+    mirrors=('ITM', 'ETM')
+    print "  ASC Matrix:"
+    for i in range(2):
+        print "  ", sensors[i], " ",
+        for j in range(2):
+            print "%12.10g" % signal[i,j],
+        print mirrors[i]
+    return signal
+    
+    
+def asc_phases(tmpkat):
+    kat = copy.deepcopy(tmpkat)
+    
+    kat.parseKatCode('yaxis abs')
+    kat.noxaxis = True
+    kat.maxtem=1
+
+    def demod_phase1(x):
+        kat.WFS1_I.phi[0]=x
+        out = kat.run(printout=0,printerr=0)
+        WFS1_idx=out.ylabels.index("WFS1_I")
+        signal = out.y[WFS1_idx]
+        print '\r minimising: function value %g                    ' % signal ,
+        sys.stdout.flush()
+        return -1*abs(signal)
+
+    def demod_phase2(x):
+        kat.WFS2_I.phi[0]=x
+        out = kat.run(printout=0,printerr=0)
+        WFS2_idx=out.ylabels.index("WFS2_I")
+        signal = out.y[WFS2_idx]
+        print '\r minimising: function value %g                    ' % signal ,
+        sys.stdout.flush()
+        return -1*abs(signal)
+
+    kat.ITM.ybeta=1e-10
+    kat.ETM.ybeta=0.0
+    res = minimize_scalar(demod_phase1, method='brent')
+    WFS1_phase = res.x
+    print ""
+    print " WFS1 demod phase : %.10g deg" % WFS1_phase
+     
+    kat.ITM.ybeta=0.0
+    kat.ETM.ybeta=-1e-10
+    res = minimize_scalar(demod_phase2, method='brent')
+    WFS2_phase = res.x
+    print ""
+    print " WFS2 demod phase : %.10g deg" % WFS2_phase
+    return(WFS1_phase, WFS2_phase)    
     
 def gravity_tilt(tmpkat):
     kat = copy.deepcopy(tmpkat)
@@ -74,14 +203,13 @@ def gravity_tilt(tmpkat):
         kat = copy.deepcopy(tmpkat)
         out = kat.run(printout=0,printerr=0)
 
-        # compute x range in meters
         y1 = out["b1"]
         y2 = out["b1_1k"]
-        # position on detector 2 (as m/w0y)
+        # shift of beam center  on detector 1 (as m/w0y)
         x1 = np.sum(out.x*y1)/np.sum(y1) 
-        # position on detector 2 (as m/w0y)
+        # shift of beam center  on detector 2 (as m/w0y)
         x2 = np.sum(out.x*y2)/np.sum(y2)
-        # calibrate in meter by mutliplying with w0y
+        # calibrate this in meter by mutliplying with w0y
         # and compute the angle geometrically        
         w0=out["w0y"][0]
         detector_distance = 1000.0
@@ -107,7 +235,6 @@ def gravity_tilt(tmpkat):
     put b1_1k y $x1
     yaxis abs
     """
-    
     print " WFS1:"
     print " ITM ybeta 0.1nm"
     kat.parseKatCode(code_WFS1)
@@ -116,7 +243,7 @@ def gravity_tilt(tmpkat):
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
     compute_gravity_tilt(kat)
-    print " ETM ybeta 0.1nm"
+    print " ETM ybeta -0.1nm"
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
     compute_gravity_tilt(kat)
@@ -130,7 +257,7 @@ def gravity_tilt(tmpkat):
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
     compute_gravity_tilt(kat)
-    print " ETM ybeta 0.1nm"
+    print " ETM ybeta -0.1nm"
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
     compute_gravity_tilt(kat)
@@ -143,7 +270,7 @@ def tilt(tmpkat):
         kat = copy.deepcopy(tmpkat)
         out = kat.run(printout=0,printerr=0)
 
-        # compute x range in meters
+        # compute data x range in meters
         beamsize = out["w0y"][0,0] 
         xrange = beamsize*(out.x.max()-out.x.min())
         stepsize=xrange/(len(out.x)-1)
@@ -186,7 +313,7 @@ def tilt(tmpkat):
     kat.ETM.ybeta=0.0
     (a1, a2) = compute_tilt(kat)
 
-    print " ETM ybeta 0.1nm"
+    print " ETM ybeta -0.1nm"
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
     (a3, a4) = compute_tilt(kat)
@@ -200,7 +327,7 @@ def tilt(tmpkat):
     kat.ETM.ybeta=0.0
     (a5, a6) = compute_tilt(kat)
 
-    print " ETM ybeta 0.1nm"
+    print " ETM ybeta -0.1nm"
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
     (a6, a7) = compute_tilt(kat)
