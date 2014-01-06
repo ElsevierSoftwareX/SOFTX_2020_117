@@ -100,9 +100,14 @@ def main():
     print "--------------------------------------------------------"
     print " 8. compute ASC signal matrix at WFS1 and WFS2"
     signal = asc_signal(kat)
+
+print "--------------------------------------------------------"
+    print " 9. ASC signals for large misalignments (ITM)"
+    asc_large(kat)
+    
     
     print "--------------------------------------------------------"
-    print " Saving results in temp. files to be read by master2.py"
+    print " Saving results in temp. files to be read by master3.py"
     tmpkatfile = "asc_base3.kat"
     tmpresultfile = "myshelf2.dat"
     print " kat object saved in: {0}".format(tmpkatfile)
@@ -116,7 +121,7 @@ def main():
 
 
 #-----------------------------------------------------------------------------------
-    
+
 def asc_signal(tmpkat):
     kat = copy.deepcopy(tmpkat)
 

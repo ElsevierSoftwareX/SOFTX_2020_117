@@ -3,20 +3,14 @@ from pykat.commands import *
 import pylab as pl
 import numpy as np
 import shelve
-import copy
 import sys
-import shutil
 
-from itertools import cycle
 import matplotlib
-from matplotlib import rc
-import matplotlib.pyplot as plt
 formatter = matplotlib.ticker.EngFormatter(unit='', places=0)
 formatter.ENG_PREFIXES[-6] = 'u'
 
 import matplotlib.backends.backend_pdf
 def printPDF(self):
-        filename = 'test.pdf'
         pdfp = matplotlib.backends.backend_pdf.PdfPages('large_ETM.pdf')
         pdfp.savefig(self,dpi=300,bbox_inches='tight')
         pdfp.close()
@@ -50,15 +44,6 @@ def main():
     #global out
     #global result
         
-    tmpresultfile = 'myshelf2.dat'
-    
-    # loading data saved by master.py
-    try:
-        tmpfile = shelve.open(tmpresultfile)
-        result=tmpfile['result']
-        tmpfile.close()
-    except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
-                
     print "--------------------------------------------------------"
     print " 10. Plotting ASC signals for large misalignments (ETM)"
     asc_large()

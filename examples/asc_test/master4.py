@@ -7,13 +7,6 @@ import copy
 import sys
 import shutil
 
-from itertools import cycle
-import matplotlib
-from matplotlib import rc
-import matplotlib.pyplot as plt
-formatter = matplotlib.ticker.EngFormatter(unit='', places=0)
-formatter.ENG_PREFIXES[-6] = 'u'
-
 
 def main():
 
@@ -27,7 +20,9 @@ def main():
     to generate the Finesse results reported in the document:
     `Comparing Finesse simulations, analytical solutions and OSCAR 
     simulations of Fabry-Perot alignment signals', LIGO-T1300345
-    
+
+    This file is part of a collection. Run this after master2.py
+
     Run this file to create the data and master4_plot.py to plot 
     the results. Results are saved after each step and plots can
     be created at any time.
@@ -98,47 +93,6 @@ def asc_large(tmpkat):
         tmpfile['out']=out
         tmpfile['maxtems']=done_maxtems
         tmpfile.close()
-
-def asc_signal(tmpkat):
-    kat = copy.deepcopy(tmpkat)
-
-    code_lock = """
-    set err PDrefl_p re
-    lock z $err 900 1p
-    put* ETM phi $z
-    noplot z
-    """
-    
-    kat.parseKatCode(code_lock)
-    kat.parseKatCode('yaxis abs')
-    kat.noxaxis = True
-    kat.maxtem=1
-
-    signal=np.zeros((2, 2))
-    kat.ITM.ybeta=1e-10
-    kat.ETM.ybeta=0.0
-    out = kat.run(printout=0,printerr=0)
-    WFS1_idx=out.ylabels.index("WFS1_I")
-    WFS2_idx=out.ylabels.index("WFS2_I")
-    signal[0,0] = out.y[WFS1_idx]
-    signal[1,0] = out.y[WFS2_idx]
-
-    kat.ITM.ybeta=0.0
-    kat.ETM.ybeta=-1e-10
-    out = kat.run(printout=0,printerr=0)
-    signal[0,1] = out.y[WFS1_idx]
-    signal[1,1] = out.y[WFS2_idx]
-    signal = signal *1e10
-    sensors=('WFS1', 'WFS2')
-    mirrors=('ITM', 'ETM')
-    print "  ASC Matrix:"
-    for i in range(2):
-        print "  ", sensors[i], " ",
-        for j in range(2):
-            print "%12.10g" % signal[i,j],
-        print mirrors[i]
-    return signal
-    
     
 if __name__ == '__main__':
     main()
