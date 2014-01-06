@@ -28,7 +28,7 @@ def main():
     `Comparing Finesse simulations, analytical solutions and OSCAR 
     simulations of Fabry-Perot alignment signals', LIGO-T1300345
     
-    Run this file to create the data and master3_plot.py to plot 
+    Run this file to create the data and master4_plot.py to plot 
     the results. Results are saved after each step and plots can
     be created at any time.
     
@@ -57,7 +57,7 @@ def main():
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
         
     print "--------------------------------------------------------"
-    print " 9. ASC signals for large misalignments (ITM)"
+    print " 10. ASC signals for large misalignments (ETM)"
     asc_large(kat)
     
 
@@ -73,14 +73,14 @@ def asc_large(tmpkat):
         
     kat.parseKatCode(code_lock)
     kat.parseKatCode('yaxis abs')
-    kat.parseKatCode('xaxis ITM ybeta lin 0 1u 100')
+    kat.parseKatCode('xaxis ETM ybeta lin 0 1u 100')
     maxtems = [1, 3, 7, 20]
     #kat.verbose=1
     xscale = 1e6
     yscale = 1e6
     global out
-    tmpfilename = "datashelf1.dat"
-    backupname = "datashelf1.dat.bck"
+    tmpfilename = "datashelf2.dat"
+    backupname = "datashelf2.dat.bck"
     out={}
     done_maxtems = []
     

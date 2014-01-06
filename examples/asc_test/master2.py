@@ -115,6 +115,8 @@ def main():
     tmpfile.close()
 
 
+#-----------------------------------------------------------------------------------
+    
 def asc_signal(tmpkat):
     kat = copy.deepcopy(tmpkat)
 

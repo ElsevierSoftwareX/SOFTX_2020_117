@@ -17,7 +17,7 @@ formatter.ENG_PREFIXES[-6] = 'u'
 import matplotlib.backends.backend_pdf
 def printPDF(self):
         filename = 'test.pdf'
-        pdfp = matplotlib.backends.backend_pdf.PdfPages('large_ITM.pdf')
+        pdfp = matplotlib.backends.backend_pdf.PdfPages('large_ETM.pdf')
         pdfp.savefig(self,dpi=300,bbox_inches='tight')
         pdfp.close()
 
@@ -34,7 +34,7 @@ def main():
     `Comparing Finesse simulations, analytical solutions and OSCAR 
     simulations of Fabry-Perot alignment signals', LIGO-T1300345
     
-    Run this file to plot the data generated with master3.py.
+    Run this file to plot the data generated with master4.py.
         
     Andreas Freise 06.12.2013
     --------------------------------------------------------------
@@ -60,15 +60,15 @@ def main():
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
                 
     print "--------------------------------------------------------"
-    print " 9. Plotting ASC signals for large misalignments"
+    print " 10. Plotting ASC signals for large misalignments (ETM)"
     asc_large()
     
 
 def asc_large():
     xscale = 1e6
-    yscale = 1e6
-    tmpfilename = "datashelf1.dat"
-    backupname = "datashelf1.dat.bck"
+    yscale = -1e6
+    tmpfilename = "datashelf2.dat"
+    backupname = "datashelf2.dat.bck"
 
     try:
         tmpfile = shelve.open(tmpfilename)
@@ -91,19 +91,19 @@ def asc_large():
         line, = pl.plot(xscale*data.x,yscale*data.y[:,WFS2_idx],'-', color = color_cycle[i], linewidth=lw[i])
         #line.set_dashes([12, 4]) 
 
-    osc1=np.loadtxt("OSCAR_large_tilt_ITM.txt",comments='%')
+    osc1=np.loadtxt("OSCAR_large_tilt_ETM.txt",comments='%')
 
     x=xscale*osc1[:,0]
-    y=yscale*osc1[:,1]
+    y=-1.0*yscale*osc1[:,1]
     pl.scatter(x,y,s=80,facecolors='none', edgecolors='k', label='OSCAR')
-    y=yscale*osc1[:,2]
+    y=-1.0*yscale*osc1[:,2]
     pl.scatter(x,y,s=80,facecolors='none', edgecolors='k')
-    pl.xlabel("ITM ybeta [urad]")
+    pl.xlabel("ETM ybeta [urad]")
     pl.ylabel("Alignment signal [uW]")
-    pl.annotate('WFS1',xy=[0.42,70])
-    pl.annotate('WFS2',xy=[0.62,5])
+    pl.annotate('WFS1',xy=[0.42,10])
+    pl.annotate('WFS2',xy=[0.62,-70])
     pl.xlim([0,1])
-    pl.legend(loc=2)
+    pl.legend(loc=3)
     pl.grid()
     pl.draw()
     pl.show(block=0)
