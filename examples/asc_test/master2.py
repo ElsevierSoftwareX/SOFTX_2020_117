@@ -1,4 +1,3 @@
-
 from pykat import finesse
 from pykat.commands import *
 import pylab as pl
@@ -52,15 +51,16 @@ def main():
     # overwriting some variables
     kat.maxtem=3
     Lambda=1064.0e-9
+
+    # disable PDH photo diode as we won't need it for most of this
+    kat.PDrefl_p.enabled = False
+    kat.PDrefl_q.enabled = False
+
+    # simulating a tuned cavity
+    kat.ETM.phi=result['phi_tuned']
     
     print "--------------------------------------------------------"
     print " 5. checking wavefronts for ITM/ETM tilt of 0.1nrad"
-
-    # this does not work yet due to the scale command
-    #kat.PDrefl_p.enabled = False
-    #kat.PDrefl_q.enabled = False
-
-    kat.ETM.phi=result['phi_tuned']
     tilt(kat)
 
     print "--------------------------------------------------------"
@@ -70,6 +70,9 @@ def main():
     print "--------------------------------------------------------"
     print " 7. compute optimal demodulation phase of WFS1 and WFS2"
 
+    # adding wave front sensors to global kat object, will need them later
+    # on as well.
+    
     code_WFS1 = """
     pd1 WFS1_I 9M 0 nWFS1
     pdtype WFS1_I y-split
@@ -103,6 +106,10 @@ def main():
     
     print "--------------------------------------------------------"
     print " Saving results in temp. files to be read by master3.py"
+    # re-enable PDH photo diode for savinf
+    kat.PDrefl_p.enabled = True
+    kat.PDrefl_q.enabled = True
+
     tmpkatfile = "asc_base3.kat"
     tmpresultfile = "myshelf2.dat"
     print " kat object saved in: {0}".format(tmpkatfile)
@@ -128,6 +135,9 @@ def asc_signal(tmpkat):
     """
     
     kat.parseKatCode(code_lock)
+    # need to re-enable the photo diode for lock
+    kat.PDrefl_p.enabled = True
+
     kat.parseKatCode('yaxis abs')
     kat.noxaxis = True
     kat.maxtem=1
@@ -313,8 +323,6 @@ def tilt(tmpkat):
     kat.parseKatCode(code_WFS1)
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
-    #kstr=kat.generateKatScript()
-    #print kstr
     (a1, a2) = compute_tilt(kat)
 
     print " ETM ybeta -0.1nm"

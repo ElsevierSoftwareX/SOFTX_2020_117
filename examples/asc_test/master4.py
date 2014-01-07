@@ -1,6 +1,5 @@
 from pykat import finesse
 from pykat.commands import *
-import pylab as pl
 import numpy as np
 import shelve
 import copy
@@ -50,7 +49,11 @@ def main():
         result=tmpfile['result']
         tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
-        
+    
+    kat.PDrefl_q.enabled = False
+    kat.WFS1_Q.enables = False
+    kat.WFS2_Q.enables = False
+
     print "--------------------------------------------------------"
     print " 10. ASC signals for large misalignments (ETM)"
     asc_large(kat)
@@ -73,7 +76,6 @@ def asc_large(tmpkat):
     #kat.verbose=1
     xscale = 1e6
     yscale = 1e6
-    global out
     tmpfilename = "datashelf2.dat"
     backupname = "datashelf2.dat.bck"
     out={}

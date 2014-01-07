@@ -1,6 +1,5 @@
 from pykat import finesse
 from pykat.commands import *
-#import pylab as pl
 import copy
 import shelve
 import sys
@@ -106,7 +105,6 @@ def pd_phase(tmpkat):
     
     code_det = """
     pd1 PDrefl_q 9M 90 nWFS1
-    %scale 2 PDrefl_q
     """
     
     kat.parseKatCode(code_det)
