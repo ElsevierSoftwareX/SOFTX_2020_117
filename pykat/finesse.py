@@ -308,6 +308,9 @@ class kat(object):
                         raise pkex.BasePyKatException("deriv_h command `{0}` is incorrect.".format(line))
                     else:
                         self.deriv_h = float(v[1])
+                elif(first == "gnuterm" or first == "pyterm"):
+                    if self.verbose:
+                        print "Ignoring Gnuplot/Python terminal command '{0}'".format(line)
                 else:
                     if self.verbose:
                         print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
