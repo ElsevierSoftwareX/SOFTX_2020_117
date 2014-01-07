@@ -57,7 +57,7 @@ class xaxis(Command):
         self.mx = putter("mx1")
 
         if scale == "lin":
-            scale = cale.linear
+            scale = Scale.linear
         elif scale == "log":
             scale = Scale.logarithmic
         elif isinstance(scale, str):

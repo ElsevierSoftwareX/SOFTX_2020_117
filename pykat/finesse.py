@@ -182,7 +182,7 @@ class kat(object):
     @property
     def noxaxis(self): return self.__noxaxis
     @noxaxis.setter
-    def noxaxis(self,value): self.__noxaxis = bool(value)
+    def noxaxis(self,value): self.__noxaxis = bool(value) 
 
     def logo(self):
         print """                                              ..-
@@ -256,7 +256,6 @@ class kat(object):
                 
                 first = line.split(" ",1)[0]
                 obj = None
-                
                 if(first == "m" or first == "m1" or first == "m2"):
                     obj = pykat.components.mirror.parseFinesseText(line)
                 elif(first == "s"):
@@ -288,20 +287,25 @@ class kat(object):
                 elif(first == "phase"):
                     v = line.split(" ")
                     if len(v) != 2:
-                        raise pkex.BasePyKatException("Phase command `{0}` is incorrect.".format(line))
+                        raise pkex.BasePyKatException("phase command `{0}` is incorrect.".format(line))
                     else:
                         self.phase = int(v[1])
+                elif(first == "maxtem"):
+                    v = line.split(" ")
+                    if len(v) != 2:
+                        raise pkex.BasePyKatException("maxtem command `{0}` is incorrect.".format(line))
+                    else:
+                        self.maxtem = int(v[1])
                 elif(first == "retrace"):
                     v = line.split(" ")
                     if len(v) > 2:
                         raise pkex.BasePyKatException("Retrace command `{0}` is incorrect.".format(line))
                     elif len(v) == 2:
-                        self.retrace = v[1]
-                        
+                        self.retrace = v[1]                        
                 elif(first == "deriv_h"):
                     v = line.split(" ")
                     if len(v) != 2:
-                        raise pkex.BasePyKatException("Deriv_h command `{0}` is incorrect.".format(line))
+                        raise pkex.BasePyKatException("deriv_h command `{0}` is incorrect.".format(line))
                     else:
                         self.deriv_h = float(v[1])
                 else:
@@ -626,8 +630,8 @@ class kat(object):
 
             if key != NO_BLOCK:
                 out.append("%%% FTend " + key + "\n")
-        
-        if self.noxaxis != None and self.noxaxis == True:
+
+        if self.noxaxis == True:
             out.append("noxaxis\n")
             
         # now loop through all the nodes and get any gauss commands
@@ -641,7 +645,7 @@ class kat(object):
                     out.append(txt + "\n")
         
 
-        if self.scale != None and self.scale !=1.0: out.append("scale {0}\n".format(self.scale))
+        if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.maxtem != None: out.append("maxtem {0}\n".format(self.maxtem))            
 

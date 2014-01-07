@@ -302,8 +302,8 @@ class photodiode(Detector):
             else:
                 rtn.append("pd{0}{1} {2} {3} {4}*".format(self.senstype, self.num_demods, self.name, __f_phi_str,  self.node.name))
 
-            if self.scale !=1.0 and self.scale != None:
-                rtn.append("scale {0} {1}".format(self.name, self.scale))
+            if self.scale != None and self.scale !='':
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
                 
             if self.noplot:
                 rtn.append("noplot {0}".format(self.name))
