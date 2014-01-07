@@ -1,4 +1,3 @@
-from pykat.SIfloat import SIfloat
 import abc
 import pykat.exceptions as pkex
 
@@ -163,25 +162,6 @@ class AttrParam(Param):
             rtn.append("attr {0} {1} {2}".format(self._owner.name, self.name, self.value))
             
         rtn.extend(super(AttrParam, self).getFinesseText())
-        
-        return rtn
-
-class ScaleParam(Param):
-    """
-    The scale parameter of a detector is set using the Finesse `scale` command.
-    
-    This inherits directly from a Param object so can be set whether this attribute
-    is putable or a putter.
-    
-    If the value pf the parameter is not 1.0 the scale command will be printed.
-    """
-    def getFinesseText(self):
-        rtn = []
-        
-        if self.value != 1.0:
-            rtn.append("scale {0} {1}".format(self._owner.name, self.value))
-            
-        rtn.extend(super(ScaleParam, self).getFinesseText())
         
         return rtn
 

@@ -264,7 +264,7 @@ class Node(object):
             return []
             
         rtn = []
-        
+
         if self.__q_x == self.__q_y:
             rtn.append("gauss* g_{node} {comp} {node} {z} {zr}".format(node=self.name, comp=self.__q_comp.name, z=self.__q_x.real, zr=self.__q_x.imag))
         else:

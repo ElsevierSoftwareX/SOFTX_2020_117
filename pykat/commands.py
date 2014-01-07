@@ -46,8 +46,8 @@ class gauss(object):
         values = text.split(" ")
 
         if not values[0].startswith("gauss"):
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse gauss command".format(text))
-
+            raise exceptions.RuntimeError("'{0}' not a valid Finesse gauss command".format(text))        
+        
 class xaxis(Command):
 
     def __init__(self, scale, limits, comp, param, steps, axis_type="xaxis"):
@@ -57,7 +57,7 @@ class xaxis(Command):
         self.mx = putter("mx1")
 
         if scale == "lin":
-            scale = Scale.linear
+            scale = cale.linear
         elif scale == "log":
             scale = Scale.logarithmic
         elif isinstance(scale, str):

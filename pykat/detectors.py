@@ -10,7 +10,7 @@ import pykat.gui.resources
 from pykat.utils import *
 from pykat.gui.graphics import *
 from pykat.node_network import *
-from pykat.param import Param, ScaleParam
+from pykat.param import Param
 
 
 class Detector(object) :
@@ -24,7 +24,7 @@ class Detector(object) :
         self.__node = None
         self._params = []
         self._mask = {}
-        self.__scale = ScaleParam("scale", self, SIfloat(1.0))
+        self.__scale = ""
         
         if node.find('*'):
             self._alternate_beam = True
@@ -48,13 +48,12 @@ class Detector(object) :
         
     def getQGraphicsItem(self):    
         return None
-    
 
     @property 
     def scale(self): return self.__scale
     @scale.setter
-    def sclae(self, value):
-        self.__scale = SIfloat(value)
+    def scale(self, value):
+        self.__scale = value
 
     @property 
     def node(self): return self.__node
@@ -302,7 +301,10 @@ class photodiode(Detector):
                 rtn.append("pd{0}{1} {2} {3} {4}".format(self.senstype, self.num_demods, self.name, __f_phi_str,  self.node.name))
             else:
                 rtn.append("pd{0}{1} {2} {3} {4}*".format(self.senstype, self.num_demods, self.name, __f_phi_str,  self.node.name))
-            
+
+            if self.scale !=1.0 and self.scale != None:
+                rtn.append("scale {0} {1}".format(self.name, self.scale))
+                
             if self.noplot:
                 rtn.append("noplot {0}".format(self.name))
             

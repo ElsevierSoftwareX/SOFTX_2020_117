@@ -39,6 +39,7 @@ from pykat.detectors import Detector
 from pykat.components import Component
 from pykat.commands import Command, xaxis
 from pykat.gui.gui import pyKatGUI
+from pykat.SIfloat import *
 
 import pykat.exceptions as pkex
 
@@ -145,6 +146,7 @@ class kat(object):
         # and have no name attached to them.
         self.retrace = None
         self.deriv_h = None
+        self.scale = None
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = None
@@ -171,7 +173,7 @@ class kat(object):
     def phase(self): return self.__phase
     @phase.setter
     def phase(self,value): self.__phase = int(value)
-    
+        
     @property
     def getPerformanceData(self): return self.__time_code
     @getPerformanceData.setter
@@ -279,6 +281,8 @@ class kat(object):
                     obj = pykat.commands.x2axis.parseFinesseText(line)
                 elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
                     after_process.append(line)
+                elif(first == "scale"):
+                    after_process.append(line)
                 elif(first == "noxaxis"):
                     self.noxaxis = True
                 elif(first == "phase"):
@@ -313,11 +317,24 @@ class kat(object):
         # now process all the varous gauss/attr etc. commands which require
         # components to exist first before they can be processed
         for line in after_process:
-            first = line.split(" ",1)[0]
-            
+            first = line.split(" ",1)[0]            
             if first == "gauss" or first == "gauss*" or first == "gauss**":
                 pykat.commands.gauss.parseFinesseText(line)
-            
+            elif (first == "scale"):
+                v = line.split(" ")
+                if len(v) == 3:
+                    component_name = v[2]
+                    if component_name in self.__detectors :
+                        self.__detectors[component_name].scale = SIfloat(v[1])
+                    else:
+                        raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(text))
+                elif len(values) == 2:
+                    self.scale = SIfloat(v[1])
+                else:
+                    raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(text))
+
+                    
+                    
         self.__currentTag = NO_BLOCK 
 
     def saveScript(self, filename=None):
@@ -536,7 +553,7 @@ class kat(object):
                 self.__commands[obj.__class__.__name__] = obj
                 self.__add_command(obj)
                 
-            else :
+            else:
                 raise pkex.BasePyKatException("Object {0} could not be added".format(obj))
                 
             obj._on_kat_add(self)
@@ -623,6 +640,8 @@ class kat(object):
                 else:
                     out.append(txt + "\n")
         
+
+        if self.scale != None and self.scale !=1.0: out.append("scale {0}\n".format(self.scale))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.maxtem != None: out.append("maxtem {0}\n".format(self.maxtem))            
 
