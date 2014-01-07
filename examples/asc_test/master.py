@@ -24,17 +24,20 @@ def main():
     
     Andreas Freise 06.12.2013
     --------------------------------------------------------------
-    """
+    """    
     
-    
-    kat = finesse.kat()
-    # or, for debugging we might need to see the file:
-    #kat = finesse.kat(tempdir=".",tempname="test")
+    # for debugging we might need to see the temporay file:
+    kat = finesse.kat(tempdir=".",tempname="test")
     kat.verbose = False
     kat.loadKatFile('asc_base.kat')
     kat.maxtem=3
     Lambda=1064.0e-9
     result = {}
+
+    # defining variables as global for debugging
+    #global kat
+    #global out
+    #global result
     
     print "--------------------------------------------------------"
     print " 1. tunes ETM position to find resonance"

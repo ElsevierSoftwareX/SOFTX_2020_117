@@ -100,11 +100,6 @@ def main():
     print "--------------------------------------------------------"
     print " 8. compute ASC signal matrix at WFS1 and WFS2"
     signal = asc_signal(kat)
-
-print "--------------------------------------------------------"
-    print " 9. ASC signals for large misalignments (ITM)"
-    asc_large(kat)
-    
     
     print "--------------------------------------------------------"
     print " Saving results in temp. files to be read by master3.py"
@@ -272,7 +267,7 @@ def gravity_tilt(tmpkat):
     
 def tilt(tmpkat):
     kat = copy.deepcopy(tmpkat)
-
+    
     def compute_tilt(tmpkat):
         kat = copy.deepcopy(tmpkat)
         out = kat.run(printout=0,printerr=0)
@@ -318,6 +313,8 @@ def tilt(tmpkat):
     kat.parseKatCode(code_WFS1)
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
+    #kstr=kat.generateKatScript()
+    #print kstr
     (a1, a2) = compute_tilt(kat)
 
     print " ETM ybeta -0.1nm"
