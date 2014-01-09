@@ -48,6 +48,9 @@ from PyQt4.QtGui import QApplication
 
 NO_GUI = False
 NO_BLOCK = "NO_BLOCK"
+pykat_version = "0.1"
+pykat_web = "www.gwoptics.org/pykat"
+
 
 class katRun(object):
     def __init__(self):
@@ -184,16 +187,17 @@ class kat(object):
     @noxaxis.setter
     def noxaxis(self,value): self.__noxaxis = bool(value) 
 
-    def logo(self):
+    @staticmethod
+    def logo():
         print """                                              ..-
-    PyKat                 _                  '(
+    PyKat {0:7}         _                  '(
                           \\`.|\\.__...-\"\"""-_." )
        ..+-----.._        /  ' `            .-'
    . '            `:      7/* _/._\\    \\   (
   (        '::;;+;;:      `-"' =" /,`"" `) /
   L.        \\`:::a:f            c_/     n_'
   ..`--...___`.  .    ,  
-   `^-....____:   +."""
+   `^-....____:   +.      {1}""".format(pykat_version, pykat_web)
     
     def loadKatFile(self, katfile):
         commands=open(katfile).read()
@@ -351,8 +355,6 @@ class kat(object):
                         raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(text))
                 else:
                     raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(text))
-
-                    
                     
         self.__currentTag = NO_BLOCK 
 
@@ -806,3 +808,6 @@ class kat(object):
             else: # otherwise, we will return the 1st group
                 return match.group(1) # captured quoted-string
         return regex.sub(_replacer, string)
+
+# printing pykat logo on first input
+kat.logo()
