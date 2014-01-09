@@ -81,13 +81,12 @@ class Detector(object) :
     
 class pd(Detector):
 
-    def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
+    def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, **kwargs):
         Detector.__init__(self, name, node_name)
         
         self.__num_demods = num_demods
         self.__senstype = senstype
         self.__alternate_beam = alternate_beam
-        self.__pdtype = pdtype
         # create the parameters for all 5 demodulations regardless
         # of how many the user specifies. Later we add properties to
         # those which correspond to the number of demodulations
@@ -121,11 +120,6 @@ class pd(Detector):
             
         self.__senstype = value
         
-    @property
-    def pdtype(self): return self.__pdtype
-    @pdtype.setter
-    def pdtype(self, value): self.__pdtype = value
-
     @property
     def num_demods(self): return self.__num_demods
     @num_demods.setter
@@ -201,11 +195,7 @@ class pd(Detector):
                 senstype = ""
                 
             rtn.append("pd{0}{1} {2} {3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
-
-            if self.pdtype != None:
-                rtn.append("pdtype {1} {0}".format(self.name, self.pdtype))
                 
-
         for p in self._params:
             rtn.extend(p.getFinesseText())
             
@@ -242,8 +232,13 @@ class photodiode(Detector):
 
     @property
     def phi(self): return self.__phi
-        
-    def __init__(self, name, node, senstype="", num_demods=0, demods=[]):        
+
+    @property
+    def pdtype(self): return self.__pdtype
+    @pdtype.setter
+    def pdtype(self, value): self.__pdtype = value
+
+    def __init__(self, name, node, senstype="", num_demods=0, demods=[], pdtype=None):        
         Detector.__init__(self, name, node)
         
         if num_demods>2:
@@ -251,6 +246,8 @@ class photodiode(Detector):
             
         self.num_demods = num_demods
         self.senstype = senstype
+        self.__pdtype = pdtype
+
 
         # every second element into f (starting at 1)
         self.__f = self.__F(demods[::2])
@@ -314,6 +311,9 @@ class photodiode(Detector):
 
             if self.scale != None and self.scale !='':
                 rtn.append("scale {1} {0}".format(self.name, self.scale))
+
+            if self.pdtype != None:
+                rtn.append("pdtype {0} {1}".format(self.name, self.pdtype))
 
             if self.noplot:
                 rtn.append("noplot {0}".format(self.name))

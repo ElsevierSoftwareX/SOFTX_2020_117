@@ -350,7 +350,7 @@ class kat(object):
                 if len(v) == 3:
                     component_name = v[1]
                     if component_name in self.__detectors :
-                        self.__detectors[component_name].type = v[2]
+                        self.__detectors[component_name].pdtype = v[2]
                     else:
                         raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(text))
                 else:
