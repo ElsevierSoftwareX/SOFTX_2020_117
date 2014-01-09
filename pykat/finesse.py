@@ -282,6 +282,8 @@ class kat(object):
                     after_process.append(line)
                 elif(first == "scale"):
                     after_process.append(line)
+                elif(first == "pdtype"):
+                    after_process.append(line)
                 elif(first == "noxaxis"):
                     self.noxaxis = True
                 elif(first == "phase"):
@@ -339,6 +341,16 @@ class kat(object):
                     self.scale = SIfloat(v[1])
                 else:
                     raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(text))
+            elif (first == "pdtype"):
+                v = line.split(" ")
+                if len(v) == 3:
+                    component_name = v[1]
+                    if component_name in self.__detectors :
+                        self.__detectors[component_name].type = v[2]
+                    else:
+                        raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(text))
+                else:
+                    raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(text))
 
                     
                     
@@ -614,7 +626,7 @@ class kat(object):
                     if fragment in obj:
                         print "  ** removing line '{0}'".format(obj)
                         objs.remove(obj)
-                
+        
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
         

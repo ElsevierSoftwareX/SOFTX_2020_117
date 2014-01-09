@@ -81,12 +81,13 @@ class Detector(object) :
     
 class pd(Detector):
 
-    def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, **kwargs):
+    def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
         Detector.__init__(self, name, node_name)
         
         self.__num_demods = num_demods
         self.__senstype = senstype
         self.__alternate_beam = alternate_beam
+        self.__pdtype = pdtype
         # create the parameters for all 5 demodulations regardless
         # of how many the user specifies. Later we add properties to
         # those which correspond to the number of demodulations
@@ -121,6 +122,11 @@ class pd(Detector):
         self.__senstype = value
         
     @property
+    def pdtype(self): return self.__pdtype
+    @pdtype.setter
+    def pdtype(self, value): self.__pdtype = value
+
+        @property
     def num_demods(self): return self.__num_demods
     @num_demods.setter
     def num_demods(self, value): 
@@ -226,7 +232,7 @@ class photodiode(Detector):
                 return list.__getitem__(self,key)
             else:
                 return float(list.__getitem__(self,key))
-            
+        
     @property
     def f(self): return self.__f
 
@@ -304,6 +310,9 @@ class photodiode(Detector):
 
             if self.scale != None and self.scale !='':
                 rtn.append("scale {1} {0}".format(self.name, self.scale))
+
+            if self.pdtype != None:
+                rtn.append("pdtype {1} {0}".format(self.name, self.pdtype))
                 
             if self.noplot:
                 rtn.append("noplot {0}".format(self.name))
