@@ -242,7 +242,7 @@ class Node(object):
     @property
     def qy(self): return self.__q_y
     
-    def removeGauss():
+    def removeGauss(self):
         self.__q_x = None
         self.__q_y = None
         self.__q_comp = None
