@@ -126,7 +126,7 @@ class pd(Detector):
     @pdtype.setter
     def pdtype(self, value): self.__pdtype = value
 
-        @property
+    @property
     def num_demods(self): return self.__num_demods
     @num_demods.setter
     def num_demods(self, value): 
@@ -201,7 +201,11 @@ class pd(Detector):
                 senstype = ""
                 
             rtn.append("pd{0}{1} {2} {3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
-        
+
+            if self.pdtype != None:
+                rtn.append("pdtype {1} {0}".format(self.name, self.pdtype))
+                
+
         for p in self._params:
             rtn.extend(p.getFinesseText())
             
@@ -311,9 +315,6 @@ class photodiode(Detector):
             if self.scale != None and self.scale !='':
                 rtn.append("scale {1} {0}".format(self.name, self.scale))
 
-            if self.pdtype != None:
-                rtn.append("pdtype {1} {0}".format(self.name, self.pdtype))
-                
             if self.noplot:
                 rtn.append("noplot {0}".format(self.name))
             
