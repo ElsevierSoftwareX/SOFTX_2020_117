@@ -605,7 +605,16 @@ class kat(object):
                 y = data[1:cols].squeeze()
             
             return [x, y, hdr]
-            
+
+    def removeLine(self, fragment) :
+        for key in self.__blocks:
+            objs = self.__blocks[key].contents
+            for obj in objs:
+                if isinstance(obj, str):
+                    if fragment in obj:
+                        print "  ** removing line '{0}'".format(obj)
+                        objs.remove(obj)
+                
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
         
