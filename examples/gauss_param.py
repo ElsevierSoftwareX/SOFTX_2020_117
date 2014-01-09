@@ -10,6 +10,6 @@ q2 = apply(abcd, q1, nr1, nr2)
 # and out again
 q3 = apply(abcd, q2, nr2, nr1)
 
-print "q1 =", q1, " w0 =", q1.w0, " wz =", q1.wz, " z =", q1.z
-print "q2 =", q2, " w0 =", q2.w0, " wz =", q2.wz, " z =", q2.z
-print "q3 =", q3, " w0 =", q3.w0, " wz =", q3.wz, " z =", q3.z
+print "q1 =", q1, " w0 =", q1.w0, " w =", q1.w, " z =", q1.z
+print "q2 =", q2, " w0 =", q2.w0, " w =", q2.w, " z =", q2.z
+print "q3 =", q3, " w0 =", q3.w0, " w =", q3.w, " z =", q3.z
