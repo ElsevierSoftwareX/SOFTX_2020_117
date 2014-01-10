@@ -7,12 +7,11 @@ import scipy.optimize
 
 
 def main():
-
     print """
     --------------------------------------------------------------
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
-    PyKat:   https://pypi.python.org/pypi/PyKat/
+    PyKat:   http://www.gwoptics.org/pykat
     
     The file runs through the various pykat files which are used
     to generate the Finesse results reported in the document:
@@ -95,7 +94,6 @@ def pd_signal(tmpkat):
     code1="yaxis abs"
     kat.parseKatCode(code1)
     kat.noxaxis = True
-    
     out = kat.run(printout=0,printerr=0)
     return (out.y[0], out.y[1])
     
