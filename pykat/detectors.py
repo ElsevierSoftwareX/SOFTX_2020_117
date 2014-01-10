@@ -312,7 +312,7 @@ class photodiode(Detector):
             if self.scale != None and self.scale !='':
                 rtn.append("scale {1} {0}".format(self.name, self.scale))
 
-            if self.pdtype != None:
+            if self.pdtype != None and self.pdtype != '':
                 rtn.append("pdtype {0} {1}".format(self.name, self.pdtype))
 
             if self.noplot:
