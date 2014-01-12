@@ -12,7 +12,7 @@ def main():
     --------------------------------------------------------------
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
-    PyKat:   https://pypi.python.org/pypi/PyKat/
+    PyKat:   http://www.gwoptics.org/pykat
     
     The file runs through the various pykat files which are used
     to generate the Finesse results reported in the document:
@@ -72,7 +72,7 @@ def asc_large(tmpkat):
     kat.parseKatCode(code_lock)
     kat.parseKatCode('yaxis abs')
     kat.parseKatCode('xaxis ITM ybeta lin 0 1u 100')
-    maxtems = [1, 3, 7, 20]
+    maxtems = [1, 3, 5]
     #kat.verbose=1
     xscale = 1e6
     yscale = 1e6

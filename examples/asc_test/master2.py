@@ -10,12 +10,11 @@ import sys
 
 
 def main():
-
     print """
     --------------------------------------------------------------
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
-    PyKat:   https://pypi.python.org/pypi/PyKat/
+    PyKat:   http://www.gwoptics.org/pykat
     
     The file runs through the various pykat files which are used
     to generate the Finesse results reported in the document:

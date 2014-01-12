@@ -16,12 +16,11 @@ def printPDF(self):
         pdfp.close()
 
 def main():
-
     print """
     --------------------------------------------------------------
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
-    PyKat:   https://pypi.python.org/pypi/PyKat/
+    PyKat:   http://www.gwoptics.org/pykat
     
     The file runs through the various pykat files which are used
     to generate the Finesse results reported in the document:
@@ -83,7 +82,7 @@ def asc_large():
     pl.scatter(x,y,s=80,facecolors='none', edgecolors='k', label='OSCAR')
     y=-1.0*yscale*osc1[:,2]
     pl.scatter(x,y,s=80,facecolors='none', edgecolors='k')
-    pl.xlabel("ETM ybeta [urad]")
+    pl.xlabel("ETM vertical misalignment [urad]")
     pl.ylabel("Alignment signal [uW]")
     pl.annotate('WFS1',xy=[0.42,10])
     pl.annotate('WFS2',xy=[0.62,-70])
