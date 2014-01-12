@@ -656,9 +656,6 @@ class kat(object):
 
             if key != NO_BLOCK:
                 out.append("%%% FTend " + key + "\n")
-
-        if self.noxaxis == True:
-            out.append("noxaxis\n")
             
         # now loop through all the nodes and get any gauss commands
         for key in self.nodes.getNodes():
@@ -674,6 +671,9 @@ class kat(object):
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.maxtem != None: out.append("maxtem {0}\n".format(self.maxtem))            
+
+        if self.noxaxis == True:
+            out.append("noxaxis\n")
 
         # ensure we don't do any plotting. That should be handled
         # by user themselves
