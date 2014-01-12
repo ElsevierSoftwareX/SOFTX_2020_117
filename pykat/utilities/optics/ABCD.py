@@ -10,7 +10,7 @@ def mirror_trans(n1, n2, Rc):
 def mirror_refl(n, Rc):
     return np.matrix([[1.0,0.0],[-2.0*n/float(Rc),1.0]])
 
-def bs_trans(n1, n2, Rcx, Rcy, alpha)
+def bs_trans(n1, n2, Rcx, Rcy, alpha):
     alpha2=math.asin(n1/float(n2)*math.sin(alpha))
     c1=math.cos(alpha)
     c2=math.cos(alpha2)
@@ -20,7 +20,7 @@ def bs_trans(n1, n2, Rcx, Rcy, alpha)
     Ms= np.matrix([[1.0, 0.0],[delta_n_s/float(Rcy),1.0]])
     return(Mt, Ms)
 
-def bs_refl(n1, n2, Rcx, Rcy, alpha)
+def bs_refl(n1, n2, Rcx, Rcy, alpha):
     Mt= np.matrix([[1.0, 0.0],[-2.0*n1/(float(Rcx)*math.cos(alpha)),1.0]])
     Ms= np.matrix([[1.0, 0.0],[-2.0*n1*math.cos(alpha)/float(Rcy),1.0]])
     return(Mt, Ms)
