@@ -3,7 +3,6 @@ from pykat.commands import *
 import pylab as pl
 import scipy
 #from scipy.optimize import minimize_scalar
-from scipy.optimize import minimize
 import numpy as np
 import shelve
 import copy
@@ -197,7 +196,12 @@ def asc_phases(tmpkat):
     kat.ETM.ybeta=0.0
     # minimize_scaler is only available in newer scipy versions
     #res = minimize_scalar(demod_phase1, method='brent')
-    res = minimize(demod_phase1, 0, method='nelder-mead', options={'xtol':1e-8,'disp': False})
+    if int(scipy.version.version.split('.')[1])<11:
+        from scipy.optimize import fmin
+        fmin(demod_phase1, x0, xtol=1e-8)
+    else:
+        from scipy.optimize import minimize
+        res = minimize(demod_phase1, 0, method='nelder-mead', options={'xtol':1e-8,'disp': False})
     WFS1_phase = res.x[0]
     print ""
     print " WFS1 demod phase : %.10g deg" % WFS1_phase
@@ -206,7 +210,12 @@ def asc_phases(tmpkat):
     kat.ETM.ybeta=-1e-10
     # minimize_scaler is only available in newer scipy versions
     #res = minimize_scalar(demod_phase2, method='brent')
-    res = minimize(demod_phase2, 0, method='nelder-mead', options={'xtol':1e-8,'disp': False})
+    if int(scipy.version.version.split('.')[1])<11:
+        from scipy.optimize import fmin
+        fmin(demod_phase2, x0, xtol=1e-8)
+    else:
+        from scipy.optimize import minimize
+        res = minimize(demod_phase2, 0, method='nelder-mead', options={'xtol':1e-8,'disp': False})
     WFS2_phase = res.x[0]
     print ""
     print " WFS2 demod phase : %.10g deg" % WFS2_phase
