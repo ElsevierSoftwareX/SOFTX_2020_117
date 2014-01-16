@@ -444,25 +444,25 @@ class kat(object):
             cmd.append('-format=%.15g')
 
             cmd.append(katfile.name)
-            
-            #if self.verbose:
-                #print cmd
-                
+                            
             p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
             #if self.verbose: print "Finesse output:"
- 
+
             for line in iter(p.stderr.readline, ""):
                 
-                if len(line) > 0 and printerr == 1:
+                if len(line) > 0:
                     if line.rstrip().endswith('%'):
                         vals = line.split("-")
                         action = vals[0].strip()
                         prc = vals[1].strip()[:-1]
-                        sys.stdout.write("\r{0} {1}%".format(action, prc))
+                        if printerr == 1:
+                            sys.stdout.write("\r{0} {1}%".format(action, prc))
                     elif line[0:3] == '** ':
                         if self.verbose: sys.stdout.write(line)
+                    else:
+                        err += line
 
             [out,errpipe] = p.communicate()
             if printout == 1: 
@@ -476,13 +476,12 @@ class kat(object):
             r.katVersion = out[ix:ix2]
             
             r.runDateTime = datetime.datetime.now()
-            
-            if p.returncode != 0:
-                raise pkex.FinesseRunError(err, katfile.name)
-            
-            #if printout == 1: print out
-            #if printerr == 1: print err
 
+            # If Finesse returned an error, just print that and exit!
+            if p.returncode != 0:
+                print err
+                sys.exit(1) 
+            
             root = os.path.splitext(katfile.name)
             base = os.path.basename(root[0])            
             outfile = root[0] + ".out"
