@@ -27,13 +27,13 @@ def main():
     # for debugging we might need to see the temporay file:
     kat = finesse.kat(tempdir=".",tempname="test")
     kat.verbose = False
-    kat.loadKatFile('asc_base.kat')
+    kat.loadKatFile('asc_base_bs.kat')
     kat.maxtem=3
     Lambda=1064.0e-9
     result = {}
 
     # defining variables as global for debugging
-    #global kat
+    global kat
     #global out
     #global result
     
@@ -91,10 +91,14 @@ def pd_signal(tmpkat):
 
     kat = copy.deepcopy(tmpkat)
 
-    code1="yaxis abs"
+    code1="""
+        pd cav nITM2
+        yaxis abs
+        """
     kat.parseKatCode(code1)
     kat.noxaxis = True
     out = kat.run(printout=0,printerr=0)
+    print " Cavity power: {0:.6f}W".format(out.y[2])
     return (out.y[0], out.y[1])
     
 def pd_phase(tmpkat):

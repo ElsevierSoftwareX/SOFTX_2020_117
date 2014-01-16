@@ -67,6 +67,7 @@ def main():
 
 
     (beam1, beam2, beam3) = get_qs(kat)
+    """
     print "  Measured beam parameter:" 
     print "  - At front of ITM (no thermal lens) q={0}".format(beam1.q)
     print "    (eqals w0={0}, z={1})".format(beam1.w0, beam1.z)
@@ -75,12 +76,12 @@ def main():
     print "  - At pick of mirror 'po' (5k lens) q={0}".format(beam3.q)
     print "    (eqals w0={0}, z={1})".format(beam3.w0, beam3.z)
     #print "  Setting these now view Gauss command and adding thermal lens"
-
+    """
     kat.ITM.nITM1.node.setGauss(kat.ITM,beam1)
 
     print "--------------------------------------------------------"
     print " 11. computing beam sizes  with thermal lens"
-    beam_size(kat, beam2, beam3)
+    #beam_size(kat, beam2, beam3)
     
     kat.ITM_TL.f=50e3
     kat.maxtem = 8
@@ -133,30 +134,11 @@ def get_qs(tmpkat):
     kat.noxaxis = True
     kat.maxtem=0
 
-    def carrier_size(tmpkat, f):
-        kat = copy.deepcopy(tmpkat)
-        kat.ITM_TL.f=f
-        out = kat.run(printout=0,printerr=0)
-        raw_input("Press enter to continue")
-        # computing beam size at WFS1 and WFS2
-        q2 = complex(out['w2'][0],out['w2'][1])
-        beam1 = gauss_param(q=q2)    
-        q3 = complex(out['w3'][0],out['w3'][1])
-        beam2 = gauss_param(q=q3)    
-        print "  Carrier (cavity eigenmode) beam size with thermal lens f={0}".format(f)
-        print "  - WFS1 w={0}".format(beam1.w)
-        print "    (q={0}, w0={1}, z={2})".format(beam1.q, beam1.w0, beam1.z)
-        print "  - WFS2 w={0}".format(beam2.w)
-        print "    (q={0}, w0={1}, z={2})".format(beam2.q, beam2.w0, beam2.z)
-
-        return(beam1, beam2)
-        
-
-    def sideband_size(tmpkat, f):
+    def beam_size(tmpkat, f):
         kat = copy.deepcopy(tmpkat)
         # 1. run finesse with input laser mode matched to cavity (no thermal lens)
         out = kat.run(printout=0,printerr=0)
-        raw_input("Press enter to continue")
+
         # beam at laser when matched to cold cavity
         # (note the sign flip of the real part to change direction of gauss param)
         q0 = complex(-1.0*out['w0'][0],out['w0'][1])
@@ -166,15 +148,25 @@ def get_qs(tmpkat):
 
         # add thermal lens and propagate input beam to ITM
         kat.ITM_TL.f=f
+        if "ITM_TL_r" in kat._kat__components:
+            kat.ITM_TL_r.f=f
         out = kat.run(printout=0,printerr=0)
-        raw_input("Press enter to continue")
         
-        # computing beam size at ITM an set it as new startnode
-        q1 = complex(out['w1'][0],out['w1'][1])
-        beam1 = gauss_param(q=q1)    
-        kat.ITM.nITM1.node.setGauss(kat.ITM, beam1)
+        # computing beam size at ITM 
+        # and then we reflect of ITM, an set it as new startnode
+        q_in = complex(out['w1'][0],out['w1'][1])
+        from pykat.utilities.optics.ABCD import apply, mirror_refl
+        abcd = mirror_refl(1,-2500)
+        q_out = apply(abcd,q_in,1,1)
+        beam1 = gauss_param(q=q_out)    
         kat.removeLine("startnode")
-        kat.parseKatCode("startnode nITM1")
+        kat.psl.npsl.node.removeGauss()
+        if "ITM_TL_r" in kat._kat__components:
+            kat.ITM.nITM1r.node.setGauss(kat.ITM, beam1)
+            kat.parseKatCode("startnode nITM1r")
+        else:
+            kat.ITM.nITM1.node.setGauss(kat.ITM, beam1)
+            kat.parseKatCode("startnode nITM1")
         out = kat.run(printout=0,printerr=0)
 
         # computing beam size at WFS1 and WFS2
@@ -183,20 +175,20 @@ def get_qs(tmpkat):
         q3 = complex(out['w3'][0],out['w3'][1])
         beam3 = gauss_param(q=q3)    
         print "  Sideband (input mode) beam size with thermal lens f={0}".format(f)
-        print "  - WFS1 w={0}".format(beam2.w)
-        print "    (q={0}, w0={1}, z={2})".format(beam2.q, beam2.w0, beam2.z)
-        print "  - WFS2 w={0}".format(beam2.w)
-        print "    (q={0}, w0={1}, z={2})".format(beam3.q, beam3.w0, beam3.z)
+        print "  - WFS1 w={0:.6}cm".format(100.0*beam2.w)
+        print "    (w0={0}, z={1})".format(beam2.w0, beam2.z)
+        print "  - WFS2 w={0:.6}cm".format(100.0*beam3.w)
+        print "    (w0={0}, z={1})".format(beam3.w0, beam3.z)
+        raw_input("Press enter to continue")
         
         return(beam1, beam2, beam3)
 
     f=50e3
-    carrier_size(kat,f)
-    sideband_size(kat,f)
+    beam_size(kat,f)
 
     f=5e3
-    carrier_size(kat,f)
-    (beam1,beam2,beam3)=sideband_size(kat,f)
+    (beam1,beam2,beam3)=beam_size(kat,f)
+
     
     return (beam1, beam2,beam3)
 
@@ -362,6 +354,9 @@ def beam_size(tmpkat, beam2, beam3):
     
     kat.noxaxis = True
     kat.ITM_TL.f=50e3
+    if "ITM_TL_r" in kat._kat__components:
+        kat.ITM_TL_r.f=50e3
+
     kat.po.nWFS1.node.setGauss(kat.po,beam2)
 
     out = kat.run(printout=0,printerr=0)
@@ -377,6 +372,8 @@ def beam_size(tmpkat, beam2, beam3):
     print "  WFS2: {0}cm".format(y2*100.0)
     
     kat.ITM_TL.f=5e3
+    if "ITM_TL_r" in kat._kat__components:
+        kat.ITM_TL_r.f=5e3
     kat.po.nWFS1.node.setGauss(kat.po,beam3)
     out = kat.run(printout=0,printerr=0)
     y1 = out.y[WFS1_idx]
