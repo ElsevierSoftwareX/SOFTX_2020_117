@@ -10,6 +10,11 @@ import shelve
 import copy
 import sys
 
+def set_thermal_lens(kat, f):
+    kat.ITM_TL.f=f
+    if "ITM_TL_r" in kat._kat__components:
+        kat.ITM_TL_r.f=f
+    return (kat)
 
 def main():
 
@@ -68,18 +73,18 @@ def main():
     (beam1, beam2, beam3) = get_qs(kat)
 
     if "ITM_TL_r" in kat._kat__components:
-        kat.ITM.nITM1r.node.setGauss(kat.ITM, beam2)
+        kat.ITM.nITM1r.node.setGauss(kat.ITM, beam3)
         kat.parseKatCode("startnode nITM1r")
     else:
-        kat.ITM.nITM1.node.setGauss(kat.ITM, beam2)
+        kat.ITM.nITM1.node.setGauss(kat.ITM, beam3)
         kat.parseKatCode("startnode nITM1")
     
-    kat.ITM_TL.f=50e3
+    kat = set_thermal_lens(kat,5e3)
     kat.maxtem = 10
     print "--------------------------------------------------------"
     print " 11. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f)
 
-    maxtems = [1, 3, 5]
+    maxtems = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25]
     savedata = np.zeros([len(maxtems),5])
     for idx, tem in enumerate(maxtems):
         print tem
@@ -112,11 +117,6 @@ def main():
 
 #-----------------------------------------------------------------------------------
 
-def set_thermal_lens(kat, f):
-    kat.ITM_TL.f=f
-    if "ITM_TL_r" in kat._kat__components:
-        kat.ITM_TL_r.f=f
-    return (kat)
 
 def get_qs(tmpkat):
     kat = copy.deepcopy(tmpkat)

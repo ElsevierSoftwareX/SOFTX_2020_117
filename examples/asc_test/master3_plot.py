@@ -67,7 +67,7 @@ def asc_large():
     lw=np.ones(N)*3
     lw[-2]=2
     lw[-1]=1
-    for i, tem in zip(range(len(maxtems)), maxtems):
+    for i, tem in enumerate(maxtems):
         data=out[str(tem)]
         WFS1_idx=data.ylabels.index("WFS1_I")
         WFS2_idx=data.ylabels.index("WFS2_I")
