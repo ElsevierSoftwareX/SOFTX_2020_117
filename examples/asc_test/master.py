@@ -33,7 +33,7 @@ def main():
     result = {}
 
     # defining variables as global for debugging
-    global kat
+    #global kat
     #global out
     #global result
     
@@ -97,7 +97,7 @@ def pd_signal(tmpkat):
         """
     kat.parseKatCode(code1)
     kat.noxaxis = True
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
     print " Cavity power: {0:.6f}W".format(out.y[2])
     return (out.y[0], out.y[1])
     
@@ -115,7 +115,7 @@ def pd_phase(tmpkat):
     # function for root finding
     def PD_q_test(x):
         kat.PDrefl_q.phi[0]=x
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
         print '\r root finding: function value %g                    ' % out.y,
         sys.stdout.flush()
         return out.y
@@ -157,7 +157,7 @@ def powers(tmpkat):
 
     kat.parseKatCode(code1)
 
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
 
     code1 = code1.split("\n")
     for i in range(len(out.y)):
@@ -178,7 +178,7 @@ def resonance(tmpkat):
     # function for root finding
     def carrier_resonance(x):
         kat.ETM.phi=x
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
         phase = (out.y[0]-out.y[1]-90)%360-180
         print '\r root finding: function value %g                    ' % phase ,
         sys.stdout.flush()

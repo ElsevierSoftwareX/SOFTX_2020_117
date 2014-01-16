@@ -52,7 +52,6 @@ def main():
 
         
     # overwriting some variables
-    kat.maxtem=3
     Lambda=1064.0e-9
     
     # this does not work yet due to the scale command
@@ -67,40 +66,34 @@ def main():
 
 
     (beam1, beam2, beam3) = get_qs(kat)
-    """
-    print "  Measured beam parameter:" 
-    print "  - At front of ITM (no thermal lens) q={0}".format(beam1.q)
-    print "    (eqals w0={0}, z={1})".format(beam1.w0, beam1.z)
-    print "  - At pick of mirror 'po' (50k lens) q={0}".format(beam2.q)
-    print "    (eqals w0={0}, z={1})".format(beam2.w0, beam2.z)
-    print "  - At pick of mirror 'po' (5k lens) q={0}".format(beam3.q)
-    print "    (eqals w0={0}, z={1})".format(beam3.w0, beam3.z)
-    #print "  Setting these now view Gauss command and adding thermal lens"
-    """
-    kat.ITM.nITM1.node.setGauss(kat.ITM,beam1)
 
-    print "--------------------------------------------------------"
-    print " 11. computing beam sizes  with thermal lens"
-    #beam_size(kat, beam2, beam3)
+    if "ITM_TL_r" in kat._kat__components:
+        kat.ITM.nITM1r.node.setGauss(kat.ITM, beam2)
+        kat.parseKatCode("startnode nITM1r")
+    else:
+        kat.ITM.nITM1.node.setGauss(kat.ITM, beam2)
+        kat.parseKatCode("startnode nITM1")
     
     kat.ITM_TL.f=50e3
-    kat.maxtem = 8
+    kat.maxtem = 10
     print "--------------------------------------------------------"
-    print " 11. computing beam tilt with thermal lens (f={0}, maxtem={1})".format(kat.ITM_TL.f, kat.maxtem)
-    #gravity_tilt(kat)
+    print " 11. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f)
 
-    kat.ITM_TL.f=5e3
-    kat.maxtem = 23
+    maxtems = [1, 3, 5]
+    savedata = np.zeros([len(maxtems),5])
+    for idx, tem in enumerate(maxtems):
+        print tem
+        print idx
+        savedata[idx,0]=tem
+        print "  Calculating maxtem = %d " % tem
+        kat.maxtem = tem
+        tmp = gravity_tilt(kat)
+        savedata[idx,1:5]=tmp
+        np.savetxt("thermal_gravity.txt", savedata, fmt='%.18e', delimiter=' ')    
 
     print "--------------------------------------------------------"
     print " 12. computing beam tilt with thermal lens (f={0}, maxtem={1})".format(kat.ITM_TL.f, kat.maxtem)
     #gravity_tilt(kat)
-
-    
-    print "--------------------------------------------------------"
-    print " 12. compute beam center with thermal lens"
-
-    
 
     
     print "--------------------------------------------------------"
@@ -118,6 +111,12 @@ def main():
 
 
 #-----------------------------------------------------------------------------------
+
+def set_thermal_lens(kat, f):
+    kat.ITM_TL.f=f
+    if "ITM_TL_r" in kat._kat__components:
+        kat.ITM_TL_r.f=f
+    return (kat)
 
 def get_qs(tmpkat):
     kat = copy.deepcopy(tmpkat)
@@ -147,9 +146,7 @@ def get_qs(tmpkat):
         kat.parseKatCode("startnode npsl")
 
         # add thermal lens and propagate input beam to ITM
-        kat.ITM_TL.f=f
-        if "ITM_TL_r" in kat._kat__components:
-            kat.ITM_TL_r.f=f
+        kat = set_thermal_lens(kat, f)
         out = kat.run(printout=0,printerr=0)
         
         # computing beam size at ITM 
@@ -174,23 +171,25 @@ def get_qs(tmpkat):
         beam2 = gauss_param(q=q2)    
         q3 = complex(out['w3'][0],out['w3'][1])
         beam3 = gauss_param(q=q3)    
-        print "  Sideband (input mode) beam size with thermal lens f={0}".format(f)
-        print "  - WFS1 w={0:.6}cm".format(100.0*beam2.w)
-        print "    (w0={0}, z={1})".format(beam2.w0, beam2.z)
-        print "  - WFS2 w={0:.6}cm".format(100.0*beam3.w)
-        print "    (w0={0}, z={1})".format(beam3.w0, beam3.z)
-        raw_input("Press enter to continue")
+        print "  Input mode beam size with thermal lens f={0}".format(f)
+        print "  - ITM  w={0:.6}cm  (w0={0}, z={1})".format(100.0*beam1.w,beam1.w0, beam1.z)
+        print "  - WFS1 w={0:.6}cm  (w0={0}, z={1})".format(100.0*beam2.w,beam2.w0, beam2.z)
+        print "  - WFS2 w={0:.6}cm  (w0={0}, z={1})".format(100.0*beam3.w,beam3.w0, beam3.z)
+        #raw_input("Press enter to continue")
         
         return(beam1, beam2, beam3)
 
+    f=1e13
+    (beam10,beam2,beam3)=beam_size(kat,f)
+
     f=50e3
-    beam_size(kat,f)
+    (beam11,beam2,beam3)=beam_size(kat,f)
 
     f=5e3
-    (beam1,beam2,beam3)=beam_size(kat,f)
+    (beam12,beam2,beam3)=beam_size(kat,f)
 
     
-    return (beam1, beam2,beam3)
+    return (beam10, beam11,beam12)
 
 def asc_signal(tmpkat):
     kat = copy.deepcopy(tmpkat)
@@ -292,6 +291,7 @@ def gravity_tilt(tmpkat):
         detector_distance = 1000.0
         tilt=w0*(x2-x1)/detector_distance
         print " Wavefront tilt : %g nrad" % tilt
+        return tilt
 
     code_WFS1 = """
     beam b1 nWFS1
@@ -319,13 +319,13 @@ def gravity_tilt(tmpkat):
     kat.spo1.L=1000.0
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
-    compute_gravity_tilt(kat)
+    t1=compute_gravity_tilt(kat)
     print " ETM ybeta -0.1nm"
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
-    compute_gravity_tilt(kat)
+    t2=compute_gravity_tilt(kat)
 
-    print " WFS1:"
+    print " WFS2:"
     print " ITM ybeta 0.1nm"
     kat = copy.deepcopy(tmpkat)
     kat.parseKatCode(code_WFS2)
@@ -333,12 +333,13 @@ def gravity_tilt(tmpkat):
     kat.spo1.L=1.0e-9
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
-    compute_gravity_tilt(kat)
+    t3=compute_gravity_tilt(kat)
     print " ETM ybeta -0.1nm"
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
-    compute_gravity_tilt(kat)
-
+    t4=compute_gravity_tilt(kat)
+    return [t1,t2,t3,t4]
+    
 def beam_size(tmpkat, beam2, beam3):
     kat = copy.deepcopy(tmpkat)
 
@@ -353,17 +354,12 @@ def beam_size(tmpkat, beam2, beam3):
     kat.ITM.T=0.0 
     
     kat.noxaxis = True
-    kat.ITM_TL.f=50e3
-    if "ITM_TL_r" in kat._kat__components:
-        kat.ITM_TL_r.f=50e3
-
+    kat = set_thermal_lens(kat, 50e3)
     kat.po.nWFS1.node.setGauss(kat.po,beam2)
-
     out = kat.run(printout=0,printerr=0)
 
     WFS1_idx=out.ylabels.index("wWFS1")
     WFS2_idx=out.ylabels.index("wWFS2")
-    
     
     y1 = out.y[WFS1_idx]
     y2 = out.y[WFS2_idx]
@@ -371,9 +367,7 @@ def beam_size(tmpkat, beam2, beam3):
     print "  WFS1: {0}cm".format(y1*100.0)
     print "  WFS2: {0}cm".format(y2*100.0)
     
-    kat.ITM_TL.f=5e3
-    if "ITM_TL_r" in kat._kat__components:
-        kat.ITM_TL_r.f=5e3
+    kat = set_thermal_lens(kat, 5e3)
     kat.po.nWFS1.node.setGauss(kat.po,beam3)
     out = kat.run(printout=0,printerr=0)
     y1 = out.y[WFS1_idx]

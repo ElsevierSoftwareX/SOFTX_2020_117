@@ -1,12 +1,18 @@
 #
 #-----------------------------------------------------------------------
-# ASC_01.kat
+# asc_base_bs.kat
 #
 # This file is an part of the Finesse ASC signal validation. 
+# 
+# This file is a Finesse input file mean to be read by 
+# master.py, which is part of PyKat, see
+# http://www.gwoptics.org/pykat
+# http://www.gwoptics.org/finesse
 #
-# Checking setup.
+# This file compares to asc_base.kat, but uses beam splitters
+# instead of mirrors to build the main cavity.
 #                                                    
-# 01.02.2013, Andreas Freise
+# 16.01.2014, Andreas Freise
 #----------------------------------------------------------------------
 #
 #
@@ -29,17 +35,18 @@ bs1 ETM 0.001 0 0 0 nETM1 nETM1b nETM2a nETM2b
 attr ETM Rc 2700   
 cav c1 ITM nITM2 ITM nITM2b
 
+# the following is a mirror of the input path, 
+# here being added separately to allow for an
+# independent setting of the beam parameter for
+# the reflected light
+
 s ITMsub_r 0 nITM1r nL1r  
 lens ITM_TL_r 10000G nL1r nL2r % thermal lens in ITM
-s spo1 1n nL2r npo1r
+s spo0 1n nL2r npo1r
 bs1 por 0.5 0 0 45 npo1r nWFS1 dump3 dump4
-s s2r 0 nWFS1 nL1_in
+s spo1 0 nWFS1 nL1_in
 lens L1 1250 nL1_in nL1_out 
 s spo2 5000 nL1_out nWFS2 
-
-%const ETM_phi 22.63754342 % on resonance
-% now 0.1/1064*360 + 22.63754342 =  22.6713780064662
-%const ETM_phi 22.6713780064662 % 1e-10m off resonance
 
 phase 0
 

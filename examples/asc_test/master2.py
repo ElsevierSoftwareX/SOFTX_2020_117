@@ -144,7 +144,7 @@ def asc_signal(tmpkat):
     signal=np.zeros((2, 2))
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
     WFS1_idx=out.ylabels.index("WFS1_I")
     WFS2_idx=out.ylabels.index("WFS2_I")
     signal[0,0] = out.y[WFS1_idx]
@@ -152,7 +152,7 @@ def asc_signal(tmpkat):
 
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
     signal[0,1] = out.y[WFS1_idx]
     signal[1,1] = out.y[WFS2_idx]
     signal = signal *1e10
@@ -176,7 +176,7 @@ def asc_phases(tmpkat):
 
     def demod_phase1(x):
         kat.WFS1_I.phi[0]=x[0]
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
         WFS1_idx=out.ylabels.index("WFS1_I")
         signal = out.y[WFS1_idx]
         print '\r minimising: function value %g                    ' % signal ,
@@ -185,7 +185,7 @@ def asc_phases(tmpkat):
 
     def demod_phase2(x):
         kat.WFS2_I.phi[0]=x[0]
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
         WFS2_idx=out.ylabels.index("WFS2_I")
         signal = out.y[WFS2_idx]
         print '\r minimising: function value %g                    ' % signal ,
@@ -214,7 +214,7 @@ def gravity_tilt(tmpkat):
 
     def compute_gravity_tilt(tmpkat):
         kat = copy.deepcopy(tmpkat)
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
 
         y1 = out["b1"]
         y2 = out["b1_1k"]
@@ -261,7 +261,7 @@ def gravity_tilt(tmpkat):
     kat.ETM.ybeta=-1e-10
     compute_gravity_tilt(kat)
 
-    print " WFS1:"
+    print " WFS2:"
     print " ITM ybeta 0.1nm"
     kat = copy.deepcopy(tmpkat)
     kat.parseKatCode(code_WFS2)
@@ -281,7 +281,7 @@ def tilt(tmpkat):
     
     def compute_tilt(tmpkat):
         kat = copy.deepcopy(tmpkat)
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
 
         # compute data x range in meters
         beamsize = out["w0y"][0,0] 
