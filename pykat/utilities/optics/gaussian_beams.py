@@ -14,7 +14,7 @@ class gauss_param(object):
     usage:
         q = gauss_param(w0=w0, z=z)
         q = gauss_param(z=z, zr=zr)
-        q = gauss_param(wz=wz, rc=rc)
+        q = gauss_param(w=w, rc=rc)
         q = gauss_param(q=a) # where a is a complex number
         
         or change default wavelength and refractive index with:
@@ -34,7 +34,7 @@ class gauss_param(object):
             if "q" in kwargs:
                 self.__q = complex(kwargs["q"])        
             else:
-                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and wz or q, to define the beam parameter")
+                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and w or q, to define the beam parameter")
                 
         elif len(kwargs) == 2:        
             
@@ -42,11 +42,11 @@ class gauss_param(object):
                 q = float(kwargs["z"]) + 1j *float(math.pi*kwargs["w0"]**2/(self.__lambda/self.__nr) )
             elif "z" in kwargs and "zr" in kwargs:
                 q = float(kwargs["z"]) + 1j *float(kwargs["zr"]) 
-            elif "rc" in kwargs and "wz" in kwargs:
-                one_q = 1 / kwargs["rc"] - 1j * self.__lamda / (math.pi * self.__nr * kwargs["wz"]**2)
+            elif "rc" in kwargs and "w" in kwargs:
+                one_q = 1 / kwargs["rc"] - 1j * self.__lamda / (math.pi * self.__nr * kwargs["w"]**2)
                 q = 1/one_q
             else:
-                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and wz or q, to define the beam parameter")
+                raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and w or q, to define the beam parameter")
                 
             self.__q = q
         else:
@@ -69,7 +69,8 @@ class gauss_param(object):
     
     @property
     def w(self):
-        return self.w0 * math.sqrt(1 + (self.__q.real/self.__q.imag)**2)
+        return abs(self.__q)*math.sqrt(self.__lambda / (self.__nr * math.pi * self.__q.imag))
+        #return self.w0 * math.sqrt(1 + (self.__q.real/self.__q.imag)**2)
     
     @property
     def w0(self):
