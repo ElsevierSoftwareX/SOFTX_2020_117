@@ -15,15 +15,18 @@ def main():
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
     PyKat:   http://www.gwoptics.org/pykat
-    
-    The file runs through the various pykat files which are used
+
+    The file runs through the various Finesse simulations
     to generate the Finesse results reported in the document:
     `Comparing Finesse simulations, analytical solutions and OSCAR 
     simulations of Fabry-Perot alignment signals', LIGO-T1300345
+
+    This file is part of a collection; it outputs the results
+    shown the document's sections 5 and 6 and saves temporary
+    data and a new Finesse input file to be read by master3.py,
+    and master4.py.
     
-    This file is part of a collection.
-    
-    Andreas Freise 06.12.2013
+    Andreas Freise 16.01.2014
     --------------------------------------------------------------
     """
     
@@ -63,7 +66,7 @@ def main():
     tilt(kat)
 
     print "--------------------------------------------------------"
-    print " 6. compute beam tilt from center of gravity calculation"
+    print " 6. compute beam tilt from beam propogation"
     gravity_tilt(kat)
 
     print "--------------------------------------------------------"
@@ -194,8 +197,6 @@ def asc_phases(tmpkat):
 
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
-    # minimize_scaler is only available in newer scipy versions
-    #res = minimize_scalar(demod_phase1, method='brent')
     res = fmin(demod_phase1, [0.0], xtol=1e-8, disp=False)
     WFS1_phase = res[0]
     print ""

@@ -10,8 +10,8 @@ formatter = matplotlib.ticker.EngFormatter(unit='', places=0)
 formatter.ENG_PREFIXES[-6] = 'u'
 
 import matplotlib.backends.backend_pdf
-def printPDF(self):
-        pdfp = matplotlib.backends.backend_pdf.PdfPages('large_ITM.pdf')
+def printPDF(self, filename):
+        pdfp = matplotlib.backends.backend_pdf.PdfPages(filename)
         pdfp.savefig(self,dpi=300,bbox_inches='tight')
         pdfp.close()
 
@@ -21,15 +21,10 @@ def main():
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
     PyKat:   http://www.gwoptics.org/pykat
-    
-    The file runs through the various pykat files which are used
-    to generate the Finesse results reported in the document:
-    `Comparing Finesse simulations, analytical solutions and OSCAR 
-    simulations of Fabry-Perot alignment signals', LIGO-T1300345
-    
+        
     Run this file to plot the data generated with master3.py.
         
-    Andreas Freise 06.12.2013
+    Andreas Freise 16.01.2014
     --------------------------------------------------------------
     """
     
@@ -44,15 +39,21 @@ def main():
     #global result
         
     print "--------------------------------------------------------"
-    print " 9. Plotting ASC signals for large misalignments"
-    asc_large()
+    print " Plotting ASC signals for large misalignments"
+    asc_large('ITM')
+    asc_large('ETM')
     
 
-def asc_large():
+def asc_large(mir_name):
     xscale = 1e6
     yscale = 1e6
-    tmpfilename = "datashelf1.dat"
-    backupname = "datashelf1.dat.bck"
+    if mir_name == 'ITM':
+        ysign = 1.0
+    else:
+        ysign = -1.0
+        
+    tmpfilename = "datashelf_{0}.dat".format(mir_name)
+    backupname = "datashelf_{0}.dat.bck".format(mir_name)
 
     try:
         tmpfile = shelve.open(tmpfilename)
@@ -71,29 +72,33 @@ def asc_large():
         data=out[str(tem)]
         WFS1_idx=data.ylabels.index("WFS1_I")
         WFS2_idx=data.ylabels.index("WFS2_I")
-        pl.plot(xscale*data.x,yscale*data.y[:,WFS1_idx],'-', color= color_cycle[i], linewidth=lw[i], label='maxtem {0}'.format(tem))
-        line, = pl.plot(xscale*data.x,yscale*data.y[:,WFS2_idx],'-', color = color_cycle[i], linewidth=lw[i])
+        pl.plot(xscale*data.x,ysign*yscale*data.y[:,WFS1_idx],'-', color= color_cycle[i], linewidth=lw[i], label='maxtem {0}'.format(tem))
+        line, = pl.plot(xscale*data.x,ysign*yscale*data.y[:,WFS2_idx],'-', color = color_cycle[i], linewidth=lw[i])
         #line.set_dashes([12, 4]) 
 
-    osc1=np.loadtxt("OSCAR_large_tilt_ITM.txt",comments='%')
+    osc1=np.loadtxt("OSCAR_large_tilt_{0}.txt".format(mir_name),comments='%')
 
     x=xscale*osc1[:,0]
     y=yscale*osc1[:,1]
     pl.scatter(x,y,s=80,facecolors='none', edgecolors='k', label='OSCAR')
     y=yscale*osc1[:,2]
     pl.scatter(x,y,s=80,facecolors='none', edgecolors='k')
-    pl.xlabel("ITM vertical misalignment [urad]")
+    pl.xlabel("{0} vertical misalignment [urad]".format(mir_name))
     pl.ylabel("Alignment signal [uW]")
-    pl.annotate('WFS1',xy=[0.42,70])
-    pl.annotate('WFS2',xy=[0.62,5])
+    if mir_name == 'ITM':
+        pl.annotate('WFS1',xy=[0.42,70])
+        pl.annotate('WFS2',xy=[0.62,5])
+        pl.legend(loc=2)
+    else:
+        pl.annotate('WFS1',xy=[0.42,10])
+        pl.annotate('WFS2',xy=[0.62,-70])
+        pl.legend(loc=3)
     pl.xlim([0,1])
-    pl.legend(loc=2)
     pl.grid()
     pl.draw()
     pl.show(block=0)
-    printPDF(fig)
+    printPDF(fig, "large_{0}.pdf".format(mir_name))
     
 
-    
 if __name__ == '__main__':
     main()

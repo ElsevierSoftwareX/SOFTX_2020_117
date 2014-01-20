@@ -49,8 +49,3 @@ lens L1 1250 nL1_in nL1_out
 s spo2 5000 nL1_out nWFS2 
 
 phase 0
-
-%ad ad1 0 nITM2
-%xaxis ETM phi lin 20 24 90
-%noxaxis
-%gnuterm x11

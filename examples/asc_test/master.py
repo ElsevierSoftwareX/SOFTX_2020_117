@@ -13,21 +13,23 @@ def main():
     Finesse: http://www.gwoptics.org/finesse
     PyKat:   http://www.gwoptics.org/pykat
     
-    The file runs through the various pykat files which are used
+    The file runs through the various Finesse simulations
     to generate the Finesse results reported in the document:
     `Comparing Finesse simulations, analytical solutions and OSCAR 
     simulations of Fabry-Perot alignment signals', LIGO-T1300345
+
+    This file is part of a collection; it outputs the results
+    shown the document's sections 3 and 4 and saves temporary
+    data and a new Finesse input file to be read by master2.py.
     
-    This file is part of a collection.
-    
-    Andreas Freise 06.12.2013
+    Andreas Freise 16.01.2014
     --------------------------------------------------------------
     """    
     
     # for debugging we might need to see the temporay file:
     kat = finesse.kat(tempdir=".",tempname="test")
     kat.verbose = False
-    kat.loadKatFile('asc_base_bs.kat')
+    kat.loadKatFile('asc_base.kat')
     kat.maxtem=3
     Lambda=1064.0e-9
     result = {}

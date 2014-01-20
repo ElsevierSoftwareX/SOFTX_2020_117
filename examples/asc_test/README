@@ -1,0 +1,45 @@
+
+This folder is part of the PyKat package and contains a set of 
+files python files which together run through the various 
+Finesse simulations. 
+
+Finesse: http://www.gwoptics.org/finesse
+PyKat:   http://www.gwoptics.org/pykat
+
+The master*py files can be used to generate the Finesse 
+results reported in the document:
+`Comparing Finesse simulations, analytical solutions and OSCAR 
+simulations of Fabry-Perot alignment signals', LIGO-T1300345.
+The tasks described in that note were suggested and started at 
+the an international workshop for commissioning graviational
+wave detectors (28.01.2013 - 02.02.2013, Lousiana, US).
+
+The files are provided as part of PyKat because they provide a 
+rich example for using PyKat to automate Finesse simulations.
+
+To run these files you need to have PyKat installed and
+the required dependcies (numpy, scipy, matplotlib, pylab).
+
+We recommend to run the files from ipython. To do so,
+start ipython and change your system path to include
+PyKat, for example:
+import sys,os 
+sys.path.append("/home/work/git/pykat")
+
+The files must be run in sequence starting with 'master.py':
+type `run master.py', which should print various result 
+to screen. It will also save temporary data files which are
+needed for running master2.py. Similarly running master2.py 
+will print further result and save temporary data files. 
+master3.py and master4.py both read those temporary files
+saved by master2. Both files perform longer running simulations.
+Some of the data from these simulations is saved regularly to
+output files which can be plotted (afterwards, or at the
+same time using a second ipython session) with the files
+master3_plot.py and master4_plot.py.
+
+Andreas Freise 16.01.2014
+
+
+
+    
