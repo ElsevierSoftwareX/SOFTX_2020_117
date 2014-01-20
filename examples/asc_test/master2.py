@@ -2,7 +2,7 @@ from pykat import finesse
 from pykat.commands import *
 import pylab as pl
 import scipy
-from scipy.optimize import minimize_scalar
+from scipy.optimize import fmin
 import numpy as np
 import shelve
 import copy
@@ -15,15 +15,18 @@ def main():
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
     PyKat:   http://www.gwoptics.org/pykat
-    
-    The file runs through the various pykat files which are used
+
+    The file runs through the various Finesse simulations
     to generate the Finesse results reported in the document:
     `Comparing Finesse simulations, analytical solutions and OSCAR 
     simulations of Fabry-Perot alignment signals', LIGO-T1300345
+
+    This file is part of a collection; it outputs the results
+    shown the document's sections 5 and 6 and saves temporary
+    data and a new Finesse input file to be read by master3.py,
+    and master4.py.
     
-    This file is part of a collection.
-    
-    Andreas Freise 06.12.2013
+    Andreas Freise 16.01.2014
     --------------------------------------------------------------
     """
     
@@ -63,7 +66,7 @@ def main():
     tilt(kat)
 
     print "--------------------------------------------------------"
-    print " 6. compute beam tilt from center of gravity calculation"
+    print " 6. compute beam tilt from beam propogation"
     gravity_tilt(kat)
 
     print "--------------------------------------------------------"
@@ -144,7 +147,7 @@ def asc_signal(tmpkat):
     signal=np.zeros((2, 2))
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
     WFS1_idx=out.ylabels.index("WFS1_I")
     WFS2_idx=out.ylabels.index("WFS2_I")
     signal[0,0] = out.y[WFS1_idx]
@@ -152,7 +155,7 @@ def asc_signal(tmpkat):
 
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
     signal[0,1] = out.y[WFS1_idx]
     signal[1,1] = out.y[WFS2_idx]
     signal = signal *1e10
@@ -175,8 +178,8 @@ def asc_phases(tmpkat):
     kat.maxtem=1
 
     def demod_phase1(x):
-        kat.WFS1_I.phi[0]=x
-        out = kat.run(printout=0,printerr=0)
+        kat.WFS1_I.phi[0]=x[0]
+        out = kat.run()
         WFS1_idx=out.ylabels.index("WFS1_I")
         signal = out.y[WFS1_idx]
         print '\r minimising: function value %g                    ' % signal ,
@@ -184,8 +187,8 @@ def asc_phases(tmpkat):
         return -1*abs(signal)
 
     def demod_phase2(x):
-        kat.WFS2_I.phi[0]=x
-        out = kat.run(printout=0,printerr=0)
+        kat.WFS2_I.phi[0]=x[0]
+        out = kat.run()
         WFS2_idx=out.ylabels.index("WFS2_I")
         signal = out.y[WFS2_idx]
         print '\r minimising: function value %g                    ' % signal ,
@@ -194,15 +197,15 @@ def asc_phases(tmpkat):
 
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
-    res = minimize_scalar(demod_phase1, method='brent')
-    WFS1_phase = res.x
+    res = fmin(demod_phase1, [0.0], xtol=1e-8, disp=False)
+    WFS1_phase = res[0]
     print ""
     print " WFS1 demod phase : %.10g deg" % WFS1_phase
      
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
-    res = minimize_scalar(demod_phase2, method='brent')
-    WFS2_phase = res.x
+    res = fmin(demod_phase2, [0.0], xtol=1e-8, disp=False)
+    WFS2_phase = res[0]
     print ""
     print " WFS2 demod phase : %.10g deg" % WFS2_phase
     return(WFS1_phase, WFS2_phase)    
@@ -212,7 +215,7 @@ def gravity_tilt(tmpkat):
 
     def compute_gravity_tilt(tmpkat):
         kat = copy.deepcopy(tmpkat)
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
 
         y1 = out["b1"]
         y2 = out["b1_1k"]
@@ -259,7 +262,7 @@ def gravity_tilt(tmpkat):
     kat.ETM.ybeta=-1e-10
     compute_gravity_tilt(kat)
 
-    print " WFS1:"
+    print " WFS2:"
     print " ITM ybeta 0.1nm"
     kat = copy.deepcopy(tmpkat)
     kat.parseKatCode(code_WFS2)
@@ -279,7 +282,7 @@ def tilt(tmpkat):
     
     def compute_tilt(tmpkat):
         kat = copy.deepcopy(tmpkat)
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
 
         # compute data x range in meters
         beamsize = out["w0y"][0,0] 

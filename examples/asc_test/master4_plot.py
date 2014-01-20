@@ -2,7 +2,6 @@ from pykat import finesse
 from pykat.commands import *
 import pylab as pl
 import numpy as np
-import shelve
 import sys
 
 import matplotlib
@@ -10,8 +9,8 @@ formatter = matplotlib.ticker.EngFormatter(unit='', places=0)
 formatter.ENG_PREFIXES[-6] = 'u'
 
 import matplotlib.backends.backend_pdf
-def printPDF(self):
-        pdfp = matplotlib.backends.backend_pdf.PdfPages('large_ETM.pdf')
+def printPDF(self, filename):
+        pdfp = matplotlib.backends.backend_pdf.PdfPages(filename)
         pdfp.savefig(self,dpi=300,bbox_inches='tight')
         pdfp.close()
 
@@ -21,15 +20,10 @@ def main():
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
     PyKat:   http://www.gwoptics.org/pykat
-    
-    The file runs through the various pykat files which are used
-    to generate the Finesse results reported in the document:
-    `Comparing Finesse simulations, analytical solutions and OSCAR 
-    simulations of Fabry-Perot alignment signals', LIGO-T1300345
-    
+        
     Run this file to plot the data generated with master4.py.
         
-    Andreas Freise 06.12.2013
+    Andreas Freise 16.01.2014
     --------------------------------------------------------------
     """
     
@@ -37,61 +31,79 @@ def main():
     # %reset -f
     # maybe close all plot windows?
     # close('all')
-    
-    # making these global during testing and debugging
-    #global kat
-    #global out
-    #global result
-        
+            
     print "--------------------------------------------------------"
-    print " 10. Plotting ASC signals for large misalignments (ETM)"
-    asc_large()
-    
+    print " Plotting beam tilt with thermal lens "
+    gravity_tilt()
 
-def asc_large():
-    xscale = 1e6
-    yscale = -1e6
-    tmpfilename = "datashelf2.dat"
-    backupname = "datashelf2.dat.bck"
+    print "--------------------------------------------------------"
+    print " Plotting WFS signal with thermal lens "
+    asc_signal('asc_signals_5.txt', (0.3,0.15))
+    asc_signal('asc_signals_50.txt', (0.3,0.15))
 
-    try:
-        tmpfile = shelve.open(tmpfilename)
-        out=tmpfile['out']
-        maxtems=tmpfile['maxtems']
-        tmpfile.close()
-    except: raise Exception("Could not open temprary results file {0}".format(tmpfilename))
-
+def asc_signal(filename,loc):
+    xscale = 1.0
+    yscale = 1.0
+    data=np.loadtxt(filename)
+    # extracting only nonzero rows
+    data = data[~np.all(data == 0, axis=1)]
+    maxtems = data[:,0]
+    [rows,cols] = data.shape
     fig=pl.figure()
     color_cycle=['b', 'c', 'r', 'k']
-    N=len(maxtems)
-    lw=np.ones(N)*3
+    labels=['ITM WFS1', 'ETM WFS1','ITM WFS2', 'ETM WFS2']
+    lw=np.ones(rows+1)*3
     lw[-2]=2
     lw[-1]=1
-    for i, tem in zip(range(len(maxtems)), maxtems):
-        data=out[str(tem)]
-        WFS1_idx=data.ylabels.index("WFS1_I")
-        WFS2_idx=data.ylabels.index("WFS2_I")
-        pl.plot(xscale*data.x,yscale*data.y[:,WFS1_idx],'-', color= color_cycle[i], linewidth=lw[i], label='maxtem {0}'.format(tem))
-        line, = pl.plot(xscale*data.x,yscale*data.y[:,WFS2_idx],'-', color = color_cycle[i], linewidth=lw[i])
-        #line.set_dashes([12, 4]) 
+    global data 
+    global cols
+    global lw
+    for i in [0,2,1,3]:
+        pl.scatter(data[:,0],yscale*data[:,i+1],s=80,facecolors='none', edgecolors=color_cycle[i], label=labels[i]+"={0:.4} W/rad".format(data[-1,i+1]*yscale))
+        pl.plot(data[:,0],yscale*data[:,i+1],'-',color=color_cycle[i], linewidth=1)
 
-    osc1=np.loadtxt("OSCAR_large_tilt_ETM.txt",comments='%')
+    pl.xlabel("maxtem")
+    pl.ylabel("sensing matrix element [W/rad]")
+    pl.xlim([0,max(maxtems)+1])
+    #pl.ylim([-180,100])
+    pl.legend(loc=loc)
+    pl.grid()
+    pl.draw()
+    pl.show(block=0)
+    pdfname=filename.split('.')[0]+'.pdf'
+    printPDF(fig,pdfname)
+    
+    
+def gravity_tilt():
+    xscale = 1.0
+    yscale = 1.0e9
+    data=np.loadtxt("thermal_gravity.txt")
+    # extracting only nonzero rows
+    data = data[~np.all(data == 0, axis=1)]
+    maxtems = data[:,0]
+    [rows,cols] = data.shape
+    fig=pl.figure()
+    color_cycle=['b', 'c', 'r', 'k']
+    labels=['ITM WFS1', 'ETM WFS1','ITM WFS2', 'ETM WFS2']
+    lw=np.ones(rows+1)*3
+    lw[-2]=2
+    lw[-1]=1
+    global data 
+    global cols
+    global lw
+    for i in [0,2,1,3]:
+        pl.scatter(data[:,0],yscale*data[:,i+1],s=80,facecolors='none', edgecolors=color_cycle[i], label=labels[i]+"={0:.4} nrad".format(data[-1,i+1]*yscale))
+        pl.plot(data[:,0],yscale*data[:,i+1],'-',color=color_cycle[i], linewidth=1)
 
-    x=xscale*osc1[:,0]
-    y=-1.0*yscale*osc1[:,1]
-    pl.scatter(x,y,s=80,facecolors='none', edgecolors='k', label='OSCAR')
-    y=-1.0*yscale*osc1[:,2]
-    pl.scatter(x,y,s=80,facecolors='none', edgecolors='k')
-    pl.xlabel("ETM vertical misalignment [urad]")
-    pl.ylabel("Alignment signal [uW]")
-    pl.annotate('WFS1',xy=[0.42,10])
-    pl.annotate('WFS2',xy=[0.62,-70])
-    pl.xlim([0,1])
+    pl.xlabel("maxtem")
+    pl.ylabel("beam tilt [nrad]")
+    pl.xlim([0,max(maxtems)+1])
+    pl.ylim([-8,4])
     pl.legend(loc=3)
     pl.grid()
     pl.draw()
     pl.show(block=0)
-    printPDF(fig)
+    printPDF(fig,'gravity_lens.pdf')
     
 
     

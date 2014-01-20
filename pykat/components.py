@@ -299,7 +299,7 @@ class beamSplitter(AbstractMirrorComponent):
             values.pop(0) # remove initial value
             return beamSplitter(values[0], values[5], values[6], values[7], values[8], values[1], values[2], values[3], values[4])
         else:
-            if values[0][1]=="1":
+            if values[0][2]=="1":
                 values.pop(0) # remove initial value
                 return beamSplitter(values[0], values[5], values[6],
                 values[7], values[8], 1.0 - SIfloat(values[1]) -

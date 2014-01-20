@@ -1,0 +1,51 @@
+#
+#-----------------------------------------------------------------------
+# asc_base_bs.kat
+#
+# This file is an part of the Finesse ASC signal validation. 
+# 
+# This file is a Finesse input file mean to be read by 
+# master.py, which is part of PyKat, see
+# http://www.gwoptics.org/pykat
+# http://www.gwoptics.org/finesse
+#
+# This file compares to asc_base.kat, but uses beam splitters
+# instead of mirrors to build the main cavity.
+#                                                    
+# 16.01.2014, Andreas Freise
+#----------------------------------------------------------------------
+#
+#
+
+l psl 1.0 0 npsl % P=1W input laser
+mod EOM 9M 0.001 1 pm 0 npsl nEOM1
+s s1 0 nEOM1 npo1
+
+bs1 po 0.5 0 0 45 npo1 dump1 npo2 dump2 % nWFS1 % 50:50 pick-off mirror
+s s2 0 npo2 nL1
+
+lens ITM_TL 10000G nL1 nL2  % thermal lens in ITM
+s ITMsub 0 nL2 nITM1  
+
+bs1 ITM 0.02 0 0 0 nITM1 nITM1r nITM2 nITM2b  
+attr ITM Rc -2500  
+s s_cav_a 5000 nITM2 nETM1    
+s s_cav_b 5000 nITM2b nETM1b    
+bs1 ETM 0.001 0 0 0 nETM1 nETM1b nETM2a nETM2b
+attr ETM Rc 2700   
+cav c1 ITM nITM2 ITM nITM2b
+
+# the following is a mirror of the input path, 
+# here being added separately to allow for an
+# independent setting of the beam parameter for
+# the reflected light
+
+s ITMsub_r 0 nITM1r nL1r  
+lens ITM_TL_r 10000G nL1r nL2r % thermal lens in ITM
+s spo0 1n nL2r npo1r
+bs1 por 0.5 0 0 45 npo1r nWFS1 dump3 dump4
+s spo1 0 nWFS1 nL1_in
+lens L1 1250 nL1_in nL1_out 
+s spo2 5000 nL1_out nWFS2 
+
+phase 0

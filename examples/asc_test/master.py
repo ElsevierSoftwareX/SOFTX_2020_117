@@ -13,14 +13,16 @@ def main():
     Finesse: http://www.gwoptics.org/finesse
     PyKat:   http://www.gwoptics.org/pykat
     
-    The file runs through the various pykat files which are used
+    The file runs through the various Finesse simulations
     to generate the Finesse results reported in the document:
     `Comparing Finesse simulations, analytical solutions and OSCAR 
     simulations of Fabry-Perot alignment signals', LIGO-T1300345
+
+    This file is part of a collection; it outputs the results
+    shown the document's sections 3 and 4 and saves temporary
+    data and a new Finesse input file to be read by master2.py.
     
-    This file is part of a collection.
-    
-    Andreas Freise 06.12.2013
+    Andreas Freise 16.01.2014
     --------------------------------------------------------------
     """    
     
@@ -91,10 +93,14 @@ def pd_signal(tmpkat):
 
     kat = copy.deepcopy(tmpkat)
 
-    code1="yaxis abs"
+    code1="""
+        pd cav nITM2
+        yaxis abs
+        """
     kat.parseKatCode(code1)
     kat.noxaxis = True
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
+    print " Cavity power: {0:.6f}W".format(out.y[2])
     return (out.y[0], out.y[1])
     
 def pd_phase(tmpkat):
@@ -111,7 +117,7 @@ def pd_phase(tmpkat):
     # function for root finding
     def PD_q_test(x):
         kat.PDrefl_q.phi[0]=x
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
         print '\r root finding: function value %g                    ' % out.y,
         sys.stdout.flush()
         return out.y
@@ -153,7 +159,7 @@ def powers(tmpkat):
 
     kat.parseKatCode(code1)
 
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
 
     code1 = code1.split("\n")
     for i in range(len(out.y)):
@@ -174,7 +180,7 @@ def resonance(tmpkat):
     # function for root finding
     def carrier_resonance(x):
         kat.ETM.phi=x
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
         phase = (out.y[0]-out.y[1]-90)%360-180
         print '\r root finding: function value %g                    ' % phase ,
         sys.stdout.flush()
