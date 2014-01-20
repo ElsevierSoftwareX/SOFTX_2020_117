@@ -4,14 +4,14 @@ Created on Sun Jan 27 09:43:16 2013
 
 @author: Daniel
 """
-
+import pykat
 from distutils.core import setup
 
 REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
 setup(
     name='PyKat',
-    version='0.2.4',
+    version=pykat.__version__,
     author='Daniel Brown',
     author_email='ddb@star.sr.bham.ac.uk',
     packages=['pykat','pykat.gui','pykat.gui.resources','pykat.testing','pykat.testing.web'],

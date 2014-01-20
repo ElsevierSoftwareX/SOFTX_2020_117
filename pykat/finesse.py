@@ -197,7 +197,7 @@ class kat(object):
   (        '::;;+;;:      `-"' =" /,`"" `) /
   L.        \\`:::a:f            c_/     n_'
   ..`--...___`.  .    ,  
-   `^-....____:   +.      {1}""".format(pykat_version, pykat_web)
+   `^-....____:   +.      {1}""".format(pykat.__version__, pykat_web)
     
     def loadKatFile(self, katfile):
         commands=open(katfile).read()

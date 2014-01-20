@@ -15,8 +15,27 @@ The easiest way to install PyKat is through PyPi::
     
 If you are a Windows user you also have the option to download the installer at https://pypi.python.org/pypi/PyKat.
 
+You should now be able to open up a new Python terminal and type `import pykat`, the output should be::
+    
+    >>> import pykat
+                                                  ..-
+        PyKat 0.1              _                  '(
+                              \`.|\.__...-""""-_." )
+           ..+-----.._        /  ' `            .-'
+       . '            `:      7/* _/._\    \   (
+      (        '::;;+;;:      `-"' =" /,`"" `) /
+      L.        \`:::a:f            c_/     n_'
+      ..`--...___`.  .    ,
+       `^-....____:   +.      www.gwoptics.org/pykat
+    >>>
+
 You will also need to ensure that you have a fully working copy of FINESSE installed and setup on your machine.
-More details on this can be found at http://www.gwoptics.org/finesse.
+More details on this can be found at http://www.gwoptics.org/finesse. 
+
+You must setup 2 environment variables: 'FINESSE_DIR', whose value is the directory that the 'kat' executable is in;
+'KATINI', which states the directory and name of the kat.ini file to use by default in FINESSE, more information in the
+FINESSE manual can be found about this.
+
 
 Usage
 ------
@@ -40,12 +59,13 @@ Regardless of which interpreter you use, to begin using PyKat you first need to 
 
 This provides all the various FINESSE components and commands you will typically need.
 Running a simulation requires you to already know how to code FINESSE files, which is beyond
-the scope of this readme. FINESSE commands can be entered in many ways: Reading in a previous .kat
-file, creating pykat objects representing the various FINESSE commands or by wring blocks of code 
+the scope of this readme. FINESSE commands can be entered in many ways: reading in a previous .kat
+file, creating pykat objects representing the various FINESSE commands or by writing blocks of FINESSE code 
 as shown next::
 
     import pylab as pl
 
+    # Here we write out any FINESSE commands we want to process
     code = """
     l l1 1 0 0 n1
     s s1 10 1 n1 n2
@@ -60,15 +80,21 @@ as shown next::
     # this kat object represents one single simulation, it containts
     # all the objects and their various states.
     kat = finesse.kat()
+    
     # Currently the kat object is empty. We can fill it using a block
     # string of normal FINESSE commands by parsing them.
     kat.parseCommands(code)
+    
     # Once we have some simulation built up we can run it simply by calling...
     out = kat.run()
 
     # This out object contains the results from this run of the simulation.
     # Parameters can then be changed and kat.run() can be called again producing
-    # another output object.
+    # another output object. So if we wanted to change the reflectivity of m1 we can do
+    kat.m1.R = 0.2
+    kat.m1.T = 0.8
+    # now run it again...
+    out2 = kat.run()
     
     # We can plot the output simply enough using pylab plotting.
     pl.figure()
@@ -82,6 +108,23 @@ The above demonstates a way of packaging up a FINESSE simulation - simple or com
 including any post-processing and plotting in one Python script file. Or you can create
 kat files separately and produce Python scripts to run and process them, that choice is upto
 you, Pykat provides the means to be used in both ways.
+
+To load in a separate FINESSE .kat file we can use the commands::
+    
+    kat = finesse.kat()
+    # load in a separate file in the same directory...
+    kat.loadKatFile('test.kat')
+    # the kat object has now parsed all the commands in this file.
+    
+    # We can alter and objects in there, e.g. if there was a mirror called m1
+    kat.m1.phi = 45
+    
+    out = kat.run()
+    
+
+    
+
+    
     
 Finesse Test Server
 ----------------------
