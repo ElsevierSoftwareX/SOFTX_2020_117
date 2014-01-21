@@ -381,7 +381,6 @@ class kat(object):
         printerr shows the Finesse progress (set kat.verbose=1 to see warnings and errors)
         """
         start = datetime.datetime.now()
-
         
         try:        
             if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
@@ -453,17 +452,28 @@ class kat(object):
             for line in iter(p.stderr.readline, ""):
                 
                 if len(line) > 0:
-                    if line.rstrip().endswith('%'):
+                    
+                    if line.rstrip().endswith('s'):
                         vals = line.split("-")
                         action = vals[0].strip()
-                        prc = vals[1].strip()[:-1]
+                        prc = vals[1].strip()[:]
+                        
                         if printerr == 1:
-                            sys.stdout.write("\r{0} {1}%".format(action, prc))
+                            sys.stdout.write("\r{0} {1}".format(action, prc))
+                    elif line.rstrip().endswith('%'):
+                        vals = line.split("-")
+                        action = vals[0].strip()
+                        prc = vals[1].strip()[:]
+                        
+                        if printerr == 1:
+                            sys.stdout.write("\r{0} {1}".format(action, prc))
+                            
                     elif line[0:3] == '** ':
                         if self.verbose: sys.stdout.write(line)
                     else:
                         err += line
 
+            
             [out,errpipe] = p.communicate()
             if printout == 1: 
                 print out
