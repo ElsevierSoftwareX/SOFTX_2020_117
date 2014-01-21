@@ -75,17 +75,27 @@ class katRun(object):
     
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split(" ")[0] == str(value)]
-        
-        if len(idx) == 1 and len(self.y.shape) == 1:
-            return self.y
+
+	if len(idx) > 0 and self.y.shape == ():
+            # In the case we have a noxaxis and just one output...
+            return float(self.y)
+        elif len(idx) == 1 and len(self.y.shape) >= 1:
+            
+            # only selecting a single output from a 1D array
+	    if self.y.size == 1:
+                return self.y
+            else:
+                return self.y[idx[0]]
+                
+	
         elif len(idx) > 0 and len(self.y.shape) == 1:
             return self.y[idx]
         elif len(idx) > 0:
             return self.y[:,idx].squeeze()
-        elif len(idx) == 1:
+        elif len(idx) >= 1:
             return self.y[:,idx].squeeze()
         else:
-            raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
+            raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
       
 class katRun2D(object):
     def __init__(self):
