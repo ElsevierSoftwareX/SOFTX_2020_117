@@ -75,14 +75,14 @@ class katRun(object):
     
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split(" ")[0] == str(value)]
-
-	if len(idx) > 0 and self.y.shape == ():
+        
+        if len(idx) > 0 and self.y.shape == ():
             # In the case we have a noxaxis and just one output...
             return float(self.y)
-        elif len(idx) == 1 and len(self.y.shape) >= 1:
+        elif len(idx) == 1 and len(self.y.shape) == 1:
             
             # only selecting a single output from a 1D array
-	    if self.y.size == 1:
+            if self.y.size == 1:
                 return self.y
             else:
                 return self.y[idx[0]]
