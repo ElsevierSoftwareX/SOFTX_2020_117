@@ -148,16 +148,15 @@ def asc_signal(tmpkat):
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
     out = kat.run()
-    WFS1_idx=out.ylabels.index("WFS1_I")
-    WFS2_idx=out.ylabels.index("WFS2_I")
-    signal[0,0] = out.y[WFS1_idx]
-    signal[1,0] = out.y[WFS2_idx]
+    signal[0,0] = out["WFS1_I"]
+    signal[1,0] = out["WFS2_I"]
 
+    
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
     out = kat.run()
-    signal[0,1] = out.y[WFS1_idx]
-    signal[1,1] = out.y[WFS2_idx]
+    signal[0,1] = out["WFS1_I"]
+    signal[1,1] = out["WFS2_I"]
     signal = signal *1e10
     sensors=('WFS1', 'WFS2')
     mirrors=('ITM', 'ETM')
@@ -180,8 +179,7 @@ def asc_phases(tmpkat):
     def demod_phase1(x):
         kat.WFS1_I.phi[0]=x[0]
         out = kat.run()
-        WFS1_idx=out.ylabels.index("WFS1_I")
-        signal = out.y[WFS1_idx]
+        signal = out["WFS1_I"]
         print '\r minimising: function value %g                    ' % signal ,
         sys.stdout.flush()
         return -1*abs(signal)
@@ -189,8 +187,7 @@ def asc_phases(tmpkat):
     def demod_phase2(x):
         kat.WFS2_I.phi[0]=x[0]
         out = kat.run()
-        WFS2_idx=out.ylabels.index("WFS2_I")
-        signal = out.y[WFS2_idx]
+        signal = out["WFS2_I"]
         print '\r minimising: function value %g                    ' % signal ,
         sys.stdout.flush()
         return -1*abs(signal)

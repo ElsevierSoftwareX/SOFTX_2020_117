@@ -253,16 +253,14 @@ def asc_signal(tmpkat):
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
     out = kat.run(printout=0,printerr=0)
-    WFS1_idx=out.ylabels.index("WFS1_I")
-    WFS2_idx=out.ylabels.index("WFS2_I")
-    signal[0,0] = out.y[WFS1_idx]
-    signal[1,0] = out.y[WFS2_idx]
+    signal[0,0] = out["WFS1_I"]
+    signal[1,0] = out["WFS2_I"]
 
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
     out = kat.run(printout=0,printerr=0)
-    signal[0,1] = out.y[WFS1_idx]
-    signal[1,1] = out.y[WFS2_idx]
+    signal[0,1] = out["WFS1_I"]
+    signal[1,1] = out["WFS2_I"]
     signal = signal *1e10
     sensors=('WFS1', 'WFS2')
     mirrors=('ITM', 'ETM')
