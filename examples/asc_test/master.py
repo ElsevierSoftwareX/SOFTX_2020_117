@@ -16,7 +16,8 @@ def main():
     The file runs through the various Finesse simulations
     to generate the Finesse results reported in the document:
     `Comparing Finesse simulations, analytical solutions and OSCAR 
-    simulations of Fabry-Perot alignment signals', LIGO-T1300345
+    simulations of Fabry-Perot alignment signals', LIGO-T1300345,
+    freely available online: http://arxiv.org/abs/1401.5727
 
     This file is part of a collection; it outputs the results
     shown the document's sections 3 and 4 and saves temporary

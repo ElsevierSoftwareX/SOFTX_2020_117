@@ -28,7 +28,8 @@ def main():
     The file runs through the various Finesse simulations
     to generate the Finesse results reported in the document:
     `Comparing Finesse simulations, analytical solutions and OSCAR 
-    simulations of Fabry-Perot alignment signals', LIGO-T1300345
+    simulations of Fabry-Perot alignment signals', LIGO-T1300345,
+    freely available online: http://arxiv.org/abs/1401.5727
 
     Run this file after master2.py to create data which can be
     plotted using master4_plot.py. Results are saved after 
