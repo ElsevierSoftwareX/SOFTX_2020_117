@@ -1,4 +1,5 @@
 import exceptions
+import os
 
 class BasePyKatException(Exception):
     def __init__(self, msg):

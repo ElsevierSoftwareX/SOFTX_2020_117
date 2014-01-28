@@ -400,7 +400,7 @@ class kat(object):
                 self.__finesse_dir = os.environ.get('FINESSE_DIR')
                 
                 if self.__finesse_dir == None :
-                    raise MissingFinesseEnvVar()
+                    raise pkex.MissingFinesseEnvVar()
             else:
                 self.__finesse_dir = self.__katdir
                 
@@ -416,7 +416,7 @@ class kat(object):
             
             # check if kat file exists and it is executable by user        
             if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
-                raise MissingFinesse()
+                raise pkex.MissingFinesse()
                 
             if self.verbose: print "--------------------------------------------------------------"
             if self.verbose: print "Running kat - Started at " + str(start)
