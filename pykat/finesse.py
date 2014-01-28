@@ -154,6 +154,10 @@ class kat(object):
         self.__tempdir = tempdir
         self.__tempname = tempname
         self.pykatgui = None
+
+	# initialise default block
+	self.__currentTag= NO_BLOCK
+	self.__blocks[NO_BLOCK] = Block(NO_BLOCK)
         
         # Various options for running finesse, typicaly the commands with just 1 input
         # and have no name attached to them.
@@ -219,11 +223,6 @@ class kat(object):
         
     def parseCommands(self, commands):
         blockComment = False
-
-        self.__currentTag= NO_BLOCK
-        
-        if not (NO_BLOCK in self.__blocks):
-            self.__blocks[NO_BLOCK] = Block(NO_BLOCK)
         
         commands=self.remove_comments(commands)
         
