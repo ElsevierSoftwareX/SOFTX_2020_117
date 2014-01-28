@@ -5,7 +5,8 @@
 # This file is part of a collection for an alignment signal 
 # validation as reported in the LIGO document:
 # `Comparing Finesse simulations, analytical solutions and OSCAR 
-# simulations of Fabry-Perot alignment signals', LIGO-T1300345
+# simulations of Fabry-Perot alignment signals', LIGO-T1300345,
+# freely available online: http://arxiv.org/abs/1401.5727
 # 
 # This file is a Finesse input file meant to be read by 
 # master.py, which is part of PyKat, see

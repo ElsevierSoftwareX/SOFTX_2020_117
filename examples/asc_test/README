@@ -9,7 +9,8 @@ PyKat:   http://www.gwoptics.org/pykat
 The master*py files can be used to generate the Finesse 
 results reported in the document:
 `Comparing Finesse simulations, analytical solutions and OSCAR 
-simulations of Fabry-Perot alignment signals', LIGO-T1300345.
+simulations of Fabry-Perot alignment signals', LIGO-T1300345,
+freely available online: http://arxiv.org/abs/1401.5727.
 The tasks described in that note were suggested and started at 
 the an international workshop for commissioning graviational
 wave detectors (28.01.2013 - 02.02.2013, Lousiana, US).
