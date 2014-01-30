@@ -134,7 +134,7 @@ class pd(Detector):
         return getattr(self, '_'+ self.__class__.__name__ +'__' + name)
     
     def __set_f(self, num, value):
-        setattr(self, '_'+ self.__class__.__name__ +'__f' + name, float(value))
+        setattr(self, '_'+ self.__class__.__name__ +'__f' + num, float(value))
     
     def __set_phi(self, num, value):
         if value == None and num != self.num_demods:
@@ -144,7 +144,7 @@ class pd(Detector):
         elif isinstance(value, str) and not isinstance(value,float) and value.lower() != "max":
             raise pkex.BasePyKatException("Demodulation phase can only be set to a 'max' or a number (or None if the last demodulation phase)")
             
-        setattr(self, '_'+ self.__class__.__name__ +'__phi' + name, value)
+        setattr(self, '_'+ self.__class__.__name__ +'__phi' + num, value)
         
     def __set_demod_attrs(self):
         """
@@ -183,7 +183,7 @@ class pd(Detector):
                 alt_str = "*"
                 
             for n in range(1, 1+self.num_demods):
-                fphi_str += str(self.__getattribute__("f"+str(n)))
+                fphi_str += " " + str(self.__getattribute__("f"+str(n)))
                 phi_val = self.__getattribute__("phi"+str(n))
                 
                 if phi_val != None:
@@ -194,7 +194,7 @@ class pd(Detector):
             if senstype == None:
                 senstype = ""
                 
-            rtn.append("pd{0}{1} {2} {3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
+            rtn.append("pd{0}{1} {2}{3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
                 
         for p in self._params:
             rtn.extend(p.getFinesseText())
