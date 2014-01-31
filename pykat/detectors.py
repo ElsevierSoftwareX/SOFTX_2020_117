@@ -24,7 +24,7 @@ class Detector(object) :
         self.__node = None
         self._params = []
         self._mask = {}
-        self.__scale = ""
+        self.__scale = None
         
         if node.find('*'):
             self._alternate_beam = True
@@ -81,12 +81,14 @@ class Detector(object) :
     
 class pd(Detector):
 
-    def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, **kwargs):
+    def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
         Detector.__init__(self, name, node_name)
         
         self.__num_demods = num_demods
         self.__senstype = senstype
         self.__alternate_beam = alternate_beam
+        self.__pdtype = pdtype
+
         # create the parameters for all 5 demodulations regardless
         # of how many the user specifies. Later we add properties to
         # those which correspond to the number of demodulations
@@ -129,12 +131,17 @@ class pd(Detector):
         
         self.__num_demods = value
         self.__set_demod_attrs()
+
+    @property
+    def pdtype(self): return self.__pdtype
+    @pdtype.setter
+    def pdtype(self, value): self.__pdtype = value
     
     def __get_fphi(self, name):
         return getattr(self, '_'+ self.__class__.__name__ +'__' + name)
     
     def __set_f(self, num, value):
-        setattr(self, '_'+ self.__class__.__name__ +'__f' + name, float(value))
+        setattr(self, '_'+ self.__class__.__name__ +'__f' + num, float(value))
     
     def __set_phi(self, num, value):
         if value == None and num != self.num_demods:
@@ -144,7 +151,7 @@ class pd(Detector):
         elif isinstance(value, str) and not isinstance(value,float) and value.lower() != "max":
             raise pkex.BasePyKatException("Demodulation phase can only be set to a 'max' or a number (or None if the last demodulation phase)")
             
-        setattr(self, '_'+ self.__class__.__name__ +'__phi' + name, value)
+        setattr(self, '_'+ self.__class__.__name__ +'__phi' + num, value)
         
     def __set_demod_attrs(self):
         """
@@ -183,7 +190,7 @@ class pd(Detector):
                 alt_str = "*"
                 
             for n in range(1, 1+self.num_demods):
-                fphi_str += str(self.__getattribute__("f"+str(n)))
+                fphi_str += " " + str(self.__getattribute__("f"+str(n)))
                 phi_val = self.__getattribute__("phi"+str(n))
                 
                 if phi_val != None:
@@ -194,7 +201,13 @@ class pd(Detector):
             if senstype == None:
                 senstype = ""
                 
-            rtn.append("pd{0}{1} {2} {3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
+            rtn.append("pd{0}{1} {2}{3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
+
+            if self.scale != None:
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
+
+            if self.pdtype != None:
+                rtn.append("pdtype {0} {1}".format(self.name, self.pdtype))
                 
         for p in self._params:
             rtn.extend(p.getFinesseText())

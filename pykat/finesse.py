@@ -280,7 +280,11 @@ class kat(object):
     @property
     def maxtem(self): return self.__maxtem
     @maxtem.setter
-    def maxtem(self,value): self.__maxtem = int(value)
+    def maxtem(self,value):
+        if value == "off":
+            self.__maxtem = -1
+        else:
+            self.__maxtem = int(value)
     
     @property
     def phase(self): return self.__phase
@@ -406,7 +410,10 @@ class kat(object):
                     if len(v) != 2:
                         raise pkex.BasePyKatException("maxtem command `{0}` is incorrect.".format(line))
                     else:
-                        self.maxtem = int(v[1])
+			if v[1] == "off":
+				self.maxtem = -1
+			else:
+	                        self.maxtem = int(v[1])
                 elif(first == "retrace"):
                     v = line.split(" ")
                     if len(v) > 2:
@@ -797,7 +804,11 @@ class kat(object):
 
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
-        if self.maxtem != None: out.append("maxtem {0}\n".format(self.maxtem))            
+        if self.maxtem != None:
+                if self.maxtem == -1:
+                        out.append("maxtem off\n")
+                else:
+                        out.append("maxtem {0}\n".format(self.maxtem))
 
         if self.noxaxis == True:
             out.append("noxaxis\n")
