@@ -213,12 +213,12 @@ class pd(Detector):
             demods = int(values[0][3])
         elif len(values[0]) == 3:
             demods = int(values[0][2])
-        elif len(values[0] != 2):
+        elif len(values[0]) != 2:
             raise pkex.BasePyKatException("Photodiode code format incorrect '{0}'".format(text))
         
         if len(values) <= 3 and demods > 0:
             raise pkex.BasePyKatException("Photodiode code format incorrect '{0}'".format(text))
-        elif len(values) >= 3 and demods == 0:
+        elif len(values) > 3 and demods == 0:
             raise pkex.BasePyKatException("Photodiode code format incorrect '{0}'".format(text))
             
         num_f_phs = len(values) - 3
