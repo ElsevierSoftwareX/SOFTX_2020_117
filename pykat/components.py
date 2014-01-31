@@ -158,7 +158,7 @@ class AbstractMirrorComponent(Component):
 
         self.__R = Param("R", self, SIfloat(R))
         self.__T = Param("T", self, SIfloat(T))
-        self.__phi = Param("phi", self, SIfloat(phi), canFsig=True, fsig_name="phs")
+        self.__phi = Param("phi", self, SIfloat(phi), canFsig=True, fsig_name="phase")
         self.__Rcx = AttrParam("Rcx", self, SIfloat(Rcx))
         self.__Rcy = AttrParam("Rcy", self, SIfloat(Rcy))
         self.__xbeta = AttrParam("xbeta", self, SIfloat(xbeta), canFsig=True, fsig_name="x")
@@ -684,7 +684,7 @@ class laser(Component):
         
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
         self.__f_offset = Param("f", self, SIfloat(f_offset), canFsig=True, fsig_name="f")
-        self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phs")
+        self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__noise = AttrParam("noise", self, 0)
         
     @property
