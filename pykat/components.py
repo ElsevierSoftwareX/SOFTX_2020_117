@@ -158,11 +158,11 @@ class AbstractMirrorComponent(Component):
 
         self.__R = Param("R", self, SIfloat(R))
         self.__T = Param("T", self, SIfloat(T))
-        self.__phi = Param("phi", self, SIfloat(phi))
+        self.__phi = Param("phi", self, SIfloat(phi), canFsig=True, fsig_name="phs")
         self.__Rcx = AttrParam("Rcx", self, SIfloat(Rcx))
         self.__Rcy = AttrParam("Rcy", self, SIfloat(Rcy))
-        self.__xbeta = AttrParam("xbeta", self, SIfloat(xbeta))
-        self.__ybeta = AttrParam("ybeta", self, SIfloat(ybeta))
+        self.__xbeta = AttrParam("xbeta", self, SIfloat(xbeta), canFsig=True, fsig_name="x")
+        self.__ybeta = AttrParam("ybeta", self, SIfloat(ybeta), canFsig=True, fsig_name="y")
         self.__mass = AttrParam("mass", self, SIfloat(mass))
         self.__r_ap = AttrParam("r_ap", self, SIfloat(r_ap))
         
@@ -682,9 +682,9 @@ class laser(Component):
         
         self._requested_node_names.append(node)
         
-        self.__power = Param("P", self, SIfloat(P))
-        self.__f_offset = Param("f", self, SIfloat(f_offset))
-        self.__phase = Param("phase", self, SIfloat(phase))
+        self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
+        self.__f_offset = Param("f", self, SIfloat(f_offset), canFsig=True, fsig_name="f")
+        self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phs")
         self.__noise = AttrParam("noise", self, 0)
         
     @property

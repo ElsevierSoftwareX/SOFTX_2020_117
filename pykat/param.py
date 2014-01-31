@@ -57,13 +57,22 @@ class putter(object):
         
 class Param(putable, putter):
 
-    def __init__(self, name, owner, value, isPutable=True, isPutter=True, isTunable=True, var_name=None):
+    def __init__(self, name, owner, value, canFsig=False, fsig_name=None, isPutable=True, isPutter=True, isTunable=True, var_name=None):
         self._name = name
         self._owner = owner
         self._value = value
         self._isPutter = isPutter
         self._isTunable = isTunable
         self._owner._register_param(self)
+        self._canFsig = False
+        
+        if canFsig:
+            self._canFsig = True
+
+            if fsig_name == None:
+                raise pkex.BasePyKatException("If parameter is a possible fsig target the fsig_name argument must be set")
+
+            self.__fsig_name = fsig_name
         
         if isPutter:
             if var_name == None:
@@ -73,7 +82,13 @@ class Param(putable, putter):
             
         if isPutable:
             putable.__init__(self, owner.name, name, isPutable)
-        
+    
+    @property
+    def canFsig(self): return self._canFsig
+    
+    @property
+    def fsig_name(self): return self.__fsig_name
+    
     @property
     def name(self): return self._name
     

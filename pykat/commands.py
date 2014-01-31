@@ -10,6 +10,7 @@ import exceptions
 from components import *
 from structs import *
 from pykat.param import Param, putter
+import pykat.exceptions as pkex
 
 class Command(object):
     def __init__(self):
@@ -50,7 +51,7 @@ class gauss(object):
         
 class xaxis(Command):
 
-    def __init__(self, scale, limits, comp, param, steps, axis_type="xaxis"):
+    def __init__(self, scale, limits, param, steps, comp=None, axis_type="xaxis"):
         self._axis_type = axis_type
 
         self.x = putter("x1")
@@ -79,20 +80,17 @@ class xaxis(Command):
 
         self.steps = int(steps)
 
-        # if entered component is a string then just store and use that
-        if isinstance(comp, str):
-            self.__comp = comp
-        elif not isinstance(comp, Component):
-            raise exceptions.ValueError("{0} has not been added".format(comp))
-        else:
-            self.__comp = comp
-
         if isinstance(param, str):
             self.__param = param
+            if comp == None:
+                raise pkex.BasePyKatException("If parameter is set with a string, the comp argument must set the component name")
+                
+            self.__comp = comp
         elif not isinstance(param, Param) :
-            raise exceptions.ValueError("param argument is not of type Param")
+            raise pkex.BasePyKatException("param argument is not of type Param")
         else:
             self.__param = param
+            self.__comp = param._owner.name
 
     @staticmethod
     def parseFinesseText(text):
@@ -108,7 +106,7 @@ class xaxis(Command):
         if len(values) != 6:
             raise exceptions.RuntimeError("xaxis Finesse code format incorrect '{0}'".format(text))
 
-        return xaxis(values[2], [values[3], values[4]], values[0], values[1], values[5], axis_type=axis_type)
+        return xaxis(values[2], [values[3], values[4]], values[1], values[5], comp=values[0], axis_type=axis_type)
 
     def getFinesseText(self):
         # store either the component name of the string provided
@@ -120,8 +118,8 @@ class xaxis(Command):
                 min(self.limits), max(self.limits), self.steps, axis_type=self._axis_type);
 
 class x2axis(xaxis):
-    def __init__(self, scale, limits, comp, param, steps):
-        xaxis.__init__(self, scale, limits, comp, param, steps, axis_type="x2axis")
+    def __init__(self, scale, limits, param, steps, comp=None):
+        xaxis.__init__(self, scale, limits, param, steps, comp=comp, axis_type="x2axis")
         self.x = putter("x2")
         self.mx = putter("mx2")
 

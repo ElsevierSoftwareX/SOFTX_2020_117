@@ -40,6 +40,7 @@ from pykat.components import Component
 from pykat.commands import Command, xaxis
 from pykat.gui.gui import pyKatGUI
 from pykat.SIfloat import *
+from pykat.param import Param, AttrParam
 
 import pykat.exceptions as pkex
 
@@ -127,7 +128,98 @@ class katRun2D(object):
             return self.z[idx].squeeze()
         else:
             raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
-      
+    
+class Signals:
+    class fsig:
+        def __init__(self, param, name, amplitude, phase):
+            self._params = []
+            self.__target = param
+            self.__name = name
+            self.__amplitude = Param("amp", self, SIfloat(amplitude))
+            self.__phase = Param("phase", self, SIfloat(phase))
+            
+            # unfortunatenly the target names for fsig are not the same as the
+            # various parameter names of the components, e.g. mirror xbeta is x 
+            # for fsig. So we need to check here what type of component we are targetting
+            # and then based on the parameter specfied get the name
+            if not param.canFsig:
+                raise  pkex.BasePyKatException("Cannot fsig parameter {1} on component {0}".format(str(param._owner), param.name))
+            
+            
+        def _register_param(self, param):
+            self._params.append(param)
+  
+        @property
+        def name(self): return self.__name
+
+        @property
+        def amplitude(self): return self.__amplitude
+
+        @property
+        def phase(self): return self.__phase
+
+        @property
+        def target(self): return self.__target.fsig_name
+
+        @property
+        def owner(self): return self.__target._owner.name
+    
+        def getFinesseText(self):
+            rtn = []
+    
+            for p in self._params:
+                rtn.extend(p.getFinesseText())
+        
+            return rtn
+    
+    @property
+    def name(self):
+        # if we don't have any signals yet then use a dummy name
+        # however we need to always tune a real fsig command
+        # so need to get the name of at least one of them
+        # as if you tune one you tune them all
+        if len(self.targets) == 0:
+            return "signal"
+        else:
+            return self.targets[0].name
+
+    @property
+    def f(self): return self.__f
+    
+    def __init__(self):
+
+        self.targets = []
+        self._params = []
+        
+        self.__f = Param("f", self, 1)
+    
+    def _register_param(self, param):
+        self._params.append(param)
+        
+    def apply(self, target, amplitude, phase, name=None):
+        
+        if target == None:
+            raise  pkex.BasePyKatException("No target was specified for signal to be applied")
+        
+        if name == None:
+            name = "sig_" +target._owner.name + "_" + target.name
+        
+        self.targets.append(Signals.fsig(target, name, amplitude, phase))
+        
+        
+    def getFinesseText(self):
+        rtn = []
+        
+        for t in self.targets:
+            rtn.extend(t.getFinesseText())
+            rtn.append("fsig {name} {comp} {target} {frequency} {phase} {amplitude}".format(name = t.name, comp=t.owner, target=t.target, frequency=str(self.f), phase=str(t.phase), amplitude=str(t.amplitude)))
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+        
+        return rtn
+        
+        
 class Block:
     def __init__(self, name):
         self.__name = name
@@ -154,10 +246,11 @@ class kat(object):
         self.__tempdir = tempdir
         self.__tempname = tempname
         self.pykatgui = None
-
-	# initialise default block
-	self.__currentTag= NO_BLOCK
-	self.__blocks[NO_BLOCK] = Block(NO_BLOCK)
+        self.__signals = Signals()
+        
+        # initialise default block
+        self.__currentTag= NO_BLOCK
+        self.__blocks[NO_BLOCK] = Block(NO_BLOCK)
         
         # Various options for running finesse, typicaly the commands with just 1 input
         # and have no name attached to them.
@@ -181,6 +274,9 @@ class kat(object):
         cls = type(self)
         self.__class__ = type(cls.__name__, (cls,), {})
         
+    @property
+    def signals(self): return self.__signals
+
     @property
     def maxtem(self): return self.__maxtem
     @maxtem.setter
@@ -688,6 +784,16 @@ class kat(object):
                 else:
                     out.append(txt + "\n")
         
+
+        # now get any signal commands
+        txt = self.signals.getFinesseText()
+        
+        if txt != None:
+            if isinstance(txt,list):
+                for t in txt: out.append(t+ "\n")
+            else:
+                out.append(txt + "\n")
+                            
 
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
