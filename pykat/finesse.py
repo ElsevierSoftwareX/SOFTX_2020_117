@@ -393,7 +393,7 @@ class kat(object):
                 elif(first[0:3] == "mod"):
                     obj = pykat.components.modulator.parseFinesseText(line)
                 elif(first[0:2] == "pd" and first != "pdtype"):
-                    obj = pykat.detectors.photodiode.parseFinesseText(line)
+                    obj = pykat.detectors.pd.parseFinesseText(line)
                 elif(first == "xaxis" or first == "xaxis*"):
                     obj = pykat.commands.xaxis.parseFinesseText(line)
                 elif(first == "x2axis" or first == "x2axis*"):

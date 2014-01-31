@@ -12,6 +12,8 @@ from pykat.gui.graphics import *
 from pykat.node_network import *
 from pykat.param import Param
 
+import pykat.exceptions as pkex
+import warnings
 
 class Detector(object) :
     def __init__(self, name,node):
@@ -93,17 +95,38 @@ class pd(Detector):
         # of how many the user specifies. Later we add properties to
         # those which correspond to the number of demodulations
         
-        self.__f1 = Param("f1", self, 0)
-        self.__f2 = Param("f2", self, 0)
-        self.__f3 = Param("f3", self, 0)
-        self.__f4 = Param("f4", self, 0)
-        self.__f5 = Param("f5", self, 0)
+        self.__f1 = Param("f1", self, None)
+        self.__f2 = Param("f2", self, None)
+        self.__f3 = Param("f3", self, None)
+        self.__f4 = Param("f4", self, None)
+        self.__f5 = Param("f5", self, None)
         
         self.__phi1 = Param("phi1", self, None)
         self.__phi2 = Param("phi2", self, None)
         self.__phi3 = Param("phi3", self, None)
         self.__phi4 = Param("phi4", self, None)
         self.__phi5 = Param("phi5", self, None)
+        
+        fs = [self.__f1, self.__f2, self.__f3, self.__f4, self.__f5]
+        ps = [self.__phi1, self.__phi2, self.__phi3, self.__phi4, self.__phi5]
+        
+        for i in range(num_demods):
+            f = 'f{0}'.format(i+1)
+            
+            if f in kwargs:
+                fs[i].value = kwargs[f]
+            else:
+                raise pkex.BasePyKatException("Missing demodulation frequency {0} (f{0})".format(i+1))    
+        
+            p = 'phi{0}'.format(i+1)
+            
+            if p in kwargs:
+                if kwargs[p] == None and i<num_demods-1:
+                    raise pkex.BasePyKatException("Missing demodulation phase {0} (phi{0})".format(i+1))
+                    
+                ps[i].value = kwargs[p]
+            elif i<num_demods-1:
+                raise pkex.BasePyKatException("Missing demodulation phase {0} (phi{0})".format(i+1))
         
         # define new class for assigning new attributes
         cls = type(self)
@@ -179,6 +202,50 @@ class pd(Detector):
         else:
             return
     
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split(" ")
+        demods = 0
+        senstype = None
+
+        if len(values[0]) == 4:
+            senstype = values[0][2]
+            demods = int(values[0][3])
+        elif len(values[0]) == 3:
+            demods = int(values[0][2])
+        elif len(values[0] != 2):
+            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}'".format(text))
+        
+        if len(values) <= 3 and demods > 0:
+            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}'".format(text))
+        elif len(values) >= 3 and demods == 0:
+            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}'".format(text))
+            
+        num_f_phs = len(values) - 3
+        expected_f_phs = demods * 2
+        
+        if num_f_phs != expected_f_phs and num_f_phs-1 != expected_f_phs:
+            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}'".format(text))
+        
+        f = values[2:len(values)-1:2]    
+        phs = values[3:len(values)-1:2]
+        
+        dict = {}
+        
+        for i in range(len(f)):
+            dict['f{0}'.format(i+1)] = f[i]
+        for i in range(len(phs)):
+            dict['phi{0}'.format(i+1)] = phs[i]
+            
+        node = values[-1]
+        alt_beam = node[-1] == '*'
+        
+        if alt_beam:
+            node = node[0:-1]
+        
+        return pd(values[1], demods, node, senstype=senstype, alternate_beam=alt_beam, **dict)
+
+        
     def getFinesseText(self) :
         rtn = []
         
@@ -251,7 +318,7 @@ class photodiode(Detector):
     @pdtype.setter
     def pdtype(self, value): self.__pdtype = value
 
-    def __init__(self, name, node, senstype="", num_demods=0, demods=[], pdtype=None):        
+    def __init__(self, name, node, senstype="", num_demods=0, demods=[], pdtype=None):
         Detector.__init__(self, name, node)
         
         if num_demods>2:
