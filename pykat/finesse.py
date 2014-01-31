@@ -129,8 +129,8 @@ class katRun2D(object):
         else:
             raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
     
-class Signals:
-    class fsig:
+class Signals(object):
+    class fsig(object):
         def __init__(self, param, name, amplitude, phase):
             self._params = []
             self.__target = param
@@ -154,9 +154,14 @@ class Signals:
 
         @property
         def amplitude(self): return self.__amplitude
+        @amplitude.setter
+        def amplitude(self,value): self.__amplitude.value = SIfloat(value)
+
 
         @property
         def phase(self): return self.__phase
+        @phase.setter
+        def phase(self,value): self.__phase.value = SIfloat(value)
 
         @property
         def target(self): return self.__target.fsig_name
@@ -185,6 +190,8 @@ class Signals:
 
     @property
     def f(self): return self.__f
+    @f.setter
+    def f(self,value): self.__f.value = SIfloat(value)
     
     def __init__(self):
 
