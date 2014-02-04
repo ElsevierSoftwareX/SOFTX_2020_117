@@ -9,7 +9,7 @@ def SIfloat(value):
         return convertToFloat(value)
     
 def convertToFloat(value):
-    __prefix = {'y': 'e-24',  # yocto
+    __suffix = {'y': 'e-24',  # yocto
                 'z': 'e-21',  # zepto
                 'a': 'e-18',  # atto
                 'f': 'e-15',  # femto
@@ -23,12 +23,12 @@ def convertToFloat(value):
                 'M': 'e6',    # mega
                 'G': 'e9',    # giga
                 'T': 'e12',   # tera
-                'P': 'e15',   # peta
-                'E': 'e18',   # exa
-                'Z': 'e21',   # zetta
-                'Y': 'e24',   # yotta
+                'P': 'e15'   # peta
                 }
+    
     value = str(value)
-    for i, j in __prefix.iteritems():
+    
+    for i, j in __suffix.iteritems():
         value=value.replace(i, str(j))
+        
     return float(value)
