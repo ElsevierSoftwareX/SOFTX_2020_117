@@ -76,7 +76,7 @@ class katRun(object):
     def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split(" ")[0] == str(value)]
+        idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
         
         if len(idx) > 0 and self.y.shape == ():
             # In the case we have a noxaxis and just one output...
@@ -123,7 +123,7 @@ class katRun2D(object):
     def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split(" ")[0] == str(value)]
+        idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split()[0] == str(value)]
         
         if len(idx) > 0:
             return self.z[idx].squeeze()
@@ -340,7 +340,7 @@ class kat(object):
         constants = self.constants
         
         for line in commands:
-            values = line.split(' ')
+            values = line.split()
             
             if len(values)>0 and values[0] == 'const':
                 
@@ -354,11 +354,10 @@ class kat(object):
         
         commands_new = []
         
-        print constants
         for line in commands:
-            values = line.split(' ')
+            values = line.split()
             
-            if values[0] != 'const':
+            if len(values) > 0 and values[0] != 'const':
                 # check if we have a var/constant in this line
                 if line.find('$') >= 0:
                     for key in constants.keys():
@@ -389,7 +388,7 @@ class kat(object):
                 line = line.strip()
 
                 # Looking for block start or end
-                values = line.split(" ")
+                values = line.split()
                 if values[0] == "%%%":
                     if values[1] == "FTblock":
                         newTag = values[2]
@@ -454,13 +453,13 @@ class kat(object):
                 elif(first == "noxaxis"):
                     self.noxaxis = True
                 elif(first == "phase"):
-                    v = line.split(" ")
+                    v = line.split()
                     if len(v) != 2:
                         raise pkex.BasePyKatException("phase command `{0}` is incorrect.".format(line))
                     else:
                         self.phase = int(v[1])
                 elif(first == "maxtem"):
-                    v = line.split(" ")
+                    v = line.split()
                     if len(v) != 2:
                         raise pkex.BasePyKatException("maxtem command `{0}` is incorrect.".format(line))
                     else:
@@ -469,13 +468,13 @@ class kat(object):
 			else:
 	                        self.maxtem = int(v[1])
                 elif(first == "retrace"):
-                    v = line.split(" ")
+                    v = line.split()
                     if len(v) > 2:
                         raise pkex.BasePyKatException("Retrace command `{0}` is incorrect.".format(line))
                     elif len(v) == 2:
                         self.retrace = v[1]                        
                 elif(first == "deriv_h"):
-                    v = line.split(" ")
+                    v = line.split()
                     if len(v) != 2:
                         raise pkex.BasePyKatException("deriv_h command `{0}` is incorrect.".format(line))
                     else:
@@ -500,7 +499,7 @@ class kat(object):
             if first == "gauss" or first == "gauss*" or first == "gauss**":
                 pykat.commands.gauss.parseFinesseText(line)
             elif (first == "scale"):
-                v = line.split(" ")
+                v = line.split()
                 if len(v) == 3:
                     component_name = v[2]
                     if component_name in self.__detectors :
@@ -512,7 +511,7 @@ class kat(object):
                 else:
                     raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(text))
             elif (first == "pdtype"):
-                v = line.split(" ")
+                v = line.split()
                 if len(v) == 3:
                     component_name = v[1]
                     if component_name in self.__detectors :
@@ -709,7 +708,7 @@ class kat(object):
                 perffile = open(root[0] + ".perf",'r')
                 
                 for l in perffile.readlines():
-                    vals = l.strip().split(' ')
+                    vals = l.strip().split()
                     perfData.append((vals[0], float(vals[1]), float(vals[2]), float(vals[3])))
                     
                 return [r, perfData]
@@ -991,6 +990,7 @@ class kat(object):
         """
         This takes a raw Finesse code string and removes any comments
         It returns a list of lines however, not a multiline string.
+        Also removes any extrawhite space in command lines.
         """
         pattern = r"(\".*?\"|\'.*?\'|%{3}[^\r\n]*$)|(/\*.*?\*/|%[^\r\n]*$|#[^\r\n]*$|//[^\r\n]*$)"
         # first group captures quoted strings (double or single)
@@ -1010,15 +1010,22 @@ class kat(object):
         commands = []
         
         for line in string.split('\n'):
-            # add to a list all the positions of any inline comment markers
-            i = [line.find('#'), line.find('\\')]
-            i = filter(lambda a: a != -1, i)
-            
-            if len(i) == 0:
-                commands.append(line)
-            else:
-                commands.append(line[0:min(i)])
-            
+            line = line.replace('\r','')
+            if len(line) > 0:
+                # remove any mutliple whitespace
+                line = " ".join(line.split())
+                # add to a list all the positions of any inline comment markers
+                i = [line.find('#'), line.find('\\')]
+                i = filter(lambda a: a != -1, i)
+        
+                if len(i) == 0:
+                    commands.append(line)
+                else:
+                    line = line[0:min(i)]
+                    if len(line):
+                        commands.append(line)
+        
+        
         return commands
 
 # printing pykat logo on first input
