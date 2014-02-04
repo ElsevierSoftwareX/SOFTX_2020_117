@@ -8,7 +8,7 @@ import numpy as np
 import pylab as pl
 
 code = """
-l l1 1 0 0 n1
+l l1 1 0 0 n1 ### test
 s s1 10 1 n1 n2
 m m1 0.5 0.5 0 n2 n3
 s s2 10 1 n3 n4
@@ -29,7 +29,7 @@ kat.add(photodiode('pd_trs','n5'))
 kat.add(photodiode('pd_cav','n4', num_demods=1, demods=[1]))
 
 
-kat.add(xaxis("lin", [0, 360], kat.m2, kat.m2.phi, 100))
+kat.add(xaxis("lin", [0, 360], kat.m2.phi, 100))
 
 kat.m1.Rcx = -1000.0
 kat.m1.Rcy = -1000.0

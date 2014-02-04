@@ -377,8 +377,6 @@ class kat(object):
         blockComment = False
         
         commands=self.remove_comments(commands)
-        # convert block of strings to list of lines
-        commands = commands.split('\n')
         
         commands=self.processConstants(commands)
         
@@ -990,6 +988,10 @@ class kat(object):
         return getattr(self, '__comp_' + name)        
 
     def remove_comments(self, string):
+        """
+        This takes a raw Finesse code string and removes any comments
+        It returns a list of lines however, not a multiline string.
+        """
         pattern = r"(\".*?\"|\'.*?\'|%{3}[^\r\n]*$)|(/\*.*?\*/|%[^\r\n]*$|#[^\r\n]*$|//[^\r\n]*$)"
         # first group captures quoted strings (double or single)
         # second group captures comments (//single-line or /* multi-line */)
@@ -1001,7 +1003,23 @@ class kat(object):
                 return "" # so we will return empty to remove the comment
             else: # otherwise, we will return the 1st group
                 return match.group(1) # captured quoted-string
-        return regex.sub(_replacer, string)
+        
+        # remove any inline comments
+        string = regex.sub(_replacer, string)
+        
+        commands = []
+        
+        for line in string.split('\n'):
+            # add to a list all the positions of any inline comment markers
+            i = [line.find('#'), line.find('\\')]
+            i = filter(lambda a: a != -1, i)
+            
+            if len(i) == 0:
+                commands.append(line)
+            else:
+                commands.append(line[0:min(i)])
+            
+        return commands
 
 # printing pykat logo on first input
 kat.logo()
