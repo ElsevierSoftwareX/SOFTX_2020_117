@@ -344,11 +344,11 @@ class kat(object):
             
             if len(values)>0 and values[0] == 'const':
                 
-                if len(values) == 3:
+                if len(values) >= 3:
                     if values[1] in constants:
                         raise pkex.BasePyKatException('const command with the name "{0}" already used'.format(values[1]))
                     else:
-                        constants[str(values[1])] = Constant(values[1], SIfloat(values[2]), [])
+                        constants[str(values[1])] = Constant(values[1], values[2], [])
                 else:
                     raise pkex.BasePyKatException('const command "{0}" was not the correct format'.format(line))
         
