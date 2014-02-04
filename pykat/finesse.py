@@ -34,6 +34,8 @@ import pykat
 import warnings
 import re
 
+from collections import namedtuple
+
 from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
 from pykat.components import Component
@@ -49,7 +51,6 @@ from PyQt4.QtGui import QApplication
 
 NO_GUI = False
 NO_BLOCK = "NO_BLOCK"
-pykat_version = "0.1"
 pykat_web = "www.gwoptics.org/pykat"
 
 
@@ -236,7 +237,9 @@ class Block:
     @property
     def name(self): return self.__name
     
-class kat(object):                    
+Constant = namedtuple('Constant', 'name, value, usedBy')
+    
+class kat(object):  
         
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
         
@@ -254,6 +257,7 @@ class kat(object):
         self.__tempname = tempname
         self.pykatgui = None
         self.__signals = Signals()
+        self.constants = {}
         
         # initialise default block
         self.__currentTag= NO_BLOCK
@@ -327,16 +331,61 @@ class kat(object):
     def parseKatCode(self, code):
         #commands = code.split("\n")
         self.parseCommands(code)
+
+    def processConstants(self, commands):
+        """
+        Before fully parsing a bunch of commands firstly any constants or variables
+        to be recorded and replaced.
+        """
+        constants = self.constants
+        
+        for line in commands:
+            values = line.split(' ')
+            
+            if len(values)>0 and values[0] == 'const':
+                
+                if len(values) == 3:
+                    if values[1] in constants:
+                        raise pkex.BasePyKatException('const command with the name "{0}" already used'.format(values[1]))
+                    else:
+                        constants[str(values[1])] = Constant(values[1], SIfloat(values[2]), [])
+                else:
+                    raise pkex.BasePyKatException('const command "{0}" was not the correct format'.format(line))
+        
+        commands_new = []
+        
+        print constants
+        for line in commands:
+            values = line.split(' ')
+            
+            if values[0] != 'const':
+                # check if we have a var/constant in this line
+                if line.find('$') >= 0:
+                    for key in constants.keys():
+                        if line.find('$'+key) > -1:
+                            constants[key].usedBy.append(line)
+                            line = line.replace('$'+key, str(constants[key].value))
+                        
+                        
+                commands_new.append(line)
+    
+        self.constants = constants
+        
+        return commands_new
         
     def parseCommands(self, commands):
         blockComment = False
         
         commands=self.remove_comments(commands)
+        # convert block of strings to list of lines
+        commands = commands.split('\n')
+        
+        commands=self.processConstants(commands)
         
         after_process = [] # list of commands that should be processed after 
                            # objects have been set and created
         
-        for line in commands.split("\n"):
+        for line in commands:
             #for line in commands:
             if len(line.strip()) >= 2:
                 line = line.strip()
