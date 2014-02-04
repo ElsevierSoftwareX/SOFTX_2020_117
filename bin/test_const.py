@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from pykat import finesse
 from pykat.detectors import *
 from pykat.components import *

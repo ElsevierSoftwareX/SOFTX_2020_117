@@ -497,7 +497,7 @@ class kat(object):
         for line in after_process:
             first = line.split(" ",1)[0]            
             if first == "gauss" or first == "gauss*" or first == "gauss**":
-                pykat.commands.gauss.parseFinesseText(line)
+                pykat.commands.gauss.parseFinesseText(line, self)
             elif (first == "scale"):
                 v = line.split()
                 if len(v) == 3:

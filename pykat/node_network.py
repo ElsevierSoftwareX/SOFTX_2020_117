@@ -86,7 +86,7 @@ class NodeNetwork(object):
             comps = (None,) * 2
         
         if len(comps) >= 2 and comps[0] != None and comps[1] != None:
-            raise pkex.BasePyKatException("Node is already connected to 2 components")
+            raise pkex.BasePyKatException("Node '{0}' is already connected to 2 components ({1}, {2})".format(node.name, comps[0], comps[1]))
         
         l = list(comps)
         
@@ -118,6 +118,7 @@ class NodeNetwork(object):
             return n
         
     def removeNode(self, node):
+        
         if not isinstance(node,Node):
             raise exceptions.ValueError("node argument is not of type Node")
         
@@ -326,9 +327,12 @@ class Node(object):
     @property
     def name(self): return self.__name      
     
-    
+
 class DumpNode(Node):
+    __total_dump_node_id = 0
+    
     def __init__(self):
-        Node.__init__(self, 'dump', None, -1)
+        DumpNode.__total_dump_node_id -= 1
+        Node.__init__(self, 'dump', None, DumpNode.__total_dump_node_id)
         
         

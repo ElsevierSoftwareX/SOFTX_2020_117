@@ -234,7 +234,7 @@ class mirror(AbstractMirrorComponent):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "m" and values[0] != "m1" and values[0] != "m2":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse mirror command".format(text))
@@ -289,7 +289,7 @@ class beamSplitter(AbstractMirrorComponent):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "bs" and values[0] != "bs1" and values[0] != "bs2":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse beam splitter command".format(text))
@@ -355,7 +355,7 @@ class space(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "s":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse space command".format(text))
@@ -465,7 +465,7 @@ class grating(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0][0 : 2] != "gr":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse grating command".format(text))
@@ -533,7 +533,7 @@ class isolator(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "isol":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse isolator command".format(text))
@@ -575,7 +575,7 @@ class lens(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "lens":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse lens command".format(text))
@@ -650,7 +650,7 @@ class modulator(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        v = text.split(" ")
+        v = text.split()
 
         if v[0] != "mod":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse modulator command".format(text))
@@ -706,7 +706,7 @@ class laser(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "l":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse laser command".format(text))
