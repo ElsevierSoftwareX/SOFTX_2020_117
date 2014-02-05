@@ -333,7 +333,7 @@ class beamSplitter(AbstractMirrorComponent):
         return self._svgItem
    
 class space(Component):
-    def __init__(self, name, node1, node2, L=0, n=1):
+    def __init__(self, name, node1, node2, L = 0, n = 1, g = 0, gx = 0, gy = 0):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -341,6 +341,10 @@ class space(Component):
         self._QItem = None
         self.__L = Param("L", self, SIfloat(L))
         self.__n = Param("n", self, SIfloat(n))
+
+	self.__g = AttrParam("g", self, SIfloat(g))
+        self.__gx = AttrParam("gx", self, SIfloat(gx))
+        self.__gy = AttrParam("gy", self, SIfloat(gy))
         
     @property
     def L(self): return self.__L
@@ -350,6 +354,21 @@ class space(Component):
     def n(self): return self.__n
     @n.setter
     def n(self,value): self.__n.value = SIfloat(value)
+
+    @property
+    def g(self): return self.__g
+    @g.setter
+    def g(self,value): self.__g.value = SIfloat(value)
+
+    @property
+    def gx(self): return self.__gx
+    @gx.setter
+    def gx(self,value): self.__gx.value = SIfloat(value)
+
+    @property
+    def gy(self): return self.__gy
+    @gy.setter
+    def gy(self,value): self.__gy.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
