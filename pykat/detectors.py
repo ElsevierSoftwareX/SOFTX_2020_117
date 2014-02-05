@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb 01 09:09:10 2013
+Created on Fri Feb 01 0split()9:09:10 2013
 
 @author: Daniel
 """
@@ -80,7 +80,65 @@ class Detector(object) :
             del self._mask[id]
                 
         self._mask[id] = factor
+
+class ad(Detector):
     
+    def __init__(self, name, frequency, node_name, mode=None, alternate_beam=False):
+        Detector.__init__(self, name, node_name)
+        self.mode = mode
+        self.alternate_beam = alternate_beam
+
+        self.__f = Param("f", self, frequency)
+    
+    @property
+    def mode(self): return self.__mode
+    @mode.setter
+    def mode(self, value):
+        if value != None and len(value) != 2:
+            raise pkex.BasePyKatException('Mode must be a container of length 2, first element the x mode and second the y mode')
+    
+        self.__mode = value
+        
+    @property
+    def f(self): return self.__f
+    @f.setter
+    def f(self, value): 
+        self.__f.value = value
+        
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+        
+        if values[-1].endswith('*'):
+            altbeam = True
+        else:
+            altbeam = False
+        
+        if len(values) == 6:
+            return ad(values[1], values[4], values[5], mode = [int(values[2]), int(values[3])], alternate_beam=alt_beam)
+        elif len(values) == 4:
+            return ad(values[1], values[2], values[3], alternate_beam=altbeam)
+        else:
+            raise pkex.BasePyKatException('Amplitude detector code "{0}" is not a valid FINESSE command'.format(text))
+            
+    def getFinesseText(self) :
+        rtn = []
+        
+        if self.alternate_beam:
+            alt = '*'
+        else:
+            alt = ''
+        
+        if self.mode == None:
+            rtn.append("ad {name} {f} {node}{alt}".format(name=self.name, f=str(self.f.value), node=self.node.name, alt=alt))
+        else:
+            rtn.append("ad {name} {n} {m} {f} {node}{alt}".fomat(name=self.name, n=str(self.mode[0]), m=str(self.mode[1]), f=str(self.f.value), node=self.node.name, alt=alt))
+            
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+        
+        return rtn
+        
 class pd(Detector):
 
     def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
@@ -88,7 +146,7 @@ class pd(Detector):
         
         self.__num_demods = num_demods
         self.__senstype = senstype
-        self.__alternate_beam = alternate_beam
+        self.alternate_beam = alternate_beam
         self.__pdtype = pdtype
 
         # create the parameters for all 5 demodulations regardless
@@ -204,7 +262,7 @@ class pd(Detector):
     
     @staticmethod
     def parseFinesseText(text): 
-        values = text.split(" ")
+        values = text.split()
         demods = 0
         senstype = None
 
@@ -253,7 +311,7 @@ class pd(Detector):
             alt_str = ""
             fphi_str = ""
             
-            if self.__alternate_beam:
+            if self.alternate_beam:
                 alt_str = "*"
                 
             for n in range(1, 1+self.num_demods):
@@ -337,7 +395,7 @@ class photodiode(Detector):
         
     @staticmethod
     def parseFinesseText(text): 
-        values = text.split(" ")
+        values = text.split()
 
         if values[0][0:2] != "pd":
             raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))

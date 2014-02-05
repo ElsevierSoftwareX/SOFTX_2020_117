@@ -438,6 +438,8 @@ class kat(object):
                     obj = pykat.components.lens.parseFinesseText(line)
                 elif(first[0:3] == "mod"):
                     obj = pykat.components.modulator.parseFinesseText(line)
+                elif(first[0:2] == "ad"):
+                    obj = pykat.detectors.ad.parseFinesseText(line)
                 elif(first[0:2] == "pd" and first != "pdtype"):
                     obj = pykat.detectors.pd.parseFinesseText(line)
                 elif(first == "xaxis" or first == "xaxis*"):

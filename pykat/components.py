@@ -158,14 +158,14 @@ class AbstractMirrorComponent(Component):
     def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=0, Rcy=0, xbeta=0, ybeta=0, mass=0, r_ap=0):
         super(AbstractMirrorComponent, self).__init__(name)
 
-        if (L != None and R != None and T != None) and R+T+L != 1: 
+        if (L != None and R != None and T != None) and SIfloat(R)+SIfloat(T)+SIfloat(L) != 1: 
             raise pkex.BasePyKatException('L+R+T must equal 1 if all are specified')
         elif (R != None and L is None and T != None):
-            L = 1- (R+T)
+            L = 1- (SIfloat(R)+SIfloat(T))
         elif (R is None and L != None and T != None):
-            R = 1 - (L+T)
+            R = 1 - (SIfloat(L)+SIfloat(T))
         elif (R != None and L != None and T is None):
-            T = 1 - (L+R)
+            T = 1 - (SIfloat(L)+SIfloat(R))
         else:
             raise pkex.BasePyKatException('Must specify at least two of L, R or T')
         
@@ -244,8 +244,8 @@ class AbstractMirrorComponent(Component):
         self.Rcy.value = SIfloat(value)
 
 class mirror(AbstractMirrorComponent):
-    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0, r_ap=0):
-        super(mirror, self).__init__(name, R, T, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
+    def __init__(self,name,node1,node2,R=None,T=None,L=None,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0, r_ap=0):
+        super(mirror, self).__init__(name, R, T, L, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
@@ -262,17 +262,17 @@ class mirror(AbstractMirrorComponent):
 
         if len(values[0])==1:
             values.pop(0) # remove initial value
-            return mirror(values[0], values[4], values[5], R=values[1], T=values[2], phi=values[3])
+            return mirror(values[0], values[4], values[5], L=None, R=values[1], T=values[2], phi=values[3])
         else:
             if values[0][1]=="1":
                 values.pop(0) # remove initial value
-                return mirror(values[0], values[4], values[5], L=values[2], T=values[1], phi=values[3])
+                return mirror(values[0], values[4], values[5], R=None, L=values[2], T=values[1], phi=values[3])
             else:
                 values.pop(0) # remove initial value
-                return mirror(values[0], values[4], values[5], R=values[1], L=values[2], phi=values[3])
+                return mirror(values[0], values[4], values[5], T=None, R=values[1], L=values[2], phi=values[3])
 
     def getFinesseText(self):
-        if R+T+L > 1:
+        if self.R+self.T+self.L > 1:
             raise pkex.BasePyKatException("Mirror {0} has R+T+L > 1".format(self.name))        
         
         rtn = []
@@ -335,6 +335,9 @@ class beamSplitter(AbstractMirrorComponent):
                 values[4])
             
     def getFinesseText(self):
+        if self.R+self.T+self.L > 1:
+            raise pkex.BasePyKatException("Beamsplitter {0} has R+T+L > 1".format(self.name))
+
         rtn = []
             
         rtn.append('bs {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
