@@ -155,11 +155,24 @@ class Component(object):
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, name, R=0, T=0, phi=0, Rcx=0, Rcy=0, xbeta=0, ybeta=0, mass=0, r_ap=0):
+    def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=0, Rcy=0, xbeta=0, ybeta=0, mass=0, r_ap=0):
         super(AbstractMirrorComponent, self).__init__(name)
 
+        if (L != None and R != None and T != None) and R+T+L != 1: 
+            raise pkex.BasePyKatException('L+R+T must equal 1 if all are specified')
+        elif (R != None and L is None and T != None):
+            L = 1- (R+T)
+        elif (R is None and L != None and T != None):
+            R = 1 - (L+T)
+        elif (R != None and L != None and T is None):
+            T = 1 - (L+R)
+        else:
+            raise pkex.BasePyKatException('Must specify at least two of L, R or T')
+        
         self.__R = Param("R", self, SIfloat(R))
         self.__T = Param("T", self, SIfloat(T))
+        self.__L = Param("L", self, SIfloat(L))
+        
         self.__phi = Param("phi", self, SIfloat(phi), canFsig=True, fsig_name="phase")
         self.__Rcx = AttrParam("Rcx", self, SIfloat(Rcx))
         self.__Rcy = AttrParam("Rcy", self, SIfloat(Rcy))
@@ -167,6 +180,11 @@ class AbstractMirrorComponent(Component):
         self.__ybeta = AttrParam("ybeta", self, SIfloat(ybeta), canFsig=True, fsig_name="y")
         self.__mass = AttrParam("mass", self, SIfloat(mass))
         self.__r_ap = AttrParam("r_ap", self, SIfloat(r_ap))
+    
+    @property
+    def L(self): return self.__L
+    @L.setter
+    def L(self,value): self.__L.value = SIfloat(value)
         
     @property
     def r_ap(self): return self.__r_ap
@@ -248,12 +266,15 @@ class mirror(AbstractMirrorComponent):
         else:
             if values[0][1]=="1":
                 values.pop(0) # remove initial value
-                return mirror(values[0], values[4], values[5], R=1.0-SIfloat(values[1])-SIfloat(values[2]), T=values[1], phi=values[3])
+                return mirror(values[0], values[4], values[5], L=values[2], T=values[1], phi=values[3])
             else:
                 values.pop(0) # remove initial value
-                return mirror(values[0], values[4], values[5], R=values[1], T=1.0-SIfloat(values[1])-SIfloat(values[2]), phi=values[3])
+                return mirror(values[0], values[4], values[5], R=values[1], L=values[2], phi=values[3])
 
-    def getFinesseText(self):        
+    def getFinesseText(self):
+        if R+T+L > 1:
+            raise pkex.BasePyKatException("Mirror {0} has R+T+L > 1".format(self.name))        
+        
         rtn = []
             
         rtn.append('m {0} {1} {2} {3} {4} {5}'.format(

@@ -73,8 +73,21 @@ class gauss(object):
             
         
 class xaxis(Command):
-
+    """
+    The xaxis object is a unique object to each pykat.finesse.kat instance. It provides
+    and interface to the xaxis command in FINESSE.
+    """
+    
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="xaxis"):
+        """
+        Typical usage:
+            xaxis(["lin" or "log"], [upper, lower], param, steps)
+            
+        param must be an object of the type pykat.param.Param whose
+        isPutable() member returns true.
+        
+        steps is the number of points to compute between upper and lower limits.
+        """
         self._axis_type = axis_type
 
         self.x = putter("x1")
