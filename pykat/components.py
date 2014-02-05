@@ -17,6 +17,8 @@ from pykat.gui.graphics import *
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 
+import pykat.exceptions as pkex
+
 next_component_id = 1
 
 class NodeGaussSetter(object):
@@ -232,13 +234,13 @@ class mirror(AbstractMirrorComponent):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "m" and values[0] != "m1" and values[0] != "m2":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse mirror command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse mirror command".format(text))
         
         if len(values) != 7:
-            raise exceptions.RuntimeError("Mirror Finesse code format incorrect '{0}'".format(text))
+            raise pkex.BasePyKatException("Mirror Finesse code format incorrect '{0}'".format(text))
 
         if len(values[0])==1:
             values.pop(0) # remove initial value
@@ -287,13 +289,13 @@ class beamSplitter(AbstractMirrorComponent):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "bs" and values[0] != "bs1" and values[0] != "bs2":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse beam splitter command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse beam splitter command".format(text))
         
         if len(values) != 10:
-            raise exceptions.RuntimeError("Beam splitter Finesse code format incorrect '{0}'".format(text))
+            raise pkex.BasePyKatException("Beam splitter Finesse code format incorrect '{0}'".format(text))
 
         if len(values[0])==2:
             values.pop(0) # remove initial value
@@ -372,10 +374,10 @@ class space(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "s":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse space command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse space command".format(text))
 
         values.pop(0) # remove initial value
         
@@ -384,7 +386,7 @@ class space(Component):
         elif len(values) == 4:
             return space(values[0], values[2], values[3], values[1])
         else:
-            raise exceptions.RuntimeError("Space Finesse code format incorrect '{0}'".format(text))
+            raise pkex.BasePyKatException("Space Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
         rtn = []
@@ -416,16 +418,16 @@ class grating(Component):
             if node3 != None:
                 self._requested_node_names.append(node3)
             else:
-                raise exceptions.RuntimeError("Grating node 3 not specified")
+                raise pkex.BasePyKatException("Grating node 3 not specified")
 
         if n > 3:
             if node4 != None:
                 self._requested_node_names.append(node4)
             else:
-                raise exceptions.RuntimeError("Grating node 4 not specified")
+                raise pkex.BasePyKatException("Grating node 4 not specified")
 
         if n > 4 or n < 2:
-            raise exceptions.RuntimeError("Grating must have between 2 and 4 ports")
+            raise pkex.BasePyKatException("Grating must have between 2 and 4 ports")
         
         self.__n = n
         self.__d = Param("d", self, SIfloat(d))
@@ -441,7 +443,7 @@ class grating(Component):
     @n.setter
     def n(self, value):
         if value < 2 or value > 4:
-            raise exceptions.RuntimeError("Grating must have between 2 and 4 ports")
+            raise pkex.BasePyKatException("Grating must have between 2 and 4 ports")
         else:
             self.__n = value
     
@@ -482,14 +484,14 @@ class grating(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0][0 : 2] != "gr":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse grating command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse grating command".format(text))
 
         if len(values[0]) > 2:
             if int(values[0][2]) > 4 or int(values[0][2]) < 2:
-                raise exceptions.RuntimeError("Grating must have between 2 and 4 ports")
+                raise pkex.BasePyKatException("Grating must have between 2 and 4 ports")
             else:
                 n = int(values[0][2])
         else:
@@ -499,17 +501,17 @@ class grating(Component):
         
         if n == 2:
             if len(values) != 4:
-                raise exceptions.RuntimeError("Two port grating must have 2 nodes defined")
+                raise pkex.BasePyKatException("Two port grating must have 2 nodes defined")
 
             return grating(values[0], values[2], values[3], None, None, n, values[1])
         elif n == 3:
             if len(values) != 5:
-                raise exceptions.RuntimeError("Three port grating must have 3 nodes defined")
+                raise pkex.BasePyKatException("Three port grating must have 3 nodes defined")
             
             return grating(values[0], values[2], values[3], values[4], None, n, values[1])
         else:
             if len(values) != 6:
-                raise exceptions.RuntimeError("Four port grating must have 4 nodes defined")
+                raise pkex.BasePyKatException("Four port grating must have 4 nodes defined")
             
             return grating(values[0], values[2], values[3], values[4], values[5], n, values[1])
         
@@ -550,17 +552,17 @@ class isolator(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "isol":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse isolator command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse isolator command".format(text))
 
         values.pop(0) # remove initial value
         
         if len(values) == 4:
             return isolator(values[0], values[2], values[3], values[1])
         else:
-            raise exceptions.RuntimeError("Isolator Finesse code format incorrect '{0}'".format(text))
+            raise pkex.BasePyKatException("Isolator Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
         rtn = ['isol {0} {1} {2} {3}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name)]
@@ -592,17 +594,17 @@ class lens(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "lens":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse lens command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse lens command".format(text))
 
         values.pop(0) # remove initial value
         
         if len(values) == 4:
             return lens(values[0], values[2], values[3], values[1])
         else:
-            raise exceptions.RuntimeError("Lens Finesse code format incorrect '{0}'".format(text))
+            raise pkex.BasePyKatException("Lens Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
         rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
@@ -667,10 +669,10 @@ class modulator(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        v = text.split(" ")
+        v = text.split()
 
         if v[0] != "mod":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse modulator command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse modulator command".format(text))
 
         v.pop(0) # remove initial value
         
@@ -723,10 +725,10 @@ class laser(Component):
     
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "l":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse laser command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse laser command".format(text))
 
         values.pop(0) # remove initial value
         

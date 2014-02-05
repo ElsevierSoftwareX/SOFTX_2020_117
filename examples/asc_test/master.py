@@ -60,8 +60,8 @@ def main():
     scale 2 PDrefl_q
     """
     kat.parseKatCode(code_det)
-    kat.PDrefl_p.phi[0]=result['p_phase']
-    kat.PDrefl_q.phi[0]=result['q_phase']
+    kat.PDrefl_p.phi1=result['p_phase']
+    kat.PDrefl_q.phi1=result['q_phase']
     
     print "--------------------------------------------------------"
     print " 4. adding a 0.1nm offset to ETM and compute PDH signal"
@@ -117,7 +117,7 @@ def pd_phase(tmpkat):
 
     # function for root finding
     def PD_q_test(x):
-        kat.PDrefl_q.phi[0]=x
+        kat.PDrefl_q.phi1=x
         out = kat.run()
         print '\r root finding: function value %g                    ' % out.y,
         sys.stdout.flush()

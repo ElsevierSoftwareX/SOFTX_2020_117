@@ -44,10 +44,33 @@ class cavity(Command):
 class gauss(object):
     @staticmethod
     def parseFinesseText(text, kat):
-        values = text.split(" ")
+        values = text.split()
 
-        if not values[0].startswith("gauss"):
+        if not values[0].startswith("gauss") or (len(values) != 6 and len(values != 8)):
             raise exceptions.RuntimeError("'{0}' not a valid Finesse gauss command".format(text))        
+        
+        name = values[1]
+        component = values[2]
+        node = values[3]
+        
+        
+        
+        if values[0].endswith("**"):
+            if len(values) == 6:
+                print ""
+            elif len(values) == 8:
+                print ""
+        elif values[0].endswith("*"):
+            if len(values) == 6:
+                print ""
+            elif len(values) == 8:
+                print ""
+        else:
+            if len(values) == 6:
+                print ""
+            elif len(values) == 8:
+                print ""
+            
         
 class xaxis(Command):
 
@@ -94,7 +117,7 @@ class xaxis(Command):
 
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "xaxis" and values[0] != "xaxis*":
             raise exceptions.RuntimeError("'{0}' not a valid Finesse xaxis command".format(text))
@@ -125,7 +148,7 @@ class x2axis(xaxis):
 
     @staticmethod
     def parseFinesseText(text):
-        values = text.split(" ")
+        values = text.split()
 
         if values[0] != "x2axis" and values[0] != "x2axis*":
             raise exceptions.RuntimeError("'{0}' not a valid Finesse xaxis command".format(text))

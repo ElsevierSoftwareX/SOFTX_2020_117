@@ -34,6 +34,8 @@ import pykat
 import warnings
 import re
 
+from collections import namedtuple
+
 from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
 from pykat.components import Component
@@ -49,7 +51,6 @@ from PyQt4.QtGui import QApplication
 
 NO_GUI = False
 NO_BLOCK = "NO_BLOCK"
-pykat_version = "0.1"
 pykat_web = "www.gwoptics.org/pykat"
 
 
@@ -75,7 +76,7 @@ class katRun(object):
     def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split(" ")[0] == str(value)]
+        idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
         
         if len(idx) > 0 and self.y.shape == ():
             # In the case we have a noxaxis and just one output...
@@ -122,7 +123,7 @@ class katRun2D(object):
     def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split(" ")[0] == str(value)]
+        idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split()[0] == str(value)]
         
         if len(idx) > 0:
             return self.z[idx].squeeze()
@@ -236,7 +237,9 @@ class Block:
     @property
     def name(self): return self.__name
     
-class kat(object):                    
+Constant = namedtuple('Constant', 'name, value, usedBy')
+    
+class kat(object):  
         
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
         
@@ -254,6 +257,7 @@ class kat(object):
         self.__tempname = tempname
         self.pykatgui = None
         self.__signals = Signals()
+        self.constants = {}
         
         # initialise default block
         self.__currentTag= NO_BLOCK
@@ -327,22 +331,64 @@ class kat(object):
     def parseKatCode(self, code):
         #commands = code.split("\n")
         self.parseCommands(code)
+
+    def processConstants(self, commands):
+        """
+        Before fully parsing a bunch of commands firstly any constants or variables
+        to be recorded and replaced.
+        """
+        constants = self.constants
+        
+        for line in commands:
+            values = line.split()
+            
+            if len(values)>0 and values[0] == 'const':
+                
+                if len(values) >= 3:
+                    if values[1] in constants:
+                        raise pkex.BasePyKatException('const command with the name "{0}" already used'.format(values[1]))
+                    else:
+                        constants[str(values[1])] = Constant(values[1], values[2], [])
+                else:
+                    raise pkex.BasePyKatException('const command "{0}" was not the correct format'.format(line))
+        
+        commands_new = []
+        
+        for line in commands:
+            values = line.split()
+            
+            if len(values) > 0 and values[0] != 'const':
+                # check if we have a var/constant in this line
+                if line.find('$') >= 0:
+                    for key in constants.keys():
+                        if line.find('$'+key) > -1:
+                            constants[key].usedBy.append(line)
+                            line = line.replace('$'+key, str(constants[key].value))
+                        
+                        
+                commands_new.append(line)
+    
+        self.constants = constants
+        
+        return commands_new
         
     def parseCommands(self, commands):
         blockComment = False
         
         commands=self.remove_comments(commands)
         
+        commands=self.processConstants(commands)
+        
         after_process = [] # list of commands that should be processed after 
                            # objects have been set and created
         
-        for line in commands.split("\n"):
+        for line in commands:
             #for line in commands:
             if len(line.strip()) >= 2:
                 line = line.strip()
 
                 # Looking for block start or end
-                values = line.split(" ")
+                values = line.split()
                 if values[0] == "%%%":
                     if values[1] == "FTblock":
                         newTag = values[2]
@@ -407,13 +453,13 @@ class kat(object):
                 elif(first == "noxaxis"):
                     self.noxaxis = True
                 elif(first == "phase"):
-                    v = line.split(" ")
+                    v = line.split()
                     if len(v) != 2:
                         raise pkex.BasePyKatException("phase command `{0}` is incorrect.".format(line))
                     else:
                         self.phase = int(v[1])
                 elif(first == "maxtem"):
-                    v = line.split(" ")
+                    v = line.split()
                     if len(v) != 2:
                         raise pkex.BasePyKatException("maxtem command `{0}` is incorrect.".format(line))
                     else:
@@ -422,13 +468,13 @@ class kat(object):
 			else:
 	                        self.maxtem = int(v[1])
                 elif(first == "retrace"):
-                    v = line.split(" ")
+                    v = line.split()
                     if len(v) > 2:
                         raise pkex.BasePyKatException("Retrace command `{0}` is incorrect.".format(line))
                     elif len(v) == 2:
                         self.retrace = v[1]                        
                 elif(first == "deriv_h"):
-                    v = line.split(" ")
+                    v = line.split()
                     if len(v) != 2:
                         raise pkex.BasePyKatException("deriv_h command `{0}` is incorrect.".format(line))
                     else:
@@ -451,9 +497,9 @@ class kat(object):
         for line in after_process:
             first = line.split(" ",1)[0]            
             if first == "gauss" or first == "gauss*" or first == "gauss**":
-                pykat.commands.gauss.parseFinesseText(line)
+                pykat.commands.gauss.parseFinesseText(line, self)
             elif (first == "scale"):
-                v = line.split(" ")
+                v = line.split()
                 if len(v) == 3:
                     component_name = v[2]
                     if component_name in self.__detectors :
@@ -465,7 +511,7 @@ class kat(object):
                 else:
                     raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(text))
             elif (first == "pdtype"):
-                v = line.split(" ")
+                v = line.split()
                 if len(v) == 3:
                     component_name = v[1]
                     if component_name in self.__detectors :
@@ -662,7 +708,7 @@ class kat(object):
                 perffile = open(root[0] + ".perf",'r')
                 
                 for l in perffile.readlines():
-                    vals = l.strip().split(' ')
+                    vals = l.strip().split()
                     perfData.append((vals[0], float(vals[1]), float(vals[2]), float(vals[3])))
                     
                 return [r, perfData]
@@ -941,6 +987,11 @@ class kat(object):
         return getattr(self, '__comp_' + name)        
 
     def remove_comments(self, string):
+        """
+        This takes a raw Finesse code string and removes any comments
+        It returns a list of lines however, not a multiline string.
+        Also removes any extrawhite space in command lines.
+        """
         pattern = r"(\".*?\"|\'.*?\'|%{3}[^\r\n]*$)|(/\*.*?\*/|%[^\r\n]*$|#[^\r\n]*$|//[^\r\n]*$)"
         # first group captures quoted strings (double or single)
         # second group captures comments (//single-line or /* multi-line */)
@@ -952,7 +1003,30 @@ class kat(object):
                 return "" # so we will return empty to remove the comment
             else: # otherwise, we will return the 1st group
                 return match.group(1) # captured quoted-string
-        return regex.sub(_replacer, string)
+        
+        # remove any inline comments
+        string = regex.sub(_replacer, string)
+        
+        commands = []
+        
+        for line in string.split('\n'):
+            line = line.replace('\r','')
+            if len(line) > 0:
+                # remove any mutliple whitespace
+                line = " ".join(line.split())
+                # add to a list all the positions of any inline comment markers
+                i = [line.find('#'), line.find('\\')]
+                i = filter(lambda a: a != -1, i)
+        
+                if len(i) == 0:
+                    commands.append(line)
+                else:
+                    line = line[0:min(i)]
+                    if len(line):
+                        commands.append(line)
+        
+        
+        return commands
 
 # printing pykat logo on first input
 kat.logo()
