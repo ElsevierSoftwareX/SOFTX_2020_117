@@ -115,6 +115,16 @@ class xaxis(Command):
             self.__param = param
             self.__comp = param._owner.name
 
+    @property
+    def param(self): return self.__param
+    @param.setter
+    def param(self, value):
+	if not isinstance(value, Param):
+		raise pkex.BasePyKatException("param argument is not of type Param")
+	else:
+		self.__param = value
+		self.__comp = value._owner.name
+
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
