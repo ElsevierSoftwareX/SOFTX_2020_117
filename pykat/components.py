@@ -155,7 +155,7 @@ class Component(object):
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, name, R=0, T=0, phi=0, Rcx=0, Rcy=0, xbeta=0, ybeta=0, mass=0, r_ap=0):
+    def __init__(self, name, R=0, T=0, phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None):
         super(AbstractMirrorComponent, self).__init__(name)
 
         self.__R = Param("R", self, SIfloat(R))
@@ -166,7 +166,7 @@ class AbstractMirrorComponent(Component):
         self.__xbeta = AttrParam("xbeta", self, SIfloat(xbeta), canFsig=True, fsig_name="x")
         self.__ybeta = AttrParam("ybeta", self, SIfloat(ybeta), canFsig=True, fsig_name="y")
         self.__mass = AttrParam("mass", self, SIfloat(mass))
-        self.__r_ap = AttrParam("r_ap", self, SIfloat(r_ap))
+        self.__r_ap = AttrParam("r_ap", self, SIfloat(r_ap))        
         
     @property
     def r_ap(self): return self.__r_ap
@@ -226,7 +226,7 @@ class AbstractMirrorComponent(Component):
         self.Rcy.value = SIfloat(value)
 
 class mirror(AbstractMirrorComponent):
-    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0, r_ap=0):
+    def __init__(self,name,node1,node2,R=0,T=0,phi=0,Rcx=None,Rcy=None,xbeta=None,ybeta=None,mass=None, r_ap=None):
         super(mirror, self).__init__(name, R, T, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
         
         self._requested_node_names.append(node1)
@@ -272,7 +272,7 @@ class mirror(AbstractMirrorComponent):
         return self._svgItem
 
 class beamSplitter(AbstractMirrorComponent):
-    def __init__(self, name, node1, node2, node3, node4, R = 0, T = 0, phi = 0, alpha = 0, Rcx = 0, Rcy = 0, xbeta = 0, ybeta = 0, mass = 0, r_ap = 0):
+    def __init__(self, name, node1, node2, node3, node4, R = 0, T = 0, phi = 0, alpha = 0, Rcx = None, Rcy = None, xbeta = None, ybeta = None, mass = None, r_ap = None):
         super(beamSplitter, self).__init__(name, R, T, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
         
         self._requested_node_names.append(node1)
@@ -335,7 +335,7 @@ class beamSplitter(AbstractMirrorComponent):
         return self._svgItem
    
 class space(Component):
-    def __init__(self, name, node1, node2, L = 0, n = 1, g = 0, gx = 0, gy = 0):
+    def __init__(self, name, node1, node2, L = 0, n = 1, g = None, gx = None, gy = None):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -344,9 +344,9 @@ class space(Component):
         self.__L = Param("L", self, SIfloat(L))
         self.__n = Param("n", self, SIfloat(n))
 
-	self.__g = AttrParam("g", self, SIfloat(g))
-        self.__gx = AttrParam("gx", self, SIfloat(gx))
-        self.__gy = AttrParam("gy", self, SIfloat(gy))
+	self.__g = AttrParam("g", self, g)
+        self.__gx = AttrParam("gx", self, gx)
+        self.__gy = AttrParam("gy", self, gy)
         
     @property
     def L(self): return self.__L
@@ -408,7 +408,7 @@ class space(Component):
         return self._QItem
 
 class grating(Component):
-    def __init__(self, name, node1, node2, node3 = None, node4 = None, n = 2, d = 0, eta_0 = 0, eta_1 = 0, eta_2 = 0, eta_3 = 0, rho_0 = 0, alpha = 0): # TODO: implement Rcx, Rcy and Rc
+    def __init__(self, name, node1, node2, node3 = None, node4 = None, n = 2, d = 0, eta_0 = None, eta_1 = None, eta_2 = None, eta_3 = None, rho_0 = None, alpha = None): # TODO: implement Rcx, Rcy and Rc
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -706,7 +706,7 @@ class laser(Component):
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
         self.__f_offset = Param("f", self, SIfloat(f_offset), canFsig=True, fsig_name="f")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
-        self.__noise = AttrParam("noise", self, 0)
+        self.__noise = AttrParam("noise", self, None)
         
     @property
     def power(self): return self.__power
