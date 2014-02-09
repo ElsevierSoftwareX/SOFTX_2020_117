@@ -155,9 +155,9 @@ class Component(object):
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=0, Rcy=0, xbeta=0, ybeta=0, mass=0, r_ap=0):
+    def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None):
         super(AbstractMirrorComponent, self).__init__(name)
-
+ 
         if (L != None and R != None and T != None) and SIfloat(R)+SIfloat(T)+SIfloat(L) != 1: 
             raise pkex.BasePyKatException('L+R+T must equal 1 if all are specified')
         elif (R != None and L is None and T != None):
@@ -166,7 +166,7 @@ class AbstractMirrorComponent(Component):
             R = 1 - (SIfloat(L)+SIfloat(T))
         elif (R != None and L != None and T is None):
             T = 1 - (SIfloat(L)+SIfloat(R))
-        else:
+        elif (L is None and R is None and T is None):
             raise pkex.BasePyKatException('Must specify at least two of L, R or T')
         
         self.__R = Param("R", self, SIfloat(R))
@@ -184,7 +184,7 @@ class AbstractMirrorComponent(Component):
     @property
     def L(self): return self.__L
     @L.setter
-    def L(self,value): self.__L.value = SIfloat(value)
+    def L(self,value): self.__L.value = SIfloat(value)       
         
     @property
     def r_ap(self): return self.__r_ap
@@ -244,7 +244,7 @@ class AbstractMirrorComponent(Component):
         self.Rcy.value = SIfloat(value)
 
 class mirror(AbstractMirrorComponent):
-    def __init__(self,name,node1,node2,R=None,T=None,L=None,phi=0,Rcx=0,Rcy=0,xbeta=0,ybeta=0,mass=0, r_ap=0):
+    def __init__(self,name,node1,node2,R=None,T=None,L=None,phi=0,Rcx=None,Rcy=None,xbeta=None,ybeta=None,mass=None, r_ap=None):
         super(mirror, self).__init__(name, R, T, L, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
         
         self._requested_node_names.append(node1)
@@ -293,8 +293,8 @@ class mirror(AbstractMirrorComponent):
         return self._svgItem
 
 class beamSplitter(AbstractMirrorComponent):
-    def __init__(self, name, node1, node2, node3, node4, R = 0, T = 0, phi = 0, alpha = 0, Rcx = 0, Rcy = 0, xbeta = 0, ybeta = 0, mass = 0, r_ap = 0):
-        super(beamSplitter, self).__init__(name, R, T, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
+    def __init__(self, name, node1, node2, node3, node4, R = None, T = None, L=None, phi = 0, alpha = 0, Rcx = None, Rcy = None, xbeta = None, ybeta = None, mass = None, r_ap = None):
+        super(beamSplitter, self).__init__(name, R, T, L, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
@@ -341,8 +341,8 @@ class beamSplitter(AbstractMirrorComponent):
         rtn = []
             
         rtn.append('bs {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
-                self.name, self.R.value, self.T.value, self.phi.value,
-                self.alpha.value, self.nodes[0].name,
+                self.name, self.R.value, self.T.value, self.alpha.value,
+                self.phi.value, self.nodes[0].name,
                 self.nodes[1].name, self.nodes[2].name,
                 self.nodes[3].name))
 
@@ -359,7 +359,7 @@ class beamSplitter(AbstractMirrorComponent):
         return self._svgItem
    
 class space(Component):
-    def __init__(self, name, node1, node2, L=0, n=1):
+    def __init__(self, name, node1, node2, L = 0, n = 1, g = None, gx = None, gy = None):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -367,6 +367,10 @@ class space(Component):
         self._QItem = None
         self.__L = Param("L", self, SIfloat(L))
         self.__n = Param("n", self, SIfloat(n))
+
+	self.__g = AttrParam("g", self, g)
+        self.__gx = AttrParam("gx", self, gx)
+        self.__gy = AttrParam("gy", self, gy)
         
     @property
     def L(self): return self.__L
@@ -376,6 +380,21 @@ class space(Component):
     def n(self): return self.__n
     @n.setter
     def n(self,value): self.__n.value = SIfloat(value)
+
+    @property
+    def g(self): return self.__g
+    @g.setter
+    def g(self,value): self.__g.value = SIfloat(value)
+
+    @property
+    def gx(self): return self.__gx
+    @gx.setter
+    def gx(self,value): self.__gx.value = SIfloat(value)
+
+    @property
+    def gy(self): return self.__gy
+    @gy.setter
+    def gy(self,value): self.__gy.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -413,7 +432,7 @@ class space(Component):
         return self._QItem
 
 class grating(Component):
-    def __init__(self, name, node1, node2, node3 = None, node4 = None, n = 2, d = 0, eta_0 = 0, eta_1 = 0, eta_2 = 0, eta_3 = 0, rho_0 = 0, alpha = 0): # TODO: implement Rcx, Rcy and Rc
+    def __init__(self, name, node1, node2, node3 = None, node4 = None, n = 2, d = 0, eta_0 = None, eta_1 = None, eta_2 = None, eta_3 = None, rho_0 = None, alpha = None): # TODO: implement Rcx, Rcy and Rc
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -711,12 +730,12 @@ class laser(Component):
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
         self.__f_offset = Param("f", self, SIfloat(f_offset), canFsig=True, fsig_name="f")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
-        self.__noise = AttrParam("noise", self, 0)
+        self.__noise = AttrParam("noise", self, None)
         
     @property
-    def power(self): return self.__power
-    @power.setter
-    def power(self,value): self.__power.value = float(value)
+    def P(self): return self.__power
+    @P.setter
+    def P(self,value): self.__power.value = float(value)
     
     @property
     def f(self): return self.__f_offset

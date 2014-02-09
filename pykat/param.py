@@ -173,7 +173,7 @@ class AttrParam(Param):
     def getFinesseText(self):
         rtn = []
         
-        if self.value != 0:
+        if self.value != None:
             rtn.append("attr {0} {1} {2}".format(self._owner.name, self.name, self.value))
             
         rtn.extend(super(AttrParam, self).getFinesseText())

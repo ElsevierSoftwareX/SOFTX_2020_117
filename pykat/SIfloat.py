@@ -3,6 +3,8 @@ import re
 
 #staticmethod
 def SIfloat(value):
+    if value==None: 
+        return value
     if type(value)==list:
         return [convertToFloat(s) for s in value]
     else:
