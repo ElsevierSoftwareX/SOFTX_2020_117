@@ -117,7 +117,8 @@ class gauss_param(object):
         self.__q -= complex(a)
         return self
         
-    __rsub__ = __sub__
+    def __rsub__(self, a):
+        return gauss_param(self.__lambda, self.__nr, complex(a) - self.__q)
     
     def __div__(self, a):
         return gauss_param(self.__lambda, self.__nr, self.__q / complex(a))

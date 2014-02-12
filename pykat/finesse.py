@@ -507,11 +507,11 @@ class kat(object):
                     if component_name in self.__detectors :
                         self.__detectors[component_name].scale = SIfloat(v[1])
                     else:
-                        raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(text))
+                        raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(component_name))
                 elif len(values) == 2:
                     self.scale = SIfloat(v[1])
                 else:
-                    raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(text))
+                    raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(line))
             elif (first == "pdtype"):
                 v = line.split()
                 if len(v) == 3:
@@ -519,9 +519,9 @@ class kat(object):
                     if component_name in self.__detectors :
                         self.__detectors[component_name].pdtype = v[2]
                     else:
-                        raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(text))
+                        raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(component_name))
                 else:
-                    raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(text))
+                    raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(line))
                     
         self.__currentTag = NO_BLOCK 
 

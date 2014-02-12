@@ -138,7 +138,8 @@ class Param(putable, putter):
     def __isub__(self, a):
         return self.value - (a)
         
-    __rsub__ = __sub__
+    def __rsub__(self, a):
+        return (a) - self.value
     
     def __div__(self, a):
         return self.value / (a)

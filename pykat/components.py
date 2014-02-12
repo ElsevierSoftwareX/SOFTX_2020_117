@@ -159,7 +159,7 @@ class AbstractMirrorComponent(Component):
         super(AbstractMirrorComponent, self).__init__(name)
  
         if (L != None and R != None and T != None) and SIfloat(R)+SIfloat(T)+SIfloat(L) != 1: 
-            raise pkex.BasePyKatException('L+R+T must equal 1 if all are specified')
+            raise pkex.BasePyKatException('L+R+T must equal 1 if all are specified at {0}'.format(self.name))
         elif (R != None and L is None and T != None):
             L = 1- (SIfloat(R)+SIfloat(T))
         elif (R is None and L != None and T != None):
@@ -320,20 +320,17 @@ class beamSplitter(AbstractMirrorComponent):
 
         if len(values[0])==2:
             values.pop(0) # remove initial value
-            return beamSplitter(values[0], values[5], values[6], values[7], values[8], values[1], values[2], values[3], values[4])
+            return beamSplitter(values[0], values[5], values[6], values[7], values[8], values[1], values[2], None, values[3], values[4])
+        elif values[0][2]=="1":
+            values.pop(0) # remove initial value
+            return beamSplitter(values[0], values[5], values[6],
+            values[7], values[8], None, values[1], values[2], values[3], values[4])
         else:
-            if values[0][2]=="1":
-                values.pop(0) # remove initial value
-                return beamSplitter(values[0], values[5], values[6],
-                values[7], values[8], 1.0 - SIfloat(values[1]) -
-                SIfloat(values[2]), values[1], values[3], values[4])
-            else:
-                values.pop(0) # remove initial value
-                return beamSplitter(values[0], values[5], values[6],
-                values[7], values[8], values[1], 1.0 -
-                SIfloat(values[1]) - SIfloat(values[2]), values[3],
-                values[4])
-            
+            values.pop(0) # remove initial value
+            return beamSplitter(values[0], values[5], values[6],
+            values[7], values[8], values[1], None, values[3],
+            values[4])
+        
     def getFinesseText(self):
         if self.R+self.T+self.L > 1:
             raise pkex.BasePyKatException("Beamsplitter {0} has R+T+L > 1".format(self.name))
