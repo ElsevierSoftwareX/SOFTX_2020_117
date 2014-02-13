@@ -27,11 +27,11 @@ class Detector(object) :
         self._params = []
         self._mask = {}
         self.__scale = None
-        
-        if node.find('*'):
+
+        if node[-1]=='*':
             self._alternate_beam = True
-            node.replace('*','')
-        
+            node=node[:-1]
+            
         self.__requested_node = node
     
     def _register_param(self, param):
@@ -87,7 +87,6 @@ class ad(Detector):
         Detector.__init__(self, name, node_name)
         self.mode = mode
         self.alternate_beam = alternate_beam
-
         self.__f = Param("f", self, frequency)
     
     @property
@@ -108,16 +107,13 @@ class ad(Detector):
     @staticmethod
     def parseFinesseText(text): 
         values = text.split()
-        
-        if values[-1].endswith('*'):
-            altbeam = True
-        else:
-            altbeam = False
-        
+
+        node=values[-1]
+        alt_beam = node[-1] == '*'
         if len(values) == 6:
             return ad(values[1], values[4], values[5], mode = [int(values[2]), int(values[3])], alternate_beam=alt_beam)
         elif len(values) == 4:
-            return ad(values[1], values[2], values[3], alternate_beam=altbeam)
+            return ad(values[1], values[2], values[3], alternate_beam=alt_beam)
         else:
             raise pkex.BasePyKatException('Amplitude detector code "{0}" is not a valid FINESSE command'.format(text))
             
