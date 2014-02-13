@@ -183,4 +183,4 @@ class x2axis(xaxis):
         if len(values) != 6:
             raise exceptions.RuntimeError("xaxis Finesse code format incorrect '{0}'".format(text))
 
-        return x2axis(values[2], [values[3], values[4]], values[0], values[1], values[5])
+        return x2axis(values[2], [values[3], values[4]], values[1], values[5], comp=values[0])
