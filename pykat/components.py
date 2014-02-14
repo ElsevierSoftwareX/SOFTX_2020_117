@@ -338,8 +338,8 @@ class beamSplitter(AbstractMirrorComponent):
         rtn = []
             
         rtn.append('bs {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
-                self.name, self.R.value, self.T.value, self.alpha.value,
-                self.phi.value, self.nodes[0].name,
+                self.name, self.R.value, self.T.value, self.phi.value,
+                self.alpha.value, self.nodes[0].name,
                 self.nodes[1].name, self.nodes[2].name,
                 self.nodes[3].name))
 
