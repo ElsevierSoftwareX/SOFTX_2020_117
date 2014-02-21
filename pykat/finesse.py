@@ -33,8 +33,9 @@ import pickle
 import pykat
 import warnings
 import re
+#import collections
 
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 from pykat.node_network import NodeNetwork
 from pykat.detectors import Detector
@@ -245,7 +246,7 @@ class kat(object):
         
         self.scene = None # scene object for GUI
         self.verbose = True
-        self.__blocks = {} # dictionary of blocks that are used
+        self.__blocks = OrderedDict() # dictionary of blocks that are used
         self.__components = {}  # dictionary of optical components      
         self.__detectors = {}   # dictionary of detectors
         self.__commands = {}    # dictionary of commands
@@ -856,8 +857,7 @@ class kat(object):
                 for t in txt: out.append(t+ "\n")
             else:
                 out.append(txt + "\n")
-                            
-
+                                            
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.maxtem != None:
