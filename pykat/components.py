@@ -243,13 +243,43 @@ class AbstractMirrorComponent(Component):
         self.Rcx.value = SIfloat(value)
         self.Rcy.value = SIfloat(value)
 
+    def parseAttribute(self, key, value):
+        if key in ["Rcx", "Rx", "ROCx", "rx", "rcx", "rocx"]:
+            self.Rcx = value
+        elif key in ["Rcy", "Ry", "ROCy", "ry", "rcy", "rocy"]:
+            self.Rcy = value
+        elif key in ["Rc", "ROC", "r", "rc", "roc"]:
+            self.Rc = value
+        elif key in ["M, m, Mass, mass"]:
+            self.mass = value
+        elif key in ["xbeta, xBeta"]:
+            self.xbeta = value
+        elif key in ["ybeta, yBeta"]:
+            self.ybeta = value
+        elif key in ["x_off"]:
+            self.x_offset = value
+        elif key in ["y_off"]:
+            self.y_offset = value
+        elif key in ["r_ap"]:
+            self.r_ap = value
+        else:
+            return False
+            
+        return True
+        
 class mirror(AbstractMirrorComponent):
     def __init__(self,name,node1,node2,R=None,T=None,L=None,phi=0,Rcx=None,Rcy=None,xbeta=None,ybeta=None,mass=None, r_ap=None):
         super(mirror, self).__init__(name, R, T, L, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
-    
+
+    def parseAttributes(self, values):
+        
+        for key in values.keys():
+            if not self.parseAttribute(key, values[key]):
+                raise pkex.BasePyKatException("No attribute {0} for mirrors".format(key))
+        
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
@@ -301,13 +331,22 @@ class beamSplitter(AbstractMirrorComponent):
         self._requested_node_names.append(node3)
         self._requested_node_names.append(node4)
              
-        self.__alpha = Param("alpha", self, SIfloat(alpha))
+        self.__alpha = AttrParam("alpha", self, SIfloat(alpha))
         
     @property
     def alpha(self): return self.__alpha
     @alpha.setter
     def alpha(self,value): self.__alpha.value = SIfloat(value)
     
+    def parseAttributes(self, values):
+        
+        for key in values.keys():
+            if not self.parseAttribute(key, values[key]):
+                if key == "alpha":
+                    self.alpha = values[key]
+                else:
+                    raise pkex.BasePyKatException("No attribute {0} for mirrors".format(key))
+                
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
@@ -338,8 +377,8 @@ class beamSplitter(AbstractMirrorComponent):
         rtn = []
             
         rtn.append('bs {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
-                self.name, self.R.value, self.T.value, self.alpha.value,
-                self.phi.value, self.nodes[0].name,
+                self.name, self.R.value, self.T.value, self.phi.value,
+                self.alpha.value, self.nodes[0].name,
                 self.nodes[1].name, self.nodes[2].name,
                 self.nodes[3].name))
 
@@ -365,7 +404,6 @@ class space(Component):
         self.__L = Param("L", self, SIfloat(L))
         self.__n = Param("n", self, SIfloat(n))
 
-	self.__g = AttrParam("g", self, g)
         self.__gx = AttrParam("gx", self, gx)
         self.__gy = AttrParam("gy", self, gy)
         
@@ -379,10 +417,17 @@ class space(Component):
     def n(self,value): self.__n.value = SIfloat(value)
 
     @property
-    def g(self): return self.__g
+    def g(self):
+        if self.__gx.value == self.__gy.value: 
+            return self.__g
+        else:
+            raise pkex.BasePyKatException("Gouy phase in x and y directions are different, use gx and gy properties instead")
+            
     @g.setter
-    def g(self,value): self.__g.value = SIfloat(value)
-
+    def g(self,value):
+        self.__gx.value = SIfloat(value)
+        self.__gy.value = SIfloat(value)
+        
     @property
     def gx(self): return self.__gx
     @gx.setter
@@ -393,6 +438,19 @@ class space(Component):
     @gy.setter
     def gy(self,value): self.__gy.value = SIfloat(value)
     
+    def parseAttributes(self, values):
+        
+        for key in values.keys():
+            if key in ["gx","gouyx"]:
+                self.__gx.value = values[key]
+            elif key in ["gy", "gouyy"]:
+                self.__gy.value = values[key]
+            elif key in ["g, gouy"]:
+                self.__gx.value = values[key]
+                self.__gy.value = values[key]
+            else:
+                raise pkex.BasePyKatException("No attribute {0} for spaces".format(key))
+                
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
@@ -558,11 +616,12 @@ class grating(Component):
         return self._QItem
 
 class isolator(Component):
-    def __init__(self, name, node1, node2, S = 0):
+    def __init__(self, name, node1, node2, node3="dump", S = 0):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
+        self._requested_node_names.append(node3)
         
         self.__S = Param("S",self,SIfloat(S))
         
@@ -582,11 +641,13 @@ class isolator(Component):
         
         if len(values) == 4:
             return isolator(values[0], values[2], values[3], values[1])
+        elif len(values) == 5:
+            return isolator(values[0], values[2], values[3], values[4], values[1])
         else:
             raise pkex.BasePyKatException("Isolator Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        rtn = ['isol {0} {1} {2} {3}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name)]
+        rtn = ['isol {0} {1} {2} {3} {4}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -743,6 +804,14 @@ class laser(Component):
     def phase(self): return self.__phase
     @phase.setter
     def phase(self,value): self.__phase.value = float(value)
+    
+    def parseAttributes(self, values):
+        
+        for key in values.keys():
+            if key == "noise":
+                self.__noise.value = values[key]
+            else:
+                raise pkex.BasePyKatException("No attribute {0} at laser".format(key))
     
     @staticmethod
     def parseFinesseText(text):
