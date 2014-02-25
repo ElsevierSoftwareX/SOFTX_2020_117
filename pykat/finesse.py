@@ -34,6 +34,9 @@ import pykat
 import warnings
 import re
 
+import itertools
+
+import collections
 from collections import namedtuple, OrderedDict
 
 from pykat.node_network import NodeNetwork
@@ -452,6 +455,8 @@ class kat(object):
                     after_process.append(line)
                 elif(first == "pdtype"):
                     after_process.append(line)
+                elif(first == "attr"):
+                    after_process.append(line)
                 elif(first == "noxaxis"):
                     self.noxaxis = True
                 elif(first == "phase"):
@@ -522,6 +527,27 @@ class kat(object):
                         raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(component_name))
                 else:
                     raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(line))
+            elif(first == "attr"):
+                v = line.split()
+                                
+                if len(v) < 4:
+                    raise pkex.BasePyKatException("attr command `{0}` is incorrect.".format(line))
+                else:
+                    # get the component/detector in question
+                    if v[1] in self.__components:
+                        comp = self.__components[v[1]]
+                    elif v[1] in self.__detectors:
+                        comp = self.__detectors[v[1]]
+                    else:
+                        raise pkex.BasePyKatException("Could not find the component '{0}' for attr command in line '{1}'".format(v[1], line))
+                
+                    if len(v[2:]) % 2 == 1:
+                        raise pkex.BasePyKatException("Attr command '{0}' must specify both parameter and value pairs".format(line))
+                                                
+                    # convert split list to key value pairs
+                    kv = dict(itertools.izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
+
+                    comp.parseAttributes(kv)
                     
         self.__currentTag = NO_BLOCK 
         

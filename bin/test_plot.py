@@ -20,6 +20,8 @@ yaxis abs:deg
 pd pd_cav n3
 
 cav c1 m1 n3 m2 n4
+
+attr m1 Rc 1
 """
 
 kat = finesse.kat()
