@@ -28,17 +28,19 @@ class Detector(object) :
         self._mask = {}
         self.__scale = None
 
-        if node[-1]=='*':
-            self._alternate_beam = True
-            node=node[:-1]
+        if node != None:
+            if node[-1]=='*':
+                self._alternate_beam = True
+                node=node[:-1]
             
-        self.__requested_node = node
+            self.__requested_node = node
     
     def _register_param(self, param):
         self._params.append(param)
         
     def _on_kat_add(self, kat):
-        self.__node = kat.nodes.createNode(self.__requested_node)
+        if self.__requested_node != None:
+            self.__node = kat.nodes.createNode(self.__requested_node)
     
     @staticmethod
     def parseFinesseText(text):    
@@ -321,7 +323,7 @@ class pd(Detector):
             
             if senstype == None:
                 senstype = ""
-                
+            
             rtn.append("pd{0}{1} {2}{3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
 
             if self.scale != None:
@@ -330,135 +332,135 @@ class pd(Detector):
             if self.pdtype != None:
                 rtn.append("pdtype {0} {1}".format(self.name, self.pdtype))
                 
-        for p in self._params:
-            rtn.extend(p.getFinesseText())
+            for p in self._params:
+                rtn.extend(p.getFinesseText())
             
         return rtn
-            
-class photodiode(Detector):
-
-    class __F(list):
-        def __init__(self, values=None):
-            if values==None:
-                values = []
-            list.__init__(self,[SIfloat(value) for value in values])
-            
-    class __Phi(list):
-        def __convertValue(self, value):
-            if value=="max":
-                return value                
-            else:
-                return SIfloat(value)
-                
-        def __init__(self, values=None):
-            if values==None:
-                values = []
-            list.__init__(self,[self.__convertValue(value) for value in values])
-
-        def __getitem__(self, key): # probably not needed
-            if list.__getitem__(self,key)=="max":
-                return list.__getitem__(self,key)
-            else:
-                return float(list.__getitem__(self,key))
-        
+  
+def qnoised(pd):
+    
+    def __init__(self, name, num_demods, node_name, alternate_beam=False, pdtype=None, **kwargs):
+        pd.__init__(self, name, num_demods, node_name, alternate_beam=False, **kwargs)
+    
+        self.__homangle = AttrParam("homangle", self, None)
+    
     @property
-    def f(self): return self.__f
-
-    @property
-    def phi(self): return self.__phi
-
-    @property
-    def pdtype(self): return self.__pdtype
-    @pdtype.setter
-    def pdtype(self, value): self.__pdtype = value
-
-    def __init__(self, name, node, senstype="", num_demods=0, demods=[], pdtype=None):
-        Detector.__init__(self, name, node)
-        
-        if num_demods>2:
-            raise NotImplementedError("pd with more than two demodulations not implemented yet")   
-            
-        self.num_demods = num_demods
-        self.senstype = senstype
-        self.__pdtype = pdtype
-
-
-        # every second element into f (starting at 1)
-        self.__f = self.__F(demods[::2])
-        
-        # Every second element into phi (starting at 2)
-        self.__phi = self.__Phi(demods[1::2])
-        
+    def homangle(self): return self.__homangle
+    @homangle.setter
+    def homangle(self, value): self.__homangle.value = value
+    
+    @pd.pdtype.setter
+    def pdtype(self, value): raise pkex.BasePyKatException("Setting pdtype is not possible with qnoised detectors")
+    
+    @pd.senstype.setter
+    def senstype(self,value): raise pkex.BasePyKatException("qnoised detector has no sensitvity type")
+    
+    
     @staticmethod
     def parseFinesseText(text): 
         values = text.split()
 
-        if values[0][0:2] != "pd":
-            raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))
-        if len(values[0])==2:
-            __num_demods=0
-            __senstype=""
-        elif len(values[0])==3 or len(values[0])==4:
-            if values[0][2]=="S":
-                __senstype="S"
-            elif values[0][2]=="N":
-                __senstype="N"
-            else:
-                try:
-                    __num_demods=int(values[0][2])
-                    __senstype=""
-                except ValueError:
-                    raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))
-            if len(values[0])==4:
-                try:
-                    __num_demods=int(values[0][3])
-                except ValueError:
-                    raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))                
-        else:
-            raise exceptions.FinesseParse("'{0}' not a valid photodiode command".format(text))
-
-        if __num_demods<0 or __num_demods>5:
-            raise exceptions.FinesseParse("'{0}' number of demodulations must be >0 and <5".format(text))
-
-        values.pop(0) # remove initial value
-
-        if len(values) == 2 * __num_demods + 1 or len(values) == 2 * __num_demods + 2:
-            return photodiode(values[0], values[-1], __senstype, __num_demods, values[1:len(values)-1])
-        else:
-            raise exceptions.FinesseParse("Photodiode code format incorrect '{0}'".format(text))
-
-        #return photodiode("name", "node", demods)   
-        #raise NotImplementedError("This function is not implemented")   
+        if len(values) <= 3:
+            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}' (2)".format(text))
+            
+        demods = values[2]
         
-    def getFinesseText(self) :
-        if self.enabled:
-            rtn = []
-            __f_phi=range(len(self.f)+len(self.phi))
-            __f_phi[::2]=self.f
-            __f_phi[1::2]=self.phi
-            __f_phi_str = " ".join(map(str, __f_phi))
+        if len(values) <= 4 and demods > 0:
+            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}' (2)".format(text))
+        elif len(values) > 4 and demods == 0:
+            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}' (3)".format(text))
             
-            if self._alternate_beam:
-                rtn.append("pd{0}{1} {2} {3} {4}".format(self.senstype, self.num_demods, self.name, __f_phi_str,  self.node.name))
-            else:
-                rtn.append("pd{0}{1} {2} {3} {4}*".format(self.senstype, self.num_demods, self.name, __f_phi_str,  self.node.name))
-
-            if self.scale != None and self.scale !='':
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
-
-            if self.pdtype != None and self.pdtype != '':
-                rtn.append("pdtype {0} {1}".format(self.name, self.pdtype))
-
-            if self.noplot:
-                rtn.append("noplot {0}".format(self.name))
+        num_f_phs = len(values) - 4
+        expected_f_phs = demods * 2
+        
+        if not (num_f_phs == expected_f_phs or num_f_phs == expected_f_phs-1):
+            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}' (4)".format(text))
+        
+        f = values[3:len(values)-1:2]    
+        phs = values[4:len(values)-1:2]
+        
+        dict = {}
+        
+        for i in range(len(f)):
+            dict['f{0}'.format(i+1)] = f[i]
+        for i in range(len(phs)):
+            dict['phi{0}'.format(i+1)] = phs[i]
             
-            return rtn
-        else:
-            return None
+        node = values[-1]
+        alt_beam = node[-1] == '*'
+        
+        if alt_beam:
+            node = node[0:-1]
+        
+        return qnoised(values[1], demods, node, alternate_beam=alt_beam, **dict)
     
-    def getQGraphicsItem(self):
-        if self._svgItem == None:
-            self._svgItem = ComponentQGraphicsItem(":/resources/photodiode_red.svg",self,[(-5,11,self.node)])
+    def getFinesseText(self) :
+        rtn = []
         
-        return self._svgItem    
+        if self.enabled:
+            alt_str = ""
+            fphi_str = ""
+            
+            if self.alternate_beam:
+                alt_str = "*"
+                
+            for n in range(1, 1+self.num_demods):
+                fphi_str += " " + str(self.__getattribute__("f"+str(n)))
+                phi_val = self.__getattribute__("phi"+str(n))
+                
+                if phi_val != None:
+                    fphi_str += " " + str(phi_val)
+            
+            senstype = self.senstype
+            
+            if senstype == None:
+                senstype = ""
+                
+            rtn.append("qnoised {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str))
+
+            if self.scale != None:
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                
+            for p in self._params:
+                rtn.extend(p.getFinesseText())
+            
+        return rtn
+    
+def xd(Detector):
+
+    def __init__(self, name, node_name, component, motion):
+        Detector.__init__(name, None)
         
+        self.__motion = motion
+        self.__component = component
+        
+    @property
+    def motion(self): return self.__motion
+    
+    @property
+    def component(self): return self.__component
+    
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+
+        if len(values) != 4:
+            raise pkex.BasePyKatException("Motion detector command format incorrect '{0}' (2)".format(text))
+            
+        return xd(values[1], values[2], values[3])
+    
+    def getFinesseText(self) :
+        rtn = []
+        
+        if self.enabled:
+            rtn.append("xd {0} {1} {2}".format(self.name, self.component, self.motion))
+
+            if self.scale != None:
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                
+            for p in self._params:
+                rtn.extend(p.getFinesseText())
+            
+        return rtn
+    
+    

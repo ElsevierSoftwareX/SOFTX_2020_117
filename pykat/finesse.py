@@ -33,6 +33,7 @@ import pickle
 import pykat
 import warnings
 import re
+import collections
 
 from collections import namedtuple
 
@@ -52,7 +53,6 @@ from PyQt4.QtGui import QApplication
 NO_GUI = False
 NO_BLOCK = "NO_BLOCK"
 pykat_web = "www.gwoptics.org/pykat"
-
 
 class katRun(object):
     def __init__(self):
@@ -258,6 +258,7 @@ class kat(object):
         self.pykatgui = None
         self.__signals = Signals()
         self.constants = {}
+        self.vacuum = []
         
         # initialise default block
         self.__currentTag= NO_BLOCK
@@ -856,6 +857,25 @@ class kat(object):
             else:
                 out.append(txt + "\n")
                             
+
+        if self.vacuum != None:
+            
+            if isinstance(self.vacuum, collections.Container):
+                objs = []
+                
+                if len(self.vacuum) > 0:
+                    for a in self.vacuum:
+                        if hasattr(a, 'name'):
+                            objs.append(a.name)
+                        else:
+                            objs.append(str(a))
+
+                    out.append("vacuum {0}\n".format(" ".join(objs)))
+                                        
+            elif isinstance(self.vacuum, str):
+                out.append("vacuum {0}\n".format(self.vacuum))
+            else:
+                pkex.BasePyKatException("Couldn't understand vacuum input list")
 
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))

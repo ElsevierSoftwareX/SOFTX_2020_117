@@ -365,7 +365,7 @@ class space(Component):
         self.__L = Param("L", self, SIfloat(L))
         self.__n = Param("n", self, SIfloat(n))
 
-	self.__g = AttrParam("g", self, g)
+        self.__g = AttrParam("g", self, g)
         self.__gx = AttrParam("gx", self, gx)
         self.__gy = AttrParam("gy", self, gy)
         
@@ -558,11 +558,12 @@ class grating(Component):
         return self._QItem
 
 class isolator(Component):
-    def __init__(self, name, node1, node2, S = 0):
+    def __init__(self, name, node1, node2, node3="dump", S = 0):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
+        self._requested_node_names.append(node3)
         
         self.__S = Param("S",self,SIfloat(S))
         
@@ -582,11 +583,13 @@ class isolator(Component):
         
         if len(values) == 4:
             return isolator(values[0], values[2], values[3], values[1])
+        elif len(values) == 5:
+            return isolator(values[0], values[2], values[3], values[4], values[1])
         else:
             raise pkex.BasePyKatException("Isolator Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        rtn = ['isol {0} {1} {2} {3}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name)]
+        rtn = ['isol {0} {1} {2} {3} {4}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
