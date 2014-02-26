@@ -7,10 +7,12 @@ Fabry-Perot cavity scan example.
       laser      ITM       10m cavity      ETM  photodiode
 
 The simulation sets up a parameter list in the form of a Python dictionary,
-then populates PyKat with the experimental setup directly (without using
-a .kat file input - 100% PyKat).
+then populates PyKat with the experimental setup directly.
 
 The cavity is then scanned by tuning the ETM, and the results are plotted.
+
+Note that if you prefer, you can write directly in FINESSE code rather than
+using PyKat to build the optical environment - see other examples.
 
 Some terminology:
 
@@ -277,8 +279,9 @@ kat.add(
 
 # photodiode looking at cavity transmitted light
 kat.add(
-	pykat.detectors.photodiode(
+	pykat.detectors.pd(
 		'pd1',
+		0,
 		'n9'
 	)
 )
@@ -297,7 +300,7 @@ kat.space1.n1.q = pykat.utilities.optics.gaussian_beams.gauss_param(q = 1.050412
 ##############################
 
 # scan cavity from 0 to 360 degrees
-kat.add(pykat.commands.xaxis('lin', [0, 360], kat.M_ETM_HR, kat.M_ETM_HR.phi, 360))
+kat.add(pykat.commands.xaxis('lin', [0, 360], kat.M_ETM_HR.phi, 360))
 
 # set maximum TEM mode to model
 kat.maxtem = 3
