@@ -11,6 +11,7 @@ from components import *
 from structs import *
 from pykat.param import Param, putter
 import pykat.exceptions as pkex
+from collections import namedtuple
 
 class Command(object):
     def __init__(self):
@@ -71,7 +72,12 @@ class gauss(object):
             elif len(values) == 8:
                 print ""
             
-        
+class tf(Command):
+    fQ = namedtuple('fQ', 'f', 'Q')
+    
+    def __init__(self, name, poles, zeros):
+        pass
+      
 class xaxis(Command):
     """
     The xaxis object is a unique object to each pykat.finesse.kat instance. It provides

@@ -155,7 +155,7 @@ class Component(object):
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None):
+    def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None, Ix=None, Iy=None):
         super(AbstractMirrorComponent, self).__init__(name)
  
         if (L != None and R != None and T != None) and SIfloat(R)+SIfloat(T)+SIfloat(L) != 1: 
@@ -179,6 +179,8 @@ class AbstractMirrorComponent(Component):
         self.__xbeta = AttrParam("xbeta", self, SIfloat(xbeta), canFsig=True, fsig_name="x")
         self.__ybeta = AttrParam("ybeta", self, SIfloat(ybeta), canFsig=True, fsig_name="y")
         self.__mass = AttrParam("mass", self, SIfloat(mass))
+        self.__Ix = AttrParam("Ix", self, SIfloat(Ix))
+        self.__Iy = AttrParam("Iy", self, SIfloat(Iy))
         self.__r_ap = AttrParam("r_ap", self, SIfloat(r_ap))
     
     @property
@@ -195,6 +197,16 @@ class AbstractMirrorComponent(Component):
     def mass(self): return self.__mass
     @mass.setter
     def mass(self,value): self.__mass.value = SIfloat(value)
+    
+    @property
+    def Ix(self): return self.__Ix
+    @Ix.setter
+    def Ix(self,value): self.__Ix.value = SIfloat(value)
+    
+    @property
+    def Iy(self): return self.__Iy
+    @Iy.setter
+    def Iy(self,value): self.__Iy.value = SIfloat(value)
     
     @property
     def R(self): return self.__R
@@ -250,11 +262,11 @@ class AbstractMirrorComponent(Component):
             self.Rcy = value
         elif key in ["Rc", "ROC", "r", "rc", "roc"]:
             self.Rc = value
-        elif key in ["M, m, Mass, mass"]:
+        elif key in ["M","m", "Mass", "mass"]:
             self.mass = value
-        elif key in ["xbeta, xBeta"]:
+        elif key in ["xbeta", "xBeta"]:
             self.xbeta = value
-        elif key in ["ybeta, yBeta"]:
+        elif key in ["ybeta","yBeta"]:
             self.ybeta = value
         elif key in ["x_off"]:
             self.x_offset = value
@@ -262,6 +274,10 @@ class AbstractMirrorComponent(Component):
             self.y_offset = value
         elif key in ["r_ap"]:
             self.r_ap = value
+        elif key in ["Ix","ix"]:
+            self.Ix = value
+        elif key in ["Iy","iy"]:
+            self.Iy = value
         else:
             return False
             
@@ -331,7 +347,7 @@ class beamSplitter(AbstractMirrorComponent):
         self._requested_node_names.append(node3)
         self._requested_node_names.append(node4)
              
-        self.__alpha = AttrParam("alpha", self, SIfloat(alpha))
+        self.__alpha = Param("alpha", self, SIfloat(alpha))
         
     @property
     def alpha(self): return self.__alpha
