@@ -331,7 +331,7 @@ class beamSplitter(AbstractMirrorComponent):
         self._requested_node_names.append(node3)
         self._requested_node_names.append(node4)
              
-        self.__alpha = AttrParam("alpha", self, SIfloat(alpha))
+        self.__alpha = Param("alpha", self, SIfloat(alpha))
         
     @property
     def alpha(self): return self.__alpha
