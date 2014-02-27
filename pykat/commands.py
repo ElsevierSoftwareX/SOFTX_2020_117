@@ -73,7 +73,7 @@ class gauss(object):
                 print ""
             
 class tf(Command):
-    fQ = namedtuple('fQ', 'f', 'Q')
+    fQ = namedtuple('fQ', ['f', 'Q'])
     
     def __init__(self, name, poles, zeros):
         pass
