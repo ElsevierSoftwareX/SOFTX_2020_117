@@ -399,16 +399,16 @@ class beamSplitter(AbstractMirrorComponent):
 
         if len(values[0])==2:
             values.pop(0) # remove initial value
-            return beamSplitter(values[0], values[5], values[6], values[7], values[8], values[1], values[2], None, values[3], values[4])
+            return beamSplitter(values[0], values[5], values[6], values[7], values[8],
+                                values[1], values[2], None, values[3], values[4])
         elif values[0][2]=="1":
             values.pop(0) # remove initial value
-            return beamSplitter(values[0], values[5], values[6],
-            values[7], values[8], None, values[1], values[2], values[3], values[4])
+            return beamSplitter(values[0], values[5], values[6], values[7], values[8],
+                                None, values[1], values[2], values[3], values[4])
         else:
             values.pop(0) # remove initial value
-            return beamSplitter(values[0], values[5], values[6],
-            values[7], values[8], values[1], None, values[2], values[3],
-            values[4])
+            return beamSplitter(values[0], values[5], values[6], values[7], values[8],
+                                values[1], None, values[2], values[3], values[4])
         
     def getFinesseText(self):
         if self.R+self.T+self.L > 1:
