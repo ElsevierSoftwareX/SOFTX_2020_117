@@ -155,7 +155,7 @@ class Component(object):
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None, Ix=None, Iy=None):
+    def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None, Ix=None, Iy=None, zmech=None, rxmech=None, rymech=None):
         super(AbstractMirrorComponent, self).__init__(name)
  
         if (L != None and R != None and T != None) and SIfloat(R)+SIfloat(T)+SIfloat(L) != 1: 
@@ -183,6 +183,10 @@ class AbstractMirrorComponent(Component):
         self.__Iy = AttrParam("Iy", self, SIfloat(Iy))
         self.__r_ap = AttrParam("r_ap", self, SIfloat(r_ap))
     
+        self.__zmech = AttrParam("zmech", self, zmech)
+        self.__rxmech = AttrParam("rxmech", self, rxmech)
+        self.__rymech = AttrParam("rymech", self, rymech)
+        
     @property
     def L(self): return self.__L
     @L.setter
@@ -244,6 +248,21 @@ class AbstractMirrorComponent(Component):
     def ybeta(self,value): self.__ybeta.value = SIfloat(value)
     
     @property
+    def zmech(self): return self.__zmech
+    @zmech.setter
+    def zmech(self,value): self.__zmech.value = value
+    
+    @property
+    def rxmech(self): return self.__rxmech
+    @rxmech.setter
+    def rxmech(self,value): self.__rxmech.value = value
+    
+    @property
+    def rymech(self): return self.__rymech
+    @rymech.setter
+    def rymech(self,value): self.__rymech.value = value
+    
+    @property
     def Rc(self):
         if self.Rcx == self.Rcy:
             return self.Rcx
@@ -278,6 +297,12 @@ class AbstractMirrorComponent(Component):
             self.Ix = value
         elif key in ["Iy","iy"]:
             self.Iy = value
+        elif key in ["zmech", "mech"]:
+            self.zmech = value
+        elif key in ["rxmech"]:
+            self.rxmech = value
+        elif key in ["rymech"]:
+            self.rymech = value
         else:
             return False
             
@@ -374,16 +399,16 @@ class beamSplitter(AbstractMirrorComponent):
 
         if len(values[0])==2:
             values.pop(0) # remove initial value
-            return beamSplitter(values[0], values[5], values[6], values[7], values[8], values[1], values[2], None, values[3], values[4])
+            return beamSplitter(values[0], values[5], values[6], values[7], values[8],
+                                values[1], values[2], None, values[3], values[4])
         elif values[0][2]=="1":
             values.pop(0) # remove initial value
-            return beamSplitter(values[0], values[5], values[6],
-            values[7], values[8], None, values[1], values[2], values[3], values[4])
+            return beamSplitter(values[0], values[5], values[6], values[7], values[8],
+                                None, values[1], values[2], values[3], values[4])
         else:
             values.pop(0) # remove initial value
-            return beamSplitter(values[0], values[5], values[6],
-            values[7], values[8], values[1], None, values[2], values[3],
-            values[4])
+            return beamSplitter(values[0], values[5], values[6], values[7], values[8],
+                                values[1], None, values[2], values[3], values[4])
         
     def getFinesseText(self):
         if self.R+self.T+self.L > 1:
