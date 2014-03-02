@@ -47,8 +47,7 @@ class gauss(object):
     @staticmethod
     def parseFinesseText(text, kat):
         values = text.split()
-
-        if not values[0].startswith("gauss") or (len(values) != 6 and len(values != 8)):
+        if not values[0].startswith("gauss") or (len(values) != 6 and len(values) != 8):
             raise exceptions.RuntimeError("'{0}' not a valid Finesse gauss command".format(text))        
         
         name = values[1]
