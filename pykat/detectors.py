@@ -217,10 +217,10 @@ class pd(Detector):
     def pdtype(self, value): self.__pdtype = value
     
     def __get_fphi(self, name):
-        return getattr(self, '_'+ self.__class__.__name__ +'__' + name)
+        return getattr(self, '_pd__' + name)
     
     def __set_f(self, num, value):
-        setattr(self, '_'+ self.__class__.__name__ +'__f' + num, float(value))
+        setattr(self, '_pd__f' + num, float(value))
     
     def __set_phi(self, num, value):
         if value == None and num != self.num_demods:
@@ -337,10 +337,10 @@ class pd(Detector):
             
         return rtn
   
-def qnoised(pd):
+class qnoised(pd):
     
     def __init__(self, name, num_demods, node_name, alternate_beam=False, pdtype=None, **kwargs):
-        pd.__init__(self, name, num_demods, node_name, alternate_beam=False, **kwargs)
+        super(qnoised, self).__init__(name, num_demods, node_name, alternate_beam=alternate_beam, pdtype=pdtype, **kwargs)
     
         self.__homangle = AttrParam("homangle", self, None)
     
@@ -350,31 +350,40 @@ def qnoised(pd):
     def homangle(self, value): self.__homangle.value = value
     
     @pd.pdtype.setter
-    def pdtype(self, value): raise pkex.BasePyKatException("Setting pdtype is not possible with qnoised detectors")
+    def pdtype(self, value):
+        raise pkex.BasePyKatException("Setting pdtype is not possible with qnoised detectors")
     
     @pd.senstype.setter
-    def senstype(self,value): raise pkex.BasePyKatException("qnoised detector has no sensitvity type")
+    def senstype(self,value):
+        raise pkex.BasePyKatException("qnoised detector has no sensitvity type")
     
+    def parseAttributes(self, values):
+        
+        for key in values.keys():
+            if key in ["homangle"]:
+                self.__homangle.value = values[key]
+            else:
+                raise pkex.BasePyKatException("No attribute {0} for qnoised".format(key))
     
     @staticmethod
     def parseFinesseText(text): 
         values = text.split()
 
         if len(values) <= 3:
-            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}' (2)".format(text))
+            raise pkex.BasePyKatException("qnoised code format incorrect '{0}' (2)".format(text))
             
-        demods = values[2]
+        demods = int(values[2])
         
         if len(values) <= 4 and demods > 0:
-            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}' (2)".format(text))
+            raise pkex.BasePyKatException("qnoised code format incorrect '{0}' (2)".format(text))
         elif len(values) > 4 and demods == 0:
-            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}' (3)".format(text))
+            raise pkex.BasePyKatException("qnoised code format incorrect '{0}' (3)".format(text))
             
         num_f_phs = len(values) - 4
         expected_f_phs = demods * 2
         
-        if not (num_f_phs == expected_f_phs or num_f_phs == expected_f_phs-1):
-            raise pkex.BasePyKatException("Photodiode code format incorrect '{0}' (4)".format(text))
+        if not (num_f_phs == expected_f_phs or num_f_phs == (expected_f_phs-1)):
+            raise pkex.BasePyKatException("qnoised code format incorrect '{0}' (4)".format(text))
         
         f = values[3:len(values)-1:2]    
         phs = values[4:len(values)-1:2]
@@ -425,7 +434,90 @@ def qnoised(pd):
                 rtn.extend(p.getFinesseText())
             
         return rtn
+
+class qnoised(pd):
     
+    def __init__(self, name, num_demods, node_name, alternate_beam=False, **kwargs):
+        super(qnoised, self).__init__(name, num_demods, node_name, alternate_beam=alternate_beam, pdtype=None, senstype=None, **kwargs)
+    
+    @pd.pdtype.setter
+    def pdtype(self, value):
+        raise pkex.BasePyKatException("Setting pdtype is not possible with qshot detectors")
+    
+    @pd.senstype.setter
+    def senstype(self,value):
+        raise pkex.BasePyKatException("qshot detector has no sensitvity type")
+    
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+
+        if len(values) <= 3:
+            raise pkex.BasePyKatException("qshot code format incorrect '{0}' (2)".format(text))
+            
+        demods = int(values[2])
+        
+        if len(values) <= 4 and demods > 0:
+            raise pkex.BasePyKatException("qshot code format incorrect '{0}' (2)".format(text))
+        elif len(values) > 4 and demods == 0:
+            raise pkex.BasePyKatException("qshot code format incorrect '{0}' (3)".format(text))
+            
+        num_f_phs = len(values) - 4
+        expected_f_phs = demods * 2
+        
+        if not (num_f_phs == expected_f_phs or num_f_phs == (expected_f_phs-1)):
+            raise pkex.BasePyKatException("qshot code format incorrect '{0}' (4)".format(text))
+        
+        f = values[3:len(values)-1:2]    
+        phs = values[4:len(values)-1:2]
+        
+        dict = {}
+        
+        for i in range(len(f)):
+            dict['f{0}'.format(i+1)] = f[i]
+        for i in range(len(phs)):
+            dict['phi{0}'.format(i+1)] = phs[i]
+            
+        node = values[-1]
+        alt_beam = node[-1] == '*'
+        
+        if alt_beam:
+            node = node[0:-1]
+        
+        return qnoised(values[1], demods, node, alternate_beam=alt_beam, **dict)
+    
+    def getFinesseText(self) :
+        rtn = []
+        
+        if self.enabled:
+            alt_str = ""
+            fphi_str = ""
+            
+            if self.alternate_beam:
+                alt_str = "*"
+                
+            for n in range(1, 1+self.num_demods):
+                fphi_str += " " + str(self.__getattribute__("f"+str(n)))
+                phi_val = self.__getattribute__("phi"+str(n))
+                
+                if phi_val != None:
+                    fphi_str += " " + str(phi_val)
+            
+            senstype = self.senstype
+            
+            if senstype == None:
+                senstype = ""
+                
+            rtn.append("qshot {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str))
+
+            if self.scale != None:
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                
+            for p in self._params:
+                rtn.extend(p.getFinesseText())
+            
+        return rtn
+        
 def xd(Detector):
 
     def __init__(self, name, node_name, component, motion):
