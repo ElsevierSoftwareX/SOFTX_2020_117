@@ -11,16 +11,16 @@ s s1 10 1 n1 n2
 m m1 1 0 0 n2 n3
 
 pd refl n2
-
+gauss g1 m1 n2 1e-3 0
 xaxis m1 r_ap lin 0.1e-3 2e-3 10
 """
 
 kat = finesse.kat()
 kat.parseCommands(code)
 
-maxtem = np.arange(0, 2, 2)
+maxtem = np.linspace(0, 1, 2)
 
-kat.m1.n2.q = gauss_param(w0=1e-3, z=0)
+#kat.m1.n2.q = gauss_param(w0=1e-3, z=0)
 
 for tem in maxtem:
     print "Calculating maxtem ", tem, "..."

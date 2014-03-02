@@ -12,6 +12,7 @@ from structs import *
 from pykat.param import Param, putter
 import pykat.exceptions as pkex
 from collections import namedtuple
+from pykat.utilities.optics.gaussian_beams import gauss_param
 
 class Command(object):
     def __init__(self):
@@ -54,23 +55,29 @@ class gauss(object):
         component = values[2]
         node = values[3]
         
-        
-        
-        if values[0].endswith("**"):
+        if values[0]:
             if len(values) == 6:
-                print ""
+                gp = gauss_param(w0=values[-2], z=values[-1])
             elif len(values) == 8:
-                print ""
+                gpx = gauss_param(w0=values[-4], z=values[-3])
+                gpy = gauss_param(w0=values[-2], z=values[-1])
         elif values[0].endswith("*"):
             if len(values) == 6:
-                print ""
+                gp = gauss_param(z=values[-2], zr=values[-1])
             elif len(values) == 8:
-                print ""
+                gpx = gauss_param(z=values[-4], zr=values[-3])
+                gpy = gauss_param(z=values[-2], zr=values[-1])
         else:
             if len(values) == 6:
-                print ""
+                gp = gauss_param(w=values[-2], rc=values[-1])
             elif len(values) == 8:
-                print ""
+                gpx = gauss_param(w=values[-4], rc=values[-3])
+                gpy = gauss_param(w=values[-2], rc=values[-1])
+        
+        if len(values) == 6:
+            kat.nodes[node].setGauss(kat.components[component], gp)
+        else:
+            kat.nodes[node].setGauss(kat.components[component], gpx, gpy)
             
 class tf(Command):
     fQ = namedtuple('fQ', ['f', 'Q'])

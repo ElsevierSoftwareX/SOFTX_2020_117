@@ -24,11 +24,11 @@ class gauss_param(object):
     
     def __init__(self, wavelength=1064e-9, nr=1, *args, **kwargs):
         self.__q = None
-        self.__lambda = wavelength
-        self.__nr = nr
+        self.__lambda = float(wavelength)
+        self.__nr = float(nr)
         
         if len(args) == 1:
-            self.__q = args[0]
+            self.__q = complex(args[0])
         
         elif len(kwargs) == 1:
             if "q" in kwargs:
@@ -39,11 +39,11 @@ class gauss_param(object):
         elif len(kwargs) == 2:        
             
             if "w0" in kwargs and "z" in kwargs:
-                q = float(kwargs["z"]) + 1j *float(math.pi*kwargs["w0"]**2/(self.__lambda/self.__nr) )
+                q = float(kwargs["z"]) + 1j *float(math.pi*float(kwargs["w0"])**2/(self.__lambda/self.__nr) )
             elif "z" in kwargs and "zr" in kwargs:
                 q = float(kwargs["z"]) + 1j *float(kwargs["zr"]) 
             elif "rc" in kwargs and "w" in kwargs:
-                one_q = 1 / kwargs["rc"] - 1j * self.__lamda / (math.pi * self.__nr * kwargs["w"]**2)
+                one_q = 1 / float(kwargs["rc"]) - 1j * self.__lamda / (math.pi * self.__nr * float(kwargs["w"])**2)
                 q = 1/one_q
             else:
                 raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and w or q, to define the beam parameter")

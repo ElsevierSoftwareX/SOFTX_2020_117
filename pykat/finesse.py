@@ -311,6 +311,14 @@ class kat(object):
     def getPerformanceData(self,value): self.__time_code = bool(value)
     
     @property
+    def components(self):
+        return self.__components.copy()
+    
+    @property
+    def detectors(self):
+        return self.__detectors.copy()
+        
+    @property
     def noxaxis(self): return self.__noxaxis
     @noxaxis.setter
     def noxaxis(self,value): self.__noxaxis = bool(value) 
