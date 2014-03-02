@@ -346,7 +346,9 @@ class beamSplitter(AbstractMirrorComponent):
         self._requested_node_names.append(node2)
         self._requested_node_names.append(node3)
         self._requested_node_names.append(node4)
-             
+
+        print " phi : {0}".format(phi)
+        print " alpha : {0}".format(alpha)
         self.__alpha = Param("alpha", self, SIfloat(alpha))
         
     @property
@@ -383,7 +385,7 @@ class beamSplitter(AbstractMirrorComponent):
         else:
             values.pop(0) # remove initial value
             return beamSplitter(values[0], values[5], values[6],
-            values[7], values[8], values[1], None, values[3],
+            values[7], values[8], values[1], None, values[2], values[3],
             values[4])
         
     def getFinesseText(self):
