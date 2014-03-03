@@ -35,7 +35,7 @@ import warnings
 import re
 
 import itertools
-
+import ctypes
 import collections
 from collections import namedtuple, OrderedDict
 
@@ -52,10 +52,34 @@ import pykat.exceptions as pkex
 from PyQt4.QtCore import QCoreApplication
 from PyQt4.QtGui import QApplication
 
+from multiprocessing import Process, Manager
+
 NO_GUI = False
 NO_BLOCK = "NO_BLOCK"
 pykat_web = "www.gwoptics.org/pykat"
 
+def f__lkat_process(callback, cmd, kwargs):
+    """
+    """
+    lkat = ctypes.PyDLL("libkat.so.0")
+
+    try:
+        lkat._pykat_preInit() # must always be called, sets up
+                        # exception handling and such no simulation
+                        # specifc code here
+
+        # reads in the kat.ini and setups up other parts
+        lkat._pykat_init()
+        lkat._pykat_setup(cmd)
+    
+        callback(lkat, **kwargs)
+    
+    except Exception as ex: 
+        print "Exception caught in python: ", ex.message
+    finally:
+        # This should always be called no matter what
+        lkat._pykat_finish(0)
+        
 class katRun(object):
     def __init__(self):
         self.runDateTime = datetime.datetime.now()
@@ -576,7 +600,16 @@ class kat(object):
 
         except pkex.BasePyKatException as ex:
             print ex
+
             
+    def getProcess(self, callback, **kwargs):
+        """
+        """
+        
+        cmd = "\n".join(self.generateKatScript())
+        
+        return Process(target=f__lkat_process, args=(callback, cmd, kwargs))
+           
     def run(self, printout=0, printerr=0, save_output=False, save_kat=False,kat_name=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
