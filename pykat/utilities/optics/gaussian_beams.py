@@ -145,6 +145,10 @@ class gauss_param(object):
     def imag(self): return self.__q.imag
     @imag.setter
     def imag(self, value): self.__q.imag = SIfloat(value)
+
+    # reverse beam direction 
+    def reverse(self):
+        self.__q = -1.0 * self.__q.real + 1j * self.__q.imag
     
 class HG_gauss_beam(object):
     
