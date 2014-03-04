@@ -1,6 +1,7 @@
 import abc
 import pykat.exceptions as pkex
-
+import weakref
+    
 class putable(object):
     """
     Objects that inherit this should be able to have something `put` to it.
@@ -59,11 +60,11 @@ class Param(putable, putter):
 
     def __init__(self, name, owner, value, canFsig=False, fsig_name=None, isPutable=True, isPutter=True, isTunable=True, var_name=None):
         self._name = name
-        self._owner = owner
+        self._owner = weakref.ref(owner)
         self._value = value
         self._isPutter = isPutter
         self._isTunable = isTunable
-        self._owner._register_param(self)
+        self._owner()._register_param(self)
         self._canFsig = False
         
         if canFsig:
@@ -96,15 +97,35 @@ class Param(putable, putter):
     def isTuneable(self): return self._isTunable
     
     @property
-    def value(self): return self._value
+    def value(self):
+        if self._owner().removed:
+            raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
+        else:
+            return self._value
+    
     @value.setter
     def value(self, value):
-        self._value = value
+        if self._owner().removed:
+            raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
+        else:
+            self._value = value
     
-    def __str__(self): return str(self.value)
-    def __float__(self): return self.value
+    def __str__(self):
+        if self._owner().removed:
+            raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
+        else:
+            return str(self.value)
+            
+    def __float__(self):
+        if self._owner().removed:
+            raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
+        else:
+            return self.value
         
     def getFinesseText(self):
+        if self._owner().removed:
+            raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
+            
         rtn = []
         
         if self.isPutable: rtn.extend(self._getPutFinesseText())
@@ -112,7 +133,7 @@ class Param(putable, putter):
         # if this parameter is being put somewhere then we need to
         # set it as a variable
         if self.isPutter and self.put_count > 0:
-            rtn.append("set {put_name} {comp} {param}".format(put_name=self.put_name(), comp=self._owner.name, param=self.name))
+            rtn.append("set {put_name} {comp} {param}".format(put_name=self.put_name(), comp=self._owner().name, param=self.name))
         
         return rtn
         
@@ -172,10 +193,13 @@ class AttrParam(Param):
     If the value pf the parameter is not 0 the attr command will be printed.
     """
     def getFinesseText(self):
+        if self._owner().removed:
+            raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
+
         rtn = []
         
         if self.value != None:
-            rtn.append("attr {0} {1} {2}".format(self._owner.name, self.name, self.value))
+            rtn.append("attr {0} {1} {2}".format(self._owner().name, self.name, self.value))
             
         rtn.extend(super(AttrParam, self).getFinesseText())
         

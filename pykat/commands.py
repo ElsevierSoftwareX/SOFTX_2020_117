@@ -15,9 +15,10 @@ from collections import namedtuple
 from pykat.utilities.optics.gaussian_beams import gauss_param
 
 class Command(object):
-    def __init__(self):
-        self.tag = None
 
+    tag = None
+    __removed = False
+        
     def getFinesseText(self):
         """ Base class for individual finesse optical components """
         raise NotImplementedError("This function is not implemented")
@@ -32,8 +33,17 @@ class Command(object):
         """
         self._kat = kat
 
+    def remove(self):
+        self._kat.remove(self)
+        self.__removed = True
+    
+    @property
+    def removed(self): return self.__removed
+    
 class cavity(Command):
     def __init__(self, name, c1, n1, c2, n2):
+        super(Command, self).__init__()
+        
         self.__name = name
         self.__c1 = c1
         self.__c2 = c2
@@ -84,6 +94,7 @@ class tf(Command):
     fQ = namedtuple('fQ', ['f', 'Q'])
     
     def __init__(self, name, poles, zeros):
+        super(Command, self).__init__()
         pass
       
 class xaxis(Command):
@@ -91,6 +102,9 @@ class xaxis(Command):
     The xaxis object is a unique object to each pykat.finesse.kat instance. It provides
     and interface to the xaxis command in FINESSE.
     """
+    
+    @property
+    def name(self): return self._axis_type
     
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="xaxis"):
         """
@@ -102,6 +116,8 @@ class xaxis(Command):
         
         steps is the number of points to compute between upper and lower limits.
         """
+        super(Command, self).__init__()
+        
         self._axis_type = axis_type
 
         self.x = putter("x1")
@@ -140,7 +156,7 @@ class xaxis(Command):
             raise pkex.BasePyKatException("param argument is not of type Param")
         else:
             self.__param = param
-            self.__comp = param._owner.name
+            self.__comp = param._owner().name
 
     @property
     def param(self): return self.__param
@@ -150,7 +166,7 @@ class xaxis(Command):
 		raise pkex.BasePyKatException("param argument is not of type Param")
 	else:
 		self.__param = value
-		self.__comp = value._owner.name
+		self.__comp = value._owner().name
 
     @staticmethod
     def parseFinesseText(text):

@@ -63,15 +63,18 @@ class NodeNetwork(object):
         new_node_comps = list(node_new.components)
         new_node_comps[new_node_comps.index(None)] = comp
         self.__nodeComponents[node_new.id] = tuple(new_node_comps)
+        del new_node_comps
         
         # remove component from old node list
         old_node_comps = list(node_old.components)
         old_node_comps[old_node_comps.index(comp)] = None
         self.__nodeComponents[node_old.id] = tuple(old_node_comps)
+        del old_node_comps
         
         comp_nodes = list(comp.nodes)
         comp_nodes[comp_nodes.index(node_old)] = node_new
         self.__componentNodes[comp.id] = tuple(comp_nodes)
+        del comp_nodes
         
         # if old node is no longer connected to anything then delete it
         if node_old.components.count(None) == 2:
@@ -116,6 +119,23 @@ class NodeNetwork(object):
             self.__nodes[node_name] = n
             self.__nodeComponents[n.id] = (None, None)
             return n
+    
+    def removeComponent(self, comp):
+        C = self.__componentNodes[comp.id]
+        
+        for n in C:
+           if comp in self.__nodeComponents[n.id]:
+               l = list(self.__nodeComponents[n.id])
+               l[l.index(comp)] = None
+               self.__nodeComponents[n.id] = tuple(l)
+               
+               if l.count(None) == 2:
+                   self.removeNode(n) 
+               
+               del l
+               
+        del self.__componentCallback[comp.id]
+        del self.__componentNodes[comp.id]
         
     def removeNode(self, node):
         
@@ -128,13 +148,14 @@ class NodeNetwork(object):
         C = self.getNodeComponents(node)
         
         if C[0] is not None or C[1] is not None:
-            raise exceptions.RuntimeError("Cannot remove a node which is attached to components")
+            raise exceptions.RuntimeError("Cannot remove a node which is attached to components still")
             
         if len(node.getDetectors()) > 0:
             raise exceptions.RuntimeError("Cannot remove a node which is attached to detectors still")
         
         self.__remove_node_attr(node)
         del self.__nodes[node.name] 
+        del self.__nodeComponents[node.id]
         
     def hasNode(self, name):
         return (name in self.__nodes)

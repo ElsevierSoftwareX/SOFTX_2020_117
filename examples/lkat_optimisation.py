@@ -35,7 +35,7 @@ def callback(lkat, maxphi):
     inter = pylibkat.interferometer.in_dll(lkat, "inter")
     
     m1 = inter.mirror_list[0]
-    m2 = inter.mirror_list[1]
+    m2 = inter.mirror_list[1]   
 
     circ = inter.output_data_list[0]
     
@@ -53,7 +53,6 @@ def callback(lkat, maxphi):
     
     print "Process: Maximum power =", circ.re
     print "Process: Mirror tuning =", m1.phi
-
 
 cmd = """
 l l1 1 0 n1
@@ -75,7 +74,7 @@ kat = pykat.finesse.kat()
 
 kat.parseCommands(cmd)
 
-maxphi = Value('d', 100)
+maxphi = Value('d', 0)
 
 p = kat.getProcess(callback, maxphi=maxphi)
 p.start()

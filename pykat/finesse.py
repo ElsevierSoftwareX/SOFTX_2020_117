@@ -164,18 +164,27 @@ class Signals(object):
             self.__name = name
             self.__amplitude = Param("amp", self, SIfloat(amplitude))
             self.__phase = Param("phase", self, SIfloat(phase))
+            self.__removed = False
             
             # unfortunatenly the target names for fsig are not the same as the
             # various parameter names of the components, e.g. mirror xbeta is x 
             # for fsig. So we need to check here what type of component we are targetting
             # and then based on the parameter specfied get the name
             if not param.canFsig:
-                raise  pkex.BasePyKatException("Cannot fsig parameter {1} on component {0}".format(str(param._owner), param.name))
-            
+                raise  pkex.BasePyKatException("Cannot fsig parameter {1} on component {0}".format(str(param._owner().name), param.name))
             
         def _register_param(self, param):
             self._params.append(param)
+        
+        @property
+        def removed(self): return self.__removed
   
+        def remove(self):
+            if self.__removed:
+                raise pkex.BasePyKatException("Signal {0} has already been marked as removed".format(self.name))
+            else:
+                self._kat.remove(self)
+        
         @property
         def name(self): return self.__name
 
@@ -194,7 +203,7 @@ class Signals(object):
         def target(self): return self.__target.fsig_name
 
         @property
-        def owner(self): return self.__target._owner.name
+        def owner(self): return self.__target._owner().name
     
         def getFinesseText(self):
             rtn = []
@@ -211,10 +220,18 @@ class Signals(object):
         # so need to get the name of at least one of them
         # as if you tune one you tune them all
         if len(self.targets) == 0:
-            return "signal"
+            return "fsignal"
         else:
             return self.targets[0].name
+            
+    @property
+    def removed(self): return False # we can never remove the Signal object altogethr just the
+                                    # individual fsig targets
 
+    def remove(self):
+        for t in self.targets:
+            self._kat.remove(self)
+            
     @property
     def f(self): return self.__f
     @f.setter
@@ -236,10 +253,9 @@ class Signals(object):
             raise  pkex.BasePyKatException("No target was specified for signal to be applied")
         
         if name == None:
-            name = "sig_" +target._owner.name + "_" + target.name
+            name = "sig_" + target._owner().name + "_" + target.name
         
         self.targets.append(Signals.fsig(target, name, amplitude, phase))
-        
         
     def getFinesseText(self):
         rtn = []
@@ -794,6 +810,30 @@ class kat(object):
             if self.verbose: print ""
             if self.verbose: print "Finished in " + str(datetime.datetime.now()-start)
             
+    def remove(self, obj):
+        if not (obj.name in self.__components or obj.name in self.__detectors or obj.name in self.__commands):
+            raise pkex.BasePyKatException("{0} is not currently in the simulation".format(obj.name))
+        
+        if obj.removed:
+            raise pkex.BasePyKatException("{0} has already been removed".format(obj.name))        
+        
+        if isinstance(obj, Component):    
+            del self.__components[obj.name]
+            self.__del_component(obj)
+            self.nodes.removeComponent(obj)
+        elif isinstance(obj, Command):    
+            del self.__commands[obj.name]
+            self.__del_command(obj)
+        elif isinstance(obj, Detector):    
+            del self.__detectors[obj.name]
+            self.__del_detector(obj)
+        
+        for b in self.__blocks:
+            if obj in self.__blocks[b].contents:
+                self.__blocks[b].contents.remove(obj)
+        
+        import gc
+        print gc.get_referrers(obj)
         
     def add(self, obj):
         try:
@@ -1060,8 +1100,18 @@ class kat(object):
         fget = lambda self: self.__get_detector(name)
         
         setattr(self.__class__, name, property(fget))
-        setattr(self, '__det_' + name, det)                   
+        setattr(self, '__det_' + name, det)                
 
+    def __del_detector(self, det):
+
+        if not isinstance(det, Detector):
+            raise exceptions.ValueError("Argument is not of type Detector")
+        
+        name = det.name
+        
+        delattr(self.__class__, name)
+        delattr(self, '__det_' + name) 
+        
     def __get_detector(self, name):
         return getattr(self, '__det_' + name) 
         
@@ -1076,6 +1126,15 @@ class kat(object):
         setattr(self.__class__, name, property(fget))
         setattr(self, '__com_' + name, com)                   
 
+    def __del_command(self, com):
+
+        if not isinstance(com, Command):
+            raise exceptions.ValueError("Argument is not of type Command")
+        
+        name = com.__class__.__name__
+        delattr(self.__class__, name)
+        delattr(self, '__com_' + name)
+        
     def __get_command(self, name):
         return getattr(self, '__com_' + name)            
     
@@ -1088,7 +1147,15 @@ class kat(object):
         
         setattr(self.__class__, comp.name, property(fget))
         setattr(self, '__comp_' + comp.name, comp)                   
+        
+    def __del_component(self, comp):
 
+        if not isinstance(comp, Component):
+            raise exceptions.ValueError("Argument is not of type Component")
+        
+        delattr(self.__class__, comp.name)
+        delattr(self, '__comp_' + comp.name)
+        
     def __get_component(self, name):
         return getattr(self, '__comp_' + name)        
 

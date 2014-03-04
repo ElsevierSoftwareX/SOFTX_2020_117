@@ -27,7 +27,8 @@ class Detector(object) :
         self._params = []
         self._mask = {}
         self.__scale = None
-
+        self.__removed = False
+        
         if node != None:
             if node[-1]=='*':
                 self._alternate_beam = True
@@ -39,9 +40,19 @@ class Detector(object) :
         self._params.append(param)
         
     def _on_kat_add(self, kat):
+        self._kat = kat
+        
         if self.__requested_node != None:
             self.__node = kat.nodes.createNode(self.__requested_node)
     
+    def remove(self):
+        if self.__removed:
+            raise pkex.BasePyKatException("{0} has already been marked as removed".format(self.name))
+        else:
+            self._kat.remove(self)
+    
+        self.__removed = True
+        
     @staticmethod
     def parseFinesseText(text):    
         raise NotImplementedError("This function is not implemented")
@@ -53,6 +64,10 @@ class Detector(object) :
     def getQGraphicsItem(self):    
         return None
 
+        
+    @property
+    def removed(self): return self.__removed
+    
     @property 
     def scale(self): return self.__scale
     @scale.setter

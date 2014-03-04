@@ -16,41 +16,41 @@ import pykat.gui.graphics
 from pykat.gui.graphics import *
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
-
+import weakref
 import pykat.exceptions as pkex
 
 next_component_id = 1
 
 class NodeGaussSetter(object):
     def __init__(self, component, node):                
-        self.__comp = component
-        self.__node = node
+        self.__comp = weakref.ref(component)
+        self.__node = weakref.ref(node)
     
     @property
     def node(self):
-        return self.__node
+        return self.__node()
     
     @property
     def q(self):
-        return self.__node.qx
+        return self.__node().qx
         
     @q.setter
     def q(self, value):
-        self.__node.setGauss(self.__comp, complex(value))
+        self.__node().setGauss(self.__comp(), complex(value))
         
     @property
     def qx(self):
-        return self.__node.qx
+        return self.__node().qx
     @qx.setter
     def qx(self, value):
-        self.__node.setGauss(self.__comp, complex(value))
+        self.__node().setGauss(self.__comp(), complex(value))
     
     @property
     def qy(self):
-        return self.__node.qy
+        return self.__node().qy
     @qy.setter
     def qy(self, value):
-        self.__node.setGauss(self.__comp, self.qx, complex(value))
+        self.__node().setGauss(self.__comp(), self.qx, complex(value))
         
 class Component(object):
     __metaclass__ = abc.ABCMeta
@@ -62,6 +62,7 @@ class Component(object):
         self._kat = None
         self.tag = None
         self._params = []
+        self.__removed = False
         
         # store a unique ID for this component
         global next_component_id
@@ -106,7 +107,7 @@ class Component(object):
             ns = self.__dict__[key]
             delattr(self, '__nodesetter_' + ns.node.name)
             delattr(self.__class__, ns.node.name)
-        
+            
         for node in self.nodes:
             if type(node) != pykat.node_network.DumpNode:
                 ns = NodeGaussSetter(self, node)
@@ -142,6 +143,9 @@ class Component(object):
         return None      
     
     @property
+    def removed(self): return self.__removed
+    
+    @property
     def nodes(self): return self._kat.nodes.getComponentNodes(self) 
     
     @property    
@@ -152,6 +156,13 @@ class Component(object):
     
     def __str__(self): return self.name
     
+    def remove(self):
+        self._kat.remove(self)
+        
+        del self._params[:]
+
+        self.__removed = True
+        
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
     
