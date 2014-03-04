@@ -15,9 +15,12 @@ from collections import namedtuple
 from pykat.utilities.optics.gaussian_beams import gauss_param
 
 class Command(object):
-
-    tag = None
-    __removed = False
+    __metaclass__ = abc.ABCMeta
+    
+    def __init__(self, name):
+        self.tag = None
+        self.__removed = False
+        self.__name = name
         
     def getFinesseText(self):
         """ Base class for individual finesse optical components """
@@ -38,27 +41,29 @@ class Command(object):
         self.__removed = True
     
     @property
+    def name(self): return self.__name
+    
+    @property
     def removed(self): return self.__removed
     
 class cavity(Command):
     def __init__(self, name, c1, n1, c2, n2):
-        super(Command, self).__init__()
+        Command.__init__(self, axis_type)
         
-        self.__name = name
         self.__c1 = c1
         self.__c2 = c2
         self.__n1 = n1
         self.__n2 = n2
 
     def getFinesseText(self):
-        return 'cav {0} {1} {2} {3} {4}'.format(self.__name, self.__c1, self.__n1, self.__c2, self.__n2);
+        return 'cav {0} {1} {2} {3} {4}'.format(self.name, self.__c1, self.__n1, self.__c2, self.__n2);
 
 class gauss(object):
     @staticmethod
     def parseFinesseText(text, kat):
         values = text.split()
         if not values[0].startswith("gauss") or (len(values) != 6 and len(values) != 8):
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse gauss command".format(text))        
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse gauss command".format(text))        
         
         name = values[1]
         component = values[2]
@@ -94,7 +99,7 @@ class tf(Command):
     fQ = namedtuple('fQ', ['f', 'Q'])
     
     def __init__(self, name, poles, zeros):
-        super(Command, self).__init__()
+        Command.__init__(self, axis_type)
         pass
       
 class xaxis(Command):
@@ -102,9 +107,6 @@ class xaxis(Command):
     The xaxis object is a unique object to each pykat.finesse.kat instance. It provides
     and interface to the xaxis command in FINESSE.
     """
-    
-    @property
-    def name(self): return self._axis_type
     
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="xaxis"):
         """
@@ -116,7 +118,7 @@ class xaxis(Command):
         
         steps is the number of points to compute between upper and lower limits.
         """
-        super(Command, self).__init__()
+        Command.__init__(self, axis_type)
         
         self._axis_type = axis_type
 
@@ -129,20 +131,20 @@ class xaxis(Command):
             scale = Scale.logarithmic
         elif isinstance(scale, str):
             # else we have a string but not a recognisable one
-            raise exceptions.ValueError("scale argument '{0}' is not valid, must be 'lin' or 'log'".format(scale))
+            raise pkex.BasePyKatException("scale argument '{0}' is not valid, must be 'lin' or 'log'".format(scale))
 
         if scale != Scale.linear and scale != Scale.logarithmic:
-            raise exceptions.ValueError("scale is not Scale.linear or Scale.logarithmic")
+            raise pkex.BasePyKatException("scale is not Scale.linear or Scale.logarithmic")
 
         self.scale = scale
 
         if numpy.size(limits) != 2 :
-            raise exceptions.ValueError("limits input should be a 2x1 vector of limits for the xaxis")
+            raise pkex.BasePyKatException("limits input should be a 2x1 vector of limits for the xaxis")
 
         self.limits = numpy.array(SIfloat(limits)).astype(float)
 
         if steps <= 0 :
-            raise exceptions.ValueError("steps value should be > 0")
+            raise pkex.BasePyKatException("steps value should be > 0")
 
         self.steps = int(steps)
 
@@ -173,14 +175,14 @@ class xaxis(Command):
         values = text.split()
 
         if values[0] != "xaxis" and values[0] != "xaxis*":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse xaxis command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse xaxis command".format(text))
 
         axis_type = values[0]
 
         values.pop(0) # remove initial value
 
         if len(values) != 6:
-            raise exceptions.RuntimeError("xaxis Finesse code format incorrect '{0}'".format(text))
+            raise pkex.BasePyKatException("xaxis Finesse code format incorrect '{0}'".format(text))
 
         return xaxis(values[2], [values[3], values[4]], values[1], values[5], comp=values[0], axis_type=axis_type)
 
@@ -204,13 +206,13 @@ class x2axis(xaxis):
         values = text.split()
 
         if values[0] != "x2axis" and values[0] != "x2axis*":
-            raise exceptions.RuntimeError("'{0}' not a valid Finesse xaxis command".format(text))
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse xaxis command".format(text))
 
         axis_type = values[0]
 
         values.pop(0) # remove initial value
 
         if len(values) != 6:
-            raise exceptions.RuntimeError("xaxis Finesse code format incorrect '{0}'".format(text))
+            raise pkex.BasePyKatException("xaxis Finesse code format incorrect '{0}'".format(text))
 
         return x2axis(values[2], [values[3], values[4]], values[1], values[5], comp=values[0])

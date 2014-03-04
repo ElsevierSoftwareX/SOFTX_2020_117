@@ -549,7 +549,12 @@ class kat(object):
                     self.__blocks[self.__currentTag].contents.append(line) 
                 
                 if obj != None and not isinstance(obj, str):
+                    if self.hasNamedObject(obj.name):
+                        getattr(self, obj.name).remove()
+                        print "Removed existing object '{0}' of type {1} to add new object".format(obj.name, obj.__class__)
+                        
                     self.add(obj)
+                    
                     
         # now process all the varous gauss/attr etc. commands which require
         # components to exist first before they can be processed
@@ -834,6 +839,9 @@ class kat(object):
         
         import gc
         print gc.get_referrers(obj)
+    
+    def hasNamedObject(self, name):
+        return name in self.__components or name in self.__detectors or name in self.__commands
         
     def add(self, obj):
         try:
