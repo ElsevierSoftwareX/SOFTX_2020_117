@@ -70,6 +70,29 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
             itm.refresh()
             itm.setCacheMode(QGraphicsItem.NoCache)
             self.__scene.addItem(itm)
+    
+    def _onComponentRemoved(self, comp, nodes):
+        """
+        When a component has been removed from the kat object this function should update
+        all gui objects. 
+            comp - object that is removed
+            nodes - nodes that this comp was attached too, as that information may no longer be accessible
+        """
+        itm = comp.getQGraphicsItem()
+            
+        if itm != None:
+
+            itm.refresh()
+            self.__scene.removeItem(itm)
+            
+            for n in nodes:
+                for cc in self._kat.nodes.getNodeComponents(n):
+                    print "refresh", cc 
+                    if cc != None:
+                        ccitm = cc.getQGraphicsItem()
+                        if ccitm != None:
+                            ccitm.refresh()
+            
             
     def exportToSVG(self):
         self.statusbar.showMessage("Saving to 'output.svg'...")

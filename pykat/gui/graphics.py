@@ -11,6 +11,7 @@ from PyQt4 import QtSvg
 from PyQt4.QtSvg import QGraphicsSvgItem
 import pykat.components
 import exceptions
+import weakref
 
 nsize = 10
     
@@ -143,10 +144,15 @@ class SpaceQGraphicsItem(QGraphicsLineItem):
     
 class ComponentQGraphicsItem(QtSvg.QGraphicsSvgItem):
     
+    def __on_component_deleted(self, arg):
+        import gc
+        print gc.get_referrers(self)
+        
     def __init__(self, svgfile, component, nodes):
         QGraphicsSvgItem.__init__(self,svgfile)
         self.__nodeGraphics = []
-        self.__component = component
+        self.__component = weakref.ref(component, self.__on_component_deleted)
+        
         # this signals the itemChange() method when this item is moved
         # used for refreshing the spaces between components
         self.setFlags(QGraphicsItem.ItemSendsGeometryChanges)
@@ -170,7 +176,7 @@ class ComponentQGraphicsItem(QtSvg.QGraphicsSvgItem):
         self.setHandlesChildEvents(True)
              
     @property
-    def component(self): return self.__component
+    def component(self): return self.__component()
     
     def refresh(self):
         for n in self.__nodeGraphics:
@@ -179,10 +185,10 @@ class ComponentQGraphicsItem(QtSvg.QGraphicsSvgItem):
     def itemChange(self, change, value):
         # if the item is moved then update any spaces attached to it
         if change == QGraphicsItem.ItemPositionHasChanged:
-            nodes = self.__component.nodes
+            nodes = self.component.nodes
             
             for n in nodes:
-                conn = n.amIConnected(self.__component)
+                conn = n.amIConnected(self.component)
                 
                 if conn[0] and isinstance(conn[1],  pykat.components.space):
                     conn[1].getQGraphicsItem().refresh()

@@ -821,7 +821,13 @@ class kat(object):
         
         if obj.removed:
             raise pkex.BasePyKatException("{0} has already been removed".format(obj.name))        
+
+        nodes = None
         
+        # store nodes that this componet is attached to as a reference for gui
+        if isinstance(obj, Component):
+            nodes = self.nodes.getComponentNodes(obj)
+
         if isinstance(obj, Component):    
             del self.__components[obj.name]
             self.__del_component(obj)
@@ -836,6 +842,11 @@ class kat(object):
         for b in self.__blocks:
             if obj in self.__blocks[b].contents:
                 self.__blocks[b].contents.remove(obj)
+        
+        if self.pykatgui != None:
+            self.pykatgui._onComponentRemoved(obj, nodes)
+    
+        del nodes
         
         import gc
         print gc.get_referrers(obj)
