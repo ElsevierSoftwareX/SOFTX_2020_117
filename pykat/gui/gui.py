@@ -87,7 +87,6 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
             
             for n in nodes:
                 for cc in self._kat.nodes.getNodeComponents(n):
-                    print "refresh", cc 
                     if cc != None:
                         ccitm = cc.getQGraphicsItem()
                         if ccitm != None:
@@ -145,7 +144,10 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
 
         self.kat.add(l)
         self.addComponentToScene(l,x,y)   
-     
+    
+    def deleteComponent(self, comp):
+        comp.component.remove()
+    
     def disconnect(self, node):
         comps = self.kat.nodes.getNodeComponents(node)
         
@@ -231,7 +233,8 @@ class pyKatGraphicsView(QGraphicsView):
             if isinstance(item, ComponentQGraphicsItem):           
                 menu.addSeparator()
                 menu.addAction("Edit")
-                menu.addAction("Delete")
+                action = menu.addAction("Delete")
+                action.triggered.connect(functools.partial(gui.deleteComponent, item))
             if isinstance(item,NodeQGraphicItem):
                 menu.addSeparator()
                 comps = self._kat.nodes.getNodeComponents(item.node)

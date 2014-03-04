@@ -143,15 +143,11 @@ class SpaceQGraphicsItem(QGraphicsLineItem):
         
     
 class ComponentQGraphicsItem(QtSvg.QGraphicsSvgItem):
-    
-    def __on_component_deleted(self, arg):
-        import gc
-        print gc.get_referrers(self)
         
     def __init__(self, svgfile, component, nodes):
         QGraphicsSvgItem.__init__(self,svgfile)
         self.__nodeGraphics = []
-        self.__component = weakref.ref(component, self.__on_component_deleted)
+        self.__component = weakref.ref(component)
         
         # this signals the itemChange() method when this item is moved
         # used for refreshing the spaces between components

@@ -27,9 +27,13 @@ class putable(object):
         
         if self._putter != None:
             self._putter.put_count -= 1
+            self._putter.putees.remove(self)
         
         self._putter = var
-        self._putter.put_count += 1
+        
+        if var != None:
+            self._putter.put_count += 1
+            self._putter.putees.append(self)
         
     def _getPutFinesseText(self):
         rtn = []
@@ -49,6 +53,7 @@ class putter(object):
         self._put_name = put_name
         self.put_count = 0
         self._isPutter = isPutter
+        self.putees = [] # list of params that this puts to
     
     @property
     def isPutter(self): return self._isPutter
@@ -86,6 +91,9 @@ class Param(putable, putter):
     
     @property
     def canFsig(self): return self._canFsig
+    
+    @property
+    def owner(self): return self._owner()
     
     @property
     def fsig_name(self): return self.__fsig_name
@@ -136,7 +144,27 @@ class Param(putable, putter):
             rtn.append("set {put_name} {comp} {param}".format(put_name=self.put_name(), comp=self._owner().name, param=self.name))
         
         return rtn
+    
+    def _onOwnerRemoved(self):
+        #if this param can be put somewhere we need to check if it is
+        if self.isPutable:
+            for a in self.putees:
+                print "Removing put from {0} {1} to {2} {3}".format(self.owner.name, self.name, a.owner.name, a.name)
+                a._putter = None
+                self.put_count -= 1
+                
+            # delete any references left over
+            del self.putees[:]
         
+        # check if we have anything being put to us
+        if self.isPutter:
+            if self._putter != None:
+                print "Removing put from {0} {1} to {2} {3}".format(self._putter.owner.name, self._putter.name, self.owner.name, self.name)
+                self._putter.put_count -= 1
+                self._putter.putees.remove(self)
+                self._putter = None
+       
+       
     def __mul__(self, a):
         return self.value * a
     

@@ -159,6 +159,11 @@ class Component(object):
     def remove(self):
         self._kat.remove(self)
         
+        # inform all parameters that we have removed its owner
+        # so that it can then warn about any puts/vars/xaxis
+        for p in self._params:
+            p._onOwnerRemoved()
+        
         del self._params[:]
 
         self.__removed = True
