@@ -1192,10 +1192,17 @@ class kat(object):
             raise RuntimeError("Could not find shared library 'libkat', please install to a system location or copy to the same directory as this script")
             
         trace_info = Manager().dict()
-
-        p = self.getProcess(f__lkat_trace_callback, trace_info=trace_info)
-        p.start()
-        p.join()
+        
+        prev = self.maxtem
+        self.maxtem = 0
+        
+        try:
+            p = self.getProcess(f__lkat_trace_callback, trace_info=trace_info)
+            p.start()
+            p.join()
+            
+        finally:
+            self.maxtem = prev
 
         # return a local copy of the trace information dictionary
         return dict(trace_info)

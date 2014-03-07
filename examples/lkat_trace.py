@@ -4,12 +4,12 @@ cmd = """
 l l1 1 0 n1
 s s1 1 n1 n2
 m m1 0.99 0.01 0 n2 n3
-s s2 100 n3 n4
+s s2 999 n3 n4
 m m2 0.99 0.01 0 n4 n5
 pd circ n3
 
 noxaxis
-maxtem 2
+maxtem 0
 
 attr m1 Rc 0
 attr m2 Rc 1000 
