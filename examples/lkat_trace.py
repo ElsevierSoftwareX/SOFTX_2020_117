@@ -11,7 +11,7 @@ pd circ n3
 noxaxis
 maxtem 2
 
-attr m1 Rc -1000
+attr m1 Rc 0
 attr m2 Rc 1000 
 cav c1 m1 n3 m2 n4
 """

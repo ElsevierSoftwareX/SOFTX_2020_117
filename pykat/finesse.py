@@ -1169,7 +1169,8 @@ class kat(object):
         p.start()
         p.join()
 
-        return trace_info
+        # return a local copy of the trace information dictionary
+        return dict(trace_info)
     
     def __add_detector(self, det):
 
