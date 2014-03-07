@@ -22,7 +22,7 @@ kat.parseCommands(cmd)
 
 info = kat.lkat_trace()
 
-print "n1 qx =",info["n1"].qx
+print "n1 qx =", info["n1"].qx
 
 print "Cavity info ", info["c1"]
 

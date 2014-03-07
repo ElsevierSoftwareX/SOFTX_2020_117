@@ -93,7 +93,7 @@ def f__lkat_process(callback, cmd, kwargs):
         lkat._pykat_finish(0)
 
 
-def f__lkat_trace_callback(lkat, trace_info):
+def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
     """
     lkat callback for computing the beam traces through a setup.
     Returns a dictionary of nodes, spaces and cavities and the
@@ -106,40 +106,43 @@ def f__lkat_trace_callback(lkat, trace_info):
 
     lkat._pykat_step()
 
-    for n in range(0, inter.num_nodes):
-        node = inter.node_list[n]
+    if getNodes:
+        for n in range(0, inter.num_nodes):
+            node = inter.node_list[n]
 
-        node_info = node_trace(
-                                qx = complex(node.qx.re, node.qx.im),
-                                qy = complex(node.qy.re, node.qy.im)
+            node_info = node_trace(
+                                    qx = complex(node.qx.re, node.qx.im),
+                                    qy = complex(node.qy.re, node.qy.im)
+                                    )
+
+            trace_info[node.name] = node_info
+
+    if getCavities:
+        for c in range(0, inter.num_cavities):
+            cav = inter.cavity_list[c]
+
+            cav_info = cav_trace(
+                                isStable = (cav.stable == 1),
+                                gx = cav.stability_x,
+                                gy = cav.stability_y,
+                                qx = complex(cav.qx.re, cav.qx.im),
+                                qy = complex(cav.qy.re, cav.qy.im),
+                                finesse = cav.finesse,
+                                FSR = cav.FSR,
+                                FWHM = cav.FWHM,
+                                loss = cav.loss,
+                                length = cav.length,
+                                pole = cav.pole
                                 )
 
-        trace_info[node.name] = node_info
+            trace_info[cav.name] = cav_info
 
-    for c in range(0, inter.num_cavities):
-        cav = inter.cavity_list[c]
+    if getSpaces:
+        for s in range(0, inter.num_spaces):
+            space = inter.space_list[s]
 
-        cav_info = cav_trace(
-                            isStable = (cav.stable == 1),
-                            gx = cav.stability_x,
-                            gy = cav.stability_y,
-                            qx = complex(cav.qx.re, cav.qx.im),
-                            qy = complex(cav.qy.re, cav.qy.im),
-                            finesse = cav.finesse,
-                            FSR = cav.FSR,
-                            FWHM = cav.FWHM,
-                            loss = cav.loss,
-                            length = cav.length,
-                            pole = cav.pole
-                            )
-
-        trace_info[cav.name] = cav_info
-
-    for s in range(0, inter.num_spaces):
-        space = inter.space_list[s]
-
-        trace_info[space.name] = space_trace(gouyx = space.gouy_x,
-                                             gouyy = space.gouy_y)
+            trace_info[space.name] = space_trace(gouyx = space.gouy_x,
+                                                 gouyy = space.gouy_y)
                      
                                              
 class katRun(object):
@@ -1187,7 +1190,13 @@ class kat(object):
             
         return rtn
         
-    def lkat_trace(self):
+    def lkat_trace(self, getCavities=True, getNodes=True, getSpaces=True):
+        """
+        Given the current state of the kat object a new FINESSE process is called and just
+        the beam tracing routine is run. The object that is returned contains all the information
+        from the beam tracing routine for each node and space components defined as well as cavity 
+        commands.   
+        """
         if lkat_location == None:
             raise RuntimeError("Could not find shared library 'libkat', please install to a system location or copy to the same directory as this script")
             
@@ -1197,15 +1206,15 @@ class kat(object):
         self.maxtem = 0
         
         try:
-            p = self.getProcess(f__lkat_trace_callback, trace_info=trace_info)
+            p = self.getProcess(f__lkat_trace_callback, trace_info=trace_info,
+                                getCavities=getCavities, getNodes=getNodes, getSpaces=getSpaces)
             p.start()
             p.join()
             
-        finally:
+            # return a local copy of the trace information dictionary
+            return dict(trace_info)
+        finally: 
             self.maxtem = prev
-
-        # return a local copy of the trace information dictionary
-        return dict(trace_info)
     
     def __add_detector(self, det):
 
