@@ -810,7 +810,7 @@ class kat(object):
                         #print "Trace 1: {0}".format(out[search:])
 
                 # for now, just try to print the trace block in full
-                print out[out.find(' --- highest order of TEM modes') :]
+                print out[out.find(' ---') :]
 
             katfile.close()
             perfData = []
