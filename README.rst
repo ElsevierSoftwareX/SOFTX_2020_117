@@ -74,6 +74,8 @@ as shown next::
     m m2 0.5 0.5 0 n4 n5
     s s3 10 1 n5 n6
 
+    pd pd_cav n4
+    xaxis m1 phi lin 0 360 360
     yaxis abs:deg
     """
 

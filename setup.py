@@ -14,7 +14,7 @@ setup(
     version=pykat.__version__,
     author='Daniel Brown',
     author_email='ddb@star.sr.bham.ac.uk',
-    packages=['pykat','pykat.gui','pykat.gui.resources','pykat.testing','pykat.testing.web'],
+    packages=['pykat','pykat.gui','pykat.gui.resources','pykat.testing','pykat.testing.web','pykat.utilities','pykat.utilities.optics'],
     url='http://pypi.python.org/pypi/PyKat/',
     license='GPL v2',
     description='Python interface and tools for FINESSE',

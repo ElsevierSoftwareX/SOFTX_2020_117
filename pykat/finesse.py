@@ -104,24 +104,14 @@ class katRun(object):
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
         
-        if len(idx) > 0 and self.y.shape == ():
-            # In the case we have a noxaxis and just one output...
-            return float(self.y)
-        elif len(idx) == 1 and len(self.y.shape) == 1:
+        
+        if len(idx) > 0:
+            out = self.y[:, idx]
             
-            # only selecting a single output from a 1D array
-            if self.y.size == 1:
-                return self.y
+            if out.size == 1:
+                return float(out)
             else:
-                return self.y[idx[0]]
-                
-	
-        elif len(idx) > 0 and len(self.y.shape) == 1:
-            return self.y[idx]
-        elif len(idx) > 0:
-            return self.y[:,idx].squeeze()
-        elif len(idx) >= 1:
-            return self.y[:,idx].squeeze()
+                return out.squeeze()
         else:
             raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
       
@@ -897,8 +887,12 @@ class kat(object):
             
             hdr = outfile.readline().replace('%','').replace('\n','').split(',')
         
-        data = np.loadtxt(filename,comments='%',skiprows=4)
-        
+        data = np.loadtxt(filename, comments='%',skiprows=4)
+
+        # convert 1D arrays into 2D ones for simpler selection
+        if len(data.shape) == 1:
+            data = np.array([data])
+                            
         if hasattr(self, "x2axis"):
             # need to parse 2D outputs slightly different as they are effectively 2D matrices
             # written in linear form
@@ -913,17 +907,11 @@ class kat(object):
         else:
             shape_len = len(data.shape)
             
-            if shape_len > 1:
-                rows,cols = data.shape
-                x = data[:,0]
-                y = data[:,1:cols].squeeze()
-            else:
-                rows = 1
-                cols = data.shape[0]
-                
-                x = data[0]
-                y = data[1:cols].squeeze()
+            rows,cols = data.shape
             
+            x = data[:,0]
+            y = data[:,1:cols]
+        
             return [x, y, hdr]
 
     def removeLine(self, fragment) :

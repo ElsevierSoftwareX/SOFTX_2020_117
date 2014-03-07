@@ -1,6 +1,5 @@
-__version__ = "0.3.1"
+__version__ = "0.4.3"
 
-#__all__ = ['finesse', 'components', 'detectors', 'commands']
 import finesse
 import components
 import detectors
