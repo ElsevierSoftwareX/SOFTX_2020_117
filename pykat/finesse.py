@@ -363,6 +363,7 @@ class kat(object):
         self.retrace = None
         self.deriv_h = None
         self.scale = None
+        self.__trace = None
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = None
@@ -382,6 +383,17 @@ class kat(object):
 
     @property
     def signals(self): return self.__signals
+
+    @property
+    def trace(self): return self.__trace
+    @trace.setter
+    def trace(self, value):
+        value = int(value)
+
+        if value < 0 or value > 255:
+            raise pkex.BasePyKatException('trace command only accepts values in the range 0-255.')
+        else:
+            self.__trace = value
 
     @property
     def maxtem(self): return self.__maxtem
@@ -578,6 +590,12 @@ class kat(object):
 				self.maxtem = -1
 			else:
 	                        self.maxtem = int(v[1])
+                elif(first == "trace"):
+                    v = line.split()
+                    if len(v) > 2:
+                        raise pkex.BasePyKatException("Trace command `{0}` is incorrect.".format(line))
+                    elif len(v) == 2:
+                        self.trace = v[1]
                 elif(first == "retrace"):
                     v = line.split()
                     if len(v) > 2:
@@ -688,7 +706,7 @@ class kat(object):
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
         data from the simulation run.
-        printoutput=1 prints the Finesse banner
+        printout=1 prints the Finesse banner
         printerr shows the Finesse progress (set kat.verbose=1 to see warnings and errors)
         """
         start = datetime.datetime.now()
@@ -846,6 +864,15 @@ class kat(object):
                 
                 if self.verbose: print "Kat file saved to '{0}'".format(newkatfile)
                 
+            if self.trace != None and self.trace > 0:
+                #print "{0}".format(out)
+                #if self.trace & 1:
+                    #search = out.find(' --- highest order of TEM modes')
+                    #if search > -1:
+                        #print "Trace 1: {0}".format(out[search:])
+
+                # for now, just try to print the trace block in full
+                print out[out.find(' ---') :]
 
             katfile.close()
             perfData = []
@@ -1072,6 +1099,7 @@ class kat(object):
 
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
+        if self.trace != None: out.append("trace {0}\n".format(self.trace))
         if self.maxtem != None:
                 if self.maxtem == -1:
                         out.append("maxtem off\n")
