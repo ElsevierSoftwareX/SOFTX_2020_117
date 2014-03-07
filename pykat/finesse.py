@@ -36,6 +36,7 @@ import re
 
 import itertools
 import ctypes
+import ctypes.util
 import collections
 from collections import namedtuple, OrderedDict
 
@@ -58,10 +59,21 @@ NO_GUI = False
 NO_BLOCK = "NO_BLOCK"
 pykat_web = "www.gwoptics.org/pykat"
 
+# containers used in the trace routine
+space_trace = namedtuple("space_trace", ['gouyx','gouyy'])
+node_trace = namedtuple("node_trace", ['qx','qy'])
+cav_trace = namedtuple("cav_trace", ['isStable','gx','gy','qx','qy','finesse','loss','length','FSR','FWHM','pole'])
+         
+lkat_location = ctypes.util.find_library("kat")
+                                     
 def f__lkat_process(callback, cmd, kwargs):
     """
     """
-    lkat = ctypes.PyDLL("libkat.so.0")
+    
+    if lkat_location == None:
+        raise RuntimeError("Could not find shared library 'libkat', please install to a system location or copy to the same directory as this script")
+        
+    lkat = ctypes.PyDLL(lkat_location)
 
     try:
         lkat._pykat_preInit() # must always be called, sets up
@@ -79,7 +91,57 @@ def f__lkat_process(callback, cmd, kwargs):
     finally:
         # This should always be called no matter what
         lkat._pykat_finish(0)
-        
+
+
+def f__lkat_trace_callback(lkat, trace_info):
+    """
+    lkat callback for computing the beam traces through a setup.
+    Returns a dictionary of nodes, spaces and cavities and the
+    various outputs of the tracing algorithm.
+    """
+    import pylibkat
+
+    # first we need to get a handle on the internals of Finesse
+    inter = pylibkat.interferometer.in_dll(lkat, "inter")
+
+    lkat._pykat_step()
+
+    for n in range(0, inter.num_nodes):
+        node = inter.node_list[n]
+
+        node_info = node_trace(
+                                qx = complex(node.qx.re, node.qx.im),
+                                qy = complex(node.qy.re, node.qy.im)
+                                )
+
+        trace_info[node.name] = node_info
+
+    for c in range(0, inter.num_cavities):
+        cav = inter.cavity_list[c]
+
+        cav_info = cav_trace(
+                            isStable = (cav.stable == 1),
+                            gx = cav.stability_x,
+                            gy = cav.stability_y,
+                            qx = complex(cav.qx.re, cav.qx.im),
+                            qy = complex(cav.qy.re, cav.qy.im),
+                            finesse = cav.finesse,
+                            FSR = cav.FSR,
+                            FWHM = cav.FWHM,
+                            loss = cav.loss,
+                            length = cav.length,
+                            pole = cav.pole
+                            )
+
+        trace_info[cav.name] = cav_info
+
+    for s in range(0, inter.num_spaces):
+        space = inter.space_list[s]
+
+        trace_info[space.name] = space_trace(gouyx = space.gouy_x,
+                                             gouyy = space.gouy_y)
+                     
+                                             
 class katRun(object):
     def __init__(self):
         self.runDateTime = datetime.datetime.now()
@@ -317,7 +379,7 @@ class kat(object):
         
         cls = type(self)
         self.__class__ = type(cls.__name__, (cls,), {})
-        
+
     @property
     def signals(self): return self.__signals
 
@@ -1097,6 +1159,17 @@ class kat(object):
             
         return rtn
         
+    def lkat_trace(self):
+        if lkat_location == None:
+            raise RuntimeError("Could not find shared library 'libkat', please install to a system location or copy to the same directory as this script")
+            
+        trace_info = Manager().dict()
+
+        p = self.getProcess(f__lkat_trace_callback, trace_info=trace_info)
+        p.start()
+        p.join()
+
+        return trace_info
     
     def __add_detector(self, det):
 
