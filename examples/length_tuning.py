@@ -38,10 +38,12 @@ xaxis b1 phi lin 0 180 100
 yaxis deg     % plotting the phase of the results
 """
 
-kat = finesse.kat()
+kat = finesse.kat(tempdir = "/home/sleavey/Desktop/")
 kat.parseCommands(code)
 
 maxtem = np.arange(0, 2, 2)
+
+kat.trace = 17
 
 for tem in maxtem:
     print "Calculating maxtem ", tem, "..."
