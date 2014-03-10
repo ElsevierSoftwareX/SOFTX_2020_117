@@ -704,7 +704,7 @@ class kat(object):
         
         return Process(target=f__lkat_process, args=(callback, cmd, kwargs))
            
-    def run(self, printout=0, printerr=0, save_output=False, save_kat=False,kat_name=None) :
+    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False,kat_name=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
@@ -750,6 +750,14 @@ class kat(object):
                 r = katRun()
                 
             r.katScript = "".join(self.generateKatScript())   
+
+            if (plot==None):
+                # ensure we don't do any plotting. That should be handled
+                # by user themselves
+                r.katScript+=("gnuterm no\n")
+                r.katScript+=("pyterm no\n")
+            else:
+                r.katScript+=(plot+"\n")
             
             # create a kat file which we will write the script into
             if self.__tempname == None:
@@ -761,7 +769,7 @@ class kat(object):
             katfile.writelines(r.katScript)
             katfile.flush()
 
-            if printout == 1:
+            if printout == 1 or plot != None:
                 cmd=[kat_exec]
             else:
                 cmd=[kat_exec, '--perl1']
@@ -1111,11 +1119,6 @@ class kat(object):
 
         if self.noxaxis == True:
             out.append("noxaxis\n")
-
-        # ensure we don't do any plotting. That should be handled
-        # by user themselves
-        out.append("gnuterm no\n")
-        out.append("pyterm no\n")
         
         return out
         
