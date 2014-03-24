@@ -145,7 +145,7 @@ class ad(Detector):
         if self.mode == None:
             rtn.append("ad {name} {f} {node}{alt}".format(name=self.name, f=str(self.f.value), node=self.node.name, alt=alt))
         else:
-            rtn.append("ad {name} {n} {m} {f} {node}{alt}".fomat(name=self.name, n=str(self.mode[0]), m=str(self.mode[1]), f=str(self.f.value), node=self.node.name, alt=alt))
+            rtn.append("ad {name} {n} {m} {f} {node}{alt}".format(name=self.name, n=str(self.mode[0]), m=str(self.mode[1]), f=str(self.f.value), node=self.node.name, alt=alt))
             
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -450,7 +450,7 @@ class qnoised(pd):
             
         return rtn
 
-class qnoised(pd):
+class qshot(pd):
     
     def __init__(self, name, num_demods, node_name, alternate_beam=False, **kwargs):
         super(qnoised, self).__init__(name, num_demods, node_name, alternate_beam=alternate_beam, pdtype=None, senstype=None, **kwargs)

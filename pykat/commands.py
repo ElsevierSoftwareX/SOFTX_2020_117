@@ -158,18 +158,18 @@ class xaxis(Command):
             raise pkex.BasePyKatException("param argument is not of type Param")
         else:
             self.__param = param
-            self.__comp = param._owner().name
+            self.__comp = param._owner()
 
     @property
     def param(self): return self.__param
     @param.setter
     def param(self, value):
-	if not isinstance(value, Param):
-		raise pkex.BasePyKatException("param argument is not of type Param")
-	else:
-		self.__param = value
-		self.__comp = value._owner().name
-
+        if not isinstance(value, Param):
+            raise pkex.BasePyKatException("param argument is not of type Param")
+        else:
+            self.__param = value
+            self.__comp = value._owner()
+            
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
@@ -188,9 +188,9 @@ class xaxis(Command):
 
     def getFinesseText(self):
         # store either the component name of the string provided
-        comp_name = self.__comp.name if isinstance(self.__comp, Component) else self.__comp
+        comp_name = self.__comp.name if hasattr(self.__comp, "name") else self.__comp
         param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
-
+        
         return '{axis_type} {0} {1} {2} {3} {4} {5}'.format(
                 comp_name, param_name, self.scale,
                 min(self.limits), max(self.limits), self.steps, axis_type=self._axis_type);

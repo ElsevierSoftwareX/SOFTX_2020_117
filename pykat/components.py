@@ -170,7 +170,7 @@ class Component(object):
         
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
-    
+        
     def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None, Ix=None, Iy=None, zmech=None, rxmech=None, rymech=None):
         super(AbstractMirrorComponent, self).__init__(name)
  
@@ -203,6 +203,26 @@ class AbstractMirrorComponent(Component):
         self.__rxmech = AttrParam("rxmech", self, rxmech)
         self.__rymech = AttrParam("rymech", self, rymech)
         
+        self.__z = Param("z", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="z")
+        self.__rx = Param("rx", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="rx")
+        self.__ry = Param("ry", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="ry")
+        self.__Fz = Param("Fz", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fz")
+        self.__Frx = Param("Frx", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Frx")
+        self.__Fry = Param("Fry", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fry")
+        
+    @property
+    def z(self): return self.__z
+    @property
+    def Fz(self): return self.__Fz
+    @property
+    def rx(self): return self.__rx
+    @property
+    def Frx(self): return self.__Frx
+    @property
+    def ry(self): return self.__ry
+    @property
+    def Fry(self): return self.__Fry
+    
     @property
     def L(self): return self.__L
     @L.setter
@@ -501,7 +521,7 @@ class space(Component):
                 self.__gx.value = values[key]
             elif key in ["gy", "gouyy"]:
                 self.__gy.value = values[key]
-            elif key in ["g, gouy"]:
+            elif key in ["g","gouy"]:
                 self.__gx.value = values[key]
                 self.__gy.value = values[key]
             else:
@@ -672,7 +692,7 @@ class grating(Component):
         return self._QItem
 
 class isolator(Component):
-    def __init__(self, name, node1, node2, node3="dump", S = 0):
+    def __init__(self, name, node1, node2, S = 0, node3="dump"):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -698,7 +718,7 @@ class isolator(Component):
         if len(values) == 4:
             return isolator(values[0], values[2], values[3], values[1])
         elif len(values) == 5:
-            return isolator(values[0], values[2], values[3], values[4], values[1])
+            return isolator(values[0], values[2], values[3], node3=values[4], S=values[1])
         else:
             raise pkex.BasePyKatException("Isolator Finesse code format incorrect '{0}'".format(text))
         

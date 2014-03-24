@@ -84,11 +84,10 @@ class Param(putable, putter):
             if var_name == None:
                 var_name = "var_{0}_{1}".format(owner.name, name)
                 
-            putter.__init__(self, var_name, isPutter)
+        putter.__init__(self, var_name, isPutter)
             
-        if isPutable:
-            putable.__init__(self, owner.name, name, isPutable)
-    
+        putable.__init__(self, owner.name, name, isPutable)
+        
     @property
     def canFsig(self): return self._canFsig
     

@@ -116,7 +116,7 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
     def addMirror(self, x,y):
         name = self.kat.getNewComponentName('m')
         n = self.kat.getNewNodeNames('n',2)
-        m = pykat.components.mirror(name,n[0],n[1])
+        m = pykat.components.mirror(name,n[0],n[1],R=0.5,T=0.5)
         
         self.kat.add(m)
         self.addComponentToScene(m,x,y)

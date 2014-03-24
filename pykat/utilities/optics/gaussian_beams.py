@@ -2,6 +2,7 @@ import pykat.exceptions as pkex
 import numpy
 import math
 import copy
+from pykat.SIfloat import SIfloat
 
 class gauss_param(object):
     """
@@ -39,11 +40,11 @@ class gauss_param(object):
         elif len(kwargs) == 2:        
             
             if "w0" in kwargs and "z" in kwargs:
-                q = float(kwargs["z"]) + 1j *float(math.pi*float(kwargs["w0"])**2/(self.__lambda/self.__nr) )
+                q = SIfloat(kwargs["z"]) + 1j *float(math.pi*SIfloat(kwargs["w0"])**2/(self.__lambda/self.__nr) )
             elif "z" in kwargs and "zr" in kwargs:
-                q = float(kwargs["z"]) + 1j *float(kwargs["zr"]) 
+                q = SIfloat(kwargs["z"]) + 1j *SIfloat(kwargs["zr"]) 
             elif "rc" in kwargs and "w" in kwargs:
-                one_q = 1 / float(kwargs["rc"]) - 1j * self.__lamda / (math.pi * self.__nr * float(kwargs["w"])**2)
+                one_q = 1 / SIfloat(kwargs["rc"]) - 1j * self.__lamda / (math.pi * self.__nr * SIfloat(kwargs["w"])**2)
                 q = 1/one_q
             else:
                 raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and w or q, to define the beam parameter")

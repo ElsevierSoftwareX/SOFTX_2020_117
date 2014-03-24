@@ -33,6 +33,7 @@ import pickle
 import pykat
 import warnings
 import re
+import math
 
 import itertools
 import ctypes
@@ -154,8 +155,9 @@ class katRun(object):
         self.ylabels = None
         self.katScript = None
         self.katVersion = None
+        self.yaxis = None
         
-    def saveKatRun(self, filename):
+    def savekatRun(self, filename):
         with open(filename,'w') as outfile:
             pickle.dump(self, outfile)
     
@@ -173,10 +175,17 @@ class katRun(object):
         if len(idx) > 0:
             out = self.y[:, idx]
             
+            if self.yaxis == "abs:deg":
+                out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
+            elif self.yaxis == "re:im":
+                out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
+            
+            out.squeeze()
+            
             if out.size == 1:
-                return float(out)
+                return out[0]
             else:
-                return out.squeeze()
+                return out
         else:
             raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
       
@@ -211,6 +220,7 @@ class katRun2D(object):
         else:
             raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
     
+        
 class Signals(object):
     class fsig(object):
         def __init__(self, param, name, amplitude, phase):
@@ -371,6 +381,7 @@ class kat(object):
         self.__maxtem = None
         self.__noxaxis = None
         self.__time_code = None
+        self.__yaxis = "abs" # default yaxis
         
         if kat_code != None and kat_file != None:
             raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
@@ -386,6 +397,17 @@ class kat(object):
 
     @property
     def signals(self): return self.__signals
+
+    yaxis_options = ["abs:deg","db:deg","re:im","abs","db","deg"]
+    @property
+    def yaxis(self): return self.__yaxis
+    @yaxis.setter
+    def yaxis(self, value):
+        
+        if not str(value) in self.yaxis_options:
+            raise pkex.BasePyKatException("yaxis value '{0}' is not a value option. Valid options are: {1}".format(str(value), ",".join(self.yaxis_options) ))
+            
+        self.__yaxis = str(value)
 
     @property
     def trace(self): return self.__trace
@@ -479,10 +501,12 @@ class kat(object):
                 # check if we have a var/constant in this line
                 if line.find('$') >= 0:
                     for key in constants.keys():
-                        if line.find('$'+key) > -1:
+                        if line.find('$'+key+' ') > -1:
+                            constants[key].usedBy.append(line)
+                            line = line.replace('$'+key+' ', str(constants[key].value)+ ' ')
+                        elif line.endswith('$'+key):
                             constants[key].usedBy.append(line)
                             line = line.replace('$'+key, str(constants[key].value))
-                        
                         
                 commands_new.append(line)
     
@@ -578,6 +602,10 @@ class kat(object):
                     after_process.append(line)
                 elif(first == "noxaxis"):
                     self.noxaxis = True
+                elif(first == "yaxis"):
+                    v = line.split()
+                    
+                    self.yaxis = v[-1]
                 elif(first == "phase"):
                     v = line.split()
                     if len(v) != 2:
@@ -589,9 +617,9 @@ class kat(object):
                     if len(v) != 2:
                         raise pkex.BasePyKatException("maxtem command `{0}` is incorrect.".format(line))
                     else:
-			if v[1] == "off":
-				self.maxtem = -1
-			else:
+                        if v[1] == "off":
+                        	self.maxtem = -1
+                        else:
 	                        self.maxtem = int(v[1])
                 elif(first == "trace"):
                     v = line.split()
@@ -614,9 +642,15 @@ class kat(object):
                 elif(first == "gnuterm" or first == "pyterm"):
                     if self.verbose:
                         print "Ignoring Gnuplot/Python terminal command '{0}'".format(line)
+                #elif(first == "fsig"):
+                #    after_process.append(line)
+                elif(first == "noplot"):
+                    obj = line
+                    self.__blocks[self.__currentTag].contents.append(line) 
                 else:
                     if self.verbose:
                         print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
+                        
                     obj = line
                     # manually add the line to the block contents
                     self.__blocks[self.__currentTag].contents.append(line) 
@@ -659,7 +693,7 @@ class kat(object):
                     raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(line))
             elif(first == "attr"):
                 v = line.split()
-                                
+
                 if len(v) < 4:
                     raise pkex.BasePyKatException("attr command `{0}` is incorrect.".format(line))
                 else:
@@ -678,6 +712,21 @@ class kat(object):
                     kv = dict(itertools.izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
 
                     comp.parseAttributes(kv)
+                    
+            elif(first == "fsig"):
+                
+                v = line.split()
+                
+                if v[2] in self.__components:
+                    comp = self.__components[v[1]]
+                else:
+                    raise pkex.BasePyKatException("Could not find the component '{0}' for attr command in line '{1}'".format(v[1], line))
+                
+                
+                #kat.siganls.apply()
+                
+            else:
+                raise pkex.BasePyKatException("Haven't handled parsing of '{0}'".format(line))
                     
         self.__currentTag = NO_BLOCK 
         
@@ -749,6 +798,7 @@ class kat(object):
             else:
                 r = katRun()
                 
+            r.yaxis = self.yaxis
             r.katScript = "".join(self.generateKatScript())   
             
             # create a kat file which we will write the script into
@@ -1112,6 +1162,9 @@ class kat(object):
         if self.noxaxis == True:
             out.append("noxaxis\n")
 
+        if self.yaxis != None:
+            out.append("yaxis {0}\n".format(self.yaxis))
+            
         # ensure we don't do any plotting. That should be handled
         # by user themselves
         out.append("gnuterm no\n")
@@ -1210,6 +1263,7 @@ class kat(object):
                                 getCavities=getCavities, getNodes=getNodes, getSpaces=getSpaces)
             p.start()
             p.join()
+            p.terminate()
             
             # return a local copy of the trace information dictionary
             return dict(trace_info)
