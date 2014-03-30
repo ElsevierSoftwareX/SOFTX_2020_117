@@ -156,6 +156,14 @@ class katRun(object):
         self.katScript = None
         self.katVersion = None
         self.yaxis = None
+
+    def plot(self):
+        import pylab
+        
+        pylab.plot(self.x, self.y)
+        pylab.legend(self.ylabels,0)
+        pylab.xlabel(self.xlabel)
+        pylab.show()
         
     def savekatRun(self, filename):
         with open(filename,'w') as outfile:
@@ -865,6 +873,7 @@ class kat(object):
 
             
             [out,errpipe] = p.communicate()
+            
             if printout == 1: 
                 print out
             else:
@@ -905,12 +914,13 @@ class kat(object):
                 r.xlabel = hdr[0]
                 r.ylabel = hdr[1]
                 r.zlabels = map(str.strip, hdr[2:])
+                         
             else:
                 [r.x,r.y,hdr] = self.readOutFile(outfile)
             
                 r.xlabel = hdr[0]
                 r.ylabels = map(str.strip, hdr[1:])
-                            
+                    
             if save_kat:
                 if kat_name == None:
                     kat_name = "pykat_output"                
@@ -1169,17 +1179,14 @@ class kat(object):
 
         if self.noxaxis == True:
             out.append("noxaxis\n")
-<<<<<<< HEAD
 
         if self.yaxis != None:
             out.append("yaxis {0}\n".format(self.yaxis))
             
         # ensure we don't do any plotting. That should be handled
         # by user themselves
-        out.append("gnuterm no\n")
-        out.append("pyterm no\n")
-=======
->>>>>>> a76f88c16370e3db396376d1b684d24aa7f00c89
+        #out.append("gnuterm no\n")
+        #out.append("pyterm no\n")
         
         return out
         

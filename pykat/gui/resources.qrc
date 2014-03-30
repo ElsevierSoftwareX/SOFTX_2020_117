@@ -4,6 +4,9 @@
 	 <file>resources/laser.svg</file>
 	 <file>resources/mirror_flat.svg</file>
 	 <file>resources/mirror_curve.svg</file>
+     <file>resources/modulator.svg</file>
+     <file>resources/lens.svg</file>
+     <file>resources/isolator.svg</file>
 	 <file>resources/photodiode_green.svg</file>
 	 <file>resources/photodiode_red.svg</file>
  </qresource>

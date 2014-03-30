@@ -466,7 +466,7 @@ class beamSplitter(AbstractMirrorComponent):
     def getQGraphicsItem(self):
         if self._svgItem == None:
             # FIXME: make proper SVG component for beam splitter
-            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,24,self.nodes[0]), (-4,6,self.nodes[1]), (14,6,self.nodes[2]), (14,24,self.nodes[3])])
             
         return self._svgItem
    
@@ -592,7 +592,8 @@ class grating(Component):
         self.__eta_3 = AttrParam("eta_3", self, SIfloat(eta_3))
         self.__rho_0 = AttrParam("rho_0", self, SIfloat(rho_0))
         self.__alpha = AttrParam("alpha", self, SIfloat(alpha))
-    
+        self._svgItem = None
+        
     @property
     def n(self): return Param('n', self.__n)
     @n.setter
@@ -686,10 +687,10 @@ class grating(Component):
         return rtn
        
     def getQGraphicsItem(self):
-        if self._QItem == None:
-            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make SVG graphic for grating
+        if self._svgItem == None:
+            self._svgItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make SVG graphic for grating
         
-        return self._QItem
+        return self._svgItem
 
 class isolator(Component):
     def __init__(self, name, node1, node2, S = 0, node3="dump"):
@@ -698,6 +699,7 @@ class isolator(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._requested_node_names.append(node3)
+        self._svgItem = None
         
         self.__S = Param("S",self,SIfloat(S))
         
@@ -731,18 +733,18 @@ class isolator(Component):
         return rtn
 
     def getQGraphicsItem(self):
-        if self._QItem == None:
-            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make isolator graphic
+        if self._svgItem == None:
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/isolator.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1]), (14,24,self.nodes[2])])
         
-        return self._QItem
+        return self._svgItem
 
 class lens(Component):
-    def __init__(self, name, node1, node2, f):
+    def __init__(self, name, node1, node2, f=1):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
-        
+        self._svgItem = None
         self.__f = Param("f", self, SIfloat(f))
         
     @property
@@ -773,18 +775,18 @@ class lens(Component):
         return rtn
         
     def getQGraphicsItem(self):
-        if self._QItem == None:
-            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make lens graphic
+        if self._svgItem == None:
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/lens.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
         
-        return self._QItem
+        return self._svgItem
         
 class modulator(Component):
-    def __init__(self, name, f, midx, order, modulation_type, node1, node2, phase=0):
+    def __init__(self, name, node1, node2, f, midx, order, modulation_type='pm', phase=0):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
-        
+        self._svgItem = None
         self.__f = Param("f", self, SIfloat(f))
         self.__midx = Param("midx", self, SIfloat(midx))
         self.__phase = Param("phase", self, SIfloat(phase))
@@ -835,9 +837,9 @@ class modulator(Component):
         v.pop(0) # remove initial value
         
         if len(v) == 7:
-            return modulator(v[0], v[1], v[2], v[3], v[4], v[5], v[6])
+            return modulator(v[0], v[5], v[6], v[1], v[2], v[3], v[4])
         if len(v) == 8:
-            return modulator(v[0], v[1], v[2], v[3], v[4], v[6], v[7], phase=v[5])
+            return modulator(v[0], v[6], v[7], v[1], v[2], v[3], v[4], phase=v[5])
         else:
             raise pkex.BasePyKatException("Modulator Finesse code format incorrect '{0}'".format(text))
         
@@ -850,10 +852,10 @@ class modulator(Component):
         return rtn
         
     def getQGraphicsItem(self):
-        if self._QItem == None:
-            self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make lens graphic
+        if self._svgItem == None:
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/modulator.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
         
-        return self._QItem
+        return self._svgItem
 
 class laser(Component):
     def __init__(self,name,node,P=1,f_offset=0,phase=0):
@@ -865,6 +867,7 @@ class laser(Component):
         self.__f_offset = Param("f", self, SIfloat(f_offset), canFsig=True, fsig_name="f")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__noise = AttrParam("noise", self, None)
+        self._svgItem = None
         
     @property
     def P(self): return self.__power

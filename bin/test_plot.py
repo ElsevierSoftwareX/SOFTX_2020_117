@@ -8,7 +8,7 @@ import numpy as np
 import pylab as pl
 
 code = """
-l l1 1 0 0 n1 ### test
+l l1 1 0 0 n1 
 s s1 10 1 n1 n2
 m m1 0.5 0.5 0 n2 n3
 s s2 10 1 n3 n4
@@ -25,7 +25,6 @@ attr m1 Rc 1
 """
 
 kat = finesse.kat()
-
 kat.parseCommands(code)
 
 kat.add(xaxis("lin", [0, 360], kat.m2.phi, 100))
@@ -37,11 +36,6 @@ kat.m2.Rcy =  1000.0
 
 kat.maxtem = 0
 
-out = kat.run(printout=0,printerr=0)
+out = kat.run()
+out.plot()
 
-pl.figure()
-pl.plot(out.x, out.y)
-pl.xlabel(out.xlabel)
-pl.ylabel("Intensity [W]")
-pl.legend(out.ylabels)
-pl.show()
