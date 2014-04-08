@@ -368,10 +368,6 @@ class qnoised(pd):
     def pdtype(self, value):
         raise pkex.BasePyKatException("Setting pdtype is not possible with qnoised detectors")
     
-    @pd.senstype.setter
-    def senstype(self,value):
-        raise pkex.BasePyKatException("qnoised detector has no sensitvity type")
-    
     def parseAttributes(self, values):
         
         for key in values.keys():
@@ -416,7 +412,14 @@ class qnoised(pd):
         if alt_beam:
             node = node[0:-1]
         
-        return qnoised(values[1], demods, node, alternate_beam=alt_beam, **dict)
+        if values[0].endswith('S'):
+            sens='S'
+        elif values[0].endswith('N'):
+            sens='N'
+        else:
+            sens=None
+            
+        return qnoised(values[1], demods, node, senstype=sens, alternate_beam=alt_beam, **dict)
     
     def getFinesseText(self) :
         rtn = []
@@ -440,7 +443,7 @@ class qnoised(pd):
             if senstype == None:
                 senstype = ""
                 
-            rtn.append("qnoised {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str))
+            rtn.append("qnoised{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str, senstype))
 
             if self.scale != None:
                 rtn.append("scale {1} {0}".format(self.name, self.scale))
@@ -498,8 +501,15 @@ class qshot(pd):
         
         if alt_beam:
             node = node[0:-1]
+            
+        if values[0].endswith('S'):
+            sens='S'
+        elif values[0].endswith('N'):
+            sens='N'
+        else:
+            sens=None
         
-        return qnoised(values[1], demods, node, alternate_beam=alt_beam, **dict)
+        return qshot(values[1], demods, node, senstype=sens, alternate_beam=alt_beam, **dict)
     
     def getFinesseText(self) :
         rtn = []
@@ -523,7 +533,7 @@ class qshot(pd):
             if senstype == None:
                 senstype = ""
                 
-            rtn.append("qshot {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str))
+            rtn.append("qshot{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str,senstype))
 
             if self.scale != None:
                 rtn.append("scale {1} {0}".format(self.name, self.scale))

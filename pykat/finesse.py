@@ -592,9 +592,9 @@ class kat(object):
                     obj = pykat.detectors.ad.parseFinesseText(line)
                 elif(first[0:2] == "pd" and first != "pdtype"):
                     obj = pykat.detectors.pd.parseFinesseText(line)
-                elif(first == "qshot"):
+                elif(first == "qshot" or first == "qshotS" or first == "qshotN"):
                     obj = pykat.detectors.qshot.parseFinesseText(line)
-                elif(first == "qnoised"):
+                elif(first == "qnoised" or first == "qnoisedS" or first == "qnoisedN"):
                     obj = pykat.detectors.qnoised.parseFinesseText(line)
                 elif(first == "xaxis" or first == "xaxis*"):
                     obj = pykat.commands.xaxis.parseFinesseText(line)
