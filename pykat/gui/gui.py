@@ -116,11 +116,19 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
     def addMirror(self, x,y):
         name = self.kat.getNewComponentName('m')
         n = self.kat.getNewNodeNames('n',2)
-        m = pykat.components.mirror(name,n[0],n[1])
+        m = pykat.components.mirror(name,n[0],n[1],R=0.5,T=0.5)
         
         self.kat.add(m)
         self.addComponentToScene(m,x,y)
     
+    def addBeamsplitter(self, x, y):
+        name = self.kat.getNewComponentName('bs')
+        n = self.kat.getNewNodeNames('n', 4)
+        m = pykat.components.beamSplitter(name,n[0],n[1],n[2],n[3],R=0.5,T=0.5)
+        
+        self.kat.add(m)
+        self.addComponentToScene(m,x,y)
+        
     def addSpace(self, x,y):
         name = self.kat.getNewComponentName('s')
         n = self.kat.getNewNodeNames('n',2)
@@ -137,6 +145,30 @@ class pyKatGUI(QtGui.QMainWindow, qt_gui.Ui_MainWindow):
         self.kat.add(l)
         self.addComponentToScene(l,x,y)   
     
+    def addModulator(self, x,y):
+        name = self.kat.getNewComponentName('mod')
+        n = self.kat.getNewNodeNames('n',2)
+        l = pykat.components.modulator(name, n[0], n[1], 1e6, 0.1, 1)
+
+        self.kat.add(l)
+        self.addComponentToScene(l,x,y)
+    
+    def addLens(self, x,y):
+        name = self.kat.getNewComponentName('lens')
+        n = self.kat.getNewNodeNames('n',2)
+        l = pykat.components.lens(name, n[0], n[1])
+
+        self.kat.add(l)
+        self.addComponentToScene(l,x,y)
+        
+    def addIsolator(self, x,y):
+        name = self.kat.getNewComponentName('isol')
+        n = self.kat.getNewNodeNames('n',3)
+        l = pykat.components.isolator(name, n[0], n[1], node3=n[2])
+
+        self.kat.add(l)
+        self.addComponentToScene(l,x,y)
+            
     def addPhotodiode(self, x, y):
         name = self.kat.getNewDetectorName('pd')
         n = self.kat.getNewNodeNames('n',1)
@@ -219,8 +251,20 @@ class pyKatGraphicsView(QGraphicsView):
         action = addmenu.addAction("Mirror")
         action.triggered.connect(functools.partial(gui.addMirror, pt.x(), pt.y()))
         
+        action = addmenu.addAction("Beamsplitter")
+        action.triggered.connect(functools.partial(gui.addBeamsplitter, pt.x(), pt.y()))
+        
         action = addmenu.addAction("Laser")
         action.triggered.connect(functools.partial(gui.addLaser, pt.x(), pt.y()))
+        
+        action = addmenu.addAction("Lens")
+        action.triggered.connect(functools.partial(gui.addLens, pt.x(), pt.y()))
+        
+        action = addmenu.addAction("Isolator")
+        action.triggered.connect(functools.partial(gui.addIsolator, pt.x(), pt.y()))
+        
+        action = addmenu.addAction("Modulator")
+        action.triggered.connect(functools.partial(gui.addModulator, pt.x(), pt.y()))
         
         action = addmenu.addAction("Photodiode")
         action.triggered.connect(functools.partial(gui.addPhotodiode, pt.x(), pt.y()))
@@ -372,7 +416,7 @@ class pyKatGraphicsView(QGraphicsView):
                 else:
                     self.__itemHover = None
             
-            if self.__itemHover is not None:                
+            if self.__itemHover is not None:
                 self.setCursor(QCursor(Qt.OpenHandCursor))
             else:
                 self.setCursor(QCursor(Qt.ArrowCursor))

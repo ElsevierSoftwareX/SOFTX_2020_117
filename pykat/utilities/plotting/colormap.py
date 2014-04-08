@@ -1,8 +1,6 @@
 
 import numpy as np
 import matplotlib
-BACKEND = 'Qt4Agg'
-matplotlib.use(BACKEND)
 from matplotlib import rc
 import matplotlib.pyplot as plt
 
