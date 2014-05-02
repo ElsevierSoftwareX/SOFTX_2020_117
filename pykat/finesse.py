@@ -390,6 +390,7 @@ class kat(object):
         self.__noxaxis = None
         self.__time_code = None
         self.__yaxis = "abs" # default yaxis
+        self.__lambda0 = 1064e-9
         
         if kat_code != None and kat_file != None:
             raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
@@ -427,6 +428,16 @@ class kat(object):
             raise pkex.BasePyKatException('trace command only accepts values in the range 0-255.')
         else:
             self.__trace = value
+
+    @property
+    def lambda0(self): return self.__lambda0
+    @lambda0.setter
+    def lambda0(self, value):
+        self.__lambda0 = SIfloat(value)
+        
+        for node in self.nodes.getNodes():
+            if self.nodes[node].q != None:
+                self.nodes[node].q.wavelength = self.__lambda0
 
     @property
     def maxtem(self): return self.__maxtem
@@ -610,6 +621,9 @@ class kat(object):
                     after_process.append(line)
                 elif(first == "noxaxis"):
                     self.noxaxis = True
+                elif(first == "lambda"):
+                    v = line.split()
+                    self.lambda0 = SIfloat(v[-1])
                 elif(first == "yaxis"):
                     v = line.split()
                     

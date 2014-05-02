@@ -22,6 +22,9 @@ class NodeNetwork(object):
         
         cls = type(self)
         self.__class__ = type(cls.__name__, (cls,), {})
+    
+    @property
+    def kat(self): return self.__kat
         
     def registerComponentNodes(self, comp, node_names, change_callback):
         """
@@ -273,11 +276,11 @@ class Node(object):
         self.__q_comp = component
         
         if len(args) == 1:
-            self.__q_x = gauss_param(q=args[0])
-            self.__q_y = gauss_param(q=args[0])
+            self.__q_x = gauss_param(self._network.kat.lambda0, q=args[0])
+            self.__q_y = gauss_param(self._network.kat.lambda0, q=args[0])
         elif len(args) == 2:
-            self.__q_x = gauss_param(q=args[0])
-            self.__q_y = gauss_param(q=args[1])
+            self.__q_x = gauss_param(self._network.kat.lambda0, q=args[0])
+            self.__q_y = gauss_param(self._network.kat.lambda0, q=args[1])
         else:
             raise pkex.BasePyKatException("Must specify either 1 Gaussian beam parameter or 2 for astigmatic beams")
         

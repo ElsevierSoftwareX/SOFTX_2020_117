@@ -61,6 +61,8 @@ class cavity(Command):
 class gauss(object):
     @staticmethod
     def parseFinesseText(text, kat):
+        print "parsing gauss", kat.lambda0
+        
         values = text.split()
         if not values[0].startswith("gauss") or (len(values) != 6 and len(values) != 8):
             raise pkex.BasePyKatException("'{0}' not a valid Finesse gauss command".format(text))        
@@ -69,24 +71,24 @@ class gauss(object):
         component = values[2]
         node = values[3]
         
-        if values[0]:
+        if not values[0].endswith("*"):
             if len(values) == 6:
-                gp = gauss_param(w0=values[-2], z=values[-1])
+                gp = gauss_param(kat.lambda0, w0=values[-2], z=values[-1])
             elif len(values) == 8:
-                gpx = gauss_param(w0=values[-4], z=values[-3])
-                gpy = gauss_param(w0=values[-2], z=values[-1])
+                gpx = gauss_param(kat.lambda0, w0=values[-4], z=values[-3])
+                gpy = gauss_param(kat.lambda0, w0=values[-2], z=values[-1])
         elif values[0].endswith("*"):
             if len(values) == 6:
-                gp = gauss_param(z=values[-2], zr=values[-1])
+                gp = gauss_param(kat.lambda0, z=values[-2], zr=values[-1])
             elif len(values) == 8:
-                gpx = gauss_param(z=values[-4], zr=values[-3])
-                gpy = gauss_param(z=values[-2], zr=values[-1])
+                gpx = gauss_param(kat.lambda0, z=values[-4], zr=values[-3])
+                gpy = gauss_param(kat.lambda0, z=values[-2], zr=values[-1])
         elif values[0].endswith("**"):
             if len(values) == 6:
-                gp = gauss_param(w=values[-2], rc=values[-1])
+                gp = gauss_param(kat.lambda0, w=values[-2], rc=values[-1])
             elif len(values) == 8:
-                gpx = gauss_param(w=values[-4], rc=values[-3])
-                gpy = gauss_param(w=values[-2], rc=values[-1])
+                gpx = gauss_param(kat.lambda0, w=values[-4], rc=values[-3])
+                gpy = gauss_param(kat.lambda0, w=values[-2], rc=values[-1])
         else:
             raise pkex.BasePyKatException("Unexpected ending to gauss command '{0}'".format(text))
             

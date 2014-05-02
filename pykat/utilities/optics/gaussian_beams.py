@@ -25,8 +25,9 @@ class gauss_param(object):
     
     def __init__(self, wavelength=1064e-9, nr=1, *args, **kwargs):
         self.__q = None
-        self.__lambda = float(wavelength)
-        self.__nr = float(nr)
+        print "wavelength", wavelength, kwargs
+        self.__lambda = SIfloat(wavelength)
+        self.__nr = SIfloat(nr)
         
         if len(args) == 1:
             self.__q = complex(args[0])
@@ -55,6 +56,8 @@ class gauss_param(object):
     
     @property
     def wavelength(self): return self.__lambda
+    @wavelength.setter
+    def wavelength(self,value): self.__lambda = SIfloat(value)
     
     @property
     def nr(self): return self.__nr
