@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 # ====================== The Class ColorMapCreator ============================
 # =============================================================================
 
-class ColorMapCreator:
+class CM:
     """
     Class ColorMapCreator:
     Create diverging colormaps from RGB1 to RGB2 using the method of Moreland

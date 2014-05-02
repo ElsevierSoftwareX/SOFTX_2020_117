@@ -7,6 +7,8 @@
 
 import numpy as np
 import matplotlib
+import matplotlib.backends.backend_pdf
+from matplotlib import cm
 BACKEND = 'Qt4Agg'
 matplotlib.use(BACKEND)
 from matplotlib import rc
