@@ -1,11 +1,16 @@
 import pykat.exceptions as pkex
-import numpy
+import numpy as np
 import math
 import copy
+import warnings
+import cmath
+from scipy.special import hermite
 from pykat.SIfloat import SIfloat
 
 class gauss_param(object):
     """
+    Use beam_param instead, prefer that as a name
+    
     Gaussian beam complex parameter
     
     gauss_param is effectively a complex number with extra
@@ -24,8 +29,10 @@ class gauss_param(object):
     """
     
     def __init__(self, wavelength=1064e-9, nr=1, *args, **kwargs):
+        if self.__class__ != beam_param:
+            warnings.warn("Name changed. Use beam_param instead of gauss_param.")
+            
         self.__q = None
-        print "wavelength", wavelength, kwargs
         self.__lambda = SIfloat(wavelength)
         self.__nr = SIfloat(nr)
         
@@ -153,49 +160,141 @@ class gauss_param(object):
     # reverse beam direction 
     def reverse(self):
         self.__q = -1.0 * self.__q.real + 1j * self.__q.imag
+
+
+class beam_param(gauss_param):
+    pass
+
     
-class HG_gauss_beam(object):
+class HG_beam(object):
     
     def __init__(self, qx, qy=None, n=0, m=0):
         self._qx = copy.deepcopy(qx)
         self._2pi_qrt = math.pow(2.0/math.pi, 0.25)
         
-        if qy == None:
-            self._q0 = copy.deepcopy(qx)
+        if qy.__class__ == beam_param:
+            self._qy = copy.deepcopy(qx)
         else:
-            self._q0 = copy.deepcopy(qy)
+            self._qy = copy.deepcopy(qy)
     
-        self.n = n
-        self.m = m
+        self._n = n
+        self._m = m
+        self._hn = hermite(n)
+        self._hm = hermite(m)
         self._calc_constants()
         
     @property
     def n(self): return self._n
     @n.setter
     def n(self,value): 
-        self._n = float(value)
+        self._n = int(value)
         self._calc_constants()
+        self._hn = hermite(self._n)
 
     @property
     def m(self): return self._m
     @m.setter
     def m(self,value): 
-        self._m = float(value)
+        self._m = int(value)
         self._calc_constants()
+        self._hm = hermite(self._m)
+            
+    @property
+    def q(self):
+        if self._qx.q == self._qy.q:
+            return self._qx.q
+        else:
+            return (self._qx.q, self._qy.q)
+    @q.setter
+    def q(self, value):
+        if value.__class__ == beam_param:
+            self._qx = copy.deepcopy(value)
+            self._qy = copy.deepcopy(value)
+        else:
+            self._qx = beam_param(q=complex(value))
+            self._qy = beam_param(q=complex(value))
+    
+    @property
+    def qx(self):
+        return self._qx.q
         
+    @qx.setter
+    def qx(self, value):
+        if value.__class__ == beam_param:
+            self._qx = copy.deepcopy(value)
+        else:
+            self._qx = beam_param(q=complex(value))
+    
+    @property
+    def qy(self):
+        return self._qy.q
+        
+    @qy.setter
+    def qy(self, value):
+        if value.__class__ == beam_param:
+            self._qy = copy.deepcopy(value)
+        else:
+            self._qy = beam_param(q=complex(value))
+            
     def _calc_constants(self):
         self.__xpre_const = math.pow(2.0/math.pi, 0.25)
-        self.__xpre_const *= math.sqrt(1/(2**self._n * math.factorial(self._n)))
-        self.__xpre_const *= math.sqrt(1j*self._qx.imag / self._qx)
-        self.__xpre_const *= math.pow((1j*self._qx.imag * self._qx.conjugate)/(-1j*self._qx.imag * self._qx), self._n/2.0)
+        self.__xpre_const *= math.sqrt(1.0/(2**self._n * math.factorial(self._n)))
+        self.__xpre_const *= cmath.sqrt(1j*self._qx.imag / self._qx.q)
+        self.__xpre_const *= ((1j*self._qx.imag * self._qx.q.conjugate())/(-1j*self._qx.imag * self._qx.q)) ** ( self._n/2.0)
         
         self.__ypre_const = math.pow(2.0/math.pi, 0.25)
-        self.__ypre_const *= math.sqrt(1/(2**self._m * math.factorial(self._m)))
-        self.__ypre_const *= math.sqrt(1j*self._qy.imag / self._qy)
-        self.__ypre_const *= math.pow((1j*self._qy.imag * self._qy.conjugate)/(-1j*self._qy.imag * self._qy), self._m/2.0)
-                
-    def Unm(self, n, m, x, y):  
-        # need to finish...
-        return self.__xpre_const
+        self.__ypre_const *= math.sqrt(1.0/(2**self._m * math.factorial(self._m)))
+        self.__ypre_const *= cmath.sqrt(1j*self._qy.imag / self._qy.q)
+        self.__ypre_const *= ((1j*self._qy.imag * self._qy.conjugate())/(-1j*self._qy.imag * self._qy.q)) **(self._m/2.0)
+    
+        self.__sqrt2_wxz = math.sqrt(2) / self._qx.w
+        self.__sqrt2_wyz = math.sqrt(2) / self._qy.w
+        
+        self.__kx =  2*math.pi / self._qx.wavelength
+        self.__ky =  2*math.pi / self._qy.wavelength
+        
+        self.__invqx = 1/ self._qx.q
+        self.__invqy = 1/ self._qy.q
+        
+    def _Un(self, x):
+        return self.__xpre_const * self._hn(self.__sqrt2_wxz * x) * np.exp(-0.5j * self.__kx * x*x * self.__invqx)
+    
+    def _Um(self, y):
+        return  self.__ypre_const  * self._hm(self.__sqrt2_wyz * y) * np.exp(-0.5j * self.__ky * y*y * self.__invqy)
+
+    def Un(self, x):  
+        vec = np.vectorize(self._Un, otypes=[np.complex64])
+        return vec(x=x)
+
+    def Um(self, y):  
+        vec = np.vectorize(self._Um, otypes=[np.complex64])
+        return vec(y=y)
+            
+    def _unm(self, x, y):
+        return self._Un(x) * self._Um(y)
+        
+    def Unm(self, x, y):  
+        vec = np.vectorize(self._unm, otypes=[np.complex64])
+        return vec(x=x,y=y)
+        
+    def plot(self, ndx=100, ndy=100, xscale=4, yscale=4):
+        import pylab
+        
+        xrange = xscale * np.linspace(-self._qx.w, self._qx.w, ndx)
+        yrange = yscale * np.linspace(-self._qy.w, self._qy.w, ndy)
+
+        dx = xrange[1]-xrange[0]
+        dy = yrange[1]-yrange[0]
+
+        xx, yy = np.meshgrid(xrange,yrange)
+
+        data = self.Unm(xx, yy)
+
+        fig = pylab.figure()
+        axes = pylab.imshow(np.abs(data), aspect=dx/dy, extent=[min(xrange),max(xrange),min(yrange),max(yrange)])
+        pylab.xlabel('x [m]')
+        pylab.ylabel('y [m]')
+        cbar = fig.colorbar(axes)
+        pylab.show()
         
         

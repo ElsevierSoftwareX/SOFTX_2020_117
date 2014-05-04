@@ -9,7 +9,7 @@ import pykat.gui.graphics
 import pykat.exceptions as pkex
 from pykat.components import Component
 from pykat.detectors import Detector
-from pykat.utilities.optics.gaussian_beams import gauss_param
+from pykat.utilities.optics.gaussian_beams import beam_param
 
 class NodeNetwork(object):
     def __init__(self, kat):
@@ -276,11 +276,11 @@ class Node(object):
         self.__q_comp = component
         
         if len(args) == 1:
-            self.__q_x = gauss_param(self._network.kat.lambda0, q=args[0])
-            self.__q_y = gauss_param(self._network.kat.lambda0, q=args[0])
+            self.__q_x = beam_param(self._network.kat.lambda0, q=args[0])
+            self.__q_y = beam_param(self._network.kat.lambda0, q=args[0])
         elif len(args) == 2:
-            self.__q_x = gauss_param(self._network.kat.lambda0, q=args[0])
-            self.__q_y = gauss_param(self._network.kat.lambda0, q=args[1])
+            self.__q_x = beam_param(self._network.kat.lambda0, q=args[0])
+            self.__q_y = beam_param(self._network.kat.lambda0, q=args[1])
         else:
             raise pkex.BasePyKatException("Must specify either 1 Gaussian beam parameter or 2 for astigmatic beams")
         
