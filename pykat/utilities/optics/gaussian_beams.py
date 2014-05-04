@@ -9,14 +9,14 @@ from pykat.SIfloat import SIfloat
 
 class gauss_param(object):
     """
-    Use beam_param instead, prefer that as a name
+    Use beam_param instead, will be future name of this object.
     
     Gaussian beam complex parameter
     
-    gauss_param is effectively a complex number with extra
+    beam_param is effectively a complex number with extra
     functionality to determine beam parameters.
     
-    defaults to 1064e-9m for wavelength and refractive index 1
+    Defaults to 1064e-9m for wavelength and refractive index 1
     usage:
         q = gauss_param(w0=w0, z=z)
         q = gauss_param(z=z, zr=zr)
@@ -95,7 +95,7 @@ class gauss_param(object):
             return float("inf")
     
     def conjugate(self):
-        return gauss_param(self.__lambda, self.__nr, self.__q.conjugate())
+        return beam_param(self.__lambda, self.__nr, self.__q.conjugate())
     
     def __complex__(self):
         return self.__q
@@ -104,7 +104,7 @@ class gauss_param(object):
         return str(self.__q)
     
     def __mul__(self, a):
-        return gauss_param(self.__lambda, self.__nr, self.__q * complex(a))
+        return beam_param(self.__lambda, self.__nr, self.__q * complex(a))
     
     def __imul__(self, a):
         self.__q *= complex(a)
@@ -113,7 +113,7 @@ class gauss_param(object):
     __rmul__ = __mul__
     
     def __add__(self, a):
-        return gauss_param(self.__lambda, self.__nr, self.__q + complex(a))
+        return beam_param(self.__lambda, self.__nr, self.__q + complex(a))
     
     def __iadd__(self, a):
         self.__q += complex(a)
@@ -122,27 +122,27 @@ class gauss_param(object):
     __radd__ = __add__
     
     def __sub__(self, a):
-        return gauss_param(self.__lambda, self.__nr, self.__q - complex(a))
+        return beam_param(self.__lambda, self.__nr, self.__q - complex(a))
     
     def __isub__(self, a):
         self.__q -= complex(a)
         return self
         
     def __rsub__(self, a):
-        return gauss_param(self.__lambda, self.__nr, complex(a) - self.__q)
+        return beam_param(self.__lambda, self.__nr, complex(a) - self.__q)
     
     def __div__(self, a):
-        return gauss_param(self.__lambda, self.__nr, self.__q / complex(a))
+        return beam_param(self.__lambda, self.__nr, self.__q / complex(a))
     
     def __idiv__(self, a):
         self.__q /= complex(a)
         return self
     
     def __pow__(self, q):
-        return gauss_param(self.__lambda, self.__nr, self.__q**q)
+        return beam_param(self.__lambda, self.__nr, self.__q**q)
 
     def __neg__(self, q):
-        return gauss_param(self.__lambda, self.__nr, -self.__q)
+        return beam_param(self.__lambda, self.__nr, -self.__q)
         
     def __eq__(self, q):
         return complex(q) == self.__q
@@ -245,7 +245,7 @@ class HG_beam(object):
         self.__ypre_const = math.pow(2.0/math.pi, 0.25)
         self.__ypre_const *= math.sqrt(1.0/(2**self._m * math.factorial(self._m)))
         self.__ypre_const *= cmath.sqrt(1j*self._qy.imag / self._qy.q)
-        self.__ypre_const *= ((1j*self._qy.imag * self._qy.conjugate())/(-1j*self._qy.imag * self._qy.q)) **(self._m/2.0)
+        self.__ypre_const *= ((1j*self._qy.imag * self._qy.q.conjugate())/(-1j*self._qy.imag * self._qy.q)) **(self._m/2.0)
     
         self.__sqrt2_wxz = math.sqrt(2) / self._qx.w
         self.__sqrt2_wyz = math.sqrt(2) / self._qy.w
@@ -256,26 +256,14 @@ class HG_beam(object):
         self.__invqx = 1/ self._qx.q
         self.__invqy = 1/ self._qy.q
         
-    def _Un(self, x):
+    def Un(self, x):
         return self.__xpre_const * self._hn(self.__sqrt2_wxz * x) * np.exp(-0.5j * self.__kx * x*x * self.__invqx)
     
-    def _Um(self, y):
-        return  self.__ypre_const  * self._hm(self.__sqrt2_wyz * y) * np.exp(-0.5j * self.__ky * y*y * self.__invqy)
-
-    def Un(self, x):  
-        vec = np.vectorize(self._Un, otypes=[np.complex64])
-        return vec(x=x)
-
-    def Um(self, y):  
-        vec = np.vectorize(self._Um, otypes=[np.complex64])
-        return vec(y=y)
-            
-    def _unm(self, x, y):
-        return self._Un(x) * self._Um(y)
+    def Um(self, y):
+        return self.__ypre_const * self._hm(self.__sqrt2_wyz * y) * np.exp(-0.5j * self.__ky * y*y * self.__invqy)
         
     def Unm(self, x, y):  
-        vec = np.vectorize(self._unm, otypes=[np.complex64])
-        return vec(x=x,y=y)
+        return self.Un(x) * self.Um(y)
         
     def plot(self, ndx=100, ndy=100, xscale=4, yscale=4):
         import pylab
