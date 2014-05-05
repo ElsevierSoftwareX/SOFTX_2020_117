@@ -1196,6 +1196,9 @@ class kat(object):
 
         if self.yaxis != None:
             out.append("yaxis {0}\n".format(self.yaxis))
+        
+        if self.lambda0 != 1064e-9:
+            out.append("lambda {0}\n".format(self.lambda0))
             
         # ensure we don't do any plotting. That should be handled
         # by user themselves
