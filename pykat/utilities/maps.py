@@ -29,7 +29,7 @@ class surfacemap:
                     mapfile.write("%.15g " % self.data[i,j])
                 mapfile.write("\n")
     
-    def plot(self):
+    def plot(self, show=True, clabel=None):
         
         import pylab
         
@@ -40,11 +40,18 @@ class surfacemap:
         axes = pylab.imshow(self.data, extent=[min(xrange),max(xrange),min(yrange),max(yrange)])
         pylab.xlabel('x [cm]')
         pylab.ylabel('y [cm]')
+
         pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
+        
         cbar = fig.colorbar(axes)
-        pylab.show()
-           
-           
+        
+        if clabel != None:
+            cbar.set_label(clabel)
+                
+        if show:
+            pylab.show()
+            
+        return fig
            
 def read_map(filename):
     with open(filename, 'r') as f:

@@ -156,7 +156,7 @@ class katRun(object):
         self.katScript = None
         self.katVersion = None
         self.yaxis = None
-
+        
     def plot(self):
         import pylab
         
@@ -218,7 +218,7 @@ class katRun2D(object):
         with open(filename,'r') as infile:
             return pickle.load(infile)
     
-    def get(self, value): return self[value]
+    def get(self, value): return self[value].squeeze()
     
     def __getitem__(self, value):
         idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split()[0] == str(value)]
@@ -387,7 +387,7 @@ class kat(object):
         self.__trace = None
         self.__phase = None
         self.__maxtem = None
-        self.__noxaxis = None
+        self.__noxaxis = False
         self.__time_code = None
         self.__yaxis = "abs" # default yaxis
         self.__lambda0 = 1064e-9
@@ -815,7 +815,7 @@ class kat(object):
             if self.verbose: print "--------------------------------------------------------------"
             if self.verbose: print "Running kat - Started at " + str(start)
             
-            if hasattr(self, "x2axis"):
+            if hasattr(self, "x2axis") and self.noxaxis == False:
                 r = katRun2D()
             else:
                 r = katRun()
@@ -922,7 +922,7 @@ class kat(object):
 
                 if self.verbose: print "\nOutput data saved to '{0}'".format(newoutfile)
             
-            if hasattr(self, "x2axis"):
+            if hasattr(self, "x2axis") and self.noxaxis == False:
                 [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
                 
                 r.xlabel = hdr[0]
@@ -1067,7 +1067,7 @@ class kat(object):
         if len(data.shape) == 1:
             data = np.array([data])
                             
-        if hasattr(self, "x2axis"):
+        if hasattr(self, "x2axis") and self.noxaxis == False:
             # need to parse 2D outputs slightly different as they are effectively 2D matrices
             # written in linear form
             x = data[0::(1+self.x2axis.steps),0]
@@ -1193,7 +1193,7 @@ class kat(object):
 
         if self.noxaxis == True:
             out.append("noxaxis\n")
-
+            
         if self.yaxis != None:
             out.append("yaxis {0}\n".format(self.yaxis))
         

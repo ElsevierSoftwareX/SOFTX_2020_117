@@ -189,6 +189,9 @@ class xaxis(Command):
         return xaxis(values[2], [values[3], values[4]], values[1], values[5], comp=values[0], axis_type=axis_type)
 
     def getFinesseText(self):
+        if(self._kat.noxaxis):
+            return '# noaxis is true, switching xaxis off'
+            
         # store either the component name of the string provided
         comp_name = self.__comp.name if hasattr(self.__comp, "name") else self.__comp
         param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
@@ -198,8 +201,8 @@ class xaxis(Command):
                 min(self.limits), max(self.limits), self.steps, axis_type=self._axis_type);
 
 class x2axis(xaxis):
-    def __init__(self, scale, limits, param, steps, comp=None):
-        xaxis.__init__(self, scale, limits, param, steps, comp=comp, axis_type="x2axis")
+    def __init__(self, scale, limits, param, steps, comp=None, axis_type="x2axis"):
+        xaxis.__init__(self, scale, limits, param, steps, comp=comp, axis_type=axis_type)
         self.x = putter("x2")
         self.mx = putter("mx2")
 
@@ -217,4 +220,4 @@ class x2axis(xaxis):
         if len(values) != 6:
             raise pkex.BasePyKatException("xaxis Finesse code format incorrect '{0}'".format(text))
 
-        return x2axis(values[2], [values[3], values[4]], values[1], values[5], comp=values[0])
+        return x2axis(values[2], [values[3], values[4]], values[1], values[5], comp=values[0],axis_type=axis_type)
