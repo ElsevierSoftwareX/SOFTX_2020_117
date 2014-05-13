@@ -71,7 +71,7 @@ def plot_error_contour(x,y,z,xlabel, ylabel, clabel, title='', filename=''):
 	# make symmetric color display
 	zlimit=np.max([abs(data.max()),abs(data.min())])
 	im = ax.imshow(data,origin='lower',extent=extent,cmap=mycm, aspect='auto', interpolation='nearest')
-	#im = ax.imshow(z[:,:,4],origin='lower',extent=extent,cmap=mycm, aspect='auto')
+	#im = ax.imshow(data,origin='lower',extent=extent,cmap=mycm, aspect='auto')
 	cb = fig.colorbar(im, format="%.4g")
 	cb.set_clim(-1.0*zlimit, zlimit) 
 	ax.autoscale(False)
