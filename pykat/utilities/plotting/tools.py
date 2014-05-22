@@ -18,6 +18,10 @@ formatter = matplotlib.ticker.EngFormatter(unit='', places=0)
 formatter.ENG_PREFIXES[-6] = 'u'
 
 
+def argmaxM(data):
+	return(np.unravel_index(np.argmax(data),data.shape))
+
+
 def printPDF(fig, filename):
 	if filename !='' and filename != None:
 		if not filename.lower().endswith(('.pdf')):
@@ -29,11 +33,12 @@ def printPDF(fig, filename):
 def plot_power_contour(x,y,z,xlabel, ylabel, clabel, title='', filename=''):
 	ax,fig=plot_setup()
 	xm,ym=np.meshgrid(x,y)
-	extent = [x[0], x[-1], y[0], y[-1] ]
+	extent = [x[0], x[-1], y[0], y[-1]]
 	mycm='YlOrRd_r'
-	mycm='hot'
+	#mycm='hot'
 	#im = ax.imshow(z,origin='lower',extent=extent,cmap=mycm, aspect='auto', interpolation='nearest')
 	im = ax.imshow(z,origin='lower',extent=extent,cmap=mycm, aspect='auto')
+	#im = ax.imshow(z,origin='lower',cmap=mycm, aspect='auto')
 	cb = fig.colorbar(im, format="%.4g")
 	#cb.set_clim(-1.0*zlimit, zlimit) 
 	ax.autoscale(False)
@@ -45,10 +50,12 @@ def plot_power_contour(x,y,z,xlabel, ylabel, clabel, title='', filename=''):
 	ax.xaxis.set_major_formatter(formatter)
 	ax.yaxis.set_major_formatter(formatter)
 	fig.canvas.manager.set_window_title(title)
-	plt.show()
+	plt.show(block=0)
 	printPDF(fig, filename)
 
 
+
+	
 def plot_error_contour(x,y,z,xlabel, ylabel, clabel, title='', filename=''):
 	global fig, ax, cb, ct, data
 	rc('font',**pp.font)
