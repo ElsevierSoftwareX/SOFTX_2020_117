@@ -12,6 +12,9 @@ def plot_beam_trace(_kat, from_node, to_node):
         
     components = kat.nodes.getComponentsBetween(from_node, to_node)
 
+    if len(components) == 0:
+        raise pkex.BasePyKatException('Could not find a direct path between nodes %s and %s'%(from_node, to_node))
+        
     nodes = []
 
     for cn in range(len(components)):
