@@ -230,7 +230,147 @@ class NodeNetwork(object):
         
     def __contains__(self, value):
         return value in self.__nodes
+    
+    def __nodeSearch(self, fnode, currcomp, branches, tnode):
         
+        if fnode == tnode:
+            branches[-1][0] = True
+            branches[-1][1] = True
+            return True # Hurrah, we have found a path to the node
+        elif fnode.isDump:
+            branches[-1][0] = True
+            return False # if the current node is a dump, we need to check another branch
+
+        nextnode = None
+        
+        if isinstance(currcomp, pykat.components.beamSplitter):
+            # if we get to a beamsplitter then we need to 
+            # create new branches to search: the rfelected
+            # and transmitted
+            
+            # set this branch as searched
+            branches[-1][0] = True
+            # add two new ones
+            
+            if fnode == currcomp.nodes[0]:
+                rn = currcomp.nodes[1]
+                tn = currcomp.nodes[2]
+            elif fnode == currcomp.nodes[1]:
+                rn = currcomp.nodes[0]
+                tn = currcomp.nodes[3]
+            elif fnode == currcomp.nodes[2]:
+                rn = currcomp.nodes[3]
+                tn = currcomp.nodes[0]
+            elif fnode == currcomp.nodes[3]:
+                rn = currcomp.nodes[2]
+                tn = currcomp.nodes[1]
+            else:
+                raise exceptions.ValueError("Node not attached in path find to BS")
+            
+            nextcomp = None
+            
+            if tn.components[0] == currcomp:
+                nextcomp = tn.components[1]
+            elif tn.components[1] == currcomp:
+                nextcomp = tn.components[0]
+            
+            if nextcomp != None:
+                branches.append([False, False, tn, nextcomp, []])
+            
+            if rn.components[0] == currcomp:
+                nextcomp = rn.components[1]
+            elif rn.components[1] == currcomp:
+                nextcomp = rn.components[0]
+            
+            if nextcomp != None:
+                branches.append([False, False, rn, nextcomp, []])
+            
+            branches[-1][-1].append(currcomp)
+            
+            return False
+            
+        elif isinstance(currcomp, pykat.components.isolator):
+            print "isol"
+        elif isinstance(currcomp, pykat.components.laser):
+            # if we are at a laser then we can't go any further
+            # and it isn;t this node as we checked before
+            branches[-1][0] = True
+            return False
+        elif len(currcomp.nodes) == 2:
+            if currcomp.nodes[0] == fnode:
+                nextnode = currcomp.nodes[1]
+            elif currcomp.nodes[1] == fnode:
+                nextnode = currcomp.nodes[0]
+            else:
+                raise pkex.BasePyKatException("Unexpeceted condition")
+        else:
+            raise pkex.BasePyKatException("Did not handle component {0} correctly, has more or less than 2 nodes.".format(currcomp))
+        
+        if nextnode == None:
+            branches[-1][0] = True
+            return False
+        elif nextnode == tnode:
+            branches[-1][0] = True
+            branches[-1][1] = True
+            branches[-1][-1].append(currcomp)
+            return True
+        else:
+            # Now we have the next node, we need the next component
+            if nextnode.components[0] == currcomp:
+                nextcomp = nextnode.components[1]
+            elif nextnode.components[1] == currcomp:
+                nextcomp = nextnode.components[0]
+            else:
+                raise pkex.BasePyKatException("Unexpeceted condition")
+
+            if nextcomp == None:
+                branches[-1][0] = True
+                return False
+            
+            branches[-1][-1].append(currcomp)
+            
+            return self.__nodeSearch(nextnode, nextcomp, branches, tnode)
+            
+    def getComponentsBetween(self, from_node, to_node):
+    
+        if from_node not in self.__nodes:
+            raise pkex.BasePyKatException("Node {0} cannot be found in this kat object".format(from_node))
+
+        if to_node not in self.__nodes:
+            raise pkex.BasePyKatException("Node {0} cannot be found in this kat object".format(to_node))
+        
+        branches = []
+        
+        fn = self.__nodes[from_node]
+        tn = self.__nodes[to_node]
+        
+        branches.append([False, False, fn, fn.components[1], []])
+        branches.append([False, False, fn, fn.components[0], []])
+        
+        while len(branches) > 0 and branches[-1][1] != True:
+            while branches[-1][0] == False:
+                branch = branches[-1]
+            
+                if not self.__nodeSearch(branch[2], branch[3], branches, tn):
+                    if len(branches) > 0 and branches[-1][0] != False:
+                        branches.pop()
+            
+            if branches[-1][1] != True:
+                while len(branches) > 0 and branches[-1][0] == True:
+                    branches.pop()
+            
+            
+        comps = []
+        
+        if len(branches) > 0  and branches[-1][0] == True and branches[-1][1] == True:
+            # select the branches that form the path from node to node
+            br = [b for b in branches if b[0] == True]
+        
+            for b in br:
+                comps.extend(b[-1])
+        
+        return comps
+    
     
 class Node(object):
 
@@ -243,9 +383,13 @@ class Node(object):
         self.__q_y = None
         self.__q_comp = None
         self.__id = id
-    
+        self._isDump = False
+        
     def __str__(self): return self.__name
-    
+
+    @property
+    def isDump(self): return self._isDump
+        
     @property
     def id(self): return self.__id
     
@@ -350,13 +494,14 @@ class Node(object):
         
     @property
     def name(self): return self.__name      
-    
-
+        
+        
 class DumpNode(Node):
     __total_dump_node_id = 0
     
     def __init__(self):
         DumpNode.__total_dump_node_id -= 1
         Node.__init__(self, 'dump', None, DumpNode.__total_dump_node_id)
+        self._isDump = True
         
         

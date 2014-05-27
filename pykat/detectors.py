@@ -14,9 +14,10 @@ from pykat.param import Param
 
 import pykat.exceptions as pkex
 import warnings
+import copy
 
 class Detector(object) :
-    def __init__(self, name,node):
+    def __init__(self, name, node=None):
         self.__name = name
         self._svgItem = None
         self._kat = None
@@ -28,6 +29,7 @@ class Detector(object) :
         self._mask = {}
         self.__scale = None
         self.__removed = False
+        self.__requested_node = None
         
         if node != None:
             if node[-1]=='*':
@@ -151,7 +153,111 @@ class ad(Detector):
             rtn.extend(p.getFinesseText())
         
         return rtn
+
+class gouy(Detector):
+    
+    def __init__(self, name, direction, spaces):
+        Detector.__init__(self, name)
+        self.spaces = copy.copy(spaces)
+        self.direction = direction
+        self.alternate_beam = False
         
+    @property
+    def direction(self): return self.__dir
+    @direction.setter
+    def direction(self, value):
+        if value == None or (value != 'x' and value != 'y'):
+            raise pkex.BasePyKatException('Direction must be either x or y')
+    
+        self.__dir = value
+
+    @property
+    def spaces(self): return self.__spaces
+    @spaces.setter
+    def spaces(self, value):
+
+        if value == None or len(value) < 1:
+            raise pkex.BasePyKatException('Must be a list of space names')
+    
+        self.__spaces = value
+        
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+
+        if len(values) > 3:
+            return gouy(str(values[1]), str(values[2]), values[3:])
+        else:
+            raise pkex.BasePyKatException('Gouy detector code "{0}" is not a valid FINESSE command'.format(text))
+            
+    def getFinesseText(self) :
+        rtn = []
+
+        rtn.append("gouy {name} {dir} {spaces}".format(name=self.name, dir=str(self.direction), spaces=" ".join(self.spaces)))
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+        
+        return rtn
+
+
+
+class bp(Detector):
+    acceptedParameters = ['w', 'w0', 'z', 'zr', 'g', 'r', 'q']
+    
+    def __init__(self, name, direction, parameter, node, alternate_beam=False):
+        Detector.__init__(self, name, node)
+        self.parameter = parameter
+        self.direction = direction
+        self.alternate_beam = alternate_beam
+        
+    @property
+    def direction(self): return self.__dir
+    @direction.setter
+    def direction(self, value):
+        if value == None or (value != 'x' and value != 'y'):
+            raise pkex.BasePyKatException('Direction must be either x or y')
+    
+        self.__dir = value
+
+    @property
+    def parameter(self): return self.__param
+    @parameter.setter
+    def parameter(self, value):
+        
+        if value == None or (value not in self.acceptedParameters) :
+            raise pkex.BasePyKatException('Parameter must be one of: %s'%(", ".join(self.acceptedParameters)))
+    
+        self.__param = value
+        
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+        
+        node=values[-1]
+        alt_beam = node[-1] == '*'
+        
+        if len(values) > 3:
+            return bp(str(values[1]), str(values[2]), str(values[3]), str(values[4]), alternate_beam=alt_beam)
+        else:
+            raise pkex.BasePyKatException('Gouy detector code "{0}" is not a valid FINESSE command'.format(text))
+            
+    def getFinesseText(self) :
+        rtn = []
+
+        if self.alternate_beam:
+            alt = "*"
+        else:
+            alt = ""
+            
+        rtn.append("bp {name} {dir} {param} {node}{alt}".format(name=self.name, dir=str(self.direction), param=self.parameter, node=self.node.name, alt=alt))
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+        
+        return rtn
+
+
 class pd(Detector):
 
     def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, pdtype=None, **kwargs):

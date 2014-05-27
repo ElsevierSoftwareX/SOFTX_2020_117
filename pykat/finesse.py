@@ -601,6 +601,10 @@ class kat(object):
                     obj = pykat.components.modulator.parseFinesseText(line)
                 elif(first[0:2] == "ad"):
                     obj = pykat.detectors.ad.parseFinesseText(line)
+                elif(first[0:2] == "bp"):
+                    obj = pykat.detectors.bp.parseFinesseText(line)
+                elif(first[0:4] == "gouy"):
+                    obj = pykat.detectors.gouy.parseFinesseText(line)
                 elif(first[0:2] == "pd" and first != "pdtype"):
                     obj = pykat.detectors.pd.parseFinesseText(line)
                 elif(first == "qshot" or first == "qshotS" or first == "qshotN"):
