@@ -858,13 +858,13 @@ class modulator(Component):
         return self._svgItem
 
 class laser(Component):
-    def __init__(self,name,node,P=1,f_offset=0,phase=0):
+    def __init__(self, name, node, P=1, f=0, phase=0):
         Component.__init__(self,name)
         
         self._requested_node_names.append(node)
         
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
-        self.__f_offset = Param("f", self, SIfloat(f_offset), canFsig=True, fsig_name="f")
+        self.__f_offset = Param("f", self, SIfloat(f), canFsig=True, fsig_name="f")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__noise = AttrParam("noise", self, None)
         self._svgItem = None
@@ -902,14 +902,77 @@ class laser(Component):
         values.pop(0) # remove initial value
         
         if len(values) == 5:
-            return laser(values[0],values[4],P=values[1],f_offset=values[2],phase=values[3])
+            return laser(values[0],values[4],P=values[1],f=values[2],phase=values[3])
         elif len(values) == 4:
-            return laser(values[0],values[3],P=values[1],f_offset=values[2], phase=0)
+            return laser(values[0],values[3],P=values[1],f=values[2], phase=0)
         else:
             raise exceptions.FinesseParse("Laser Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
         rtn = ['l {0} {1} {2} {3} {4}'.format(self.name, self.__power.value, self.__f_offset.value, self.__phase.value, self.nodes[0].name)]
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+        
+        return rtn
+         
+    def getQGraphicsItem(self):
+        if self._svgItem == None:
+            self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg", self, [(65,25,self.nodes[0])])
+            
+        return self._svgItem
+
+class squeezer(Component):
+    def __init__(self, name, node, f=0, db=0, angle=0, phase=0):
+        Component.__init__(self,name)
+        
+        self._requested_node_names.append(node)
+        
+        self.__f = Param("f", self, SIfloat(f), canFsig=True, fsig_name="f")
+        self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
+        self.__db = Param("db", self, SIfloat(db), canFsig=False, fsig_name="r")
+        self.__angle = Param("angle", self, SIfloat(angle), canFsig=False, fsig_name="angle")
+        self._svgItem = None
+        
+    @property
+    def db(self): return self.__db
+    @db.setter
+    def db(self,value): self.__db.value = float(value)
+    
+    @property
+    def angle(self): return self.__angle
+    @angle.setter
+    def angle(self,value): self.__angle.value = float(value)
+    
+    @property
+    def f(self): return self.__f
+    @f.setter
+    def f(self,value): self.__f.value = float(value)
+    
+    @property
+    def phase(self): return self.__phase
+    @phase.setter
+    def phase(self,value): self.__phase.value = float(value)
+    
+    def parseAttributes(self, values):
+        pass
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split()
+
+        if values[0] != "sq":
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse squeezer command".format(text))
+
+        values.pop(0) # remove initial value
+        
+        if len(values) == 5:
+            return squeezer(values[0], values[4], f=values[1], db=values[2], angle=values[3])
+        else:
+            raise exceptions.FinesseParse("Squeezer Finesse code format incorrect '{0}'".format(text))
+    
+    def getFinesseText(self):
+        rtn = ['sq {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())

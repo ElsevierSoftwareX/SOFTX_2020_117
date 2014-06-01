@@ -33,8 +33,7 @@ import pickle
 import pykat
 import warnings
 import re
-import math
-
+import math       
 import itertools
 import ctypes
 import ctypes.util
@@ -374,6 +373,8 @@ class kat(object):
         self.__signals = Signals()
         self.constants = {}
         self.vacuum = []
+        self.__prevrunfilename = None
+        self.printmatrix = None
         
         # initialise default block
         self.__currentTag= NO_BLOCK
@@ -589,6 +590,8 @@ class kat(object):
                     obj = pykat.components.space.parseFinesseText(line)
                 elif(first == "l"):
                     obj = pykat.components.laser.parseFinesseText(line)
+                elif(first == "sq"):
+                    obj = pykat.components.squeezer.parseFinesseText(line)
                 elif(first[0:2] == "bs"):
                     obj = pykat.components.beamSplitter.parseFinesseText(line)
                 elif(first[0:2] == "gr"):
@@ -779,7 +782,7 @@ class kat(object):
         
         return Process(target=f__lkat_process, args=(callback, cmd, kwargs))
            
-    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False,kat_name=None) :
+    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
@@ -909,6 +912,8 @@ class kat(object):
                 print err
                 sys.exit(1) 
             
+            self.__prevrunfilename = katfile.name
+            
             root = os.path.splitext(katfile.name)
             base = os.path.basename(root[0])            
             outfile = root[0] + ".out"
@@ -1019,6 +1024,52 @@ class kat(object):
         import gc
         print gc.get_referrers(obj)
     
+    def getMatrices(self):
+        
+        import scipy
+        from scipy.sparse import coo_matrix
+        
+        prev = self.noxaxis
+        
+        self.noxaxis = True
+        self.printmatrix = True
+        print "".join(self.generateKatScript())
+        self.verbose = True
+        self.run(printout=1)
+        self.printmatrix = None
+        self.noxaxis = prev        
+        
+        if self.__prevrunfilename == None:
+            return None
+        else:
+            
+            Mcarrier = None
+            Msignal = None
+            
+            if os.path.exists("klu_full_matrix_car.dat"):
+                M = np.loadtxt("klu_full_matrix_car.dat")
+                
+                if M.size > 0:
+                    row = M[:,0]-1
+                    col = M[:,1]-1
+                    data = M[:,2] + 1j * M[:,3]
+                    N = row.max()+1
+                    Mcarrier = coo_matrix((data,(row,col)), shape=(N,N))
+                
+        
+            if os.path.exists("klu_full_matrix_sig.dat"):
+                M = np.loadtxt("klu_full_matrix_sig.dat")
+                
+                if M.size > 0:
+                    row = M[:,0]-1
+                    col = M[:,1]-1
+                    data = M[:,2] + 1j * M[:,3]
+                    N = row.max()+1
+                    Msignal = coo_matrix((data,(row,col)), shape=(N,N))
+        
+            return (Mcarrier, Msignal)
+
+        
     def hasNamedObject(self, name):
         return name in self.__components or name in self.__detectors or name in self.__commands
         
@@ -1200,7 +1251,10 @@ class kat(object):
             
         if self.yaxis != None:
             out.append("yaxis {0}\n".format(self.yaxis))
-        
+         
+        if self.printmatrix != None and self.printmatrix == True:
+            out.append("printmatrix\n")
+            
         if self.lambda0 != 1064e-9:
             out.append("lambda {0}\n".format(self.lambda0))
             

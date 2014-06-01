@@ -140,7 +140,6 @@ class SpaceQGraphicsItem(QGraphicsLineItem):
         self.setLine(p.x(), p.y(), p.x()+x2-x1, p.y()+y2-y1)
         self.setPen(QPen(Qt.red, 3))
         
-    
 class ComponentQGraphicsItem(QGraphicsObject): #(QtSvg.QGraphicsSvgItem):
         
     def __init__(self, svgfile, component, nodes):
@@ -152,8 +151,6 @@ class ComponentQGraphicsItem(QGraphicsObject): #(QtSvg.QGraphicsSvgItem):
         
         self.__nodeGraphics = []
         self.__component = weakref.ref(component)
-        
-        # self.setRotation(432.34234)
         
         # this signals the itemChange() method when this item is moved
         # used for refreshing the spaces between components
@@ -181,7 +178,6 @@ class ComponentQGraphicsItem(QGraphicsObject): #(QtSvg.QGraphicsSvgItem):
         return self.__svggraphic.boundingRect()
 
     def paint(self, arg1, arg2, arg3):
-
         self.__svggraphic.rotate(45)
         self.__svggraphic.paint( arg1, arg2, arg3)
         
