@@ -356,6 +356,9 @@ Constant = namedtuple('Constant', 'name, value, usedBy')
 class kat(object):  
         
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
+
+        cls = type(self)
+        self.__class__ = type(cls.__name__, (cls,), {})
         
         self.scene = None # scene object for GUI
         self.verbose = True
@@ -401,9 +404,6 @@ class kat(object):
         
         if kat_file != None:
             self.loadKatFile(kat_file)
-        
-        cls = type(self)
-        self.__class__ = type(cls.__name__, (cls,), {})
 
     @property
     def signals(self): return self.__signals
@@ -687,7 +687,7 @@ class kat(object):
                 if obj != None and not isinstance(obj, str):
                     if self.hasNamedObject(obj.name):
                         getattr(self, obj.name).remove()
-                        print "Removed existing object '{0}' of type {1} to add new object".format(obj.name, obj.__class__)
+                        print "Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line)
                         
                     self.add(obj)
                     
@@ -1021,8 +1021,8 @@ class kat(object):
     
         del nodes
         
-        import gc
-        print gc.get_referrers(obj)
+        #import gc
+        #print gc.get_referrers(obj)
     
     def getMatrices(self):
         
@@ -1404,6 +1404,9 @@ class kat(object):
             raise exceptions.ValueError("Argument is not of type Command")
         
         name = com.__class__.__name__
+        
+        print getattr(self.__class__, name)
+        
         delattr(self.__class__, name)
         delattr(self, '__com_' + name)
         
