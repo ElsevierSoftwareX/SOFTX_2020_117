@@ -61,7 +61,6 @@ class cavity(Command):
 class gauss(object):
     @staticmethod
     def parseFinesseText(text, kat):
-        print "parsing gauss", kat.lambda0
         
         values = text.split()
         if not values[0].startswith("gauss") or (len(values) != 6 and len(values) != 8):
@@ -70,6 +69,21 @@ class gauss(object):
         name = values[1]
         component = values[2]
         node = values[3]
+        
+        # setting the name of the gauss parameter is slightly convoluted
+        # as we don't explicitly store gauss paramters as an object, they
+        # are simply just complex numbers stored at each node. To fix this
+        # the name is stored in the NodeGaussSetter object for each component
+        
+        if component in kat.components:
+            c = kat.components[component]
+            if hasattr(c, node):
+                ns = getattr(c, node)
+                ns.name = name
+            else:
+                raise pkex.BasePyKatException("Component '{0}' is not attached to node {1}".format(component, node))        
+        else:
+            raise pkex.BasePyKatException("Component '{0}' was not found".format(component))        
         
         if not values[0].endswith("*"):
             if len(values) == 6:

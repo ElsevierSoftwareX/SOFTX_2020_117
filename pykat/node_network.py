@@ -433,13 +433,27 @@ class Node(object):
             return []
             
         rtn = []
-
-        if self.__q_x == self.__q_y:
-            rtn.append("gauss g_{node} {comp} {node} {w0:.15g} {z:.15g}".format(node=self.name, comp=self.__q_comp.name, w0=self.__q_x.w0, z=self.__q_x.z))
-            #rtn.append("gauss* g_{node} {comp} {node} {z} {zr}".format(node=self.name, comp=self.__q_comp.name, z=self.__q_x.real, zr=self.__q_x.imag))
+        
+        # to get the name of the gauss parameter is a bit convoluted...
+        # firstly the name is set in the NodeGaussSetter object which is
+        # connected to each component, so this has to be retrieved and 
+        # then applied.
+        if hasattr(self.__q_comp, self.name):
+            ns = getattr(self.__q_comp, self.name)
+            
+            # if no name is present give it a default one
+            if ns.name != None:
+                name = ns.name
+            else:
+                name = "g_%s" % self.name
         else:
-            rtn.append("gauss g_{node} {comp} {node} {w0x:.15g} {zx:.15g} {w0y:.15g} {zy:.15g}".format(node=self.name, comp=self.__q_comp.name, w0x=self.__q_x.w0, zx=self.__q_x.z, w0y=self.__q_y.w0, zy=self.__q_y.z))
-            #rtn.append("gauss* g_{node} {comp} {node} {zx} {zrx} {zy} {zry}".format(node=self.name, comp=self.__q_comp.name, zx=self.__q_x.real, zrx=self.__q_x.imag, zy=self.__q_y.real, zry=self.__q_y.imag))
+            raise pkex.BasePyKatException("Node {0} is not connected to {1}".format(self.name, self.__q_comp.name))
+        
+        
+        if self.__q_x == self.__q_y:
+            rtn.append("gauss {name} {comp} {node} {w0:.15g} {z:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0=self.__q_x.w0, z=self.__q_x.z))
+        else:
+            rtn.append("gauss {name} {comp} {node} {w0x:.15g} {zx:.15g} {w0y:.15g} {zy:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0x=self.__q_x.w0, zx=self.__q_x.z, w0y=self.__q_y.w0, zy=self.__q_y.z))
             
         return rtn
         

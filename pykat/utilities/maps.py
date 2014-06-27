@@ -29,12 +29,20 @@ class surfacemap:
                     mapfile.write("%.15g " % self.data[i,j])
                 mapfile.write("\n")
     
+    @property
+    def x(self):
+        return self.step_size[0] * (numpy.array(range(0, self.data.shape[0]))- self.center[0])
+        
+    @property
+    def y(self):
+        return self.step_size[1] * (numpy.array(range(0, self.data.shape[1]))- self.center[1])
+                
     def plot(self, show=True, clabel=None):
         
         import pylab
         
-        xrange = 100*self.step_size[0] * (numpy.array(range(0, self.data.shape[0]))- self.center[0])
-        yrange = 100*self.step_size[1] * (numpy.array(range(0, self.data.shape[1]))- self.center[1])
+        xrange = 100*self.x
+        yrange = 100*self.y
         
         fig = pylab.figure()
         axes = pylab.imshow(self.data, extent=[min(xrange),max(xrange),min(yrange),max(yrange)])
@@ -66,7 +74,7 @@ def read_map(filename):
         
         
         
-    data = numpy.loadtxt(filename, dtype=numpy.float64, skiprows=9,ndmin=2)    
+    data = numpy.loadtxt(filename, dtype=numpy.float64,ndmin=2,comments='%')    
         
     return surfacemap(name,maptype,size,center,step,scaling,data)
     

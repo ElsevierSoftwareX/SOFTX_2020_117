@@ -25,6 +25,15 @@ class NodeGaussSetter(object):
     def __init__(self, component, node):                
         self.__comp = weakref.ref(component)
         self.__node = weakref.ref(node)
+        self.__name = None
+        
+    @property
+    def name(self):
+        return self.__name
+        
+    @name.setter
+    def name(self, value):
+        self.__name = str(value)
     
     @property
     def node(self):
