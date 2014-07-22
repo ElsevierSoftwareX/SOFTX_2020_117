@@ -81,8 +81,58 @@ class gauss_param(object):
     @property
     def w(self):
         return abs(self.__q)*math.sqrt(self.__lambda / (self.__nr * math.pi * self.__q.imag))
-        #return self.w0 * math.sqrt(1 + (self.__q.real/self.__q.imag)**2)
     
+    def w(self, z=None, wavelength=None, nr=None, w0=None):
+
+        if z == None:
+            z = self.z
+        else:
+            z = np.array(z)
+                
+        if wavelength == None:
+            wavelength = self.wavelength
+        else:
+            wavelength = np.array(wavelength)
+            
+        if nr == None:
+            nr = self.nr
+        else:
+            nr = np.array(nr)
+            
+        if w0 == None:
+            w0 = self.w0
+        else:
+            w0 = np.array(w0)
+        
+        q = z + 1j * math.pi * w0 **2 / wavelength
+        
+        return np.abs(q)*np.sqrt(wavelength / (nr * math.pi * q.imag))
+    
+    def gouy(self, z=None, wavelength=None, nr=None, w0=None):
+        if z == None:
+            z = self.z
+        else:
+            z = np.array(z)
+                
+        if wavelength == None:
+            wavelength = self.wavelength
+        else:
+            wavelength = np.array(wavelength)
+            
+        if nr == None:
+            nr = self.nr
+        else:
+            nr = np.array(nr)
+            
+        if w0 == None:
+            w0 = self.w0
+        else:
+            w0 = np.array(w0)
+        
+        q = z + 1j * math.pi * w0 **2 / wavelength
+        
+        return np.arctan2(q.real, q.imag)
+        
     @property
     def w0(self):
         return math.sqrt(self.__q.imag * self.__lambda / (self.__nr * math.pi))    
@@ -94,6 +144,31 @@ class gauss_param(object):
         else:
             return float("inf")
     
+    def Rc(self, z=None, wavelength=None, nr=None, w0=None):
+        if z == None:
+            z = self.z
+        else:
+            z = np.array(z)
+                
+        if wavelength == None:
+            wavelength = self.wavelength
+        else:
+            wavelength = np.array(wavelength)
+            
+        if nr == None:
+            nr = self.nr
+        else:
+            nr = np.array(nr)
+            
+        if w0 == None:
+            w0 = self.w0
+        else:
+            w0 = np.array(w0)
+        
+        q = z + 1j * math.pi * w0 **2 / wavelength
+        
+        return q.real * (1+ (q.imag/q.real)**2)
+        
     def conjugate(self):
         return beam_param(self.__lambda, self.__nr, self.__q.conjugate())
     
@@ -145,6 +220,9 @@ class gauss_param(object):
         return beam_param(self.__lambda, self.__nr, -self.__q)
         
     def __eq__(self, q):
+        if q == None:
+            return False
+            
         return complex(q) == self.__q
         
     @property
@@ -161,10 +239,8 @@ class gauss_param(object):
     def reverse(self):
         self.__q = -1.0 * self.__q.real + 1j * self.__q.imag
 
-
 class beam_param(gauss_param):
     pass
-
     
 class HG_beam(object):
     
@@ -172,15 +248,15 @@ class HG_beam(object):
         self._qx = copy.deepcopy(qx)
         self._2pi_qrt = math.pow(2.0/math.pi, 0.25)
         
-        if qy.__class__ == beam_param:
+        if qy == None:
             self._qy = copy.deepcopy(qx)
         else:
             self._qy = copy.deepcopy(qy)
     
-        self._n = n
-        self._m = m
-        self._hn = hermite(n)
-        self._hm = hermite(m)
+        self._n = int(n)
+        self._m = int(m)
+        self._hn = hermite(self._n)
+        self._hm = hermite(self._m)
         self._calc_constants()
         
     @property
@@ -238,12 +314,12 @@ class HG_beam(object):
             
     def _calc_constants(self):
         self.__xpre_const = math.pow(2.0/math.pi, 0.25)
-        self.__xpre_const *= math.sqrt(1.0/(2**self._n * math.factorial(self._n)))
+        self.__xpre_const *= math.sqrt(1.0/(self._qx.w*2**self._n * math.factorial(self._n)))
         self.__xpre_const *= cmath.sqrt(1j*self._qx.imag / self._qx.q)
         self.__xpre_const *= ((1j*self._qx.imag * self._qx.q.conjugate())/(-1j*self._qx.imag * self._qx.q)) ** ( self._n/2.0)
         
         self.__ypre_const = math.pow(2.0/math.pi, 0.25)
-        self.__ypre_const *= math.sqrt(1.0/(2**self._m * math.factorial(self._m)))
+        self.__ypre_const *= math.sqrt(1.0/(self._qy.w*2**self._m * math.factorial(self._m)))
         self.__ypre_const *= cmath.sqrt(1j*self._qy.imag / self._qy.q)
         self.__ypre_const *= ((1j*self._qy.imag * self._qy.q.conjugate())/(-1j*self._qy.imag * self._qy.q)) **(self._m/2.0)
     
@@ -262,8 +338,10 @@ class HG_beam(object):
     def Um(self, y):
         return self.__ypre_const * self._hm(self.__sqrt2_wyz * y) * np.exp(-0.5j * self.__ky * y*y * self.__invqy)
         
-    def Unm(self, x, y):  
-        return self.Un(x) * self.Um(y)
+    def Unm(self, x, y):
+        _un = self.Un(x)  
+        _um = self.Um(y)
+        return np.outer(_un, _um)
         
     def plot(self, ndx=100, ndy=100, xscale=4, yscale=4):
         import pylab
@@ -274,9 +352,7 @@ class HG_beam(object):
         dx = xrange[1]-xrange[0]
         dy = yrange[1]-yrange[0]
 
-        xx, yy = np.meshgrid(xrange,yrange)
-
-        data = self.Unm(xx, yy)
+        data = self.Unm(xrange,yrange)
 
         fig = pylab.figure()
         axes = pylab.imshow(np.abs(data), aspect=dx/dy, extent=[min(xrange),max(xrange),min(yrange),max(yrange)])

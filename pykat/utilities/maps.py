@@ -1,5 +1,5 @@
+from pykat.utilities.romhom import makeReducedBasis, makeEmpiricalInterpolant, makeWeights
 import numpy
-
 
 class surfacemap:
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
@@ -11,6 +11,7 @@ class surfacemap:
         self.step_size = step_size
         self.scaling = scaling
         self.data = data
+        self._rom_weights = None
         
     def write_map(self, filename):
         with open(filename,'w') as mapfile:
@@ -31,16 +32,32 @@ class surfacemap:
     
     @property
     def x(self):
-        return self.step_size[0] * (numpy.array(range(0, self.data.shape[0]))- self.center[0])
+        return self.step_size[0] * (numpy.array(range(1, self.data.shape[0]+1)) - self.center[0])
         
     @property
     def y(self):
-        return self.step_size[1] * (numpy.array(range(0, self.data.shape[1]))- self.center[1])
-                
+        return self.step_size[1] * (numpy.array(range(1, self.data.shape[1]+1))- self.center[1])
+    
+    @property
+    def offset(self):
+        return numpy.array(self.step_size)*(self.center - numpy.array(self.size)/2)
+    
+    @property
+    def ROMWeights(self):
+        return self._rom_weights
+     
+    def generateROMWeights(self):
+        b = makeReducedBasis(self.x[0:(len(self.x)/2)], offset=self.offset)
+        EI = makeEmpiricalInterpolant(b)
+        self._rom_weights = makeWeights(self, EI)
+        
+        return self.ROMWeights
+        
     def plot(self, show=True, clabel=None):
         
         import pylab
         
+        # 100 factor for scaling to cm
         xrange = 100*self.x
         yrange = 100*self.y
         
@@ -60,7 +77,9 @@ class surfacemap:
             pylab.show()
             
         return fig
-           
+
+        
+  
 def read_map(filename):
     with open(filename, 'r') as f:
         

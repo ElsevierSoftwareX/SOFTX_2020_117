@@ -47,7 +47,7 @@ def run_kat_file(item):
             #try:
             start = time.time()
             
-            out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
+            out,err = utils.runcmd(["nice", "--18", FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
             runtime = time.time()-start
             
             OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
