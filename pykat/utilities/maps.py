@@ -1,5 +1,6 @@
 from pykat.utilities.romhom import makeReducedBasis, makeEmpiricalInterpolant, makeWeights
 import numpy
+import math
 
 class surfacemap:
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
@@ -7,7 +8,6 @@ class surfacemap:
         self.name = name
         self.type = maptype
         self.center = center
-        self.size = size
         self.step_size = step_size
         self.scaling = scaling
         self.data = data
@@ -19,7 +19,7 @@ class surfacemap:
             mapfile.write("% Surface map\n")
             mapfile.write("% Name: {0}\n".format(self.name))
             mapfile.write("% Type: {0}\n".format(self.type))
-            mapfile.write("% Size: {0} {1}\n".format(self.size[0], self.size[1]))
+            mapfile.write("% Size: {0} {1}\n".format(self.data.shape[0], self.data.shape[1]))
             mapfile.write("% Optical center (x,y): {0} {1}\n".format(self.center[0], self.center[1]))
             mapfile.write("% Step size (x,y): {0} {1}\n".format(self.step_size[0], self.step_size[1]))
             mapfile.write("% Scaling: {0}\n".format(float(self.scaling)))
@@ -37,7 +37,11 @@ class surfacemap:
     @property
     def y(self):
         return self.step_size[1] * (numpy.array(range(1, self.data.shape[1]+1))- self.center[1])
-    
+
+    @property
+    def size(self):
+        return self.data.shape
+            
     @property
     def offset(self):
         return numpy.array(self.step_size)*(self.center - numpy.array(self.size)/2)
@@ -45,13 +49,22 @@ class surfacemap:
     @property
     def ROMWeights(self):
         return self._rom_weights
-     
+    
+    def z_xy(self, wavelength=1064e-9):
+        
+        if "phase" in self.type:
+            k = math.pi * 2 / wavelength
+            return numpy.exp(2j * k * self.scaling * self.data)
+        else:
+            raise BasePyKatException("Map type needs handling")
+        
+    
     def generateROMWeights(self):
         b = makeReducedBasis(self.x[0:(len(self.x)/2)], offset=self.offset)
         EI = makeEmpiricalInterpolant(b)
         self._rom_weights = makeWeights(self, EI)
         
-        return self.ROMWeights
+        return self.ROMWeights, EI
         
     def plot(self, show=True, clabel=None):
         

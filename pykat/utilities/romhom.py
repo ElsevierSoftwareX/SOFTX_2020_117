@@ -1,14 +1,16 @@
+import math
 import maps
 import os.path
-import numpy as np
 import pykat
 import collections
+
 from itertools import combinations_with_replacement as combinations
 from pykat.utilities.optics.gaussian_beams import beam_param, HG_beam
 from scipy.linalg import inv
 from math import factorial
 from hermite import *
-import math
+
+import numpy as np
 
 EmpiricalInterpolant = collections.namedtuple('EmpiricalInterpolant', 'B nodes node_indices limits x')
 ReducedBasis = collections.namedtuple('ReducedBasis', 'RB limits x')
@@ -16,11 +18,12 @@ ROMLimits = collections.namedtuple('ROMLimits', 'zmin zmax w0min w0max max_order
 
 class ROMWeights:
     
-    def __init__(self, w_ij_Q1, w_ij_Q2, w_ij_Q3, w_ij_Q4, limits):
+    def __init__(self, w_ij_Q1, w_ij_Q2, w_ij_Q3, w_ij_Q4, nodes, limits):
         self.w_ij_Q1 = w_ij_Q1
         self.w_ij_Q2 = w_ij_Q2
         self.w_ij_Q3 = w_ij_Q3
         self.w_ij_Q4 = w_ij_Q4
+        self.nodes = nodes
         self.limits = limits
         
     def writeToFile(self, filename):
@@ -101,7 +104,7 @@ def u(re_q1, w0_1, n1, x):
 
     wz1 = w(w0_1, im_q1, re_q1)
 
-    return A_n1 * hermite(n1, np.sqrt(2.)*x / wz1) * np.exp(-1j*(2*math.pi/(1064e-9))* x**2 /(2.*q_z1))
+    return A_n1 * hermite(n1, np.sqrt(2.)*x / wz1) * np.exp(np.array(-1j*(2*math.pi/(1064e-9))* x**2 /(2.*q_z1)))
 
 
 def u_star_u(re_q1, re_q2, w0_1, w0_2, n1, n2, x):
@@ -240,14 +243,14 @@ def makeEmpiricalInterpolant(RB):
 
     invV = inv(V[0:len(node_indices), 0:len(node_indices)])
     B = B_matrix(invV, e_x)
-
-    return EmpiricalInterpolant(B=np.array(B), nodes=np.array(x_nodes), node_indices=np.array(node_indices),  limits=RB.limits, x=RB.x)
+    
+    return EmpiricalInterpolant(B=np.array(B), nodes=np.array(x_nodes, dtype=np.float64), node_indices=np.array(node_indices, dtype=np.int32), limits=RB.limits, x=RB.x)
     
     
 def makeWeights(smap, EI):
     
     # get full A_xy
-    A_xy = smap.data
+    A_xy = smap.z_xy()
     
     hx = len(smap.x)/2
     hy = len(smap.y)/2
@@ -289,83 +292,6 @@ def makeWeights(smap, EI):
 
             B_ij_Q4 = np.outer(B[i], B[j])
             w_ij_Q4[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q4, A_xy_Q4)
-            
-    return ROMWeights(w_ij_Q1=w_ij_Q1, w_ij_Q2=w_ij_Q2, w_ij_Q3=w_ij_Q3, w_ij_Q4=w_ij_Q4, limits=EI.limits)
     
+    return ROMWeights(w_ij_Q1=w_ij_Q1, w_ij_Q2=w_ij_Q2, w_ij_Q3=w_ij_Q3, w_ij_Q4=w_ij_Q4, nodes=EI.nodes, limits=EI.limits)
     
-def ROMKnm(W, max_order, q1, q2, q1y=None, q2y=None):
-    
-    if q1y == None:
-        q1y = q1
-        
-    if q2y == None:
-        q2y = q2
-        
-    # get symmetric and anti-symmetric w_ij's 
-    w_ij_Q1Q3 = W.w_ij_Q1 + W.w_ij_Q3
-    w_ij_Q2Q4 = W.w_ij_Q2 + W.w_ij_Q4
-    w_ij_Q1Q2 = W.w_ij_Q1 + W.w_ij_Q2
-    w_ij_Q1Q4 = W.w_ij_Q1 + W.w_ij_Q4
-    w_ij_Q2Q3 = W.w_ij_Q2 + W.w_ij_Q3
-    w_ij_Q3Q4 = W.w_ij_Q3 + W.w_ij_Q4
-
-    w_ij_Q1Q2Q3Q4 = W.w_ij_Q1 + W.w_ij_Q3 + W.w_ij_Q2 + W.w_ij_Q4
-
-    num_fields = int((max_order + 1) * (max_order + 2) / 2);
-
-    K_ROQ = np.array((num_fields, num_fields))
-
-    for i in range(len(nm_pairs)):
-        for j in range(len(nm_pairs)):
-
-            # full quadrature
-            n = nm_pairs[i][0]
-            m = nm_pairs[i][1]
-            npr = nm_pairs[j][0]
-            mpr = nm_pairs[j][1]
-            u_xy =  np.outer(u_star_u(re_q1, re_q2, w0_1, w0_2, n, m, full_x), u_star_u(re_q1, re_q2, w0_1, w0_2, npr, mpr, full_x))
-            k = dx*dy*np.einsum('ij,ij', u_xy, A_xy)	
-            
-            # ROQ
-            if nm_pairs[i][0] % 2 == 0 and nm_pairs[i][1] % 2 == 0 and nm_pairs[j][0] % 2 == 0 and nm_pairs[j][1] % 2 == 0:
-                u_xy_nodes = np.outer(u_star_u(re_q1, re_q2, w0_1, w0_2, n, m, nodes_nv), u_star_u(re_q1, re_q2, w0_1, w0_2, npr, mpr, nodes_nv))
-                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4) 	
-	
-            elif nm_pairs[i][0] % 2 == 1 and nm_pairs[i][1] % 2 == 1 and nm_pairs[j][0] % 2 == 1 and nm_pairs[j][1] % 2 == 1:
-                u_xy_nodes = np.outer(u_star_u(re_q1, re_q2, w0_1, w0_2, n, m, nodes_nv), u_star_u(re_q1, re_q2, w0_1, w0_2, npr, mpr, nodes_nv))
-                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
-
-            elif nm_pairs[i][0] % 2 == 0 and nm_pairs[i][1] % 2 == 0 and nm_pairs[j][0] % 2 == 1 and nm_pairs[j][1] % 2 == 1:
-                u_xy_nodes = np.outer(u_star_u(re_q1, re_q2, w0_1, w0_2, n, m, nodes_nv), u_star_u(re_q1, re_q2, w0_1, w0_2, npr, mpr, nodes_nv))
-                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
-
-            elif nm_pairs[i][0] % 2 == 1 and nm_pairs[i][1] % 2 == 1 and nm_pairs[j][0] % 2 == 0 and nm_pairs[j][1] % 2 == 0:	
-                u_xy_nodes = np.outer(u_star_u(re_q1, re_q2, w0_1, w0_2, n, m, nodes_nv), u_star_u(re_q1, re_q2, w0_1, w0_2, npr, mpr, nodes_nv))
-                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
-                
-            elif nm_pairs[i][0] % 2 == 0 and nm_pairs[i][1] % 2 == 1 or nm_pairs[i][0] % 2 == 1 and nm_pairs[i][1] % 2 == 0:
-                u_x_nodes = u_star_u(re_q1, re_q2, w0_1, w0_2, n,m, nodes_nv)	
-                u_y_nodes = u_star_u(re_q1, re_q2, w0_1, w0_2, npr, mpr, nodes_nv)   
-
-                if nm_pairs[j][0] % 2 == 0 and nm_pairs[j][1] % 2 == 0 or nm_pairs[j][0] % 2 == 1 and nm_pairs[j][1] % 2 == 1:
-                    u_xy_nodes_Q1Q4 = np.outer(u_x_nodes, u_y_nodes)
-                    u_xy_nodes_Q2Q3 = - u_xy_nodes_Q1Q4
-                    k_ROQ = np.einsum('ij,ij', u_xy_nodes_Q1Q4, w_ij_Q1Q4) + np.einsum('ij,ij', u_xy_nodes_Q2Q3, w_ij_Q2Q3)
-                else:
-                    u_xy_nodes_Q2Q4 = np.outer(u_x_nodes, u_y_nodes)
-                    u_xy_nodes_Q1Q3 = - u_xy_nodes_Q2Q4
-                    k_ROQ = np.einsum('ij,ij', u_xy_nodes_Q2Q4, w_ij_Q2Q4) + np.einsum('ij,ij', u_xy_nodes_Q1Q3, w_ij_Q1Q3) 
-
-            elif nm_pairs[j][0] % 2 == 0 and nm_pairs[j][1] % 2 == 1 or nm_pairs[j][0] % 2 == 1 and nm_pairs[j][1] % 2 == 0:
-                u_x_nodes = u_star_u(re_q1, re_q2, w0_1, w0_2, n, m, nodes_nv)   
-                u_y_nodes = u_star_u(re_q1, re_q2, w0_1, w0_2, npr, mpr, nodes_nv)  
-                
-                if nm_pairs[i][0] % 2 == 0 and nm_pairs[i][1] % 2 == 0 or nm_pairs[i][0] % 2 == 1 and nm_pairs[i][1] % 2 == 1:
-                    u_xy_nodes_Q3Q4 = np.outer(u_x_nodes, u_y_nodes)
-                    u_xy_nodes_Q1Q2 = - u_xy_nodes_Q3Q4
-                    k_ROQ = np.einsum('ij,ij', u_xy_nodes_Q3Q4, w_ij_Q3Q4) + np.einsum('ij,ij', u_xy_nodes_Q1Q2,  w_ij_Q1Q2)
-                else:
-                    u_xy_nodes_Q2Q4 = np.outer(u_x_nodes, u_y_nodes)
-                    u_xy_nodes_Q1Q3 = - u_xy_nodes_Q2Q4
-                    k_ROQ = np.einsum('ij,ij', u_xy_nodes_Q2Q4, w_ij_Q2Q4) + np.einsum('ij,ij', u_xy_nodes_Q1Q3, w_ij_Q1Q3)
-

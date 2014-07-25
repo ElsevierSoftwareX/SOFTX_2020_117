@@ -82,7 +82,7 @@ class gauss_param(object):
     def w(self):
         return abs(self.__q)*math.sqrt(self.__lambda / (self.__nr * math.pi * self.__q.imag))
     
-    def w(self, z=None, wavelength=None, nr=None, w0=None):
+    def beamsize(self, z=None, wavelength=None, nr=None, w0=None):
 
         if z == None:
             z = self.z
@@ -144,7 +144,7 @@ class gauss_param(object):
         else:
             return float("inf")
     
-    def Rc(self, z=None, wavelength=None, nr=None, w0=None):
+    def curvature(self, z=None, wavelength=None, nr=None, w0=None):
         if z == None:
             z = self.z
         else:
