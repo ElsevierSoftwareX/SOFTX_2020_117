@@ -2,6 +2,22 @@ from pykat.utilities.romhom import makeReducedBasis, makeEmpiricalInterpolant, m
 import numpy
 import math
 
+class tiltmap(surfacemap):
+    
+    def __init__(self, name, size, step_size, tilt, center=(0,0) ):
+        surfacemap.__init__(name, "phase", size, center, step_sizes)
+        self.tilt = tilt
+        
+    @property
+    def tilt(self):
+        return self.__tilt
+    
+    @tilt.setter
+    def tilt(self, value):
+        
+        self.__tilt = value
+        
+        
 class surfacemap:
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
         
@@ -58,10 +74,25 @@ class surfacemap:
         else:
             raise BasePyKatException("Map type needs handling")
         
-    
-    def generateROMWeights(self):
-        b = makeReducedBasis(self.x[0:(len(self.x)/2)], offset=self.offset)
-        EI = makeEmpiricalInterpolant(b)
+
+    def generateROMWeights(self, isModeMatched=True):
+        xp = self.x[self.x>0]
+        yp = self.y[self.y>0]
+        xm = self.x[self.x<0]
+        ym = self.y[self.y<0]
+        
+        EI = {}
+        
+        if len(xm) > 0: EI["xm"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched))
+        if len(xp) > 0: EI["xp"] = makeEmpiricalInterpolant(makeReducedBasis(xp, isModeMatched=isModeMatched))
+        if len(ym) > 0: EI["ym"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched))
+        if len(yp) > 0: EI["yp"] = makeEmpiricalInterpolant(makeReducedBasis(yp, isModeMatched=isModeMatched))
+
+        #if len(x0) > 0: EI["x0"] = makeEmpiricalInterpolant(makeReducedBasis(x0, isModeMatched=isModeMatched))
+        #if len(y0) > 0: EI["y0"] = makeEmpiricalInterpolant(makeReducedBasis(y0, isModeMatched=isModeMatched))
+        
+        EI["limits"] = EI["xm"].limits
+        
         self._rom_weights = makeWeights(self, EI)
         
         return self.ROMWeights, EI
