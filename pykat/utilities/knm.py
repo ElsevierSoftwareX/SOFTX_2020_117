@@ -94,7 +94,7 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
     npr = mode_in[1]
     mpr = mode_out[1]
     
-    foundSymmetry = np.all(weights.EI["xp"].nodes == -weights.EI["xm"].nodes) and np.all(weights.EI["yp"].nodes == -weights.EI["ym"].nodes)
+    foundSymmetry = np.all(weights.EI["ym"].nodes == -weights.EI["xm"].nodes) and np.all(weights.EI["xp"].nodes == -weights.EI["xm"].nodes) and np.all(weights.EI["yp"].nodes == -weights.EI["ym"].nodes)
     
     if foundSymmetry:
         if cache == None:
