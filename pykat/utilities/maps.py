@@ -1,24 +1,9 @@
 from pykat.utilities.romhom import makeReducedBasis, makeEmpiricalInterpolant, makeWeights
-import numpy
+import numpy as np
 import math
-
-class tiltmap(surfacemap):
-    
-    def __init__(self, name, size, step_size, tilt, center=(0,0) ):
-        surfacemap.__init__(name, "phase", size, center, step_sizes)
-        self.tilt = tilt
-        
-    @property
-    def tilt(self):
-        return self.__tilt
-    
-    @tilt.setter
-    def tilt(self, value):
-        
-        self.__tilt = value
         
         
-class surfacemap:
+class surfacemap(object):
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
         
         self.name = name
@@ -26,7 +11,12 @@ class surfacemap:
         self.center = center
         self.step_size = step_size
         self.scaling = scaling
-        self.data = data
+
+        if data == None:
+            self.data = np.zeros(size)
+        else:
+            self.data = data
+
         self._rom_weights = None
         
     def write_map(self, filename):
@@ -48,11 +38,11 @@ class surfacemap:
     
     @property
     def x(self):
-        return self.step_size[0] * (numpy.array(range(1, self.data.shape[0]+1)) - self.center[0])
+        return self.step_size[0] * (np.array(range(1, self.data.shape[0]+1)) - self.center[0])
         
     @property
     def y(self):
-        return self.step_size[1] * (numpy.array(range(1, self.data.shape[1]+1))- self.center[1])
+        return self.step_size[1] * (np.array(range(1, self.data.shape[1]+1))- self.center[1])
 
     @property
     def size(self):
@@ -60,7 +50,7 @@ class surfacemap:
             
     @property
     def offset(self):
-        return numpy.array(self.step_size)*(self.center - numpy.array(self.size)/2)
+        return np.array(self.step_size)*(self.center - np.array(self.size)/2)
     
     @property
     def ROMWeights(self):
@@ -70,7 +60,7 @@ class surfacemap:
         
         if "phase" in self.type:
             k = math.pi * 2 / wavelength
-            return numpy.exp(2j * k * self.scaling * self.data)
+            return np.exp(2j * k * self.scaling * self.data)
         else:
             raise BasePyKatException("Map type needs handling")
         
@@ -87,7 +77,7 @@ class surfacemap:
         if len(xp) > 0: EI["xp"] = makeEmpiricalInterpolant(makeReducedBasis(xp, isModeMatched=isModeMatched))
         if len(ym) > 0: EI["ym"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched))
         if len(yp) > 0: EI["yp"] = makeEmpiricalInterpolant(makeReducedBasis(yp, isModeMatched=isModeMatched))
-
+        
         #if len(x0) > 0: EI["x0"] = makeEmpiricalInterpolant(makeReducedBasis(x0, isModeMatched=isModeMatched))
         #if len(y0) > 0: EI["y0"] = makeEmpiricalInterpolant(makeReducedBasis(y0, isModeMatched=isModeMatched))
         
@@ -122,8 +112,27 @@ class surfacemap:
             
         return fig
 
+
+class tiltmap(surfacemap):
+    
+    def __init__(self, name, size, step_size, tilt):
+        surfacemap.__init__(self, name, "phase", size, (np.array(size)+1)/2.0, step_size, 1)
+        self.tilt = tilt
         
-  
+    @property
+    def tilt(self):
+        return self.__tilt
+    
+    @tilt.setter
+    def tilt(self, value):
+        self.__tilt = value
+        
+        xx, yy = np.meshgrid(self.x, self.y)
+        
+        self.data = xx * self.tilt[0] + yy * self.tilt[1]
+        
+        
+        
 def read_map(filename):
     with open(filename, 'r') as f:
         
@@ -137,7 +146,7 @@ def read_map(filename):
         
         
         
-    data = numpy.loadtxt(filename, dtype=numpy.float64,ndmin=2,comments='%')    
+    data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
         
     return surfacemap(name,maptype,size,center,step,scaling,data)
     

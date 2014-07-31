@@ -94,47 +94,64 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
     npr = mode_in[1]
     mpr = mode_out[1]
     
-    # if cache == None:
-    u_xm_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,   m,   weights.EI["xm"].nodes-0.1e-2)
-    u_xp_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,   m,   weights.EI["xp"].nodes-0.1e-2)
-    u_ym_nodes = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, npr, mpr, weights.EI["ym"].nodes-0.1e-2)
-    u_yp_nodes = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, npr, mpr, weights.EI["yp"].nodes-0.1e-2)
+    foundSymmetry = np.all(weights.EI["xp"].nodes == -weights.EI["xm"].nodes) and np.all(weights.EI["yp"].nodes == -weights.EI["ym"].nodes)
     
-    # else:
-    #     strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
-    #     stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
-    #
-    #     u_x_nodes = cache[strx]
-    #     u_y_nodes = cache[stry]
+    if foundSymmetry:
+        if cache == None:
+            u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,   m,   weights.EI["xm"].nodes)
+            u_y_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,   m,   weights.EI["ym"].nodes)
+            w_ij_Q1Q3 = weights.w_ij_Q1 + weights.w_ij_Q3
+            w_ij_Q2Q4 = weights.w_ij_Q2 + weights.w_ij_Q4
+            w_ij_Q1Q2 = weights.w_ij_Q1 + weights.w_ij_Q2
+            w_ij_Q1Q4 = weights.w_ij_Q1 + weights.w_ij_Q4
+            w_ij_Q2Q3 = weights.w_ij_Q2 + weights.w_ij_Q3
+            w_ij_Q3Q4 = weights.w_ij_Q3 + weights.w_ij_Q4
+            w_ij_Q1Q2Q3Q4 = weights.w_ij_Q1 + weights.w_ij_Q2 + weights.w_ij_Q3 + weights.w_ij_Q4
+        else:
+            strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
+            stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
+
+            u_x_nodes = cache[strx]
+            u_y_nodes = cache[stry]
+
+        u_xy_nodes = np.outer(u_x_nodes, u_y_nodes)
     
-    u_xy_Q1 = np.outer(u_xm_nodes, u_yp_nodes)
-    u_xy_Q2 = np.outer(u_xp_nodes, u_yp_nodes)
-    u_xy_Q3 = np.outer(u_xp_nodes, u_ym_nodes)
-    u_xy_Q4 = np.outer(u_xm_nodes, u_ym_nodes)
-    
-    # n_mod_2 = n % 2
-    # m_mod_2 = m % 2
-    # npr_mod_2 = npr % 2
-    # mpr_mod_2 = mpr % 2
-    #
-    # if n_mod_2 == m_mod_2 and npr_mod_2 == mpr_mod_2:
-    #     k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
-    #
-    # elif n_mod_2 != m_mod_2:
-    #     if npr_mod_2 == mpr_mod_2:
-    #         k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q2Q3)
-    #     else:
-    #         k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
-    #
-    # elif npr_mod_2 != mpr_mod_2:
-    #     if n_mod_2 == m_mod_2:
-    #         k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q3Q4) + np.einsum('ij,ij', -u_xy_nodes,  w_ij_Q1Q2)
-    #     else:
-    #         k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
-    k_ROQ  = np.einsum('ij,ij', u_xy_Q1, weights.w_ij_Q1)
-    k_ROQ += np.einsum('ij,ij', u_xy_Q2, weights.w_ij_Q2)
-    k_ROQ += np.einsum('ij,ij', u_xy_Q3, weights.w_ij_Q3)
-    k_ROQ += np.einsum('ij,ij', u_xy_Q4, weights.w_ij_Q4)
+        n_mod_2 = n % 2
+        m_mod_2 = m % 2
+        npr_mod_2 = npr % 2
+        mpr_mod_2 = mpr % 2
+
+        if n_mod_2 == m_mod_2 and npr_mod_2 == mpr_mod_2:
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
+
+        elif n_mod_2 != m_mod_2:
+            if npr_mod_2 == mpr_mod_2:
+                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q2Q3)
+            else:
+                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
+
+        elif npr_mod_2 != mpr_mod_2:
+            if n_mod_2 == m_mod_2:
+                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q3Q4) + np.einsum('ij,ij', -u_xy_nodes,  w_ij_Q1Q2)
+            else:
+                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
+                
+    else:
+        # If there is no symmetry about the axes then each quadrant is different
+        u_xm_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,   m,   weights.EI["xm"].nodes)
+        u_xp_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,   m,   weights.EI["xp"].nodes)
+        u_ym_nodes = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, npr, mpr, weights.EI["ym"].nodes)
+        u_yp_nodes = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, npr, mpr, weights.EI["yp"].nodes)
+        
+        u_xy_Q1 = np.outer(u_xm_nodes, u_yp_nodes)
+        u_xy_Q2 = np.outer(u_xp_nodes, u_yp_nodes)
+        u_xy_Q3 = np.outer(u_xp_nodes, u_ym_nodes)
+        u_xy_Q4 = np.outer(u_xm_nodes, u_ym_nodes)
+        
+        k_ROQ  = np.einsum('ij,ij', u_xy_Q1, weights.w_ij_Q1)
+        k_ROQ += np.einsum('ij,ij', u_xy_Q2, weights.w_ij_Q2)
+        k_ROQ += np.einsum('ij,ij', u_xy_Q3, weights.w_ij_Q3)
+        k_ROQ += np.einsum('ij,ij', u_xy_Q4, weights.w_ij_Q4)
      
     return k_ROQ
     
