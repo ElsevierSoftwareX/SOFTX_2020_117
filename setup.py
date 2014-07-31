@@ -19,5 +19,7 @@ setup(
     license='GPL v2',
     description='Python interface and tools for FINESSE',
     long_description=open('README.rst').read(),
-    install_requires=REQUIREMENTS
+    install_requires=REQUIREMENTS,
+    package_data={'': ['utilities/greedypoints/*.txt']},
+    include_package_data=True
 )
