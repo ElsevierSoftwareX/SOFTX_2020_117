@@ -4,6 +4,7 @@ import os.path
 import pykat
 import collections
 
+from progressbar import ProgressBar, ETA, Percentage, Bar
 from itertools import combinations_with_replacement as combinations
 from pykat.utilities.optics.gaussian_beams import beam_param, HG_beam
 from scipy.linalg import inv
@@ -150,20 +151,21 @@ def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1):
 
     for i in range(len(params)):
 
-        q1 = beam_param(w0=params[i][0], z=params[i][2])
+        q1 = beam_param(w0=float(params[i][0]), z=float(params[i][2]))
 
         if isModeMatched:
             q2 = q1
             n = int(params[i][2])
             m = int(params[i][3])
-            w0_1 = params[i][0]
-            w0_2 = w0_1
-            re_q1 = params[i][1]
-            re_q2 = re_q1
         else:
-            q2 = beam_param(w0=params[i][1], z=params[i][3])            
+            q2 = beam_param(w0=float(params[i][1]), z=float(params[i][3]))            
             n = int(params[i][4])
             m = int(params[i][5])
+            
+        w0_1 = q1.w0
+        w0_2 = q2.w0
+        re_q1 = q1.z
+        re_q2 = q2.z
             
         TS[IDx] = u_star_u(re_q1, re_q2, w0_1, w0_2, n, m, x)
         
@@ -248,10 +250,7 @@ def makeEmpiricalInterpolant(RB):
     return EmpiricalInterpolant(B=np.array(B), nodes=np.array(x_nodes, dtype=np.float64), node_indices=np.array(node_indices, dtype=np.int32), limits=RB.limits, x=RB.x)
     
 
-from progressbar import ProgressBar, ETA, Percentage, Bar
-
 def makeWeights(smap, EI, verbose=True):
-    
     
     # get full A_xy
     A_xy = smap.z_xy()
