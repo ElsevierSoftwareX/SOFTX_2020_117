@@ -2,12 +2,14 @@ from itertools import combinations_with_replacement as combinations
 from pykat.utilities.optics.gaussian_beams import beam_param, HG_beam
 from pykat.exceptions import BasePyKatException
 
+import time
 import maps
 import os.path
 import numpy as np
 import pykat
 import collections
 import math
+import cmath
 
 from romhom import u_star_u
 from progressbar import ProgressBar, ETA, Percentage, Bar
@@ -32,9 +34,9 @@ def makeCouplingMatrix(max_order):
         
         M.append(row)
     
-    return np.array(M)    
+    return np.array(M)
 
-def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None, cache=None):
+def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None, cache=None, delta=(0,0)):
 
     if Axy == None:
         Axy == np.ones((len(x), len(y)))
@@ -55,7 +57,7 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None
         Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
         Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
     
-        U1 = Hg_in.Unm(x,y)
+        U1 = Hg_in.Unm(x+delta[0], y+delta[1])
         U2 = Hg_out.Unm(x,y).conjugate()
         
         return dx * dy * np.einsum('ij,ij', Axy, U1*U2)
@@ -66,11 +68,10 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None
         
         return dx * dy * np.einsum('ij,ij', Axy, np.outer(cache[strx], cache[stry]))
 
+
+
     
-
-
-
-def __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None):
+def __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None, delta=(0,0)):
     if q1y == None:
         q1y = q1
         
@@ -89,19 +90,23 @@ def __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None):
             strx = "u1[%i,%i]" % (mode_in[0], mode_out[0])
             stry = "u2[%i,%i]" % (mode_in[1], mode_out[1])
             
-            Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
-            Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
+            #Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
+            #Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
     
             if strx not in cache:
-                cache[strx] = Hg_in.Un(x) * Hg_out.Un(x).conjugate()   
+                cache[strx] = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, mode_in[0], mode_out[0], x, x+delta[0])    
+                #Hg_in.Un(x) * Hg_out.Un(x).conjugate()   
             
             if stry not in cache:
-                cache[stry] = Hg_in.Um(y) * Hg_out.Um(y).conjugate()
+                cache[stry] = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, mode_in[1], mode_out[1], y, y+delta[1])    
+                #Hg_in.Um(y) * Hg_out.Um(y).conjugate()
             
         except StopIteration:
             break
     
     return cache
+    
+    
     
 def __gen_ROM_HG_knm_cache(weights, couplings, q1, q2, q1y=None, q2y=None):
 
@@ -141,7 +146,9 @@ def __gen_ROM_HG_knm_cache(weights, couplings, q1, q2, q1y=None, q2y=None):
             break
     
     return cache
-    
+
+
+
 def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=None):
     if q1y == None:
         q1y = q1
@@ -157,82 +164,154 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
     npr = mode_in[1]
     mpr = mode_out[1]
     
-    foundSymmetry = np.all(weights.EI["ym"].nodes == weights.EI["xm"].nodes) and np.all(weights.EI["xp"].nodes == -weights.EI["xm"].nodes) and np.all(weights.EI["yp"].nodes == -weights.EI["ym"].nodes)
-    
-    if foundSymmetry:
+    if cache == None:
+        u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EI["xm"].nodes)
+        u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EI["ym"].nodes)
         
-        if cache == None:
-            u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EI["xm"].nodes)
-            u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EI["ym"].nodes)
-            
-            w_ij_Q1Q3 = weights.w_ij_Q1 + weights.w_ij_Q3
-            w_ij_Q2Q4 = weights.w_ij_Q2 + weights.w_ij_Q4
-            w_ij_Q1Q2 = weights.w_ij_Q1 + weights.w_ij_Q2
-            w_ij_Q1Q4 = weights.w_ij_Q1 + weights.w_ij_Q4
-            w_ij_Q2Q3 = weights.w_ij_Q2 + weights.w_ij_Q3
-            w_ij_Q3Q4 = weights.w_ij_Q3 + weights.w_ij_Q4
-            w_ij_Q1Q2Q3Q4 = weights.w_ij_Q1 + weights.w_ij_Q2 + weights.w_ij_Q3 + weights.w_ij_Q4
-            
-        else:
-            strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
-            stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
-
-            u_x_nodes = cache[strx]
-            u_y_nodes = cache[stry]
-            
-            w_ij_Q1Q3 = cache["w_ij_Q1Q3"]
-            w_ij_Q2Q4 = cache["w_ij_Q2Q4"]
-            w_ij_Q1Q2 = cache["w_ij_Q1Q2"]
-            w_ij_Q1Q4 = cache["w_ij_Q1Q4"]
-            w_ij_Q2Q3 = cache["w_ij_Q2Q3"]
-            w_ij_Q3Q4 = cache["w_ij_Q3Q4"]
-            w_ij_Q1Q2Q3Q4 = cache["w_ij_Q1Q2Q3Q4"]
-            
-
-        u_xy_nodes = np.outer(u_x_nodes, u_y_nodes)
-    
-        n_mod_2 = n % 2
-        m_mod_2 = m % 2
-        npr_mod_2 = npr % 2
-        mpr_mod_2 = mpr % 2
-
-        if n_mod_2 == m_mod_2 and npr_mod_2 == mpr_mod_2:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
-
-        elif n_mod_2 != m_mod_2:
-            if npr_mod_2 == mpr_mod_2:
-                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q2Q3)
-            else:
-                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
-
-        elif npr_mod_2 != mpr_mod_2:
-            if n_mod_2 == m_mod_2:
-                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q3Q4) + np.einsum('ij,ij', -u_xy_nodes,  w_ij_Q1Q2)
-            else:
-                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
-                
+        w_ij_Q1Q3 = weights.w_ij_Q1 + weights.w_ij_Q3
+        w_ij_Q2Q4 = weights.w_ij_Q2 + weights.w_ij_Q4
+        w_ij_Q1Q2 = weights.w_ij_Q1 + weights.w_ij_Q2
+        w_ij_Q1Q4 = weights.w_ij_Q1 + weights.w_ij_Q4
+        w_ij_Q2Q3 = weights.w_ij_Q2 + weights.w_ij_Q3
+        w_ij_Q3Q4 = weights.w_ij_Q3 + weights.w_ij_Q4
+        w_ij_Q1Q2Q3Q4 = weights.w_ij_Q1 + weights.w_ij_Q2 + weights.w_ij_Q3 + weights.w_ij_Q4
+        
     else:
-        # If there is no symmetry about the axes then each quadrant is different
-        u_xm_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,   m,   weights.EI["xm"].nodes)
-        u_xp_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,   m,   weights.EI["xp"].nodes)
-        u_ym_nodes = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, npr, mpr, weights.EI["ym"].nodes)
-        u_yp_nodes = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, npr, mpr, weights.EI["yp"].nodes)
+        strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
+        stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
+
+        u_x_nodes = cache[strx]
+        u_y_nodes = cache[stry]
         
-        u_xy_Q1 = np.outer(u_xm_nodes, u_yp_nodes)
-        u_xy_Q2 = np.outer(u_xp_nodes, u_yp_nodes)
-        u_xy_Q3 = np.outer(u_xp_nodes, u_ym_nodes)
-        u_xy_Q4 = np.outer(u_xm_nodes, u_ym_nodes)
+        w_ij_Q1Q3 = cache["w_ij_Q1Q3"]
+        w_ij_Q2Q4 = cache["w_ij_Q2Q4"]
+        w_ij_Q1Q2 = cache["w_ij_Q1Q2"]
+        w_ij_Q1Q4 = cache["w_ij_Q1Q4"]
+        w_ij_Q2Q3 = cache["w_ij_Q2Q3"]
+        w_ij_Q3Q4 = cache["w_ij_Q3Q4"]
+        w_ij_Q1Q2Q3Q4 = cache["w_ij_Q1Q2Q3Q4"]
         
-        k_ROQ  = np.einsum('ij,ij', u_xy_Q1, weights.w_ij_Q1)
-        k_ROQ += np.einsum('ij,ij', u_xy_Q2, weights.w_ij_Q2)
-        k_ROQ += np.einsum('ij,ij', u_xy_Q3, weights.w_ij_Q3)
-        k_ROQ += np.einsum('ij,ij', u_xy_Q4, weights.w_ij_Q4)
+
+    u_xy_nodes = np.outer(u_x_nodes, u_y_nodes)
+
+    n_mod_2 = n % 2
+    m_mod_2 = m % 2
+    npr_mod_2 = npr % 2
+    mpr_mod_2 = mpr % 2
+
+    if n_mod_2 == m_mod_2 and npr_mod_2 == mpr_mod_2:
+        k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
+
+    elif n_mod_2 != m_mod_2:
+        if npr_mod_2 == mpr_mod_2:
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q2Q3)
+        else:
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
+
+    elif npr_mod_2 != mpr_mod_2:
+        if n_mod_2 == m_mod_2:
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q3Q4) + np.einsum('ij,ij', -u_xy_nodes,  w_ij_Q1Q2)
+        else:
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
+    
      
     return k_ROQ
+
+__fac_cache = []
+
+def fac(n):
+    global __fac_cache
+    return __fac_cache[n]
+    #return math.factorial(int(n))
+
+def m_1_pow(n):
+    if n % 2 == 0:
+        return 1
+    else:
+        return -1
+
+
+def __Ss(u, _u, F, _F, d=0):
+    r = 0
     
+    for s in range(0, min(u,_u)+1):
+        r += m_1_pow(s) * _F ** (u-s) * _F ** (_u-s) / (fac(2*s+d)*fac(u-s)*fac(_u-s))
+        
+    return r
 
 
-def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann", verbose=True):
+def __S(m, _m, X, _X, F, _F, d=0):
+    if m % 2 == 1:
+        lim1 = (m-1)/2
+    else:
+        lim1 = m/2 
+
+    if _m % 2 == 1:
+        lim2 = (_m-1)/2
+    else:
+        lim2 = _m/2
+    
+    r = 0
+    
+    for u in range(0, lim1+1):
+        for _u in range(0, lim2+1):
+            r += m_1_pow(u) * _X**(m-2*u) * X**(_m-2*_u) / ( fac(m-2*u)*fac(_m-2*_u) )   * __Ss(u, _u, F, _F, d=d)
+    
+    return r
+           
+
+def __bayerhelms_kn(n, _n, q1, q2, gamma=0.0):
+    
+    K0 = (q1.zr - q2.zr)/q2.zr
+    K2 = (q1.z - q2.z)/q2.zr
+    K = (K0 + 1j*K2)/2.0
+    
+    Ktilde = abs(K / (1+K))
+
+    if gamma != 0:
+        a  = q2.zr * math.sin(gamma) / (cmath.sqrt(1+K.conjugate()) * q2.w0)
+
+        _X = - a * (q2.z/q2.zr - 1j)
+        X  = - a * (q2.z/q2.zr + 1j*(1+2*K.conjugate()))
+        Ex = cmath.exp(-_X*X / 2.0)
+    else:
+        _X = 0.0
+        X  = 0.0
+        Ex = 1.0
+    
+    _F  = K / (2.0 * (1.0+K0))
+    F = K.conjugate() / 2.0 
+
+    Sg = __S(n, _n, X, _X, F, _F)
+
+    if n > 0 and _n > 0:
+        Su = __S(n-1, _n-1, X, _X, F, _F, 1)
+    else:
+        Su = 0
+    
+    b = m_1_pow(_n) * cmath.sqrt(fac(n) * fac(_n) * (1.0 + K.real)**(n+0.5) * (1.0 + K.conjugate()) ** (-(n+_n+1)))
+    
+    return b * Ex * (Sg - Su)
+
+
+def bayerhelms_HG_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, gamma=(0,0)):
+    if q1y == None:
+        q1y = q1
+
+    if q2y == None:
+        q2y = q2
+
+    # x modes
+    n = mode_in[0]
+    _n = mode_out[0]
+
+    # y modes
+    m = mode_in[1]
+    _m = mode_out[1]
+
+    return __bayerhelms_kn(n,_n, q1, q2, 2*gamma[0]) * __bayerhelms_kn(m, _m, q1y, q2y, 2*gamma[1])
+
+def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann", verbose=False, profile=False, gamma=(0,0), delta=(0,0)):
     if q1y == None:
         q1y = q1
         
@@ -247,17 +326,32 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
     
     if int(a) - a != 0:
         raise BasePyKatException("Iterator should be product of 4, each element of coupling array should be [n,m,n',m']")
-        
-    Axy = surface_map.z_xy(q1.wavelength)
     
-    x = surface_map.x
-    y = surface_map.y
+    maxtem = 0
+    c = couplings.flatten()
+    
+    for i in range(0, c.size/2):
+        maxtem = max(sum(c[i*2:(i*2+2)]), maxtem)
+    
+    global __fac_cache
+    
+    for n in range(0, maxtem+1):
+        __fac_cache.append(math.factorial(n))
+    
+    if surface_map != None:  
+        Axy = surface_map.z_xy(q1.wavelength)
+    
+        x = surface_map.x
+        y = surface_map.y
     
     K = np.zeros((couplings.size/4,), dtype=np.complex128)
     
     it = np.nditer(couplings, flags=['refs_ok','f_index'])
     
     i = 0
+    
+    if profile:
+        t0 = time.time()
         
     if method == "romhom":
         if surface_map == None:
@@ -268,32 +362,44 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         if weights == None:
             raise BasePyKatException("The ROM weights need to be generated for this map before use.")
 
-        if verbose: print "Computing caches"
-        
         cache = __gen_ROM_HG_knm_cache(weights, couplings, q1=q1, q2=q2, q1y=q1y, q2y=q2y)
         
     elif method == "riemann":
-        if verbose: print "Computing caches"
-        cache = __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None)
+        if surface_map == None:
+            raise BasePyKatException("Using 'riemann' method requires a surface map to be specified")
+            
+        cache = __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None, delta=delta)
     else:
         cache = None
         weights = None
+    
+    if profile:
+        cache_time = time.time() - t0
+        Ktime = np.zeros((couplings.size/4,), dtype=np.float64)
     
     if verbose:
         p = ProgressBar(maxval=couplings.size, widgets=["Knm (%s): " % method, Percentage(), Bar(), ETA()])
     
     while not it.finished:
         try:
+            if profile:
+                t0 = time.time()
+                
             mode_in = [int(it.next()), int(it.next())]
             mode_out = [int(it.next()), int(it.next())]
             
             if method == "riemann":
-                K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache)
+                K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache, delta=delta)
             elif method == "romhom":
                 K[i] = ROM_HG_knm(weights, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, cache=cache)
+            elif method == "bayerhelms":
+                K[i] = bayerhelms_HG_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, gamma=gamma)
             else:
                 raise BasePyKatException("method value '%s' not accepted" % method)
-                
+            
+            if profile:
+                Ktime[i] = time.time() - t0
+            
             i +=1
             
             if verbose:
@@ -303,19 +409,41 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         except StopIteration:
             break
 
-    return K.reshape(couplings.shape[:-1])
+    if profile:
+        return K.reshape(couplings.shape[:-1]), Ktime.reshape(couplings.shape[:-1]), cache_time
+    else:
+        return K.reshape(couplings.shape[:-1])
 
 
+def plot_knm_matrix(couplings, knm):
+    import pylab as plt
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    cax = ax.imshow(knm, interpolation='nearest')
+    fig.colorbar(cax)
+    
+    numrows, numcols = knm.shape
+    
+    c = couplings[:, 0, :2]
+    c_ = []
+    
+    for d in c:
+        c_.append("%i,%i"%(d[0], d[1]))
+    
+    ax.set_xticklabels(c_)
+    ax.set_yticklabels(c_)
+    
+    def format_coord(x, y):
+        col = int(x+0.5)
+        row = int(y+0.5)
+        
+        if col>=0 and col<numcols and row>=0 and row<numrows:
+            z = knm[row,col]
+            return 'x=%s, y=%s, z=%1.4f' % (c_[col], c_[row], z)
+        else:
+            return 'x=%1.4f, y=%1.4f'%(x, y)
 
+    ax.format_coord = format_coord
 
-
-
-
-
-
-
-
-
-
-
-
+    plt.show()

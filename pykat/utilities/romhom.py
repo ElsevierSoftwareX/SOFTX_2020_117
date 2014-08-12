@@ -1,9 +1,8 @@
 import math
-import maps
 import os.path
 import pykat
 import collections
-
+    
 from progressbar import ProgressBar, ETA, Percentage, Bar
 from itertools import combinations_with_replacement as combinations
 from pykat.utilities.optics.gaussian_beams import beam_param, HG_beam
@@ -109,8 +108,11 @@ def u(re_q1, w0_1, n1, x):
     return A_n1 * hermite(n1, np.sqrt(2.)*x / wz1) * np.exp(np.array(-1j*(2*math.pi/(1064e-9))* x**2 /(2.*q_z1)))
 
 
-def u_star_u(re_q1, re_q2, w0_1, w0_2, n1, n2, x):
-    return u(re_q1, w0_1, n1, x) * u(re_q2, w0_2, n2, x).conjugate()
+def u_star_u(re_q1, re_q2, w0_1, w0_2, n1, n2, x, x2=None):
+    if x2 == None:
+        x2 = x
+        
+    return u(re_q1, w0_1, n1, x) * u(re_q2, w0_2, n2, x2).conjugate()
 
     
 def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1):
@@ -142,7 +144,7 @@ def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1):
     params = np.loadtxt(greedyfile, skiprows=5)
 
     TS_size = len(params) # training space of TS_size number of waveforms
-
+    
     #### allocate memory for training space ####
 
     TS = np.zeros(TS_size*len(x), dtype = complex).reshape(TS_size, len(x)) # store training space in TS_size X len(x) array
@@ -150,14 +152,13 @@ def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1):
     IDx = 0 #TS index 
 
     for i in range(len(params)):
-
-        q1 = beam_param(w0=float(params[i][0]), z=float(params[i][2]))
-
         if isModeMatched:
+            q1 = beam_param(w0=float(params[i][0]), z=float(params[i][1]))
             q2 = q1
             n = int(params[i][2])
             m = int(params[i][3])
         else:
+            q1 = beam_param(w0=float(params[i][0]), z=float(params[i][2]))
             q2 = beam_param(w0=float(params[i][1]), z=float(params[i][3]))            
             n = int(params[i][4])
             m = int(params[i][5])
@@ -180,34 +181,32 @@ def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1):
 
     #### Begin greedy: see Field et al. arXiv:1308.3565v2 #### 
 
-    tolerance = 1e-12 # set maximum RB projection error
-
-    sigma = 1 # projection error at 0th iteration
-
     RB_matrix = [TS[0]] # seed greedy algorithm (arbitrary)
 
     proj_coefficients = np.zeros(TS_size*TS_size, dtype = complex).reshape(TS_size, TS_size)
     projections = np.zeros(TS_size*len(x), dtype = complex).reshape(TS_size, len(x))
 
     iter = 0
-
+    
     while sigma > tolerance:
     #for k in range(TS_size-1):
     	# go through training set and find worst projection error
     	projections = project_onto_basis(dx, RB_matrix, TS, projections, proj_coefficients, iter)
     	residual = TS - projections
+        
     	projection_errors = [np.vdot(dx* residual[i], residual[i]) for i in range(len(residual))]
     	sigma = abs(max(projection_errors))
     	index = np.argmax(projection_errors) 
-		
+        
     	#Gram-Schmidt to get the next basis and normalize
     	next_basis = TS[index] - projections[index]
     	next_basis /= np.sqrt(abs(np.vdot(dx* next_basis, next_basis)))
 
     	RB_matrix.append(next_basis)		
-
-    	iter += 1	
-    
+        
+    	iter += 1
+        
+        
     return ReducedBasis(RB=np.array(RB_matrix), limits=romlimits, x=x)
     
 def makeEmpiricalInterpolant(RB):
@@ -282,42 +281,39 @@ def makeWeights(smap, EI, verbose=True):
     dy = full_y[1] - full_y[0]
 
     if verbose:
-        count  = len(EI["xm"].B) * len(EI["yp"].B)
-        count += len(EI["xp"].B) * len(EI["yp"].B)
-        count += len(EI["xp"].B) * len(EI["ym"].B)
-        count += len(EI["xm"].B) * len(EI["ym"].B)
+        count  = 4*len(EI["xm"].B) * len(EI["ym"].B)
         p = ProgressBar(maxval=count, widgets=["Computing weights: ", Percentage(), Bar(), ETA()])
     
     n = 0
     
     # make integration weights
     Bx = EI["xm"].B
-    By = EI["yp"].B
+    By = EI["ym"].B[:,::-1]
     w_ij_Q1 = np.zeros((len(Bx),len(By)), dtype = complex)
     
     for i in range(len(Bx)):
         for j in range(len(By)):
             B_ij_Q1 = np.outer(Bx[i], By[j])
             w_ij_Q1[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q1, A_xy_Q1)	
-
+            
             if verbose:
                 p.update(n)
                 n+=1
 
-    Bx = EI["xp"].B
-    By = EI["yp"].B
+    Bx = EI["xm"].B[:,::-1]
+    By = EI["ym"].B[:,::-1]
     w_ij_Q2 = np.zeros((len(Bx),len(By)), dtype = complex)
     
     for i in range(len(Bx)):
         for j in range(len(By)):
             B_ij_Q2 = np.outer(Bx[i], By[j])
             w_ij_Q2[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q2, A_xy_Q2)
-
+            
             if verbose:
                 p.update(n)
                 n+=1
 
-    Bx = EI["xp"].B
+    Bx = EI["xm"].B[:,::-1]
     By = EI["ym"].B
     w_ij_Q3 = np.zeros((len(Bx),len(By)), dtype = complex)
     

@@ -65,25 +65,18 @@ class surfacemap(object):
             raise BasePyKatException("Map type needs handling")
         
 
-    def generateROMWeights(self, isModeMatched=True):
-        xp = self.x[self.x>0]
-        yp = self.y[self.y>0]
+    def generateROMWeights(self, isModeMatched=True, verbose=False):
         xm = self.x[self.x<0]
         ym = self.y[self.y<0]
         
         EI = {}
         
         if len(xm) > 0: EI["xm"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched))
-        if len(xp) > 0: EI["xp"] = makeEmpiricalInterpolant(makeReducedBasis(xp, isModeMatched=isModeMatched))
         if len(ym) > 0: EI["ym"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched))
-        if len(yp) > 0: EI["yp"] = makeEmpiricalInterpolant(makeReducedBasis(yp, isModeMatched=isModeMatched))
-        
-        #if len(x0) > 0: EI["x0"] = makeEmpiricalInterpolant(makeReducedBasis(x0, isModeMatched=isModeMatched))
-        #if len(y0) > 0: EI["y0"] = makeEmpiricalInterpolant(makeReducedBasis(y0, isModeMatched=isModeMatched))
         
         EI["limits"] = EI["xm"].limits
         
-        self._rom_weights = makeWeights(self, EI)
+        self._rom_weights = makeWeights(self, EI, verbose=verbose)
         
         return self.ROMWeights, EI
         
@@ -129,7 +122,7 @@ class tiltmap(surfacemap):
         
         xx, yy = np.meshgrid(self.x, self.y)
         
-        self.data = xx * self.tilt[0] + yy * self.tilt[1]
+        self.data = xx * self.tilt[1] + yy * self.tilt[0]
         
         
         
