@@ -521,10 +521,21 @@ class kat(object):
                 # check if we have a var/constant in this line
                 if line.find('$') >= 0:
                     for key in constants.keys():
-                        if line.find('$'+key+' ') > -1:
-                            constants[key].usedBy.append(line)
-                            line = line.replace('$'+key+' ', str(constants[key].value)+ ' ')
-                        elif line.endswith('$'+key):
+                        # TODO: need to fix this for checking mulitple instances of const in a single line
+                        
+                        chars = [' ', '+', '-', '*', '/', ')']
+
+                        for c in chars:
+                            none_found = False
+                            
+                            while not none_found:
+                                if line.find('$'+key+c) > -1:
+                                    constants[key].usedBy.append(line)
+                                    line = line.replace('$'+key+c, str(constants[key].value)+ c)
+                                else:
+                                    none_found = True
+                        
+                        if line.endswith('$'+key):
                             constants[key].usedBy.append(line)
                             line = line.replace('$'+key, str(constants[key].value))
                         
