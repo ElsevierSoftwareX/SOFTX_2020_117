@@ -48,7 +48,7 @@ class Command(object):
     
 class cavity(Command):
     def __init__(self, name, c1, n1, c2, n2):
-        Command.__init__(self, axis_type)
+        Command.__init__(self, name)
         
         self.__c1 = c1
         self.__c2 = c2
@@ -115,7 +115,7 @@ class tf(Command):
     fQ = namedtuple('fQ', ['f', 'Q'])
     
     def __init__(self, name, poles, zeros):
-        Command.__init__(self, axis_type)
+        Command.__init__(self, name)
         pass
       
 class xaxis(Command):
