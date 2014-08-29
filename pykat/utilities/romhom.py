@@ -209,7 +209,7 @@ def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1):
         
     return ReducedBasis(RB=np.array(RB_matrix), limits=romlimits, x=x)
     
-def makeEmpiricalInterpolant(RB):
+def makeEmpiricalInterpolant(RB, sort=False):
 
     e_x = RB.RB
     x = RB.x
@@ -244,9 +244,19 @@ def makeEmpiricalInterpolant(RB):
             V[k][j] = e_x[j][node_indices[k]]
 
     invV = inv(V[0:len(node_indices), 0:len(node_indices)])
-    B = B_matrix(invV, e_x)
+    B = np.array(B_matrix(invV, e_x))
     
-    return EmpiricalInterpolant(B=np.array(B), nodes=np.array(x_nodes, dtype=np.float64), node_indices=np.array(node_indices, dtype=np.int32), limits=RB.limits, x=RB.x)
+    node_indices = np.array(node_indices, dtype=np.int32)
+    nodes = np.array(x_nodes, dtype=np.float64)
+    
+    if sort:
+        print sort
+        ix = np.argsort(nodes)
+        nodes = nodes[ix]
+        node_indices = node_indices[ix]
+        B = B[ix, :]
+    
+    return EmpiricalInterpolant(B=B, nodes=nodes, node_indices=node_indices, limits=RB.limits, x=RB.x)
     
 
 def makeWeights(smap, EI, verbose=True):

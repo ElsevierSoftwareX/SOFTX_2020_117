@@ -50,7 +50,7 @@ class surfacemap(object):
             
     @property
     def offset(self):
-        return np.array(self.step_size)*(self.center - np.array(self.size)/2)
+        return np.array(self.step_size)*(np.array(self.center) - 1/2. - np.array(self.size)/2.0)
     
     @property
     def ROMWeights(self):
@@ -65,14 +65,53 @@ class surfacemap(object):
             raise BasePyKatException("Map type needs handling")
         
 
-    def generateROMWeights(self, isModeMatched=True, verbose=False):
+    def generateROMWeights(self, isModeMatched=True, verbose=False, interpolate=False, tolerance = 1e-12, sigma = 1, sort=False):
+        
+        if interpolate:
+            from scipy.interpolate import interp2d
+            import numpy as np
+
+            D = interp2d(self.x, self.y, self.data, fill_value=0)
+
+            # only want even number of data points spread equally
+            # about the axes
+            if self.size[0] % 2 == 0:
+                Nx = self.size[0]
+            else:
+                Nx = self.size[0]-1
+
+            if self.size[1] % 2 == 0:
+                Ny = self.size[1]
+            else:
+                Ny = self.size[1]-1
+            
+            nx = np.linspace(min(self.x), max(self.x), Nx) 
+            ny = np.linspace(min(self.y), max(self.y), Ny)
+            
+            data = D(nx-self.offset[0], ny-self.offset[0])
+            
+            self.name += " [ROMHOM interpolated]"
+            
+            self.center = (np.array(data.shape)+1)/2.0
+            
+            self.data = data
+        
         xm = self.x[self.x<0]
         ym = self.y[self.y<0]
         
+        symm = False
+        
+        if min(xm) == min(ym) and max(xm) == max(ym) and len(xm) == len(ym):
+            symm = True
+        
         EI = {}
         
-        if len(xm) > 0: EI["xm"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched))
-        if len(ym) > 0: EI["ym"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched))
+        EI["xm"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma), sort=sort)
+        
+        if symm:
+            EI["ym"] = EI["xm"]
+        else:
+            EI["ym"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma), sort=sort)
         
         EI["limits"] = EI["xm"].limits
         

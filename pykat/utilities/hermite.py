@@ -14,7 +14,7 @@ def hermite(n, x):
         	return (4.0 * x * x - 2.0) 
 	
 	elif n == 3:		
-
+            
         	return (8.0 * x * x * x - 12.0 * x) 
 	
 	
