@@ -140,7 +140,7 @@ class gauss_param(object):
     @property
     def Rc(self):
         if self.__q.real != 0:
-            return abs(self.__q) / self.__q.real
+            return self.z * (1 + (self.zr/self.z)**2)
         else:
             return float("inf")
     

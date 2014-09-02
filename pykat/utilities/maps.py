@@ -56,11 +56,24 @@ class surfacemap(object):
     def ROMWeights(self):
         return self._rom_weights
     
-    def z_xy(self, wavelength=1064e-9):
+    def z_xy(self, wavelength=1064e-9, direction="reflection", nr1=1.0, nr2=1.0):
         
-        if "phase" in self.type:
-            k = math.pi * 2 / wavelength
-            return np.exp(2j * k * self.scaling * self.data)
+        if direction == "reflection":
+            if "phase" in self.type:
+                k = math.pi * 2 / wavelength
+                return np.exp(2j * k * self.scaling * self.data)
+            elif "absorption" in self.type:
+                return np.sqrt(1.0 - self.scaling * self.data)
+            else:
+                raise BasePyKatException("Map type needs handling")
+        elif direction == "transmission":
+            if "phase" in self.type:
+                k = math.pi * 2 / wavelength
+                return np.exp((nr1-nr2)*k * self.scaling * self.data)
+            elif "absorption" in self.type:
+                return np.sqrt(1.0 - self.scaling * self.data)
+            else:
+                raise BasePyKatException("Map type needs handling")
         else:
             raise BasePyKatException("Map type needs handling")
         
@@ -143,12 +156,52 @@ class surfacemap(object):
             pylab.show()
             
         return fig
-
+        
+class aperturemap(surfacemap):
+    
+    def __init__(self, name, size, step_size, R):
+        surfacemap.__init__(self, name, "absorption both", size, (np.array(size)+1)/2.0, step_size, 1)
+        self.R = R
+        
+    @property
+    def R(self):
+        return self.__R
+    
+    @R.setter
+    def R(self, value):
+        self.__R = value
+    
+        xx, yy = np.meshgrid(self.x, self.y)
+        
+        radius = np.sqrt(xx**2 + yy**2)
+        
+        self.data = np.zeros(self.size)
+        self.data[radius > self.R] = 1.0
+        
+        
+class curvedmap(surfacemap):
+    
+    def __init__(self, name, size, step_size, Rc):
+        surfacemap.__init__(self, name, "phase reflection", size, (np.array(size)+1)/2.0, step_size, 1e-6)
+        self.Rc = Rc
+        
+    @property
+    def Rc(self):
+        return self.__Rc
+    
+    @Rc.setter
+    def Rc(self, value):
+        self.__Rc = value
+    
+        xx, yy = np.meshgrid(self.x, self.y)
+        
+        Rsq = xx**2 + yy**2
+        self.data = (self.Rc - math.copysign(1.0, self.Rc) * np.sqrt(self.Rc**2 - Rsq))/ self.scaling
 
 class tiltmap(surfacemap):
     
     def __init__(self, name, size, step_size, tilt):
-        surfacemap.__init__(self, name, "phase", size, (np.array(size)+1)/2.0, step_size, 1)
+        surfacemap.__init__(self, name, "phase", size, (np.array(size)+1)/2.0, step_size, 1e-9)
         self.tilt = tilt
         
     @property
@@ -161,7 +214,7 @@ class tiltmap(surfacemap):
         
         xx, yy = np.meshgrid(self.x, self.y)
         
-        self.data = xx * self.tilt[1] + yy * self.tilt[0]
+        self.data = (xx * self.tilt[1] + yy * self.tilt[0])/self.scaling
         
         
         
