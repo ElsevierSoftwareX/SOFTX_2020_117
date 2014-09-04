@@ -1,6 +1,10 @@
 from itertools import combinations_with_replacement as combinations
 from pykat.utilities.optics.gaussian_beams import beam_param, HG_beam
 from pykat.exceptions import BasePyKatException
+from romhom import u_star_u
+from progressbar import ProgressBar, ETA, Percentage, Bar
+from scipy.interpolate import interp2d
+from scipy.integrate import dblquad
 
 import time
 import maps
@@ -11,10 +15,7 @@ import collections
 import math
 import cmath
 
-from romhom import u_star_u
-from progressbar import ProgressBar, ETA, Percentage, Bar
-
-def makeCouplingMatrix(max_order):
+def makeCouplingMatrix(max_order, Neven=True, Nodd=True, Meven=True, Modd=True):
     max_order = int(max_order)
     c = []
     for n in range(0, max_order+1):
@@ -30,13 +31,119 @@ def makeCouplingMatrix(max_order):
         for j in c:
             e = list(i)
             e.extend(j)
+            
+            if not Neven and (e[0]-e[2]) % 2 == 0: continue
+            if not Nodd and (e[0]-e[2]) % 2 == 1: continue
+            if not Meven and (e[1]-e[3]) % 2 == 0: continue
+            if not Modd and (e[1]-e[3]) % 2 == 1: continue
+            
             row.append(e)
         
-        M.append(row)
+        
+        M.append(np.array(row).squeeze())
     
     return np.array(M)
 
-def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None, cache=None, delta=(0,0)):
+def adaptive_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, smap=None, delta=(0,0), params={}):
+    
+    if q1y == None:
+        q1y = q1
+        
+    if q2y == None:
+        q2y = q2
+    
+    if "epsabs" not in params: params["epsabs"] = 1e-6
+    if "epsrel" not in params: params["epsrel"] = 1e-6
+    if "usepolar" not in params: params["usepolar"] = False
+        
+    if len(mode_in) != 2 or len(mode_out) != 2:
+        raise BasePyKatException("Both mode in and out should be a container with modes [n m]")
+    
+    Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
+    Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
+    
+    Nfuncs = []
+    Nfuncs.append(0)
+    
+    if smap != None:
+        
+        if not params["usepolar"]:
+            xlims = (min(smap.x), max(smap.x))
+            ylims = (min(smap.y), max(smap.y))
+            
+            def Rfunc(y,x):
+                Nfuncs[-1] += len(x)
+                return (Hg_in.Unm(x+delta[0], y+delta[1]) * smap.z_xy(x=x,y=y) * Hg_out.Unm(x, y).conjugate()).real
+                
+            def Ifunc(y,x):
+                Nfuncs[-1] += len(x)
+                return (Hg_in.Unm(x+delta[0], y+delta[1]) * smap.z_xy(x=x,y=y) * Hg_out.Unm(x, y).conjugate()).imag
+            
+        else:
+            xlims = (0, 2*math.pi)
+            ylims = (0, params["aperture"])
+            
+            def Rfunc(r, phi):
+                Nfuncs[-1] += len(x)
+                x = r*np.cos(phi)
+                y = r*np.sin(phi)
+                return (r * Hg_in.Unm(x, y) * smap.z_xy(x=x,y=y) * Hg_out.Unm(x, y).conjugate()).real
+                
+            def Ifunc(r, phi):
+                Nfuncs[-1] += len(x)
+                x = r*np.cos(phi)
+                y = r*np.sin(phi)
+                return (r * Hg_in.Unm(x, y) * smap.z_xy(x=x,y=y) * Hg_out.Unm(x, y).conjugate()).imag
+            
+    else:
+        if not params["usepolar"]:
+            _x = 4 * math.sqrt(1+max(mode_in[0],mode_in[1])) * q1.w
+            _y = 4 * math.sqrt(1+max(mode_in[0],mode_in[1])) * q1y.w
+        
+            xlims = (-_x, _x)
+            ylims = (-_y, _y)
+        
+            def Rfunc(y, x):
+                Nfuncs[-1] += len(r)
+                return (Hg_in.Unm(x+delta[0], y+delta[1]) * Hg_out.Unm(x, y).conjugate()).real
+                
+            def Ifunc(y,x):
+                Nfuncs[-1] += len(r)
+                return (Hg_in.Unm(x+delta[0], y+delta[1]) * Hg_out.Unm(x, y).conjugate()).imag
+        else:
+            xlims = (0, 2*math.pi)
+            ylims = (0, params["aperture"])
+            
+            def Rfunc(r, phi):
+                
+                if hasattr(r, "__len__"):
+                    Nfuncs[-1] += len(r)
+                else:
+                    Nfuncs[-1] += 1
+                    
+                x = r*np.cos(phi)
+                y = r*np.sin(phi)
+                return (r * Hg_in.Unm(x, y) * Hg_out.Unm(x, y).conjugate()).real
+                
+            def Ifunc(r, phi):
+                if hasattr(r, "__len__"):
+                    Nfuncs[-1] += len(r)
+                else:
+                    Nfuncs[-1] += 1
+                    
+                x = r*np.cos(phi)
+                y = r*np.sin(phi)
+                return (r * Hg_in.Unm(x, y) * Hg_out.Unm(x, y).conjugate()).imag
+    
+    R, errR = dblquad(Rfunc, xlims[0], xlims[1], lambda y: ylims[0], lambda y: ylims[1], epsabs=params["epsabs"], epsrel=params["epsrel"])
+    I, errI = dblquad(Ifunc, xlims[0], xlims[1], lambda y: ylims[0], lambda y: ylims[1], epsabs=params["epsabs"], epsrel=params["epsrel"])
+    
+    params["Nfuncs"] = Nfuncs[0]
+    params["errors"] = (errR, errI)
+    
+    return R + 1j * I
+    
+def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None, cache=None, delta=(0,0), params={}):
 
     if Axy == None:
         Axy == np.ones((len(x), len(y)))
@@ -71,7 +178,7 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None
 
 
     
-def __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None, delta=(0,0)):
+def __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None, delta=(0,0), params={}):
     if q1y == None:
         q1y = q1
         
@@ -311,7 +418,9 @@ def bayerhelms_HG_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, gamma=(0,0)
 
     return __bayerhelms_kn(n,_n, q1, q2, 2*gamma[0]) * __bayerhelms_kn(m, _m, q1y, q2y, 2*gamma[1])
 
-def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann", verbose=False, profile=False, gamma=(0,0), delta=(0,0)):
+
+
+def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann", verbose=False, profile=False, gamma=(0,0), delta=(0,0), params={}):
     if q1y == None:
         q1y = q1
         
@@ -339,7 +448,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         __fac_cache.append(math.factorial(n))
     
     if surface_map != None:  
-        Axy = surface_map.z_xy(q1.wavelength)
+        Axy = surface_map.z_xy(wavelength=q1.wavelength)
     
         x = surface_map.x
         y = surface_map.y
@@ -388,12 +497,15 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
             mode_in = [int(it.next()), int(it.next())]
             mode_out = [int(it.next()), int(it.next())]
             
+            
             if method == "riemann":
                 K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache, delta=delta)
             elif method == "romhom":
                 K[i] = ROM_HG_knm(weights, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, cache=cache)
             elif method == "bayerhelms":
                 K[i] = bayerhelms_HG_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, gamma=gamma)
+            elif method == "adaptive":
+                K[i] = adaptive_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, smap=surface_map, delta=delta, params=params)
             else:
                 raise BasePyKatException("method value '%s' not accepted" % method)
             

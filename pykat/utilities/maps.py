@@ -1,4 +1,5 @@
 from pykat.utilities.romhom import makeReducedBasis, makeEmpiricalInterpolant, makeWeights
+from scipy.interpolate import interp2d
 import numpy as np
 import math
         
@@ -11,7 +12,8 @@ class surfacemap(object):
         self.center = center
         self.step_size = step_size
         self.scaling = scaling
-
+        self.__interp = None
+        
         if data == None:
             self.data = np.zeros(size)
         else:
@@ -37,6 +39,42 @@ class surfacemap(object):
                 mapfile.write("\n")
     
     @property
+    def data(self):
+        return self.__data
+    
+    @data.setter
+    def data(self, value):
+        self.__data = value
+        self.__interp = None
+    
+    @property
+    def center(self):
+        return self.__center
+    
+    @center.setter
+    def center(self, value):
+        self.__center = value
+        self.__interp = None
+    
+    @property
+    def step_size(self):
+        return self.__step_size
+    
+    @step_size.setter
+    def step_size(self, value):
+        self.__step_size = value
+        self.__interp = None
+
+    @property
+    def scaling(self):
+        return self.__scaling
+    
+    @scaling.setter
+    def scaling(self, value):
+        self.__scaling = value
+        self.__interp = None
+
+    @property
     def x(self):
         return self.step_size[0] * (np.array(range(1, self.data.shape[0]+1)) - self.center[0])
         
@@ -56,22 +94,34 @@ class surfacemap(object):
     def ROMWeights(self):
         return self._rom_weights
     
-    def z_xy(self, wavelength=1064e-9, direction="reflection", nr1=1.0, nr2=1.0):
+    def z_xy(self, x=None, y=None, wavelength=1064e-9, direction="reflection", nr1=1.0, nr2=1.0):
         
+        if x == None and y == None:
+            data = self.scaling * self.data
+        else:
+            if self.__interp == None:
+                self.__interp = interp2d(self.x, self.y, self.data * self.scaling)
+                
+            data = self.__interp(x, y)
+            
         if direction == "reflection":
             if "phase" in self.type:
                 k = math.pi * 2 / wavelength
-                return np.exp(2j * k * self.scaling * self.data)
+                return np.exp(2j * k * data)
+                
             elif "absorption" in self.type:
-                return np.sqrt(1.0 - self.scaling * self.data)
+                return np.sqrt(1.0 - data)
+                
             else:
                 raise BasePyKatException("Map type needs handling")
         elif direction == "transmission":
             if "phase" in self.type:
                 k = math.pi * 2 / wavelength
-                return np.exp((nr1-nr2)*k * self.scaling * self.data)
+                return np.exp((nr1-nr2)*k * data)
+                
             elif "absorption" in self.type:
-                return np.sqrt(1.0 - self.scaling * self.data)
+                return np.sqrt(1.0 - data)
+                
             else:
                 raise BasePyKatException("Map type needs handling")
         else:
