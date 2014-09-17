@@ -115,12 +115,15 @@ def u_star_u(re_q1, re_q2, w0_1, w0_2, n1, n2, x, x2=None):
     return u(re_q1, w0_1, n1, x) * u(re_q2, w0_2, n2, x2).conjugate()
 
     
-def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1):
+def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1, greedyfile=None):
     
-    if isModeMatched:
-        greedypts = 'matched20.txt'
+    if greedyfile != None:
+        greedypts = str(greedyfile)
     else:
-        greedypts = 'mismatched20.txt'
+        if isModeMatched:
+            greedypts = 'matched20.txt'
+        else:
+            greedypts = 'mismatched20.txt'
     
     greedyfile = os.path.join(pykat.__path__[0],'utilities','greedypoints',greedypts)
     

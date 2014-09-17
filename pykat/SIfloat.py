@@ -1,6 +1,7 @@
 import os
 import re
 import pykat.exceptions as pkex
+import numpy as np
 
 __suffix = {'y': 'e-24',  # yocto
             'z': 'e-21',  # zepto
@@ -22,11 +23,20 @@ __suffix = {'y': 'e-24',  # yocto
 def SIfloat(value):
     if value==None: 
         return value
+        
+    value = np.array(value)
     
-    if type(value)==list:
-        return [convertToFloat(s) for s in value]
+    v = np.vectorize(convertToFloat)
+    
+    if value.size == 1:
+        return float(v(value))
+        
+    a = v(value)
+    
+    if len(a) == 1:
+        return a[0]
     else:
-        return convertToFloat(value)
+        return a
     
 def convertToFloat(value):
     

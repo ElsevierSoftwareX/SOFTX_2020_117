@@ -128,7 +128,7 @@ class surfacemap(object):
             raise BasePyKatException("Map type needs handling")
         
 
-    def generateROMWeights(self, isModeMatched=True, verbose=False, interpolate=False, tolerance = 1e-12, sigma = 1, sort=False):
+    def generateROMWeights(self, isModeMatched=True, verbose=False, interpolate=False, tolerance = 1e-12, sigma = 1, sort=False, greedyfile=None):
         
         if interpolate:
             from scipy.interpolate import interp2d
@@ -169,12 +169,12 @@ class surfacemap(object):
         
         EI = {}
         
-        EI["xm"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma), sort=sort)
+        EI["xm"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma, greedyfile=greedyfile), sort=sort)
         
         if symm:
             EI["ym"] = EI["xm"]
         else:
-            EI["ym"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma), sort=sort)
+            EI["ym"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma, greedyfile=greedyfile), sort=sort)
         
         EI["limits"] = EI["xm"].limits
         

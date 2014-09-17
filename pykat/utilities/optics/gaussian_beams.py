@@ -48,9 +48,9 @@ class gauss_param(object):
         elif len(kwargs) == 2:        
             
             if "w0" in kwargs and "z" in kwargs:
-                q = SIfloat(kwargs["z"]) + 1j *float(math.pi*SIfloat(kwargs["w0"])**2/(self.__lambda/self.__nr) )
+                q = SIfloat(kwargs["z"]) + 1j * math.pi*SIfloat(kwargs["w0"])**2/(self.__lambda/self.__nr)
             elif "z" in kwargs and "zr" in kwargs:
-                q = SIfloat(kwargs["z"]) + 1j *SIfloat(kwargs["zr"]) 
+                q = SIfloat(kwargs["z"]) + 1j * SIfloat(kwargs["zr"]) 
             elif "rc" in kwargs and "w" in kwargs:
                 one_q = 1 / SIfloat(kwargs["rc"]) - 1j * self.__lamda / (math.pi * self.__nr * SIfloat(kwargs["w"])**2)
                 q = 1/one_q
@@ -80,7 +80,7 @@ class gauss_param(object):
     
     @property
     def w(self):
-        return abs(self.__q)*math.sqrt(self.__lambda / (self.__nr * math.pi * self.__q.imag))
+        return np.abs(self.__q)* np.sqrt(self.__lambda / (self.__nr * math.pi * self.__q.imag))
     
     def beamsize(self, z=None, wavelength=None, nr=None, w0=None):
 
@@ -135,14 +135,19 @@ class gauss_param(object):
         
     @property
     def w0(self):
-        return math.sqrt(self.__q.imag * self.__lambda / (self.__nr * math.pi))    
+        return np.sqrt(self.__q.imag * self.__lambda / (self.__nr * math.pi))    
 
     @property
     def Rc(self):
-        if self.__q.real != 0:
-            return self.z * (1 + (self.zr/self.z)**2)
-        else:
-            return float("inf")
+        def __rc(z, zr):
+            if z != 0:
+                return z * (1 + (zr/z)**2)
+            else:
+                return float("inf")
+                
+        v = np.vectorize(__rc)
+        
+        return v(self.z, self.zr)
     
     def curvature(self, z=None, wavelength=None, nr=None, w0=None):
         if z == None:
@@ -314,13 +319,13 @@ class HG_beam(object):
             
     def _calc_constants(self):
         self.__xpre_const = math.pow(2.0/math.pi, 0.25)
-        self.__xpre_const *= math.sqrt(1.0/(self._qx.w0 * 2**(self._n) * math.factorial(self._n)))
-        self.__xpre_const *= cmath.sqrt(1j*self._qx.imag / self._qx.q)
+        self.__xpre_const *= np.sqrt(1.0/(self._qx.w0 * 2**(self._n) * np.factorial(self._n)))
+        self.__xpre_const *= np.sqrt(1j*self._qx.imag / self._qx.q)
         self.__xpre_const *= ((1j*self._qx.imag * self._qx.q.conjugate())/(-1j*self._qx.imag * self._qx.q)) ** ( self._n/2.0)
         
         self.__ypre_const = math.pow(2.0/math.pi, 0.25)
-        self.__ypre_const *= math.sqrt(1.0/(self._qy.w0 * 2**(self._m) * math.factorial(self._m)))
-        self.__ypre_const *= cmath.sqrt(1j*self._qy.imag / self._qy.q)
+        self.__ypre_const *= np.sqrt(1.0/(self._qy.w0 * 2**(self._m) * np.factorial(self._m)))
+        self.__ypre_const *= np.sqrt(1j*self._qy.imag / self._qy.q)
         self.__ypre_const *= ((1j*self._qy.imag * self._qy.q.conjugate())/(-1j*self._qy.imag * self._qy.q)) **(self._m/2.0)
     
         self.__sqrt2_wxz = math.sqrt(2) / self._qx.w
