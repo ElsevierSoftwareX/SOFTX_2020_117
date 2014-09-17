@@ -210,7 +210,7 @@ class xaxis(Command):
         comp_name = self.__comp.name if hasattr(self.__comp, "name") else self.__comp
         param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
         
-        return '{axis_type} {0} {1} {2} {3} {4} {5}'.format(
+        return '{axis_type} {0} {1} {2} {3:.16g} {4:.16g} {5}'.format(
                 comp_name, param_name, self.scale,
                 min(self.limits), max(self.limits), self.steps, axis_type=self._axis_type);
 
