@@ -120,6 +120,8 @@ class Param(putable, putter):
     def __str__(self):
         if self._owner().removed:
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
+        elif type(self.value) == float:
+            return repr(self.value)
         else:
             return str(self.value)
             
@@ -127,7 +129,7 @@ class Param(putable, putter):
         if self._owner().removed:
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
         else:
-            return self.value
+            return float(self.value)
         
     def getFinesseText(self):
         if self._owner().removed:
