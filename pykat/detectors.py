@@ -341,7 +341,7 @@ class pd(Detector):
         return getattr(self, '_pd__' + name)
     
     def __set_f(self, num, value):
-        setattr(self, '_pd__f' + num, float(value))
+        setattr(self, '_pd__f' + num, value)
     
     def __set_phi(self, num, value):
         if value == None and num != self.num_demods:
@@ -434,11 +434,14 @@ class pd(Detector):
                 alt_str = "*"
                 
             for n in range(1, 1+self.num_demods):
-                fphi_str += " " + str(self.__getattribute__("f"+str(n)))
+                fphi_str += " {0:.16g}".format(float(self.__getattribute__("f"+str(n))))
                 phi_val = self.__getattribute__("phi"+str(n))
                 
                 if phi_val != None:
-                    fphi_str += " " + str(phi_val)
+                    if type(phi_val) == float:
+                        fphi_str += " {0:.16g}".format(float(phi_val))
+                    else:
+                        fphi_str += " {0}".format(phi_val)
             
             senstype = self.senstype
             
@@ -448,7 +451,7 @@ class pd(Detector):
             rtn.append("pd{0}{1} {2}{3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
 
             if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                rtn.append("scale {1} {0:.16g}".format(self.name, self.scale))
 
             if self.pdtype != None:
                 rtn.append("pdtype {0} {1}".format(self.name, self.pdtype))
@@ -536,13 +539,16 @@ class qnoised(pd):
             
             if self.alternate_beam:
                 alt_str = "*"
-                
+            
             for n in range(1, 1+self.num_demods):
-                fphi_str += " " + str(self.__getattribute__("f"+str(n)))
+                fphi_str += " {0:.16g}".format(float(self.__getattribute__("f"+str(n))))
                 phi_val = self.__getattribute__("phi"+str(n))
                 
                 if phi_val != None:
-                    fphi_str += " " + str(phi_val)
+                    if type(phi_val) == float:
+                        fphi_str += " {0:.16g}".format(float(phi_val))
+                    else:
+                        fphi_str += " " + str(phi_val)
             
             senstype = self.senstype
             
@@ -552,7 +558,7 @@ class qnoised(pd):
             rtn.append("qnoised{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str, senstype))
 
             if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                rtn.append("scale {1} {0:.16g}".format(self.name, self.scale))
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
@@ -628,11 +634,14 @@ class qshot(pd):
                 alt_str = "*"
                 
             for n in range(1, 1+self.num_demods):
-                fphi_str += " " + str(self.__getattribute__("f"+str(n)))
+                fphi_str += " {0:.16g}".format(float(self.__getattribute__("f"+str(n))))
                 phi_val = self.__getattribute__("phi"+str(n))
                 
                 if phi_val != None:
-                    fphi_str += " " + str(phi_val)
+                    if type(phi_val) == float:
+                        fphi_str += " {0:.16g}".format(float(phi_val))
+                    else:
+                        fphi_str += " " + str(phi_val)
             
             senstype = self.senstype
             
@@ -642,7 +651,7 @@ class qshot(pd):
             rtn.append("qshot{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str,senstype))
 
             if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                rtn.append("scale {1} {0:.16g}".format(self.name, self.scale))
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
@@ -679,7 +688,7 @@ def xd(Detector):
             rtn.append("xd {0} {1} {2}".format(self.name, self.component, self.motion))
 
             if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                rtn.append("scale {1} {0:.16g}".format(self.name, self.scale))
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
