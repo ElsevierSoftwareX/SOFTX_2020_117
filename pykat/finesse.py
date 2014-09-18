@@ -885,9 +885,12 @@ class kat(object):
             for line in iter(p.stderr.readline, ""):
                 
                 if len(line) > 0:
-                    
+                    if isinstance(line, unicode):
+                        import unicodedata
+                        line = unicodedata.normalize('NFKD', line).encode("ascii", "ignore")
+                        
                     if line.lstrip().startswith('**'):
-                        if self.verbose: sys.stdout.write(line)  
+                        if self.verbose: sys.stdout.write(line)
                     elif line.rstrip().endswith('s'):
                         vals = line.split("-")
                         action = vals[0].strip()
