@@ -717,8 +717,11 @@ class kat(object):
                         self.__detectors[component_name].scale = SIfloat(v[1])
                     else:
                         raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(component_name))
-                elif len(values) == 2:
-                    self.scale = SIfloat(v[1])
+                elif len(v) == 2:
+                    if v[1] == "meter" or v[1] == "ampere" or v[1] == "deg":
+                        self.scale = v[1]
+                    else:
+                        self.scale = SIfloat(v[1])
                 else:
                     raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(line))
             elif (first == "pdtype"):
@@ -884,12 +887,17 @@ class kat(object):
                 if len(line) > 0:
                     
                     if line.rstrip().endswith('s'):
-                        vals = line.split("-")
-                        action = vals[0].strip()
-                        prc = vals[1].strip()[:]
+                        # FIXME: hack to fix bug with 'Global scaling factor' message
+                        if line.rstrip().endswith('ts'):
+                            # do nothing
+                            if self.verbose: sys.stdout.write(line)
+                        else:
+                            vals = line.split("-")
+                            action = vals[0].strip()
+                            prc = vals[1].strip()[:]
                         
-                        if printerr == 1:
-                            sys.stdout.write("\r{0} {1}".format(action, prc))
+                            if printerr == 1:
+                                sys.stdout.write("\r{0} {1}".format(action, prc))
                     elif line.rstrip().endswith('%'):
                         vals = line.split("-")
                         action = vals[0].strip()

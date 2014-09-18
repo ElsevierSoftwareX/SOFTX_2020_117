@@ -1,0 +1,10 @@
+l l1 1 0 0 n1
+s s1 10 1 n1 n2
+m m1 0.5 0.5 0 n2 n3
+s s2 10 1 n3 n4
+m m2 0.5 0.5 0 n4 dump
+
+pd PD1 n2
+
+xaxis m1 phi lin 0 360 1000
+
