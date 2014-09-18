@@ -886,18 +886,16 @@ class kat(object):
                 
                 if len(line) > 0:
                     
-                    if line.rstrip().endswith('s'):
-                        # FIXME: hack to fix bug with 'Global scaling factor' message
-                        if line.rstrip().endswith('ts'):
-                            # do nothing
-                            if self.verbose: sys.stdout.write(line)
-                        else:
-                            vals = line.split("-")
-                            action = vals[0].strip()
-                            prc = vals[1].strip()[:]
-                        
-                            if printerr == 1:
-                                sys.stdout.write("\r{0} {1}".format(action, prc))
+                    if line.lstrip().startswith('**'):
+                        if self.verbose: sys.stdout.write(line)  
+                    elif line.rstrip().endswith('s'):
+                        vals = line.split("-")
+                        action = vals[0].strip()
+                        prc = vals[1].strip()[:]
+                    
+                        if printerr == 1:
+                            sys.stdout.write("\r{0} {1}".format(action, prc))
+                            
                     elif line.rstrip().endswith('%'):
                         vals = line.split("-")
                         action = vals[0].strip()
