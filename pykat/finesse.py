@@ -38,6 +38,8 @@ import itertools
 import ctypes
 import ctypes.util
 import collections
+import re
+
 from collections import namedtuple, OrderedDict
 
 from pykat.node_network import NodeNetwork
@@ -880,18 +882,19 @@ class kat(object):
             p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             err = ""
             
-            #if self.verbose: print "Finesse output:"
-
+            #if self.verbose: print "Finesse output:"            
             for line in iter(p.stderr.readline, ""):
-                
                 if len(line) > 0:
-                    if isinstance(line, unicode):
-                        import unicodedata
-                        line = unicodedata.normalize('NFKD', line).encode("ascii", "ignore")
-                        
-                    if line.lstrip().startswith('**'):
+                    # remove any ANSI commands
+                    ansi = re.compile(r'\x1b[^m]*m')
+                    line = ansi.sub('', line)
+                    
+                    # warnings and errors start with an asterisk 
+                    # so if verbose show them
+                    if line.lstrip().startswith('*'):
                         if self.verbose: sys.stdout.write(line)
-                    elif line.rstrip().endswith('s'):
+                        
+                    elif line.rstrip().endswith('s') and line.contains('%'):
                         vals = line.split("-")
                         action = vals[0].strip()
                         prc = vals[1].strip()[:]
@@ -907,8 +910,6 @@ class kat(object):
                         if printerr == 1:
                             sys.stdout.write("\r{0} {1}".format(action, prc))
                             
-                    elif line[0:3] == '** ':
-                        if self.verbose: sys.stdout.write(line)
                     else:
                         err += line
 
