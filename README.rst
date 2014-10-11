@@ -136,11 +136,12 @@ A Flask based website that runs the Finesse test suites is included in PyKat. Th
 Prerequistes:
     Flask
     Numpy
+    CodernityDB
     
 Command to start server:
 
 .. code:: bash
 
-  python -m pykat.test.web_server --path=[path to create website] --port=[HTTP port] --git-bin=[path to git binary]
+  python -m pykat.testing.web_server --path=[path to create website] --port=[HTTP port] --git-bin=[path to git binary]
 
 The website can then be accessed in a web browser at the address: localhost:[port]

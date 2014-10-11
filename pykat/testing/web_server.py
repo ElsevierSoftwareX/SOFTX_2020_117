@@ -25,7 +25,7 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
     
     if(app.instance_path!=instance_path):
 	print app.instance_path, instance_path
-        raise Exception("Instance path of Flask app didn't match the requested value")
+        raise Exception("Instance path of Flask app (%s) didn't match the requested value (%s)" %(app.instance_path, instance_path))
     
     os.chdir(instance_path)    
     

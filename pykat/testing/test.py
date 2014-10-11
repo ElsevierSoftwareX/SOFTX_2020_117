@@ -47,7 +47,7 @@ def run_kat_file(item):
             #try:
             start = time.time()
             
-            out,err = utils.runcmd(["nice", "--18", FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
+            out,err = utils.runcmd([FINESSE_EXE, "--noheader", kat], cwd=SUITE_PATH)
             runtime = time.time()-start
             
             OUT_FILE = os.path.join(SUITE_PATH,basename + ".out")
@@ -321,7 +321,7 @@ class FinesseTestProcess(Thread):
         
         self.pool = Pool(initializer=initProcess,initargs=(self.done_kats,) ,processes = self.pool_size)    
         results = self.pool.imap_unordered(run_kat_file, runs, 1)
-        print "DONE POOL!!!!"
+        print "Finsihed running pool of kats"
         self.pool.close()
         
         for result in results:
@@ -338,7 +338,7 @@ class FinesseTestProcess(Thread):
             if len(self.kat_run_exceptions[suite].keys()) > 0:
                 print "Could not run the following kats:\n" + "\n".join(self.kat_run_exceptions[suite].keys()) + " in " + suite
             else:
-                print "No errors whilst running" + suite
+                print "No exceptions whilst running: " + suite
 
         self.diffing = True
         
@@ -348,14 +348,14 @@ class FinesseTestProcess(Thread):
             print "Diffing suite: " + suite + "..."
 
             outs = []
-            SUITE_PATH = os.path.join(OUTPUTS_DIR,suite)
-
+            SUITE_PATH = os.path.join(OUTPUTS_DIR, suite)
+            
             for files in os.listdir(SUITE_PATH):
                 if files.endswith(".out"):
                     outs.append(files)
 
             REF_DIR = os.path.join(self.TEST_DIR,"kat_test",suite,"reference")
-
+            
             if not os.path.exists(REF_DIR):
                 raise Exception("Suite reference directory doesn't exist: " + REF_DIR)
                 
@@ -371,7 +371,7 @@ class FinesseTestProcess(Thread):
                     
                 ref_arr = np.loadtxt(ref_file, dtype=np.float64)
                 out_arr = np.loadtxt(out_file, dtype=np.float64)
-                                
+                
                 if ref_arr.shape != out_arr.shape:
                     raise DiffException("Reference and output are different shapes", out)
 
@@ -398,8 +398,7 @@ class FinesseTestProcess(Thread):
                 else:
                     max = np.max(rel_diff) 
                     
-                    self.output_differences[suite][out] = (False,
-                                                           max)
+                    self.output_differences[suite][out] = (False, max)
                 
                 
                         
@@ -410,10 +409,13 @@ class FinesseTestProcess(Thread):
                 f_out.close()
                 f_in.close()
                 
+                print "removing out file ", out_file
                 os.remove(out_file)
                 
                 self.done_kats.value += 1
-                
+        
+        print "Finished diffing..."
+        
         REPORT_PATH = os.path.join(self.BASE_DIR,"reports")
         
         if not os.path.exists(REPORT_PATH):

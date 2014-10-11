@@ -182,29 +182,54 @@ class surfacemap(object):
         
         return self.ROMWeights, EI
         
-    def plot(self, show=True, clabel=None):
+    def plot(self, show=True, clabel=None, xlim=None, ylim=None):
         
         import pylab
         
+        if xlim != None:
+            _x = np.logical_and(self.x<=max(xlim)/100.0, self.x>=min(xlim)/100.0)
+            xmin = np.min(np.where(_x == True))
+            xmax = np.max(np.where(_x == True))
+        else:
+            xmin = 0
+            xmax = len(self.x)-1
+            xlim = [self.x.min()*100, self.x.max()*100]
+    
+        if ylim != None:
+            _y = np.logical_and(self.y<=max(ylim)/100.0, self.y>=min(ylim)/100.0)
+            ymin = np.min(np.where(_y == True))
+            ymax = np.max(np.where(_y == True))
+        else:
+            ymin = 0
+            ymax = len(self.y)-1
+            ylim = [self.y.min()*100, self.y.max()*100]
+        
+        zmin = self.data[xmin:xmax,ymin:ymax].min()
+        zmax = self.data[xmin:xmax,ymin:ymax].max()
+
         # 100 factor for scaling to cm
         xrange = 100*self.x
         yrange = 100*self.y
-        
+
         fig = pylab.figure()
-        axes = pylab.imshow(self.data, extent=[min(xrange),max(xrange),min(yrange),max(yrange)])
+        axes = pylab.pcolormesh(xrange, yrange, self.data, vmin=zmin, vmax=zmax)
         pylab.xlabel('x [cm]')
         pylab.ylabel('y [cm]')
 
+        if xlim != None: pylab.xlim(xlim)
+        if ylim != None: pylab.ylim(ylim)
+
         pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
-        
+
         cbar = fig.colorbar(axes)
+        cbar.set_clim(zmin, zmax)
         
         if clabel != None:
             cbar.set_label(clabel)
-                
+    
         if show:
             pylab.show()
-            
+        
         return fig
         
 class aperturemap(surfacemap):

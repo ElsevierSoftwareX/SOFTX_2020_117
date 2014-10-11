@@ -19,6 +19,7 @@ import numpy as np
 from pykat.testing.web.database_indices import TestIDIndex, SrcCommitIndex, KatTestIndex
 import re, gzip
 import os, sys, traceback
+from multiprocessing import cpu_count
 
 global current_test, scheduled_tests, schedule_lock,enabled_suites
 
@@ -200,9 +201,11 @@ class FinesseProcessWatcher(Thread):
                 EXE = ""
             
             KAT_EXE = os.path.join(app.instance_path,"tests",str(self.process_to_watch.test_id),"build","kat" + EXE)
+            KAT_INI = os.path.join(app.instance_path,"tests",str(self.process_to_watch.test_id),"build","kat.ini")
             KAT_STORE_PATH = os.path.join(app.instance_path,"kat_store")
             KAT_STORE_EXE = os.path.join(KAT_STORE_PATH,"kat_" + str(self.process_to_watch.get_version()) + EXE)
-            
+            KAT_STORE_INI = os.path.join(KAT_STORE_PATH,"kat.ini_" + str(self.process_to_watch.get_version()))
+                        
             if not os.path.exists(KAT_STORE_PATH):
                 os.mkdir(KAT_STORE_PATH)
                 
@@ -211,13 +214,19 @@ class FinesseProcessWatcher(Thread):
                     os.remove(KAT_STORE_EXE)
                     
                 shutil.copyfile(KAT_EXE, KAT_STORE_EXE)
-                
+            
+            if os.path.exists(KAT_INI):
+                if os.path.exists(KAT_STORE_INI):
+                    os.remove(KAT_STORE_INI)
+                    
+                shutil.copyfile(KAT_INI, KAT_STORE_INI)
+                 
             # Remove the src and lib directories from the build as they are not needed
             # and take up a fair bit of space
             BUILD_PATH = os.path.join(self.process_to_watch.BASE_DIR, "build")
             
-            utils.runcmd(["rm","src","-rf"],cwd=BUILD_PATH)
-            utils.runcmd(["rm","lib","-rf"],cwd=BUILD_PATH)
+            utils.runcmd(["rm","-rf","src"],cwd=BUILD_PATH)
+            utils.runcmd(["rm","-rf","lib"],cwd=BUILD_PATH)
             
         except RecordNotFound:
             print "Could not find database records for test id " + str(self.process_to_watch.test_id)
@@ -393,14 +402,20 @@ def __finesse_start_test(git_commit, kats, nobuild=False):
                 else:
                     EXE = ""
                     
-                TEST_BUILD_PATH = os.path.join(TEST_RUN_PATH,"build")
+                TEST_BUILD_PATH = os.path.join(TEST_RUN_PATH, "build")
+                
                 KAT_EXE = os.path.join(app.instance_path, "kat_store", "kat_" + str(git_commit) + EXE)
+                KAT_INI = os.path.join(app.instance_path, "kat_store", "kat.ini_" + str(git_commit))
                 
                 if os.path.exists(KAT_EXE):
                     print "using existing kat file " + KAT_EXE
-                    utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/base.git",TEST_BUILD_PATH])
+                    os.mkdir(TEST_BUILD_PATH)
+                    
                     KAT_NEW_EXE = os.path.join(TEST_BUILD_PATH,"kat" + EXE)
+                    KAT_NEW_INI = os.path.join(TEST_BUILD_PATH,"kat.ini")
+                    
                     shutil.copyfile(KAT_EXE, KAT_NEW_EXE)
+                    shutil.copyfile(KAT_INI, KAT_NEW_INI)
                 else:
                     nobuild = False
               
@@ -461,6 +476,7 @@ def finesse_get_test_progress():
     finally:
         schedule_lock.release()
     
+        
 @app.route('/finesse/get_branches', methods=["POST"])
 def finesse_get_branches():
     SRC_PATH = os.path.join(app.instance_path,"finesse_src")

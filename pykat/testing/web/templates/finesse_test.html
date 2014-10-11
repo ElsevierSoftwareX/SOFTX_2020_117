@@ -290,7 +290,8 @@
                                         
                                 $(nTd).empty();
                                 $(nTd).append(a);
-                                $(nTd).append(b);
+                                // removed ability to rerun, doesn't quite work
+                                //$(nTd).append(b);
                             }, "mDataProp": "test_id", "bSearchable": false, "sTitle": "", "bSortable": false
                         },
                         { "mDataProp": "test_id", "sTitle": "Test ID","bSearchable": true, "bVisible": true, "sClass": "center" },
@@ -442,6 +443,8 @@
                   dataType: "json"
                 });
             }
+            
+
             
             function updateBranches(){
                 $("#btnStartTest").attr("disabled", true);
