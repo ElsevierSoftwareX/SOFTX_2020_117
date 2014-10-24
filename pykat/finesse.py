@@ -484,15 +484,15 @@ class kat(object):
   (        '::;;+;;:      `-"' =" /,`"" `) /
   L.        \\`:::a:f            c_/     n_'
   ..`--...___`.  .    ,  
-   `^-....____:   +.      {1}""".format(pykat.__version__, pykat_web)
+   `^-....____:   +.      {1}\n""".format(pykat.__version__, pykat_web)
     
-    def loadKatFile(self, katfile):
+    def loadKatFile(self, katfile, blocks=None):
         commands=open(katfile).read()
-        self.parseCommands(commands)
+        self.parseCommands(commands, blocks=blocks)
     
-    def parseKatCode(self, code):
+    def parseKatCode(self, code, blocks=None):
         #commands = code.split("\n")
-        self.parseCommands(code)
+        self.parseCommands(code, blocks=blocks)
 
     def processConstants(self, commands):
         """
@@ -547,7 +547,7 @@ class kat(object):
         
         return commands_new
         
-    def parseCommands(self, commands):
+    def parseCommands(self, commands, blocks=None):
         blockComment = False
         
         commands=self.remove_comments(commands)
@@ -558,153 +558,163 @@ class kat(object):
                            # objects have been set and created
         
         for line in commands:
-            #for line in commands:
-            if len(line.strip()) >= 2:
-                line = line.strip()
+            try:
+                if len(line.strip()) >= 2:
+                    line = line.strip()
 
-                # Looking for block start or end
-                values = line.split()
-                if values[0] == "%%%":
-                    if values[1] == "FTblock":
-                        newTag = values[2]
+                    # Looking for block start or end
+                    values = line.split()
+                
+                    if values[0] == "%%%":
+                        if values[1] == "FTblock":
+                            newTag = values[2]
                         
-                        if self.__currentTag != None and self.__currentTag != NO_BLOCK: 
-                            warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
+                            if self.__currentTag != None and self.__currentTag != NO_BLOCK: 
+                                warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
                             
-                        if newTag in self.__blocks:
-                            raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                            if newTag in self.__blocks:
+                                raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
                             
-                        self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
-                        self.__currentTag = newTag
+                            self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
+                            self.__currentTag = newTag
                         
-                    if values[1] == "FTend":
-                        self.__currentTag = NO_BLOCK
+                        if values[1] == "FTend":
+                            self.__currentTag = NO_BLOCK
                         
-                    continue
-                #warnings.warn("current tag {0}".format(self.__currentTag))    
+                        continue
 
-                # don't read comment lines
-                if line[0] == "#" or line[0] == "%":
-                    continue
-                
-                # check if block comment is being used
-                if not blockComment and line[0:2] == "/*":
-                    blockComment = True
-                    continue
-                elif blockComment and line[0:2] == "*/":
-                    blockComment = False
-                    continue
-                
-                first = line.split(" ",1)[0]
-                obj = None
-                if(first == "m" or first == "m1" or first == "m2"):
-                    obj = pykat.components.mirror.parseFinesseText(line)
-                elif(first == "s"):
-                    obj = pykat.components.space.parseFinesseText(line)
-                elif(first == "l"):
-                    obj = pykat.components.laser.parseFinesseText(line)
-                elif(first == "sq"):
-                    obj = pykat.components.squeezer.parseFinesseText(line)
-                elif(first[0:2] == "bs"):
-                    obj = pykat.components.beamSplitter.parseFinesseText(line)
-                elif(first[0:2] == "gr"):
-                    obj = pykat.components.grating.parseFinesseText(line)
-                elif(first[0:4] == "isol"):
-                    obj = pykat.components.isolator.parseFinesseText(line)
-                elif(first[0:4] == "lens"):
-                    obj = pykat.components.lens.parseFinesseText(line)
-                elif(first[0:3] == "mod"):
-                    obj = pykat.components.modulator.parseFinesseText(line)
-                elif(first[0:2] == "ad"):
-                    obj = pykat.detectors.ad.parseFinesseText(line)
-                elif(first[0:2] == "bp"):
-                    obj = pykat.detectors.bp.parseFinesseText(line)
-                elif(first[0:4] == "gouy"):
-                    obj = pykat.detectors.gouy.parseFinesseText(line)
-                elif(first[0:2] == "pd" and first != "pdtype"):
-                    obj = pykat.detectors.pd.parseFinesseText(line)
-                elif(first == "qshot" or first == "qshotS" or first == "qshotN"):
-                    obj = pykat.detectors.qshot.parseFinesseText(line)
-                elif(first == "qnoised" or first == "qnoisedS" or first == "qnoisedN"):
-                    obj = pykat.detectors.qnoised.parseFinesseText(line)
-                elif(first == "xaxis" or first == "xaxis*"):
-                    obj = pykat.commands.xaxis.parseFinesseText(line)
-                elif(first == "x2axis" or first == "x2axis*"):
-                    obj = pykat.commands.x2axis.parseFinesseText(line)
-                elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
-                    after_process.append(line)
-                elif(first == "scale"):
-                    after_process.append(line)
-                elif(first == "pdtype"):
-                    after_process.append(line)
-                elif(first == "attr"):
-                    after_process.append(line)
-                elif(first == "noxaxis"):
-                    self.noxaxis = True
-                elif(first == "lambda"):
-                    v = line.split()
-                    self.lambda0 = SIfloat(v[-1])
-                elif(first == "yaxis"):
-                    v = line.split()
+                    # only include listed blocks, if we have specfied them
+                    if blocks != None and self.__currentTag not in blocks:
+                        continue
                     
-                    self.yaxis = v[-1]
-                elif(first == "phase"):
-                    v = line.split()
-                    if len(v) != 2:
-                        raise pkex.BasePyKatException("phase command `{0}` is incorrect.".format(line))
-                    else:
-                        self.phase = int(v[1])
-                elif(first == "maxtem"):
-                    v = line.split()
-                    if len(v) != 2:
-                        raise pkex.BasePyKatException("maxtem command `{0}` is incorrect.".format(line))
-                    else:
-                        if v[1] == "off":
-                        	self.maxtem = -1
+                    # don't read comment lines
+                    if line[0] == "#" or line[0] == "%":
+                        continue
+                
+                    # check if block comment is being used
+                    if not blockComment and line[0:2] == "/*":
+                        blockComment = True
+                        continue
+                    elif blockComment and line[0:2] == "*/":
+                        blockComment = False
+                        continue
+                
+                    first = line.split(" ",1)[0]
+                    obj = None
+                    
+                    if(first == "m" or first == "m1" or first == "m2"):
+                        obj = pykat.components.mirror.parseFinesseText(line)
+                    elif(first == "s"):
+                        obj = pykat.components.space.parseFinesseText(line)
+                    elif(first == "l"):
+                        obj = pykat.components.laser.parseFinesseText(line)
+                    elif(first == "sq"):
+                        obj = pykat.components.squeezer.parseFinesseText(line)
+                    elif(first[0:2] == "bs"):
+                        obj = pykat.components.beamSplitter.parseFinesseText(line)
+                    elif(first[0:2] == "gr"):
+                        obj = pykat.components.grating.parseFinesseText(line)
+                    elif(first[0:4] == "isol"):
+                        obj = pykat.components.isolator.parseFinesseText(line)
+                    elif(first[0:4] == "lens"):
+                        obj = pykat.components.lens.parseFinesseText(line)
+                    elif(first[0:3] == "mod"):
+                        obj = pykat.components.modulator.parseFinesseText(line)
+                    elif(first[0:2] == "ad"):
+                        obj = pykat.detectors.ad.parseFinesseText(line)
+                    elif(first[0:2] == "bp"):
+                        obj = pykat.detectors.bp.parseFinesseText(line)
+                    elif(first[0:4] == "gouy"):
+                        obj = pykat.detectors.gouy.parseFinesseText(line)
+                    elif(first[0:2] == "pd" and first != "pdtype"):
+                        obj = pykat.detectors.pd.parseFinesseText(line)
+                    elif(first == "qshot" or first == "qshotS" or first == "qshotN"):
+                        obj = pykat.detectors.qshot.parseFinesseText(line)
+                    elif(first == "qnoised" or first == "qnoisedS" or first == "qnoisedN"):
+                        obj = pykat.detectors.qnoised.parseFinesseText(line)
+                    elif(first == "xaxis" or first == "xaxis*"):
+                        obj = pykat.commands.xaxis.parseFinesseText(line)
+                    elif(first == "x2axis" or first == "x2axis*"):
+                        obj = pykat.commands.x2axis.parseFinesseText(line)
+                    elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
+                        after_process.append(line)
+                    elif(first == "scale"):
+                        after_process.append(line)
+                    elif(first == "pdtype"):
+                        after_process.append(line)
+                    elif(first == "attr"):
+                        after_process.append(line)
+                    elif(first == "noxaxis"):
+                        self.noxaxis = True
+                    elif(first == "lambda"):
+                        v = line.split()
+                        self.lambda0 = SIfloat(v[-1])
+                    elif(first == "yaxis"):
+                        v = line.split()
+                    
+                        self.yaxis = v[-1]
+                    elif(first == "phase"):
+                        v = line.split()
+                        if len(v) != 2:
+                            raise pkex.BasePyKatException("phase command `{0}` is incorrect.".format(line))
                         else:
-	                        self.maxtem = int(v[1])
-                elif(first == "trace"):
-                    v = line.split()
-                    if len(v) > 2:
-                        raise pkex.BasePyKatException("Trace command `{0}` is incorrect.".format(line))
-                    elif len(v) == 2:
-                        self.trace = v[1]
-                elif(first == "retrace"):
-                    v = line.split()
-                    if len(v) > 2:
-                        raise pkex.BasePyKatException("Retrace command `{0}` is incorrect.".format(line))
-                    elif len(v) == 2:
-                        self.retrace = v[1]                        
-                elif(first == "deriv_h"):
-                    v = line.split()
-                    if len(v) != 2:
-                        raise pkex.BasePyKatException("deriv_h command `{0}` is incorrect.".format(line))
+                            self.phase = int(v[1])
+                    elif(first == "maxtem"):
+                        v = line.split()
+                        if len(v) != 2:
+                            raise pkex.BasePyKatException("maxtem command `{0}` is incorrect.".format(line))
+                        else:
+                            if v[1] == "off":
+                            	self.maxtem = -1
+                            else:
+    	                        self.maxtem = int(v[1])
+                    elif(first == "trace"):
+                        v = line.split()
+                        if len(v) > 2:
+                            raise pkex.BasePyKatException("Trace command `{0}` is incorrect.".format(line))
+                        elif len(v) == 2:
+                            self.trace = v[1]
+                    elif(first == "retrace"):
+                        v = line.split()
+                        if len(v) > 2:
+                            raise pkex.BasePyKatException("Retrace command `{0}` is incorrect.".format(line))
+                        elif len(v) == 2:
+                            self.retrace = v[1]                        
+                    elif(first == "deriv_h"):
+                        v = line.split()
+                        if len(v) != 2:
+                            raise pkex.BasePyKatException("deriv_h command `{0}` is incorrect.".format(line))
+                        else:
+                            self.deriv_h = float(v[1])
+                    elif(first == "gnuterm" or first == "pyterm"):
+                        if self.verbose:
+                            print "Ignoring Gnuplot/Python terminal command '{0}'".format(line)
+                    #elif(first == "fsig"):
+                    #    after_process.append(line)
+                    elif(first == "noplot"):
+                        obj = line
+                        self.__blocks[self.__currentTag].contents.append(line) 
                     else:
-                        self.deriv_h = float(v[1])
-                elif(first == "gnuterm" or first == "pyterm"):
-                    if self.verbose:
-                        print "Ignoring Gnuplot/Python terminal command '{0}'".format(line)
-                #elif(first == "fsig"):
-                #    after_process.append(line)
-                elif(first == "noplot"):
-                    obj = line
-                    self.__blocks[self.__currentTag].contents.append(line) 
-                else:
-                    if self.verbose:
-                        print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
+                        if self.verbose:
+                            print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                         
-                    obj = line
-                    # manually add the line to the block contents
-                    self.__blocks[self.__currentTag].contents.append(line) 
+                        obj = line
+                        # manually add the line to the block contents
+                        self.__blocks[self.__currentTag].contents.append(line) 
                 
-                if obj != None and not isinstance(obj, str):
-                    if self.hasNamedObject(obj.name):
-                        getattr(self, obj.name).remove()
-                        print "Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line)
+                    if obj != None and not isinstance(obj, str):
+                        if self.hasNamedObject(obj.name):
+                            getattr(self, obj.name).remove()
+                            print "Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line)
                         
-                    self.add(obj)
-                    
-                    
+                        self.add(obj)
+            except:
+                print "--------------------------------------------------------"
+                print "Error parsing line: " + line
+                print "--------------------------------------------------------"
+                raise
+                
+                
         # now process all the varous gauss/attr etc. commands which require
         # components to exist first before they can be processed
         for line in after_process:
@@ -888,13 +898,13 @@ class kat(object):
                     # remove any ANSI commands
                     ansi = re.compile(r'\x1b[^m]*m')
                     line = ansi.sub('', line)
-                    
+
                     # warnings and errors start with an asterisk 
                     # so if verbose show them
                     if line.lstrip().startswith('*'):
                         if self.verbose: sys.stdout.write(line)
                         
-                    elif line.rstrip().endswith('s') and line.contains('%'):
+                    elif line.rstrip().endswith('s') and '%' in line:
                         vals = line.split("-")
                         action = vals[0].strip()
                         prc = vals[1].strip()[:]

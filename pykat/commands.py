@@ -20,7 +20,7 @@ class Command(object):
     def __init__(self, name):
         self.tag = None
         self.__removed = False
-        self.__name = name
+        self.__name = name.strip("*")
         
     def getFinesseText(self):
         """ Base class for individual finesse optical components """

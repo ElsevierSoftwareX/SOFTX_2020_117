@@ -9,3 +9,5 @@ beam.n = 5
 beam.m = 6
 
 beam.plot()
+
+

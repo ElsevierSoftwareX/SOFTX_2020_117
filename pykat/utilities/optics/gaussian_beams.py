@@ -319,12 +319,12 @@ class HG_beam(object):
             
     def _calc_constants(self):
         self.__xpre_const = math.pow(2.0/math.pi, 0.25)
-        self.__xpre_const *= np.sqrt(1.0/(self._qx.w0 * 2**(self._n) * np.factorial(self._n)))
+        self.__xpre_const *= np.sqrt(1.0/(self._qx.w0 * 2**(self._n) * np.math.factorial(self._n)))
         self.__xpre_const *= np.sqrt(1j*self._qx.imag / self._qx.q)
         self.__xpre_const *= ((1j*self._qx.imag * self._qx.q.conjugate())/(-1j*self._qx.imag * self._qx.q)) ** ( self._n/2.0)
         
         self.__ypre_const = math.pow(2.0/math.pi, 0.25)
-        self.__ypre_const *= np.sqrt(1.0/(self._qy.w0 * 2**(self._m) * np.factorial(self._m)))
+        self.__ypre_const *= np.sqrt(1.0/(self._qy.w0 * 2**(self._m) * np.math.factorial(self._m)))
         self.__ypre_const *= np.sqrt(1j*self._qy.imag / self._qy.q)
         self.__ypre_const *= ((1j*self._qy.imag * self._qy.q.conjugate())/(-1j*self._qy.imag * self._qy.q)) **(self._m/2.0)
     
