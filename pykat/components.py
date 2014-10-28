@@ -822,7 +822,7 @@ class modulator(Component):
     def order(self): return self.__order
     @order.setter
     def order(self, value):
-        if order <= 1 and order > 6:
+        if value <= 1 and value > 6:
             raise pkex.BasePyKatException("modulator order must be between 1 and 6")
             
         self.__order = int(value)

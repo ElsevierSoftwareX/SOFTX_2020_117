@@ -808,13 +808,18 @@ class kat(object):
         
         return Process(target=f__lkat_process, args=(callback, cmd, kwargs))
            
-    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None) :
+    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
         data from the simulation run.
         printout=1 prints the Finesse banner
         printerr shows the Finesse progress (set kat.verbose=1 to see warnings and errors)
+        plot (string) - Sets gnuterm for plotting
+        save_output (bool) - if true does not delete out file
+        save_kat (bool) - if true does not delete kat file
+        kat_name (string) - name of kat file if needed, will be randomly generated otherwise
+        cmd_args (list of strings) - command line flags to pass to FINESSE
         """
         start = datetime.datetime.now()
         
@@ -881,7 +886,10 @@ class kat(object):
             
             if self.__time_code:
                 cmd.append('--perf-timing')
-
+            
+            if cmd_args != None:
+                cmd.extend(cmd_args)
+                
             cmd.append('--no-backspace')
             # set default format so that less repeated numbers are printed to the
             # output file, should speed up running and parsing of output files
@@ -901,17 +909,16 @@ class kat(object):
 
                     # warnings and errors start with an asterisk 
                     # so if verbose show them
-                    if line.lstrip().startswith('*'):
-                        if self.verbose: sys.stdout.write(line)
-                        
-                    elif line.rstrip().endswith('s') and '%' in line:
-                        vals = line.split("-")
+                    if line.lstrip().startswith('*PROG*'):
+                        line = line[8:-1]
+                        vals = line.split("-",1)
                         action = vals[0].strip()
                         prc = vals[1].strip()[:]
                     
                         if printerr == 1:
                             sys.stdout.write("\r{0} {1}".format(action, prc))
-                            
+                    elif line.lstrip().startswith('*'):
+                        if self.verbose: sys.stdout.write(line)        
                     elif line.rstrip().endswith('%'):
                         vals = line.split("-")
                         action = vals[0].strip()
