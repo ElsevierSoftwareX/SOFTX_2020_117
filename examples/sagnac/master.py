@@ -97,7 +97,7 @@ def main():
 	legend['bs']=mylegend('Imbalanced BS 49:51','g')
 
 	print "--------------------------------------------------------"
-	print " 3. Imbalanced small mass"
+	print " 3. Mass asymmetry"
 	result['mass']=mass(kat)
 	legend['mass']=mylegend('Mass asymmetry 10%','c')
 

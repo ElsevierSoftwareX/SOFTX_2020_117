@@ -1,18 +1,15 @@
 #################################################################
-# Finesse input file of the Glasgow Speedmeter Experiment
-# Based on an OptoCAD export, cleaned and prepared in this form
+# Finesse input file of the Glasgow Speedmeter Experiment,
+# based on an OptoCAD export, cleaned and prepared in this form
 # during the Speedmeter Workshop, October 2014. For help and
 # questions, feel free to contact me at: adf@star.sr.bham.ac.uk
 # Andreas Freise, 30.10.2014
 #
-# The parameters below don't necessarily match the current speedmeter
-# design, instead they were chosen to match Stefan Danilishon's Matlab
-# example for comparison. However, you can easily change the parameters
-# to an updated design without problem. No special tuning or so is
-# required.
-#
-# Some strange sounding component names inlcuding '{p}' and '{s}' are just
-# OptoCAD notations and have no special meaning in Finesse.
+# The parameters below don't necessarily match the current 
+# speedmeter design, instead they were chosen to match Stefan 
+# Danilishin's Matlab example for comparison. However, you can 
+# easily change the parameters to an updated design without 
+# problem. No special tuning or so is required.
 #################################################################
 
 ## general constants
@@ -56,7 +53,14 @@ s rs8 $lrs8 nM7n nM1an
 bs1 M1a 500u 0 0 0 nM1aw nM1an nM1ae nM1as 
 attr M1a Rc -7.91
 attr M1a mass $MassM1 
-s rs12 1.315 nM3an nM1ae  
+s rs12 1.315 nM3an nM1ae
+##################################################################
+# Note that the following lines are 'wrong'. The 'dump' notes
+# are not open ports, i.e. even with the transmssion of the ETMs
+# non-zero, no quantum noise will enter through this port. 
+# I am using dump notes here to match Stefan's example calculation,
+# but you should not use 'dump' nodes with any mirror or BS that
+# has non-zero losses or transmission  
 bs1 M3a $T_ETM 0 0 0 nM3aw nM3an dump dump #nM3aT1 nM3aT2
 attr M3a mass $MassM23
 s rs11 0.2 1. nM2an nM3aw   
@@ -82,7 +86,14 @@ s rs26 $lrs26 nM8n nM1bw
 bs1 M1b 500u 0 0 0 nM1bw nM1bn nM1be nM1bs  
 attr M1b Rc -7.91
 attr M1b mass $MassM1 
-s rs19 1.315 nM1be nM2bw    
+s rs19 1.315 nM1be nM2bw
+##################################################################
+# Note that the following lines are 'wrong'. The 'dump' notes
+# are not open ports, i.e. even with the transmssion of the ETMs
+# non-zero, no quantum noise will enter through this port. 
+# I am using dump notes here to match Stefan's example calculation,
+# but you should not use 'dump' nodes with any mirror or BS that
+# has non-zero losses or transmission    
 bs1 M2b $T_ETM 0 0 0 nM2bw nM2bn dump dump #nM2bT1 nM2bT2      
 attr M2b mass $MassM23 
 s rs20 0.2 nM2bn nM3bw   
