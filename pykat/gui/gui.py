@@ -6,7 +6,7 @@ Created on Tue Jan 29 11:35:48 2013
 """
 
 from pykat.components import Component, space
-from pykat.detectors import Detector
+from pykat.detectors import BaseDetector as Detector
 
 from PyQt4 import QtGui, QtCore
 from PyQt4.Qt import *

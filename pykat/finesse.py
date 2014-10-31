@@ -43,7 +43,7 @@ import re
 from collections import namedtuple, OrderedDict
 
 from pykat.node_network import NodeNetwork
-from pykat.detectors import Detector
+from pykat.detectors import BaseDetector as Detector
 from pykat.components import Component
 from pykat.commands import Command, xaxis
 from pykat.gui.gui import pyKatGUI
@@ -634,6 +634,8 @@ class kat(object):
                         obj = pykat.detectors.qnoised.parseFinesseText(line)
                     elif(first == "xaxis" or first == "xaxis*"):
                         obj = pykat.commands.xaxis.parseFinesseText(line)
+                    elif(first[0:2] == "hd"):
+                        obj = pykat.detectors.hd.parseFinesseText(line)
                     elif(first == "x2axis" or first == "x2axis*"):
                         obj = pykat.commands.x2axis.parseFinesseText(line)
                     elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
@@ -1415,7 +1417,7 @@ class kat(object):
     def __del_detector(self, det):
 
         if not isinstance(det, Detector):
-            raise exceptions.ValueError("Argument is not of type Detector")
+            raise pkex.BasePyKatException("Argument is not of type Detector")
         
         name = det.name
         
@@ -1428,7 +1430,7 @@ class kat(object):
     def __add_command(self, com):
 
         if not isinstance(com, Command):
-            raise exceptions.ValueError("Argument is not of type Command")
+            raise pkex.BasePyKatException("Argument is not of type Command")
         
         name = com.__class__.__name__
         fget = lambda self: self.__get_command(name)
@@ -1454,7 +1456,7 @@ class kat(object):
     def __add_component(self, comp):
 
         if not isinstance(comp, Component):
-            raise exceptions.ValueError("Argument is not of type Component")
+            raise pkex.BasePyKatException("Argument is not of type Component")
             
         fget = lambda self: self.__get_component(comp.name)
         
@@ -1464,7 +1466,7 @@ class kat(object):
     def __del_component(self, comp):
 
         if not isinstance(comp, Component):
-            raise exceptions.ValueError("Argument is not of type Component")
+            raise pkex.BasePyKatException("Argument is not of type Component")
         
         delattr(self.__class__, comp.name)
         delattr(self, '__comp_' + comp.name)

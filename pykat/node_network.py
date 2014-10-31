@@ -8,7 +8,7 @@ import exceptions
 import pykat.gui.graphics
 import pykat.exceptions as pkex
 from pykat.components import Component
-from pykat.detectors import Detector
+from pykat.detectors import BaseDetector as Detector
 from pykat.utilities.optics.gaussian_beams import beam_param
 
 class NodeNetwork(object):
@@ -34,7 +34,7 @@ class NodeNetwork(object):
         , e.g. connected, disconnected, name change, etc.
         """
         if not isinstance(comp, Component):
-            raise exceptions.ValueError("comp argument is not of type Component")
+            raise pkex.BasePyKatException("comp argument is not of type Component")
         
         if comp.id in self.__componentNodes:
             raise pkex.BasePyKatException("Component has already been registered")
@@ -86,6 +86,7 @@ class NodeNetwork(object):
         self.__componentCallback[comp.id]()
             
     def connectNodeToComp(self, node, comp, do_callback=True):
+
         if node.id in self.__nodeComponents:
             comps = self.__nodeComponents[node.id]
         else:
@@ -109,7 +110,7 @@ class NodeNetwork(object):
         
     def createNode(self, node_name):
         if node_name == 'dump':
-            return DumpNode()
+            return DumpNode(self)
             
         if node_name in self.__nodes:
             # then this node already exists
@@ -142,23 +143,24 @@ class NodeNetwork(object):
         
     def removeNode(self, node):
         
-        if not isinstance(node,Node):
-            raise exceptions.ValueError("node argument is not of type Node")
+        if not isinstance(node, Node):
+            raise pkex.BasePyKatException("node argument is not of type Node")
         
-        if node.name not in self.__nodes:
-            raise exceptions.RuntimeError("Trying to remove node {0} when it has not been added".format(node.name))
+        if not isinstance(node, DumpNode) and node.name not in self.__nodes:
+            raise pkex.BasePyKatException("Trying to remove node {0} when it has not been added".format(node.name))
         
         C = self.getNodeComponents(node)
         
         if C[0] is not None or C[1] is not None:
-            raise exceptions.RuntimeError("Cannot remove a node which is attached to components still")
+            raise pkex.BasePyKatException("Cannot remove a node which is attached to components still")
             
         if len(node.getDetectors()) > 0:
-            raise exceptions.RuntimeError("Cannot remove a node which is attached to detectors still")
+            raise pkex.BasePyKatException("Cannot remove a node which is attached to detectors still")
         
-        self.__remove_node_attr(node)
-        del self.__nodes[node.name] 
-        del self.__nodeComponents[node.id]
+        if not isinstance(node, DumpNode):
+            self.__remove_node_attr(node)
+            del self.__nodes[node.name] 
+            del self.__nodeComponents[node.id]
         
     def hasNode(self, name):
         return (name in self.__nodes)
@@ -206,7 +208,7 @@ class NodeNetwork(object):
     def __add_node_attr(self, node):
 
         if not isinstance(node, Node):
-            raise exceptions.ValueError("Argument is not of type Node")
+            raise pkex.BasePyKatException("Argument is not of type Node")
         
         name = node.name
         fget = lambda self: self.__get_node_attr(name)
@@ -216,7 +218,7 @@ class NodeNetwork(object):
     
     def __remove_node_attr(self, node):
         if not isinstance(node, Node):
-            raise exceptions.ValueError("Argument is not of type Node")
+            raise pkex.BasePyKatException("Argument is not of type Node")
         
         name = node.name
         delattr(self, '__node_' + name)
@@ -265,7 +267,7 @@ class NodeNetwork(object):
                 rn = currcomp.nodes[2]
                 tn = currcomp.nodes[1]
             else:
-                raise exceptions.ValueError("Node not attached in path find to BS")
+                raise pkex.BasePyKatException("Node not attached in path find to BS")
             
             nextcomp = None
             
@@ -513,9 +515,9 @@ class Node(object):
 class DumpNode(Node):
     __total_dump_node_id = 0
     
-    def __init__(self):
+    def __init__(self, network):
         DumpNode.__total_dump_node_id -= 1
-        Node.__init__(self, 'dump', None, DumpNode.__total_dump_node_id)
+        Node.__init__(self, 'dump', network, DumpNode.__total_dump_node_id)
         self._isDump = True
         
         

@@ -11,32 +11,52 @@ from pykat.utils import *
 from pykat.gui.graphics import *
 from pykat.node_network import *
 from pykat.param import Param
-
+import collections
 import pykat.exceptions as pkex
 import warnings
 import copy
 
-class Detector(object) :
-    def __init__(self, name, node=None):
+class BaseDetector(object) :
+    
+    def __init__(self, name, nodes=None, max_nodes=1):
+        
         self.__name = name
         self._svgItem = None
         self._kat = None
         self.noplot = False
         self.enabled = True
         self.tag = None
-        self.__node = None
         self._params = []
         self._mask = {}
         self.__scale = None
         self.__removed = False
-        self.__requested_node = None
         
-        if node != None:
-            if node[-1]=='*':
-                self._alternate_beam = True
-                node=node[:-1]
-            
-            self.__requested_node = node
+        self._alternate_beam = []
+        self._nodes = []
+        self._requested_nodes = []
+        
+        if nodes != None:
+            if isinstance(nodes, collections.Iterable):
+                if len(nodes) > max_nodes:
+                    raise pkex.BasePyKatException("Tried to set too many nodes, %s, maximum number is %i." %(str(nodes),max_nodes))
+                    
+                for n in nodes:
+                    if n[-1]=='*':
+                        self._alternate_beam.append(True)
+                        n = n[:-1]
+                    else:
+                        self._alternate_beam.append(False)
+                        
+                    self._requested_nodes.append(n)
+            else:
+                # if we don't have a collection
+                if nodes[-1]=='*':
+                    self._alternate_beam.append(True)
+                    nodes = nodes[:-1]
+                else:
+                    self._alternate_beam.append(False)
+                    
+                self._requested_nodes.append(nodes)
     
     def _register_param(self, param):
         self._params.append(param)
@@ -44,8 +64,9 @@ class Detector(object) :
     def _on_kat_add(self, kat):
         self._kat = kat
         
-        if self.__requested_node != None:
-            self.__node = kat.nodes.createNode(self.__requested_node)
+        for rn in self._requested_nodes:
+            if rn != None:
+                self._nodes.append(kat.nodes.createNode(rn))
     
     def remove(self):
         if self.__removed:
@@ -66,7 +87,6 @@ class Detector(object) :
     def getQGraphicsItem(self):    
         return None
 
-        
     @property
     def removed(self): return self.__removed
     
@@ -75,15 +95,6 @@ class Detector(object) :
     @scale.setter
     def scale(self, value):
         self.__scale = value
-
-    @property 
-    def node(self): return self.__node
-    @node.setter
-    def node(self, value):
-        if value in self._kat.nodes:
-            self.__node = self._kat.nodes[value]
-        else:
-            raise pkex.BasePyKatException("There is no node called " + value)
     
     @property
     def name(self): return self.__name        
@@ -91,19 +102,61 @@ class Detector(object) :
     def __str__(self): return self.name
 
     def mask(self, n, m, factor):
-        id = str(n)+"_"+str(m)
+        _id = str(n)+"_"+str(m)
         
         # if the mask is 1 then remove this so it doesn't get 
         # printed as by default the value is 1.0
-        if id in self._mask and factor == 1.0:
-            del self._mask[id]
+        if _id in self._mask and factor == 1.0:
+            del self._mask[_id]
                 
-        self._mask[id] = factor
+        self._mask[_id] = factor
 
-class ad(Detector):
+    def _set_node(value, index):
+        if self._kat == None:
+            raise pkex.BasePyKatException("This detector has not been added to a kat object yet")
+        else:
+            if value[-1] == '*':
+                self._alternate_beam[index] = True
+                value = value[:-1]
+            else:
+                self._alternate_beam[index] = False
+                
+            if value in self._kat.nodes:
+                self._nodes[index] = self._kat.nodes[value]
+            else:
+                raise pkex.BasePyKatException("There is no node called " + value + " in the kat object this detector is attached to.")
+    
+class Detector1(BaseDetector):
+    
+    @property 
+    def node(self): return self.__nodes[0]
+    @node.setter
+    def node(self, value):
+        self._set_node(value, 0)      
+        
+                
+class Detector2(BaseDetector):
+    
+    @property 
+    def node1(self): return self.__nodes[0]
+    @node1.setter
+    def node(self, value):
+        self._set_node(value, 0)
+        
+    @property 
+    def node2(self): return self.__nodes[1]
+    @node2.setter
+    def node(self, value):
+        self._set_node(value, 1)
+                
+                
+                
+                
+
+class ad(Detector1):
     
     def __init__(self, name, frequency, node_name, mode=None, alternate_beam=False):
-        Detector.__init__(self, name, node_name)
+        BaseDetector.__init__(self, name, node_name)
         self.mode = mode
         self.alternate_beam = alternate_beam
         self.__f = Param("f", self, frequency)
@@ -154,10 +207,10 @@ class ad(Detector):
         
         return rtn
 
-class gouy(Detector):
+class gouy(Detector1):
     
     def __init__(self, name, direction, spaces):
-        Detector.__init__(self, name)
+        BaseDetector.__init__(self, name)
         self.spaces = copy.copy(spaces)
         self.direction = direction
         self.alternate_beam = False
@@ -202,11 +255,11 @@ class gouy(Detector):
 
 
 
-class bp(Detector):
+class bp(Detector1):
     acceptedParameters = ['w', 'w0', 'z', 'zr', 'g', 'r', 'q']
     
     def __init__(self, name, direction, parameter, node, alternate_beam=False):
-        Detector.__init__(self, name, node)
+        BaseDetector.__init__(self, name, node)
         self.parameter = parameter
         self.direction = direction
         self.alternate_beam = alternate_beam
@@ -258,10 +311,10 @@ class bp(Detector):
         return rtn
 
 
-class pd(Detector):
+class pd(Detector1):
 
     def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
-        Detector.__init__(self, name, node_name)
+        BaseDetector.__init__(self, name, node_name)
         
         self.__num_demods = num_demods
         self.__senstype = senstype
@@ -451,7 +504,7 @@ class pd(Detector):
             rtn.append("pd{0}{1} {2}{3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
 
             if self.scale != None:
-                rtn.append("scale {1} {0:.16g}".format(self.name, self.scale))
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
 
             if self.pdtype != None:
                 rtn.append("pdtype {0} {1}".format(self.name, self.pdtype))
@@ -558,7 +611,7 @@ class qnoised(pd):
             rtn.append("qnoised{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str, senstype))
 
             if self.scale != None:
-                rtn.append("scale {1} {0:.16g}".format(self.name, self.scale))
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
@@ -651,17 +704,17 @@ class qshot(pd):
             rtn.append("qshot{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str,senstype))
 
             if self.scale != None:
-                rtn.append("scale {1} {0:.16g}".format(self.name, self.scale))
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
             
         return rtn
         
-def xd(Detector):
+def xd(Detector1):
 
     def __init__(self, name, node_name, component, motion):
-        Detector.__init__(name, None)
+        BaseDetector.__init__(name, None)
         
         self.__motion = motion
         self.__component = component
@@ -688,7 +741,7 @@ def xd(Detector):
             rtn.append("xd {0} {1} {2}".format(self.name, self.component, self.motion))
 
             if self.scale != None:
-                rtn.append("scale {1} {0:.16g}".format(self.name, self.scale))
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
@@ -696,3 +749,43 @@ def xd(Detector):
         return rtn
     
     
+class hd(Detector2):
+    
+    def __init__(self, name, phase, node1_name, node2_name):
+        BaseDetector.__init__(self, name, (node1_name, node2_name), max_nodes=2)
+    
+        self.__homangle = Param("phase", self, None)
+    
+    @property
+    def phase(self): return self.__phase
+    @phase.setter
+    def phase(self, value): self.__phase.value = value
+    
+    def parseAttributes(self, values):
+        raise pkex.BasePyKatException("hd detector %s has no attributes to set" % self.name)
+    
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+        
+        return hd(values[1], float(values[2]), str(values[3]), str(values[4]))
+    
+    def getFinesseText(self):
+        rtn = []
+        
+        if self.enabled:   
+            n1 = self.nodes[0].name
+            n2 = self.nodes[1].name
+            
+            if self.__alternate_beam1[0]: n1 += "*"
+            if self.__alternate_beam2[1]: n2 += "*"
+            
+            rtn.append("hd {0} {1} {2} {3}".format(self.name, self.phase, n1, n2))
+
+            if self.scale != None:
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                
+            for p in self._params:
+                rtn.extend(p.getFinesseText())
+            
+        return rtn
