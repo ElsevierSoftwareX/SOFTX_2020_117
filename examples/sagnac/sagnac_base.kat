@@ -1,0 +1,128 @@
+#################################################################
+# Finesse input file of the Glasgow Speedmeter Experiment
+# Based on an OptoCAD export, cleaned and prepared in this form
+# during the Speedmeter Workshop, October 2014. For help and
+# questions, feel free to contact me at: adf@star.sr.bham.ac.uk
+# Andreas Freise, 30.10.2014
+#
+# The parameters below don't necessarily match the current speedmeter
+# design, instead they were chosen to match Stefan Danilishon's Matlab
+# example for comparison. However, you can easily change the parameters
+# to an updated design without problem. No special tuning or so is
+# required.
+#
+# Some strange sounding component names inlcuding '{p}' and '{s}' are just
+# OptoCAD notations and have no special meaning in Finesse.
+#################################################################
+
+## general constants
+const Pin 0.6 # double the power at the BS, which for this example is 0.3W
+const MassM1 1m # Mass M1 in [kg]: 1 gramm
+const MassM23 100m # Mass M2, M3: 100 gramm
+const T_ETM 12.5u # transmission of cavity end mirrors (cavity loss)
+
+## lengths of some ray segments
+const lrs2 0.250
+const lrs3 0.167
+const lrs4 0.258
+const lrs5 0.0721
+const lrs7 0.0958
+const lrs8 0.2971
+const lrs17 0.365
+const lrs23 0.499
+const lrs25 0.261
+const lrs26 0.549
+
+#################################################################
+l i1 $Pin 0 n0                              
+s rs2 $lrs2 n0 nM4w                         
+bs M4 1 0 0 45 nM4w nM4n dump dump          
+s rs3 $lrs3 nM4n nM5n                       
+bs M5 1 0 0 45 nM5w nM5n dump dump          
+s rs4 $lrs4 nM5w nM11w                      
+bs M11 .5 .5 0 45 nM11w nM11n nM11e nM11s   
+s rs5 $lrs5 nM11n nM6w     
+
+#################################################################
+# central BS
+bs M6 0.5 0.5 0 29.19505498 nM6w nM6n nM6e nM6s
+
+#################################################################
+## Cavity a
+s rs7 $lrs7 nM6e nM7w 
+bs M7 1 0 0 49.39870535E0 nM7w nM7n dump dump 
+s rs8 $lrs8 nM7n nM1an
+
+bs1 M1a 500u 0 0 0 nM1aw nM1an nM1ae nM1as 
+attr M1a Rc -7.91
+attr M1a mass $MassM1 
+s rs12 1.315 nM3an nM1ae  
+bs1 M3a $T_ETM 0 0 0 nM3aw nM3an dump dump #nM3aT1 nM3aT2
+attr M3a mass $MassM23
+s rs11 0.2 1. nM2an nM3aw   
+bs1 M2a $T_ETM 0 0 0 nM2aw nM2an dump dump #nM2aT1 nM2aT2 
+attr M2a mass $MassM23
+s rs10 1.315  nM1as nM2aw   
+cav AC_a M1a nM1as M1a nM1ae
+ 
+#################################################################
+# path between cavity a and b
+s rs23 $lrs23 1. nM1aw nM10n    
+bs M10 1 0 0 42.25439783E0 nM10w nM10n dump dump     
+s rs24 326.5506374E-3 nM10w nM9n  
+bs M9 1 0 0 5.477377081 nM9w nM9n nX1 nX2
+attr M9 Rc 5.05 
+s rs25 $lrs25 nM9w nM8w
+
+bs M8 1 0 0 43.33405689 nM8w nM8n dump dump   
+s rs26 $lrs26 nM8n nM1bw    
+
+#################################################################
+## Cavity b
+bs1 M1b 500u 0 0 0 nM1bw nM1bn nM1be nM1bs  
+attr M1b Rc -7.91
+attr M1b mass $MassM1 
+s rs19 1.315 nM1be nM2bw    
+bs1 M2b $T_ETM 0 0 0 nM2bw nM2bn dump dump #nM2bT1 nM2bT2      
+attr M2b mass $MassM23 
+s rs20 0.2 nM2bn nM3bw   
+bs1 M3b $T_ETM 0 0 0 nM3bw nM3bn dump dump #nM3bT1 nM3bT2
+attr M3b mass $MassM23
+s rs21 1.315 nM3bn nM1bs   
+cav AC_b M1b nM1bs M1b nM1be
+
+s rs17 $lrs17 nM6n nM1bn   
+
+#################################################################
+# reflected light from central BS: nM11s, main output of Sagnac: nM6s
+# -> sagnac output
+s out1 1n nM6s nHD1
+# -> sagnac reflection through M11
+s out3 1n nM11s nHD2
+
+# apply differential signal with amplitide of 0.5
+# to match with custom defintion of \Delta L = L1 - L2
+fsig sig1 M2a 1 0   0.5
+fsig sig2 M2b 1 180 0.5
+
+# dummy laser for LO in homodyne detector
+l l2 1 0 nl2
+s sl2 1n nl2 nl3 
+# set homodyne angle by adjusting this beam splitter's tuning:
+bs dHD .5 .5 0 0 nHD1 nout1 nout2 nl3
+
+# homodyne detector, use 180 deg phase for normal use, i.e. output=nout1-nout2
+#qhdS sens 180 nout1 nout2
+# scale output to m/sqrt(Hz)
+#scale meter sens
+
+%xaxis sig1 f log 100 100k 99
+yaxis log abs
+
+maxtem off
+# you can use the following for checking cavity parameters,
+# such as FSR, length etc.
+#maxtem 0
+#retrace force
+#trace 2
+
