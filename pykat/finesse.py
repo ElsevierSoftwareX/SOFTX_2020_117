@@ -636,6 +636,8 @@ class kat(object):
                         obj = pykat.commands.xaxis.parseFinesseText(line)
                     elif(first[0:2] == "hd"):
                         obj = pykat.detectors.hd.parseFinesseText(line)
+                    elif(first.startswith("qhd")):
+                        obj = pykat.detectors.qhd.parseFinesseText(line)
                     elif(first == "x2axis" or first == "x2axis*"):
                         obj = pykat.commands.x2axis.parseFinesseText(line)
                     elif(first == "gauss" or first == "gauss*" or first == "gauss**"):

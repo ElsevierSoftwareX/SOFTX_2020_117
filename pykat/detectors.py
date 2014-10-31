@@ -17,6 +17,10 @@ import warnings
 import copy
 
 class BaseDetector(object) :
+    """
+    This is a base class for all detectors. Classes Detector1 and Detector2 should be used directly.
+    This base class can handled detectors connected to multiple nodes.
+    """
     
     def __init__(self, name, nodes=None, max_nodes=1):
         
@@ -36,7 +40,8 @@ class BaseDetector(object) :
         self._requested_nodes = []
         
         if nodes != None:
-            if isinstance(nodes, collections.Iterable):
+            if isinstance(nodes, (list, tuple)):
+                
                 if len(nodes) > max_nodes:
                     raise pkex.BasePyKatException("Tried to set too many nodes, %s, maximum number is %i." %(str(nodes),max_nodes))
                     
@@ -48,7 +53,7 @@ class BaseDetector(object) :
                         self._alternate_beam.append(False)
                         
                     self._requested_nodes.append(n)
-            else:
+            elif isinstance(nodes, str):
                 # if we don't have a collection
                 if nodes[-1]=='*':
                     self._alternate_beam.append(True)
@@ -57,7 +62,9 @@ class BaseDetector(object) :
                     self._alternate_beam.append(False)
                     
                 self._requested_nodes.append(nodes)
-    
+            else:
+                raise pkex.BasePyKatException("Nodes should be a list or tuple of node names or a singular node name as a string.")
+                
     def _register_param(self, param):
         self._params.append(param)
         
@@ -127,24 +134,29 @@ class BaseDetector(object) :
                 raise pkex.BasePyKatException("There is no node called " + value + " in the kat object this detector is attached to.")
     
 class Detector1(BaseDetector):
-    
+    """
+    A detector that attaches to one node.
+    """
     @property 
-    def node(self): return self.__nodes[0]
+    def node(self): return self._nodes[0]
     @node.setter
     def node(self, value):
         self._set_node(value, 0)      
         
                 
 class Detector2(BaseDetector):
+    """
+    A detector that attaches to two node.
+    """
     
     @property 
-    def node1(self): return self.__nodes[0]
+    def node1(self): return self._nodes[0]
     @node1.setter
     def node(self, value):
         self._set_node(value, 0)
         
     @property 
-    def node2(self): return self.__nodes[1]
+    def node2(self): return self._nodes[1]
     @node2.setter
     def node(self, value):
         self._set_node(value, 1)
@@ -754,7 +766,7 @@ class hd(Detector2):
     def __init__(self, name, phase, node1_name, node2_name):
         BaseDetector.__init__(self, name, (node1_name, node2_name), max_nodes=2)
     
-        self.__homangle = Param("phase", self, None)
+        self.__phase = Param("phase", self, 0)
     
     @property
     def phase(self): return self.__phase
@@ -774,13 +786,68 @@ class hd(Detector2):
         rtn = []
         
         if self.enabled:   
-            n1 = self.nodes[0].name
-            n2 = self.nodes[1].name
+            n1 = self.node1.name
+            n2 = self.node2.name
             
-            if self.__alternate_beam1[0]: n1 += "*"
-            if self.__alternate_beam2[1]: n2 += "*"
+            if self._alternate_beam[0]: n1 += "*"
+            if self._alternate_beam[1]: n2 += "*"
             
             rtn.append("hd {0} {1} {2} {3}".format(self.name, self.phase, n1, n2))
+
+            if self.scale != None:
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
+                
+            for p in self._params:
+                rtn.extend(p.getFinesseText())
+            
+        return rtn
+        
+class qhd(Detector2):
+    
+    def __init__(self, name, phase, node1_name, node2_name, sensitivity=""):
+        BaseDetector.__init__(self, name, (node1_name, node2_name), max_nodes=2)
+    
+        self.__phase = Param("phase", self, phase)
+        self.sensitivity = sensitivity
+        
+    @property
+    def phase(self): return self.__phase
+    @phase.setter
+    def phase(self, value): self.__phase.value = value
+    
+    @property
+    def sensitivity(self): 
+        return self.__sensitivity
+    @sensitivity.setter
+    def sensitivity(self, value):
+        if value == 'S' or value == 'N':
+            self.__sensitivity = value
+        elif value == None or value == '':
+            self.__sensitivity = ""
+        else:
+            raise pkex.BasePyKatException("qhd (%s) sensitivity option '%s' is not available, use either 'S' or 'N'." % (self.name, value))
+        
+    
+    def parseAttributes(self, values):
+        raise pkex.BasePyKatException("hd detector %s has no attributes to set" % self.name)
+    
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+        
+        return qhd(values[1], float(values[2]), str(values[3]), str(values[4]))
+    
+    def getFinesseText(self):
+        rtn = []
+        
+        if self.enabled:   
+            n1 = self.node1.name
+            n2 = self.node2.name
+            
+            if self._alternate_beam[0]: n1 += "*"
+            if self._alternate_beam[1]: n2 += "*"
+            
+            rtn.append("qhd{4} {0} {1} {2} {3}".format(self.name, self.phase, n1, n2, self.sensitivity))
 
             if self.scale != None:
                 rtn.append("scale {1} {0}".format(self.name, self.scale))
