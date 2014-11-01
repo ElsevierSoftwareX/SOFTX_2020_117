@@ -46,18 +46,20 @@ from pykat.node_network import NodeNetwork
 from pykat.detectors import BaseDetector as Detector
 from pykat.components import Component
 from pykat.commands import Command, xaxis
-from pykat.gui.gui import pyKatGUI
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 
 import pykat.exceptions as pkex
 
-from PyQt4.QtCore import QCoreApplication
-from PyQt4.QtGui import QApplication
+from pykat import USE_GUI, NoGUIException
+
+if USE_GUI:
+    from pykat.gui.gui import pyKatGUI
+    from PyQt4.QtCore import QCoreApplication
+    from PyQt4.QtGui import QApplication
 
 from multiprocessing import Process, Manager
 
-NO_GUI = False
 NO_BLOCK = "NO_BLOCK"
 pykat_web = "www.gwoptics.org/pykat"
 
@@ -1323,8 +1325,8 @@ class kat(object):
         return out
         
     def openGUI(self):
-        if NO_GUI:
-            print  "No PyQt4 module was installed so cannot open a GUI"
+        if not USE_GUI:
+            raise NoGUIException
         else:
             self.app = QCoreApplication.instance() 
             created = False

@@ -5,17 +5,21 @@ Created on Fri Feb 01 0split()9:09:10 2013
 @author: Daniel
 """
 import exceptions
-import pykat.gui.resources
-
 from pykat.utils import *
-from pykat.gui.graphics import *
 from pykat.node_network import *
 from pykat.param import Param
+
 import collections
 import pykat.exceptions as pkex
 import warnings
 import copy
 
+from pykat import USE_GUI, NoGUIException
+
+if USE_GUI:
+    import pykat.gui.resources
+    from pykat.gui.graphics import *
+    
 class BaseDetector(object) :
     """
     This is a base class for all detectors. Classes Detector1 and Detector2 should be used directly.
@@ -94,6 +98,9 @@ class BaseDetector(object) :
         raise NotImplementedError("This function is not implemented")
         
     def getQGraphicsItem(self):    
+        if not USE_GUI:
+            raise NoGUIException
+            
         return None
 
     @property

@@ -11,15 +11,19 @@ from pykat.node_network import *
 from pykat.exceptions import *
 import abc
 
-import pykat.gui.resources
-import pykat.gui.graphics
-from pykat.gui.graphics import *
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 import weakref
 import pykat.exceptions as pkex
 
 next_component_id = 1
+
+from pykat import USE_GUI, NoGUIException
+
+if USE_GUI:
+    import pykat.gui.resources
+    import pykat.gui.graphics
+    from pykat.gui.graphics import *
 
 class NodeGaussSetter(object):
     def __init__(self, component, node):                
@@ -149,6 +153,9 @@ class Component(object):
 
     @abc.abstractmethod
     def getQGraphicsItem(self):    
+        if not USE_GUI:
+            raise NoGUIException
+            
         return None      
     
     @property
@@ -403,6 +410,9 @@ class mirror(AbstractMirrorComponent):
         return rtn
         
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._svgItem == None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
             
@@ -473,6 +483,9 @@ class beamSplitter(AbstractMirrorComponent):
         return rtn
         
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._svgItem == None:
             # FIXME: make proper SVG component for beam splitter
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,24,self.nodes[0]), (-4,6,self.nodes[1]), (14,6,self.nodes[2]), (14,24,self.nodes[3])])
@@ -566,6 +579,9 @@ class space(Component):
         return rtn
         
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._QItem == None:
             self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self)
         
@@ -696,6 +712,9 @@ class grating(Component):
         return rtn
        
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._svgItem == None:
             self._svgItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make SVG graphic for grating
         
@@ -742,6 +761,9 @@ class isolator(Component):
         return rtn
 
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._svgItem == None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/isolator.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1]), (14,24,self.nodes[2])])
         
@@ -784,6 +806,9 @@ class lens(Component):
         return rtn
         
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._svgItem == None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/lens.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
         
@@ -861,6 +886,9 @@ class modulator(Component):
         return rtn
         
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._svgItem == None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/modulator.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
         
@@ -926,6 +954,9 @@ class laser(Component):
         return rtn
          
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._svgItem == None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg", self, [(65,25,self.nodes[0])])
             
@@ -989,6 +1020,9 @@ class squeezer(Component):
         return rtn
          
     def getQGraphicsItem(self):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._svgItem == None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg", self, [(65,25,self.nodes[0])])
             
