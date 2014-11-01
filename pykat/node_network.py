@@ -43,7 +43,7 @@ class NodeNetwork(object):
         
         for name in node_names:
             n = self.createNode(name)
-            self.connectNodeToComp(n, comp, do_callback=False)
+            self.__connectNodeToComp(n, comp, do_callback=False)
             list.append(n)
         
         self.__componentNodes[comp.id] = tuple(list)
@@ -52,14 +52,39 @@ class NodeNetwork(object):
         change_callback()
     
     def replaceNode(self, comp, node_old, node_new):
+        """
+        For a particular pykat component this will replace a node that is currently
+        connected to it with another. This can be used to dynamically change layouts
+        once components have been read into the pykat.finesse.kat object.
         
-        if node_new.components.count(None) == 0:
+        node_old is the node that is attached to the component. This will accept
+             str - name of a node
+             pykat.node_network.Node - The direct node object
+             pykat.components.NodeGaussSetter - the node object that is used to set gaussian parameters
+             
+        This will call a components __on_node_change callback function to let it know that the nodes
+        connected to it have changed.
+        """
+        
+        if isinstance(node_old, str):
+            node_old = self.__kat.nodes[node_old]
+        
+        if isinstance(node_new, str):
+            node_new = self.__kat.nodes[node_new]
+            
+        if isinstance(node_old, pykat.components.NodeGaussSetter):
+            node_old = node_old.node
+        
+        if isinstance(node_new, pykat.components.NodeGaussSetter):
+            node_new = node_new.node
+            
+        if not node_new.isDump and node_new.components.count(None) == 0:
             raise pkex.BasePyKatException("New node already connected to two components")
             
         if comp not in node_old.components:
             raise pkex.BasePyKatException("Old node not attached to component")
         
-        if comp in node_new.components:
+        if not node_new.isDump and comp in node_new.components:
             raise pkex.BasePyKatException("New node already attached to component")
         
         # add component to new node component list
@@ -82,11 +107,15 @@ class NodeNetwork(object):
         # if old node is no longer connected to anything then delete it
         if node_old.components.count(None) == 2:
             self.removeNode(node_old)
-            
+        
+        # Call component callback to let it know that we have changed the 
+        # nodes attached to it
         self.__componentCallback[comp.id]()
             
-    def connectNodeToComp(self, node, comp, do_callback=True):
-
+    def __connectNodeToComp(self, node, comp, do_callback=True):
+        """
+        This is an internal function used to create connections between nodes
+        """
         if node.id in self.__nodeComponents:
             comps = self.__nodeComponents[node.id]
         else:
@@ -109,22 +138,41 @@ class NodeNetwork(object):
         if do_callback: self.__componentCallback[comp.id]()
         
     def createNode(self, node_name):
-        if node_name == 'dump':
-            return DumpNode(self)
+        """
+        This creates a new node object. It won't be connected to anything or added to a
+        pykat.finesse.kat object until it is specifically attached to a particular 
+        component. This should be used in conjunction with kat.nodes.replaceNode to 
+        add a new node into a system, as every component will already have the nodes
+        setup, including dump nodes.
+        
+        This will return a dump node if the name of the node is "dump" (case senstive)
+        """
             
-        if node_name in self.__nodes:
+        if node_name != 'dump' and node_name in self.__nodes:
             # then this node already exists
             return self.__nodes[node_name]
         else:
-            n = Node(node_name, self, self.__node_id)
+            if node_name == 'dump':
+                n = DumpNode(self)
+            else:
+                n = Node(node_name, self, self.__node_id)
             
             self.__node_id += 1
-            self.__add_node_attr(n) # add node as a member of this object, e.g. kat.nodes.n
-            self.__nodes[node_name] = n
             self.__nodeComponents[n.id] = (None, None)
+            
+            if not n.isDump:
+                self.__add_node_attr(n) # add node as a member of this object, e.g. kat.nodes.n
+                self.__nodes[node_name] = n
+                
+            
             return n
     
-    def removeComponent(self, comp):
+    def _removeComponent(self, comp):
+        """
+        This is an internal function that shouldn't be used directly. This removes
+        a particular component from the node network. For this to work it has to be 
+        detached from all other connections first.
+        """
         C = self.__componentNodes[comp.id]
         
         for n in C:
@@ -142,7 +190,25 @@ class NodeNetwork(object):
         del self.__componentNodes[comp.id]
         
     def removeNode(self, node):
+        """
+        This will remove a particular node object from the network. The node in question
+        must be fully detached from all components and connections first. This function is 
+        called by replaceNode directly so a replaced node, that is no longer connected to 
+        anything, is removed automatically.
         
+        node_old is the node that is attached to the component. This will accept
+             str - name of a node
+             pykat.node_network.Node - The direct node object
+             pykat.components.NodeGaussSetter - the node object that is used to set gaussian parameters
+              
+        """
+        
+        if isinstance(node, str):
+            node = self.__kat.nodes[node]
+            
+        if isinstance(node, pykat.components.NodeGaussSetter):
+            node = node.node
+            
         if not isinstance(node, Node):
             raise pkex.BasePyKatException("node argument is not of type Node")
         
@@ -160,49 +226,32 @@ class NodeNetwork(object):
         if not isinstance(node, DumpNode):
             self.__remove_node_attr(node)
             del self.__nodes[node.name] 
-            del self.__nodeComponents[node.id]
+            
+        del self.__nodeComponents[node.id]
         
     def hasNode(self, name):
+        ""
         return (name in self.__nodes)
     
     def getNodes(self):
+        """
+        Returns a copy of the node dictionary, this is for infomration purposes any edits won't make
+        any changes to the node network.
+        """
         return self.__nodes.copy()
     
-    def dumpInfo(self):
-        
-        for name in self.__nodes:
-            
-            n = self.__nodes[name]
-            
-            items = n.getComponents()
-            comp = items[0][:]
-            det = items[1]
-            
-            if comp[0] == None:
-                comp1 = 'dump'
-            else:
-                comp1 = comp[0].name
-            
-            if comp[1] == None:
-                comp2 = 'dump'
-            else:
-                comp2 = comp[1].name    
-            
-            detectors = ""
-            
-            if len(det) > 0:
-                detectors = "Detectors: "
-                
-                for d in det:
-                    detectors = detectors + d.name + " "
-                
-            print "node: {0} connected:{1} {2}->{3} {4}".format(
-                    n.name,n.isConnected(),comp1, comp2, detectors)
-    
     def getComponentNodes(self, comp):
+        """
+        This function returns a tuple of the nodes connected to the component specified.
+        For information only, you cannot edit the connections using this function.
+        """
         return self.__componentNodes[comp.id]
     
     def getNodeComponents(self, node):
+        """
+        This function returns a tuple of the components connected to the node specified.
+        For information only, you cannot edit the connections using this function.
+        """
         return self.__nodeComponents[node.id]
     
     def __add_node_attr(self, node):
@@ -218,7 +267,7 @@ class NodeNetwork(object):
     
     def __remove_node_attr(self, node):
         if not isinstance(node, Node):
-            raise pkex.BasePyKatException("Argument is not of type Node")
+            kat.nodes.replaceNode(kat.bs1, "n1", kat.nodes.createNode("test1"))
         
         name = node.name
         delattr(self, '__node_' + name)
@@ -228,7 +277,10 @@ class NodeNetwork(object):
         return getattr(self, '__node_' + name)        
         
     def __getitem__(self, value):
-        return self.__nodes[str(value)]
+        if str(value) in self.__nodes:
+            return self.__nodes[str(value)]
+        else:
+            raise pkex.BasePyKatException("The node '%s' could not be found in the network." % str(value))
         
     def __contains__(self, value):
         return value in self.__nodes
@@ -334,7 +386,26 @@ class NodeNetwork(object):
             return self.__nodeSearch(nextnode, nextcomp, branches, tnode)
             
     def getComponentsBetween(self, from_node, to_node):
-    
+        """
+        This function will trace the path between the two nodes specified and return a list
+        of the components it finds between them.
+        """
+        
+        if isinstance(from_node, str):
+            from_node = self.__kat.nodes[from_node]
+            
+        if isinstance(from_node, pykat.components.NodeGaussSetter):
+            from_node = from_node.node
+            
+        if isinstance(to_node, str):
+            to_node = self.__kat.nodes[to_node]
+            
+        if isinstance(to_node, pykat.components.NodeGaussSetter):
+            to_node = to_node.node
+            
+        if to_node == from_node:
+            return []
+        
         if from_node not in self.__nodes:
             raise pkex.BasePyKatException("Node {0} cannot be found in this kat object".format(from_node))
 

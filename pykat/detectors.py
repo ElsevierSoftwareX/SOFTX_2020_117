@@ -22,6 +22,8 @@ class BaseDetector(object) :
     This base class can handled detectors connected to multiple nodes.
     """
     
+    __metaclass__ = abc.ABCMeta
+    
     def __init__(self, name, nodes=None, max_nodes=1):
         
         self.__name = name

@@ -1046,7 +1046,7 @@ class kat(object):
         if isinstance(obj, Component):    
             del self.__components[obj.name]
             self.__del_component(obj)
-            self.nodes.removeComponent(obj)
+            self.nodes._removeComponent(obj)
         elif isinstance(obj, Command):    
             del self.__commands[obj.name]
             self.__del_command(obj)
@@ -1111,7 +1111,7 @@ class kat(object):
         
             return (Mcarrier, Msignal)
 
-        
+    
     def hasNamedObject(self, name):
         return name in self.__components or name in self.__detectors or name in self.__commands
         
@@ -1186,6 +1186,13 @@ class kat(object):
             return [x, y, hdr]
 
     def removeLine(self, fragment) :
+        """
+        This will search all blocks by default and search for the string
+        fragment specified and remove it. This will only remove non-parsed
+        commands, it will not remove commands that have already been parsed
+        into the pykat structure, such as mirrors and beamsplitters, use the
+        kat.remove(...) function for that purpose.
+        """
         for key in self.__blocks:
             objs = self.__blocks[key].contents
             for obj in objs:
@@ -1194,7 +1201,15 @@ class kat(object):
                         print "  ** removing line '{0}'".format(obj)
                         objs.remove(obj)
 
-                    
+    def addLine(self, line, block=NO_BLOCK) :
+        """
+        This will forcefully add a line of FINESSE code to a particular block
+        if specfied. This command will not undergo any parsing so it will remain
+        as just a string. This of course can create possible conflicts with other
+        pykat object that create similar commands so becareful.
+        """
+        self.__blocks[key].contents.append(line)
+                        
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
 
