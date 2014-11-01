@@ -1208,7 +1208,7 @@ class kat(object):
         as just a string. This of course can create possible conflicts with other
         pykat object that create similar commands so becareful.
         """
-        self.__blocks[key].contents.append(line)
+        self.__blocks[block].contents.append(line)
                         
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
