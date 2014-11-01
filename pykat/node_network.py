@@ -4,9 +4,14 @@ Created on Sun Jan 27 10:02:41 2013
 
 @author: Daniel
 """
-import exceptions
-import pykat.gui.graphics
+
+from pykat import USE_GUI, NoGUIException
+
+if USE_GUI:
+    import pykat.gui.graphics
+    
 import pykat.exceptions as pkex
+
 from pykat.components import Component
 from pykat.detectors import BaseDetector as Detector
 from pykat.utilities.optics.gaussian_beams import beam_param
@@ -543,6 +548,9 @@ class Node(object):
             self._item.scene().removeItem(self._item)
     
     def getQGraphicsItem(self,dx=0,dy=0,nsize=8,parent=None):
+        if not USE_GUI:
+            raise NoGUIException
+            
         if self._item == None:
             self._item = pykat.gui.graphics.NodeQGraphicItem(self,
                                                              dx,dy,
