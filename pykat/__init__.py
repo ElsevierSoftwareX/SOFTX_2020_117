@@ -1,4 +1,4 @@
-__version__ = "0.6.1"
+__version__ = "0.6.2"
 
 # This flag is used to switch on the gui features in pkat at import time
 USE_GUI = False

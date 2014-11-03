@@ -38,7 +38,7 @@ class BaseDetector(object) :
         self.tag = None
         self._params = []
         self._mask = {}
-        self.__scale = None
+        self.__scale = []
         self.__removed = False
         
         self._alternate_beam = []
@@ -110,7 +110,8 @@ class BaseDetector(object) :
     def scale(self): return self.__scale
     @scale.setter
     def scale(self, value):
-        self.__scale = value
+        if value not in self.__scale:
+            self.__scale = value
     
     @property
     def name(self): return self.__name        
@@ -142,6 +143,16 @@ class BaseDetector(object) :
             else:
                 raise pkex.BasePyKatException("There is no node called " + value + " in the kat object this detector is attached to.")
     
+    def _getScaleCmds(self, rtn):
+        if self.scale != None:
+            if isinstance(self.scale, str):
+                rtn.append("scale {1} {0}".format(self.name, self.scale))
+            elif isinstance(self.scale, (list, tuple)):
+                for s in self.scale:
+                    rtn.append("scale {1} {0}".format(self.name, s))
+            else:
+                raise pkex.BasePyKatException("Scale command should either be a list of scales or a single string.")
+                
 class Detector1(BaseDetector):
     """
     A detector that attaches to one node.
@@ -524,9 +535,8 @@ class pd(Detector1):
             
             rtn.append("pd{0}{1} {2}{3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
 
-            if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
-
+            self._getScaleCmds(rtn)
+            
             if self.pdtype != None:
                 rtn.append("pdtype {0} {1}".format(self.name, self.pdtype))
                 
@@ -631,8 +641,7 @@ class qnoised(pd):
                 
             rtn.append("qnoised{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str, senstype))
 
-            if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+            self._getScaleCmds(rtn)
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
@@ -724,8 +733,7 @@ class qshot(pd):
                 
             rtn.append("qshot{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str,senstype))
 
-            if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+            self._getScaleCmds(rtn)
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
@@ -761,8 +769,7 @@ def xd(Detector1):
         if self.enabled:
             rtn.append("xd {0} {1} {2}".format(self.name, self.component, self.motion))
 
-            if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+            self._getScaleCmds(rtn)
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
@@ -803,8 +810,7 @@ class hd(Detector2):
             
             rtn.append("hd {0} {1} {2} {3}".format(self.name, self.phase, n1, n2))
 
-            if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+            self._getScaleCmds(rtn)
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
@@ -858,8 +864,7 @@ class qhd(Detector2):
             
             rtn.append("qhd{4} {0} {1} {2} {3}".format(self.name, self.phase, n1, n2, self.sensitivity))
 
-            if self.scale != None:
-                rtn.append("scale {1} {0}".format(self.name, self.scale))
+            self._getScaleCmds(rtn)
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())

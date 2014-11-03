@@ -729,10 +729,21 @@ class kat(object):
                 pykat.commands.gauss.parseFinesseText(line, self)
             elif (first == "scale"):
                 v = line.split()
+                accepted = ["PSD","PSD_HF","ASD","ASD_HF","meter", "ampere", "degs"]
+                
                 if len(v) == 3:
                     component_name = v[2]
+                    
+                    if v[1] in accepted:
+                        val = v[1]
+                    else:
+                        try:
+                            val = SIfloat(v[1])
+                        except ex as exception.ValueError:
+                            raise pkex.BasePyKatException("Line `{0}`:\nAccepted scale values are decimal numbers or %s." % (line,str(accepted)))
+                            
                     if component_name in self.__detectors :
-                        self.__detectors[component_name].scale = SIfloat(v[1])
+                        self.__detectors[component_name].scale.append(val)
                     else:
                         raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(component_name))
                 elif len(v) == 2:
