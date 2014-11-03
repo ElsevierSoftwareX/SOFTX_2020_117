@@ -850,7 +850,12 @@ class qhd(Detector2):
     def parseFinesseText(text): 
         values = text.split()
         
-        return qhd(values[1], float(values[2]), str(values[3]), str(values[4]))
+        sens = values[0][-1]
+        
+        if sens != 'S' and sens != 'N':
+            sens = None
+            
+        return qhd(values[1], float(values[2]), str(values[3]), str(values[4]), sensitivity = sens)
     
     def getFinesseText(self):
         rtn = []
