@@ -12,7 +12,7 @@ fsig noise l1 amp 1 0 1
 
 qhd qhd180 180 n2 n3
 qhd qhd0 0 n2 n3
-qhd qhd2 0 n2 n3
+qhdS qhd2 0 n2 n3
 scale meter qhd180
 scale meter qhd0
 scale meter qhd2
