@@ -12,7 +12,7 @@ if USE_GUI:
     
 import pykat.exceptions as pkex
 
-from pykat.components import Component
+from pykat.components import Component, NodeGaussSetter
 from pykat.detectors import BaseDetector as Detector
 from pykat.utilities.optics.gaussian_beams import beam_param
 
@@ -65,7 +65,7 @@ class NodeNetwork(object):
         node_old is the node that is attached to the component. This will accept
              str - name of a node
              pykat.node_network.Node - The direct node object
-             pykat.components.NodeGaussSetter - the node object that is used to set gaussian parameters
+             NodeGaussSetter - the node object that is used to set gaussian parameters
              
         This will call a components __on_node_change callback function to let it know that the nodes
         connected to it have changed.
@@ -77,10 +77,10 @@ class NodeNetwork(object):
         if isinstance(node_new, str):
             node_new = self.__kat.nodes[node_new]
             
-        if isinstance(node_old, pykat.components.NodeGaussSetter):
+        if isinstance(node_old, NodeGaussSetter):
             node_old = node_old.node
         
-        if isinstance(node_new, pykat.components.NodeGaussSetter):
+        if isinstance(node_new, NodeGaussSetter):
             node_new = node_new.node
             
         if not node_new.isDump and node_new.components.count(None) == 0:
@@ -204,14 +204,14 @@ class NodeNetwork(object):
         node_old is the node that is attached to the component. This will accept
              str - name of a node
              pykat.node_network.Node - The direct node object
-             pykat.components.NodeGaussSetter - the node object that is used to set gaussian parameters
+             NodeGaussSetter - the node object that is used to set gaussian parameters
               
         """
         
         if isinstance(node, str):
             node = self.__kat.nodes[node]
             
-        if isinstance(node, pykat.components.NodeGaussSetter):
+        if isinstance(node, NodeGaussSetter):
             node = node.node
             
         if not isinstance(node, Node):
@@ -399,13 +399,13 @@ class NodeNetwork(object):
         if isinstance(from_node, str):
             from_node = self.__kat.nodes[from_node]
             
-        if isinstance(from_node, pykat.components.NodeGaussSetter):
+        if isinstance(from_node, NodeGaussSetter):
             from_node = from_node.node
             
         if isinstance(to_node, str):
             to_node = self.__kat.nodes[to_node]
             
-        if isinstance(to_node, pykat.components.NodeGaussSetter):
+        if isinstance(to_node, NodeGaussSetter):
             to_node = to_node.node
             
         if to_node == from_node:
