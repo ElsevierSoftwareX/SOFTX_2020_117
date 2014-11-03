@@ -495,9 +495,12 @@ class pd(Detector1):
         dict = {}
         
         for i in range(len(f)):
-            dict['f{0}'.format(i+1)] = f[i]
+            dict['f{0}'.format(i+1)] = SIfloat(f[i])
         for i in range(len(phs)):
-            dict['phi{0}'.format(i+1)] = phs[i]
+            if phs[i] == "max":
+                dict['phi{0}'.format(i+1)] = "max"
+            else:
+                dict['phi{0}'.format(i+1)] = SIfloat(phs[i])
             
         node = values[-1]
         alt_beam = node[-1] == '*'
