@@ -6,17 +6,20 @@
 # Andreas Freise, 30.10.2014
 #
 # The parameters below don't necessarily match the current 
-# speedmeter design, instead they were chosen to match Stefan 
-# Danilishin's Matlab example for comparison. However, you can 
-# easily change the parameters to an updated design without 
-# problem. No special tuning or so is required.
+# speedmeter design, instead they were chosen to fit an example
+# file from Stefan Danilishin. However, you can easily change 
+# the parameters to an updated design without problem.
 #################################################################
 
 ## general constants
 const Pin 0.6 # double the power at the BS, which for this example is 0.3W
 const MassM1 1m # Mass M1 in [kg]: 1 gramm
-const MassM23 100m # Mass M2, M3: 100 gramm
-const T_ETM 12.5u # transmission of cavity end mirrors (cavity loss)
+const MassM23 100 # Mass M2, M3: 100 gramm
+const T_ETM 0u # transmission of cavity end mirrors (cavity loss)
+const L_ETM 0u # loss of cavity end mirrors (cavity loss)
+
+const AoI 0  # angle of incidence on input mirror (4.4 deg)
+const AoI2 0 # angle of incidence on end mirror (42.8 deg)
 
 ## lengths of some ray segments
 const lrs2 0.250
@@ -50,21 +53,14 @@ s rs7 $lrs7 nM6e nM7w
 bs M7 1 0 0 49.39870535E0 nM7w nM7n dump dump 
 s rs8 $lrs8 nM7n nM1an
 
-bs1 M1a 500u 0 0 0 nM1aw nM1an nM1ae nM1as 
+bs1 M1a 500u 0 0 $AoI nM1aw nM1an nM1ae nM1as 
 attr M1a Rc -7.91
 attr M1a mass $MassM1 
 s rs12 1.315 nM3an nM1ae
-##################################################################
-# Note that the following lines are 'wrong'. The 'dump' notes
-# are not open ports, i.e. even with the transmssion of the ETMs
-# non-zero, no quantum noise will enter through this port. 
-# I am using dump notes here to match Stefan's example calculation,
-# but you should not use 'dump' nodes with any mirror or BS that
-# has non-zero losses or transmission  
-bs1 M3a $T_ETM 0 0 0 nM3aw nM3an dump dump #nM3aT1 nM3aT2
+bs1 M3a $T_ETM $L_ETM 0 $AoI2 nM3aw nM3an nM3aT1 nM3aT2
 attr M3a mass $MassM23
 s rs11 0.2 1. nM2an nM3aw   
-bs1 M2a $T_ETM 0 0 0 nM2aw nM2an dump dump #nM2aT1 nM2aT2 
+bs1 M2a $T_ETM $L_ETM 0 $AoI2 nM2aw nM2an nM2aT1 nM2aT2 
 attr M2a mass $MassM23
 s rs10 1.315  nM1as nM2aw   
 cav AC_a M1a nM1as M1a nM1ae
@@ -83,21 +79,14 @@ s rs26 $lrs26 nM8n nM1bw
 
 #################################################################
 ## Cavity b
-bs1 M1b 500u 0 0 0 nM1bw nM1bn nM1be nM1bs  
+bs1 M1b 500u 0 0 $AoI nM1bw nM1bn nM1be nM1bs  
 attr M1b Rc -7.91
 attr M1b mass $MassM1 
 s rs19 1.315 nM1be nM2bw
-##################################################################
-# Note that the following lines are 'wrong'. The 'dump' notes
-# are not open ports, i.e. even with the transmssion of the ETMs
-# non-zero, no quantum noise will enter through this port. 
-# I am using dump notes here to match Stefan's example calculation,
-# but you should not use 'dump' nodes with any mirror or BS that
-# has non-zero losses or transmission    
-bs1 M2b $T_ETM 0 0 0 nM2bw nM2bn dump dump #nM2bT1 nM2bT2      
+bs1 M2b $T_ETM $L_ETM 0 $AoI2 nM2bw nM2bn nM2bT1 nM2bT2      
 attr M2b mass $MassM23 
 s rs20 0.2 nM2bn nM3bw   
-bs1 M3b $T_ETM 0 0 0 nM3bw nM3bn dump dump #nM3bT1 nM3bT2
+bs1 M3b $T_ETM $L_ETM 0 $AoI2 nM3bw nM3bn nM3bT1 nM3bT2
 attr M3b mass $MassM23
 s rs21 1.315 nM3bn nM1bs   
 cav AC_b M1b nM1bs M1b nM1be
@@ -124,7 +113,7 @@ bs dHD .5 .5 0 0 nHD1 nout1 nout2 nl3
 
 # homodyne detector, use 180 deg phase for normal use, i.e. output=nout1-nout2
 #qhdS sens 180 nout1 nout2
-# scale output to m/sqrt(Hz)
+# re-scaling output to m/sqrt(Hz)
 #scale meter sens
 
 %xaxis sig1 f log 100 100k 99
