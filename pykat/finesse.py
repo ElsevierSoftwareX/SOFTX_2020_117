@@ -182,21 +182,24 @@ class katRun(object):
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
         
-        
         if len(idx) > 0:
             out = self.y[:, idx]
             
-            if self.yaxis == "abs:deg":
-                out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
-            elif self.yaxis == "re:im":
-                out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
-            
-            out.squeeze()
+            if len(idx) == 1:
+                if self.yaxis == "abs:deg":
+                    out = self.y[:, idx[0]]
+                elif self.yaxis == "re:im":
+                    out = self.y[:, idx[0]]
+            else: 
+                if self.yaxis == "abs:deg":
+                    out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
+                elif self.yaxis == "re:im":
+                    out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
             
             if out.size == 1:
-                return out[0]
+                return out[0].squeeze()
             else:
-                return out
+                return out.squeeze()
         else:
             raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
       
