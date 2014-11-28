@@ -1,11 +1,14 @@
 from pykat import finesse
 from pykat.commands import *
 import copy
-import pylab as pl
 from collections import namedtuple
 from collections import OrderedDict
 
 import matplotlib
+BACKEND = 'Qt4Agg'
+matplotlib.use(BACKEND)
+import pylab as pl
+
 formatter = matplotlib.ticker.EngFormatter(unit='', places=0)
 formatter.ENG_PREFIXES[-6] = 'u'
 
