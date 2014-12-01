@@ -5,7 +5,7 @@ Created on Fri Feb 01 0split()9:09:10 2013
 @author: Daniel
 """
 import exceptions
-from pykat.utils import *
+import abc
 from pykat.node_network import *
 from pykat.param import Param
 

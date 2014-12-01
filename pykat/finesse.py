@@ -181,7 +181,7 @@ class katRun(object):
     
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
-        
+
         if len(idx) > 0:
             out = self.y[:, idx]
             

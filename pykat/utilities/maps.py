@@ -2,8 +2,8 @@ from pykat.utilities.romhom import makeReducedBasis, makeEmpiricalInterpolant, m
 from scipy.interpolate import interp2d
 import numpy as np
 import math
-        
-        
+from pykat.utilities.zernike import *        
+		   
 class surfacemap(object):
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
         
@@ -291,8 +291,39 @@ class tiltmap(surfacemap):
         
         self.data = (xx * self.tilt[1] + yy * self.tilt[0])/self.scaling
         
-        
-        
+
+class zernikemap(surfacemap):
+	def __init__(self, name, size, step_size, radius, scaling=1e-9):
+		surfacemap.__init__(self, name, "phase", size, (np.array(size)+1)/2.0, step_size, scaling)
+		self.__zernikes = {}
+		self.radius = radius
+		
+	@property
+	def radius(self): return self.__radius
+
+	@radius.setter
+	def radius(self, value, update=True):
+		self.__radius = float(value)
+		if update: self.update_data()
+
+	def setZernike(self, m, n, amplitude, update=True):
+		self.__zernikes["%i%i" % (m, n)] = (m,n,amplitude)
+		if update: self.update_data()
+
+	def update_data(self):
+		X,Y = np.meshgrid(self.x, self.y)
+		R = np.sqrt(X**2 + Y**2)
+		PHI = np.arctan2(Y, X)
+
+		data = np.zeros(np.shape(R))
+
+		for i in self.__zernikes.items():
+			data += i[1][2] * zernike(i[1][0], i[1][1], R/self.radius, PHI)
+
+		self.data = data
+	
+			
+	
 def read_map(filename):
     with open(filename, 'r') as f:
         
