@@ -13,7 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from pykat.optics.fabryperot import *
+from pykat.optics.fabry_perot import *
 import numpy as np
 
 
