@@ -8,6 +8,7 @@ import exceptions
 import abc
 from pykat.node_network import *
 from pykat.param import Param
+from pykat.SIfloat import SIfloat
 
 import collections
 import pykat.exceptions as pkex
