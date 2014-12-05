@@ -237,16 +237,17 @@ class katRun2D(object):
         
 class Signals(object):
     class fsig(object):
-        def __init__(self, param, name, amplitude, phase):
+        def __init__(self, param, name, amplitude, phase, signal):
             self._params = []
             self.__target = param
             self.__name = name
             self.__amplitude = Param("amp", self, SIfloat(amplitude))
             self.__phase = Param("phase", self, SIfloat(phase))
             self.__removed = False
-            
+            self.__signal = signal
+			
             # unfortunatenly the target names for fsig are not the same as the
-            # various parameter names of the components, e.g. mirror xbeta is x 
+            # various parameter names of the c	omponents, e.g. mirror xbeta is x 
             # for fsig. So we need to check here what type of component we are targetting
             # and then based on the parameter specfied get the name
             if not param.canFsig:
@@ -262,7 +263,8 @@ class Signals(object):
             if self.__removed:
                 raise pkex.BasePyKatException("Signal {0} has already been marked as removed".format(self.name))
             else:
-                self._kat.remove(self)
+                self.__signal.targets.remove(self)
+                self.__remove = True
         
         @property
         def name(self): return self.__name
@@ -304,23 +306,23 @@ class Signals(object):
             return self.targets[0].name
             
     @property
-    def removed(self): return False # we can never remove the Signal object altogethr just the
-                                    # individual fsig targets
+    def removed(self): return False # we can never remove the Signal object altogethr just the individual fsig targets
 
     def remove(self):
         for t in self.targets:
-            self._kat.remove(self)
+            t.remove()
             
     @property
     def f(self): return self.__f
     @f.setter
     def f(self,value): self.__f.value = SIfloat(value)
     
-    def __init__(self):
-
+    def __init__(self, kat):
+        if kat == None:
+            raise  pkex.BasePyKatException("kat object must be specified")
         self.targets = []
         self._params = []
-        
+        self.__kat = kat
         self.__f = Param("f", self, 1)
     
     def _register_param(self, param):
@@ -334,7 +336,7 @@ class Signals(object):
         if name == None:
             name = "sig_" + target._owner().name + "_" + target.name
         
-        self.targets.append(Signals.fsig(target, name, amplitude, phase))
+        self.targets.append(Signals.fsig(target, name, amplitude, phase, self))
         
     def getFinesseText(self):
         rtn = []
@@ -347,7 +349,6 @@ class Signals(object):
             rtn.extend(p.getFinesseText())
         
         return rtn
-        
         
 class Block:
     def __init__(self, name):
@@ -380,7 +381,7 @@ class kat(object):
         self.__tempdir = tempdir
         self.__tempname = tempname
         self.pykatgui = None
-        self.__signals = Signals()
+        self.__signals = Signals(self)
         self.constants = {}
         self.vacuum = []
         self.__prevrunfilename = None
@@ -1047,9 +1048,9 @@ class kat(object):
             if self.verbose: print "Finished in " + str(datetime.datetime.now()-start)
             
     def remove(self, obj):
-        if not (obj.name in self.__components or obj.name in self.__detectors or obj.name in self.__commands):
+        if not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
             raise pkex.BasePyKatException("{0} is not currently in the simulation".format(obj.name))
-        
+            
         if obj.removed:
             raise pkex.BasePyKatException("{0} has already been removed".format(obj.name))        
 
@@ -1069,7 +1070,11 @@ class kat(object):
         elif isinstance(obj, Detector):    
             del self.__detectors[obj.name]
             self.__del_detector(obj)
-        
+        elif isinstance(obj, pykat.finesse.Signals):
+            obj.remove()
+        elif isinstance(obj, pykat.finesse.Signals.fsig):
+            obj.remove()
+            
         for b in self.__blocks:
             if obj in self.__blocks[b].contents:
                 self.__blocks[b].contents.remove(obj)

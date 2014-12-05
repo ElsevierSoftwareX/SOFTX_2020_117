@@ -31,7 +31,7 @@ yaxis log re:im
 
 kat = finesse.kat(kat_code=code)
 
-kat.signals.apply(kat.l1.power, 1, 0)
+kat.signals.apply(kat.l1.P, 1, 0)
 kat.signals.apply(kat.m1.phi, 1, 90)
 
 kat.add(xaxis('log', [1, 1000], kat.signals.f, 100))
@@ -47,4 +47,4 @@ pl.loglog(out.x, np.abs(a_up + a_lo), out.x, np.abs((a_up - a_lo) / (1j)))
 pl.xlabel(out.xlabel)
 pl.title("Reflection quadratures with no relative carrier phase")
 pl.legend(["Amplitude","Phase"])
-pl.show()
+#pl.show()
