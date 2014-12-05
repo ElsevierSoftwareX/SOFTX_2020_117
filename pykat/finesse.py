@@ -39,6 +39,7 @@ import ctypes
 import ctypes.util
 import collections
 import re
+import copy
 
 from collections import namedtuple, OrderedDict
 
@@ -260,6 +261,9 @@ class Signals(object):
         def removed(self): return self.__removed
   
         def remove(self):
+            self.__signal._kat.remove(self)
+            
+        def _on_remove(self):
             if self.__removed:
                 raise pkex.BasePyKatException("Signal {0} has already been marked as removed".format(self.name))
             else:
@@ -311,20 +315,20 @@ class Signals(object):
     def remove(self):
         for t in self.targets:
             t.remove()
-            
+        
+        del self.targets[:]
+        
     @property
     def f(self): return self.__f
     @f.setter
     def f(self,value): self.__f.value = SIfloat(value)
     
     def __init__(self, kat):
-        if kat == None:
-            raise  pkex.BasePyKatException("kat object must be specified")
         self.targets = []
         self._params = []
-        self.__kat = kat
         self.__f = Param("f", self, 1)
-    
+        self._kat = kat
+        
     def _register_param(self, param):
         self._params.append(param)
         
@@ -1073,7 +1077,7 @@ class kat(object):
         elif isinstance(obj, pykat.finesse.Signals):
             obj.remove()
         elif isinstance(obj, pykat.finesse.Signals.fsig):
-            obj.remove()
+            obj._on_remove()
             
         for b in self.__blocks:
             if obj in self.__blocks[b].contents:

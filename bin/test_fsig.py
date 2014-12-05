@@ -27,9 +27,13 @@ put up_refl f $x1
 put low_refl f $mx1
 
 yaxis log re:im
+
+fsig noise 9
 """
 
 kat = finesse.kat(kat_code=code)
+
+kat.removeLine("fsig noise 9")
 
 kat.signals.apply(kat.l1.P, 1, 0)
 kat.signals.apply(kat.m1.phi, 1, 90)
@@ -48,3 +52,5 @@ pl.xlabel(out.xlabel)
 pl.title("Reflection quadratures with no relative carrier phase")
 pl.legend(["Amplitude","Phase"])
 #pl.show()
+
+kat.remove(kat.signals)
