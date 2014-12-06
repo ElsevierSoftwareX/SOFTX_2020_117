@@ -248,7 +248,7 @@ class Signals(object):
             self.__signal = signal
 			
             # unfortunatenly the target names for fsig are not the same as the
-            # various parameter names of the c	omponents, e.g. mirror xbeta is x 
+            # various parameter names of the components, e.g. mirror xbeta is x 
             # for fsig. So we need to check here what type of component we are targetting
             # and then based on the parameter specfied get the name
             if not param.canFsig:
@@ -347,8 +347,15 @@ class Signals(object):
         
         for t in self.targets:
             rtn.extend(t.getFinesseText())
-            rtn.append("fsig {name} {comp} {target} {frequency} {phase} {amplitude}".format(name = t.name, comp=t.owner, target=t.target, frequency=str(self.f), phase=str(t.phase), amplitude=str(t.amplitude)))
-        
+            
+            rtn.append("fsig {name} {comp} {target} {frequency} {phase} {amplitude}"
+                            .format(name = t.name,
+                                    comp=t.owner,
+                                    target=t.target,
+                                    frequency=str(self.f),
+                                    phase=str(t.phase),
+                                    amplitude=str(t.amplitude if t.amplitude != None else "")))
+
         for p in self._params:
             rtn.extend(p.getFinesseText())
         
@@ -703,8 +710,8 @@ class kat(object):
                     elif(first == "gnuterm" or first == "pyterm"):
                         if self.verbose:
                             print "Ignoring Gnuplot/Python terminal command '{0}'".format(line)
-                    #elif(first == "fsig"):
-                    #    after_process.append(line)
+                    elif(first == "fsig"):
+                        after_process.append(line)
                     elif(first == "noplot"):
                         obj = line
                         self.__blocks[self.__currentTag].contents.append(line) 
@@ -797,13 +804,41 @@ class kat(object):
                 
                 v = line.split()
                 
-                if v[2] in self.__components:
-                    comp = self.__components[v[1]]
+                name = str(v[1])
+                
+                if v[2] not in self.__components:
+                    raise pkex.BasePyKatException("Could not find the component '{0}'. Line: '{1}'".format(v[2], line))
+                
+                comp = self.__components[v[2]]
+                
+                if comp._default_fsig() == None:
+                    raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
+                    
+                param = None
+                amp = None
+                
+                if len(v) == 5:
+                    param == None
+                    freq = float(v[3])
+                    phase = float(v[4])
+                elif len(v) == 6:
+                    if v[3].isdigit():
+                        freq = float(v[3])
+                        phase = float(v[4])
+                        amp = float(v[5])
+                    else:
+                        param = v[3]
+                        freq = float(v[4])
+                        phase = float(v[5])
+                elif len(v) == 7:
+                    param = v[3]
+                    freq = float(v[4])
+                    phase = float(v[5])
+                    amp = float(v[6])
                 else:
-                    raise pkex.BasePyKatException("Could not find the component '{0}' for attr command in line '{1}'".format(v[1], line))
+                    raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                 
-                
-                #kat.siganls.apply()
+                self.signals.apply(comp._default_fsig(), amp, phase, name)
                 
             else:
                 raise pkex.BasePyKatException("Haven't handled parsing of '{0}'".format(line))

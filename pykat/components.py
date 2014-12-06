@@ -76,6 +76,7 @@ class Component(object):
         self.tag = None
         self._params = []
         self.__removed = False
+        self._default_fsig_param = None
         
         # store a unique ID for this component
         global next_component_id
@@ -90,7 +91,21 @@ class Component(object):
     
     def _register_param(self, param):
         self._params.append(param)
-        
+    
+    def _default_fsig(self):
+        """
+        Returns what Finesse internally determines as the default 
+        fsig parameter. This is used mainly for parsing fsig command
+        lines where no target parameter is stated.
+        """
+        if self._default_fsig_param != None:
+            if not self._default_fsig_param.canFsig:
+                raise pkex.BasePyKatException("Default fsig parameter %s is not possible to fsig" % (self.__default_fsig_param.name))
+            else:
+                return self._default_fsig_param
+        else:
+            return None
+    
     def _on_kat_add(self, kat):
         """
         Called when this component has been added to a kat object.
@@ -225,6 +240,8 @@ class AbstractMirrorComponent(Component):
         self.__Fz = Param("Fz", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fz")
         self.__Frx = Param("Frx", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Frx")
         self.__Fry = Param("Fry", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fry")
+        
+        self._default_fsig_param = self.__phi
         
     @property
     def z(self): return self.__z
@@ -499,11 +516,13 @@ class space(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._QItem = None
-        self.__L = Param("L", self, SIfloat(L))
+        self.__L = Param("L", self, SIfloat(L), canFsig=True, fsig_name="phase")
         self.__n = Param("n", self, SIfloat(n))
 
         self.__gx = AttrParam("gx", self, gx)
         self.__gy = AttrParam("gy", self, gy)
+        
+        self._default_fsig_param = self.__L
         
     @property
     def L(self): return self.__L
@@ -823,10 +842,11 @@ class modulator(Component):
         self._svgItem = None
         self.__f = Param("f", self, SIfloat(f))
         self.__midx = Param("midx", self, SIfloat(midx))
-        self.__phase = Param("phase", self, SIfloat(phase))
+        self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__order = order
         self.type = modulation_type
         
+        self._default_fsig_param = self.__phase
             
     @property 
     def f(self): return self.__f
@@ -905,6 +925,8 @@ class laser(Component):
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__noise = AttrParam("noise", self, None)
         self._svgItem = None
+        
+        self._default_fsig_param = self.__f_offset
         
     @property
     def P(self): return self.__power

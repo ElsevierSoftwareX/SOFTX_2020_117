@@ -28,7 +28,7 @@ put low_refl f $mx1
 
 yaxis log re:im
 
-fsig noise 9
+fsig noise m2 1 0
 """
 
 kat = finesse.kat(kat_code=code)
