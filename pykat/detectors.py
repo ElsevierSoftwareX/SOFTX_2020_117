@@ -786,7 +786,7 @@ class hd(Detector2):
     def __init__(self, name, phase, node1_name, node2_name):
         BaseDetector.__init__(self, name, (node1_name, node2_name), max_nodes=2)
     
-        self.__phase = Param("phase", self, 0)
+        self.__phase = Param("phase", self, phase)
     
     @property
     def phase(self): return self.__phase
