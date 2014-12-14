@@ -1,3 +1,4 @@
+from __future__ import print_function
 import abc
 import pykat.exceptions as pkex
 import weakref
@@ -150,7 +151,7 @@ class Param(putable, putter):
         #if this param can be put somewhere we need to check if it is
         if self.isPutable:
             for a in self.putees:
-                print "Removing put from {0} {1} to {2} {3}".format(self.owner.name, self.name, a.owner.name, a.name)
+                print("Removing put from {0} {1} to {2} {3}".format(self.owner.name, self.name, a.owner.name, a.name))
                 a._putter = None
                 self.put_count -= 1
                 
@@ -160,7 +161,7 @@ class Param(putable, putter):
         # check if we have anything being put to us
         if self.isPutter:
             if self._putter != None:
-                print "Removing put from {0} {1} to {2} {3}".format(self._putter.owner.name, self._putter.name, self.owner.name, self.name)
+                print("Removing put from {0} {1} to {2} {3}".format(self._putter.owner.name, self._putter.name, self.owner.name, self.name))
                 self._putter.put_count -= 1
                 self._putter.putees.remove(self)
                 self._putter = None

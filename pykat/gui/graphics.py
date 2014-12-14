@@ -5,12 +5,15 @@ Created on Fri Feb 01 09:13:03 2013
 @author: Daniel
 """
 
+from __future__ import print_function
+import pykat.external.six as six
+if six.PY2:
+	import exceptions
 from PyQt4.QtGui import *
 from PyQt4.Qt import *
 from PyQt4 import QtSvg
 from PyQt4.QtSvg import QGraphicsSvgItem
 import pykat.components
-import exceptions
 import weakref
 
 nsize = 10

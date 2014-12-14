@@ -4,7 +4,7 @@ Created on Sun Jan 27 10:02:41 2013
 
 @author: Daniel
 """
-
+from __future__ import print_function
 from pykat import USE_GUI, NoGUIException
 
 if USE_GUI:
@@ -349,7 +349,7 @@ class NodeNetwork(object):
             return False
             
         elif isinstance(currcomp, pykat.components.isolator):
-            print "isol"
+            print("isol")
         elif isinstance(currcomp, pykat.components.laser):
             # if we are at a laser then we can't go any further
             # and it isn;t this node as we checked before

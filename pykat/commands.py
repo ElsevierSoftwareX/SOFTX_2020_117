@@ -4,9 +4,12 @@ Created on Mon Jan 28 11:58:09 2013
 
 @author: Daniel
 """
+from __future__ import print_function
 import numpy
 from numpy import min,max
-import exceptions
+import pykat.external.six as six
+if six.PY2:
+	import exceptions
 from components import *
 from structs import *
 from pykat.param import Param, putter
