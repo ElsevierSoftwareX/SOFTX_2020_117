@@ -1291,11 +1291,11 @@ class kat(object):
             objs = self.__blocks[key].contents
             for obj in objs:
                 if isinstance(obj, str):
-                    print obj
+                    print(obj)
                     found = True
         
         if not found:
-            print "No extra lines were found"
+            print("No extra lines were found")
         
                         
     def generateKatScript(self) :
