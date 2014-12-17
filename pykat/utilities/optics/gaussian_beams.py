@@ -7,9 +7,10 @@ import cmath
 from scipy.special import hermite
 from pykat.SIfloat import SIfloat
 
+    
 class gauss_param(object):
     """
-    Use beam_param instead, will be future name of this object.
+    Use beam_param instead, will be the future name of this object.
     
     Gaussian beam complex parameter
     
@@ -243,6 +244,7 @@ class gauss_param(object):
     # reverse beam direction 
     def reverse(self):
         self.__q = -1.0 * self.__q.real + 1j * self.__q.imag
+
 
 class beam_param(gauss_param):
     pass

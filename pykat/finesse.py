@@ -1227,11 +1227,11 @@ class kat(object):
         if hasattr(self, "x2axis") and self.noxaxis == False:
             # need to parse 2D outputs slightly different as they are effectively 2D matrices
             # written in linear form
-            x = data[0::(1+self.x2axis.steps),0]
-            y = data[0:(1+self.x2axis.steps),1]
+            x = data[0::(1+self.x2axis.steps),0].squeeze()
+            y = data[0:(1+self.x2axis.steps),1].squeeze()
             # get rows and columns lined up so that we can reshape a single column of all x/y data
             # into a matrix
-            z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps)
+            z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps).squeeze()
             # once you do this the data for y and x axes need swapping
             z = z.swapaxes(1,2)
             return [x, y, z, hdr]
@@ -1240,19 +1240,23 @@ class kat(object):
             
             rows,cols = data.shape
             
-            x = data[:,0]
-            y = data[:,1:cols]
+            x = data[:,0].squeeze()
+            y = data[:,1:cols].squeeze()
         
             return [x, y, hdr]
 
     def removeLine(self, fragment) :
         """
-        This will search all blocks by default and search for the string
-        fragment specified and remove it. This will only remove non-parsed
-        commands, it will not remove commands that have already been parsed
-        into the pykat structure, such as mirrors and beamsplitters, use the
-        kat.remove(...) function for that purpose.
+        This will search all blocks and search for the string
+        fragment specified and remove it.
+        
+        WARNING: This will only remove non-parsed commands, it will not
+        remove commands that have already been parsed
+        into a pykat object, such as mirrors and beamsplitters, use
+        kat.remove or kat.component.remove() to delete parsed objects.
         """
+        found = False
+        
         for key in self.__blocks:
             objs = self.__blocks[key].contents
             for obj in objs:
@@ -1260,6 +1264,10 @@ class kat(object):
                     if fragment in obj:
                         print "  ** removing line '{0}'".format(obj)
                         objs.remove(obj)
+                        found = True
+            
+        if not found:
+            pkex.BasePyKatException("The command fragment '%s' is not an extra line added to this kat object. Please check that the item you are trying to remove has not been parsed as a pykat object." % fragment)
 
     def addLine(self, line, block=NO_BLOCK) :
         """
@@ -1269,6 +1277,25 @@ class kat(object):
         pykat object that create similar commands so becareful.
         """
         self.__blocks[block].contents.append(line)
+        
+    def printExtraLines(self):
+        """
+        This prints all the Finesse commands that have not been parsed
+        into pykat objects. This should be used for reference only. To
+        add or remove extra lines use the addLine and removeLine methods.
+        """
+        found = False
+        
+        for key in self.__blocks:
+            objs = self.__blocks[key].contents
+            for obj in objs:
+                if isinstance(obj, str):
+                    print obj
+                    found = True
+        
+        if not found:
+            print "No extra lines were found"
+        
                         
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
