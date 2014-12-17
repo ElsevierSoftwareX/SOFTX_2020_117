@@ -2,7 +2,7 @@ from itertools import combinations_with_replacement as combinations
 from pykat.utilities.optics.gaussian_beams import beam_param, HG_beam
 from pykat.exceptions import BasePyKatException
 from romhom import u_star_u
-from progressbar import ProgressBar, ETA, Percentage, Bar
+from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from scipy.interpolate import interp2d
 from scipy.integrate import dblquad
 

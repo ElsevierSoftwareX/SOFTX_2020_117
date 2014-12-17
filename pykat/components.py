@@ -4,7 +4,10 @@ Created on Mon Jan 28 11:10:01 2013
 
 @author: Daniel
 """
-import exceptions
+from __future__ import print_function
+import pykat.external.six as six
+if six.PY2:
+	import exceptions
 import pykat.exceptions as pkex
 import pykat
 from pykat.node_network import *
