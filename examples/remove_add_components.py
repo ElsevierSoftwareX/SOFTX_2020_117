@@ -1,16 +1,24 @@
-# Example showing how to remove and add components with Pykat.
-# Commands that get parsed into a pykat object can be interacted 
-# with in a object orientated manner. So you can call kat.component.remove()
-# to remove it for example.
-#
-# This example shows how a kat object can be manipulated when pykat objects
-# are available.
-#
-# If the a Finesse command hasn't been implemented as a pykat object yet
-# the command will be added as an "extra line", these can still be removed
-# and added to using the kat.removeLine and kat.addLine commands.
-#
-# Daniel Brown 17/12/14
+"""
+--------------------------------------------------------------
+Example file for using PyKat to remove objects from a 'kat'
+object for Finesse simulations
+Finesse: http://www.gwoptics.org/finesse
+PyKat:   http://www.gwoptics.org/pykat
+
+Example showing how to remove and add components with Pykat.
+Commands that get parsed into a pykat object can be interacted 
+with in a object orientated manner. So you can call kat.component.remove()
+to remove it for example.
+
+This example shows how a kat object can be manipulated when pykat objects
+are available.
+
+If the a Finesse command hasn't been implemented as a pykat object yet
+the command will be added as an "extra line", these can still be removed
+and added to using the kat.removeLine and kat.addLine commands.
+Daniel Brown 17/12/14
+--------------------------------------------------------------
+"""
 
 import pykat
 from pykat.components import *
