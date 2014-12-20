@@ -1,3 +1,18 @@
+"""
+------------------------------------------------------
+Utility functions for handling mirror surface
+maps. Some functions based on earlier version
+in Matlab (http://www.gwoptics.org/simtools/)
+Work in progress, currently these functions are
+untested!
+
+http://www.gwoptics.org/pykat/
+------------------------------------------------------
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from pykat.utilities.romhom import makeReducedBasis, makeEmpiricalInterpolant, makeWeights
 from scipy.interpolate import interp2d
 import numpy as np

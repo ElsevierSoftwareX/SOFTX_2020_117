@@ -1,13 +1,13 @@
 from itertools import combinations_with_replacement as combinations
-from pykat.utilities.optics.gaussian_beams import beam_param, HG_beam
+from pykat.optics.gaussian_beams import beam_param, HG_beam
 from pykat.exceptions import BasePyKatException
-from romhom import u_star_u
+from pykat.optics.romhom import u_star_u
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from scipy.interpolate import interp2d
 from scipy.integrate import dblquad
 
 import time
-import maps
+import pykat.optics.maps
 import os.path
 import numpy as np
 import pykat
