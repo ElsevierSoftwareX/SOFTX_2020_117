@@ -1,5 +1,5 @@
-from pykat.utilities.optics.ABCD import apply, mirror_trans
-from pykat.utilities.optics.gaussian_beams import gauss_param
+from pykat.optics.ABCD import apply, mirror_trans
+from pykat.optics.gaussian_beams import gauss_param
 
 nr1 = 1
 nr2 = 1.44963098985906

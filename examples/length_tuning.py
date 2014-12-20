@@ -9,7 +9,7 @@ import sys
 sys.path.append("../")
 
 import pykat
-from pykat.utilities.optics.gaussian_beams import gauss_param
+from pykat.optics.gaussian_beams import gauss_param
 import pykat.finesse as finesse
 from pykat.commands import xaxis
 import pylab as pl

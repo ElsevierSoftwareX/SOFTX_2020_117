@@ -1,6 +1,6 @@
 from pykat import finesse
 from pykat.commands import *
-from pykat.utilities.optics.gaussian_beams import gauss_param
+from pykat.optics.gaussian_beams import gauss_param
 
 import pylab as pl
 import scipy
@@ -192,7 +192,7 @@ def get_qs(tmpkat,f):
         # computing beam size at ITM 
         # and then we reflect of ITM, an set it as new startnode
         q_in = complex(out['w1'][0],out['w1'][1])
-        from pykat.utilities.optics.ABCD import apply, mirror_refl
+        from pykat.optics.ABCD import apply, mirror_refl
         abcd = mirror_refl(1,-2500)
         q_out = apply(abcd,q_in,1,1)
         beam1 = gauss_param(q=q_out)    

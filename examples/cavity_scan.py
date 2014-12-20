@@ -292,7 +292,7 @@ kat.add(
 
 # set q value 1m from ITM, i.e. at the n1 node
 # use the utility method for this purpose
-kat.space1.n1.q = pykat.utilities.optics.gaussian_beams.gauss_param(q = 1.050412 + 24.243836j)
+kat.space1.n1.q = pykat.optics.gaussian_beams.gauss_param(q = 1.050412 + 24.243836j)
 # you can alternatively set w0 and z with gauss_param(w0 = #, z = #)
 
 ##############################
