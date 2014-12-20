@@ -12,11 +12,8 @@ import pylab as pl
 formatter = matplotlib.ticker.EngFormatter(unit='', places=0)
 formatter.ENG_PREFIXES[-6] = 'u'
 
-import matplotlib.backends.backend_pdf
-def printPDF(self, filename):
-	pdfp = matplotlib.backends.backend_pdf.PdfPages(filename)
-	pdfp.savefig(self,dpi=300,bbox_inches='tight')
-	pdfp.close()
+from  pykat.utilities.plotting.tools import printPDF
+
 	
 def main():
 	print """
