@@ -1,5 +1,5 @@
 import numpy as np
-from pykat.utilities.optics.gaussian_beams import gauss_param
+from pykat.optics.gaussian_beams import gauss_param
 
 def apply(ABCD, q1, n1, n2):
     return gauss_param(nr=n2, q=n2 * (ABCD[0,0] * q1/float(n1) + ABCD[0,1]) / (ABCD[1,0] * q1/float(n1) + ABCD[1,1]))

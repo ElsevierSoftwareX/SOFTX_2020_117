@@ -125,7 +125,7 @@ def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1, greedy
         else:
             greedypts = 'mismatched20.txt'
     
-    greedyfile = os.path.join(pykat.__path__[0],'utilities','greedypoints',greedypts)
+    greedyfile = os.path.join(pykat.__path__[0],'optics','greedypoints',greedypts)
     
     limits = np.loadtxt(greedyfile, usecols=(1,))[:5]
     
