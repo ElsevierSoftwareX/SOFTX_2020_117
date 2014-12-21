@@ -13,6 +13,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 import numpy as np
+import math
+
+def FFT_apply_map(field, Map, Lambda):
+	k=2.0*np.pi/Lambda
+	return field*np.exp(-1j * k * Map.data*Map.scaling);
 
 def apply_lens(field, grid, Lambda, f):
 	# apply a phase factor representing a lens
@@ -59,6 +64,22 @@ def FFT_scale_propagate(field, grid0, grid1, Lambda, distance, w0, w1, nr):
 	
 	return field
 
+def required_roundtrips(Loss, accuracy):
+	# Estimates the required number of roundtrips
+	# for a cavity FFT simulation:
+	# After Inf roundtrips the power is given by
+	# P_total=P_in/(1-r)^2
+	# after N roundtrips it is
+	# P_N=P_in (1-r^{N+1))^2/(1-r)^2
+	# with P_in the power transmitted into the cavity
+	# So the relative error is
+	# 1-P_N/P_total=1-(1-r^(N+1))^2 which should be smaller than accuracy.
+	# This yields
+	# roundtrips = ceil(log(1-sqrt(1-accuracy))/log(sqrt(R)))-1;
+	# for accuracy<<1 we can simplify this and set 
+	R=1-Loss
+	return 2*math.ceil(np.log(0.5*accuracy)/np.log(R))
+   
 class grid():
 	# Data structure to describe the size and axes for a (x,y) data array
 	# of complex beam amplitudes. Also contain also data structures for
