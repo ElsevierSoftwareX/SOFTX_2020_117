@@ -29,7 +29,7 @@ class surfacemap(object):
         self.scaling = scaling
         self.__interp = None
         
-        if data == None:
+        if data is None:
             self.data = np.zeros(size)
         else:
             self.data = data
@@ -111,10 +111,10 @@ class surfacemap(object):
     
     def z_xy(self, x=None, y=None, wavelength=1064e-9, direction="reflection", nr1=1.0, nr2=1.0):
         
-        if x == None and y == None:
+        if x is None and y is None:
             data = self.scaling * self.data
         else:
-            if self.__interp == None:
+            if self.__interp is None:
                 self.__interp = interp2d(self.x, self.y, self.data * self.scaling)
                 
             data = self.__interp(x, y)
@@ -201,7 +201,7 @@ class surfacemap(object):
         
         import pylab
         
-        if xlim != None:
+        if xlim is not None:
             _x = np.logical_and(self.x<=max(xlim)/100.0, self.x>=min(xlim)/100.0)
             xmin = np.min(np.where(_x == True))
             xmax = np.max(np.where(_x == True))
@@ -210,7 +210,7 @@ class surfacemap(object):
             xmax = len(self.x)-1
             xlim = [self.x.min()*100, self.x.max()*100]
     
-        if ylim != None:
+        if ylim is not None:
             _y = np.logical_and(self.y<=max(ylim)/100.0, self.y>=min(ylim)/100.0)
             ymin = np.min(np.where(_y == True))
             ymax = np.max(np.where(_y == True))
@@ -231,15 +231,15 @@ class surfacemap(object):
         pylab.xlabel('x [cm]')
         pylab.ylabel('y [cm]')
 
-        if xlim != None: pylab.xlim(xlim)
-        if ylim != None: pylab.ylim(ylim)
+        if xlim is not None: pylab.xlim(xlim)
+        if ylim is not None: pylab.ylim(ylim)
 
         pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
 
         cbar = fig.colorbar(axes)
         cbar.set_clim(zmin, zmax)
         
-        if clabel != None:
+        if clabel is not None:
             cbar.set_label(clabel)
     
         if show:
