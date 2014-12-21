@@ -16,6 +16,9 @@ are available.
 If the a Finesse command hasn't been implemented as a pykat object yet
 the command will be added as an "extra line", these can still be removed
 and added to using the kat.removeLine and kat.addLine commands.
+You can set
+  kat.verbose = True
+to print a warning message when "extra lines" are generated
 Daniel Brown 17/12/14
 --------------------------------------------------------------
 """
