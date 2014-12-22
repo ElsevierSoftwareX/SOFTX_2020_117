@@ -16,6 +16,7 @@ from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from pykat.optics.maps import *
 from pykat.optics.gaussian_beams import HG_beam, beam_param
 from pykat.optics.fft import *
+from pykat.utilities.plotting.tools import plot_field, plot_propagation
 
 from aligo import *
 
@@ -64,7 +65,7 @@ def main():
 	# setup grid for FFT propagation
 	[xpoints,ypoints] = surface.size
 	xsize = xpoints * surface.step_size[0]
-	ysize = 0.05 * surface.step_size[0]
+	ysize = ypoints * surface.step_size[0]
 	xoffset = 0.0
 	yoffset = 0.0
 
@@ -74,24 +75,38 @@ def main():
 	y = shape.yaxis
 
 	result['shape']=shape
-	
+	global gx, gy, beam, laser
 	# generate roughly mode-matched input beam
 	gx = beam_param(w0=0.012, z=-1834.0)
 	gy = gx
 	beam = HG_beam(gx,gy,0,0)
 	laser = beam.Unm(x,y) 
 
+	# some debugging plots
+	#plot_field(laser)
+	#Lrange= np.linspace(0,4000,200)
+	#plot_propagation(laser, shape, Lambda, 0, 1, Lrange, 1)
+
+	precompute_roundtrips(shape, laser)
+
+	# now save any `result' variables:
+	tmpfile = shelve.open(tmpresultfile)
+	tmpfile['result']=result
+	tmpfile.close()
+
+		
+def precompute_roundtrips(shape, laser):
 	R=aligo.etmX_R*aligo.itmX_R
 	Loss = 1-R
 	accuracy=100E-6
 	print("cavity loss: {0}".format(Loss))	
 	N=int(required_roundtrips(Loss,accuracy))
 	print("required rountrips: {0} (for accuracy of {1})".format(N, accuracy))
-	print("Estimated memory requirement: {0:.2f} MBytes".format(2*8*xpoints*ypoints*N/1024.0/1024.0))
+	print("Estimated memory requirement: {0:.2f} MBytes".format(2*8*shape.xpoints*shape.ypoints*N/1024.0/1024.0))
 
 	global f_round
-	f_circ=np.zeros((xpoints,ypoints),dtype=np.complex128)
-	f_round=np.zeros((xpoints,ypoints,N),dtype=np.complex128)
+	f_circ=np.zeros((shape.xpoints,shape.ypoints),dtype=np.complex128)
+	f_round=np.zeros((shape.xpoints,shape.ypoints,N),dtype=np.complex128)
       
 	# move impinging field into cavity
 	f_circ = np.sqrt(aligo.itmX_T) * laser
@@ -103,10 +118,10 @@ def main():
 	p = ProgressBar(maxval=N, widgets=["computing f_circ:", Percentage(),"|", ETA(), Bar()])
 
 	for n in range(2,N):
-		f_circ = FFT_propagate(f_circ,shape,Lambda,aligo.LX,1) 
-		f_circ = aligo.etmX_r*FFT_apply_map(f_circ, etm, Lambda)
-		f_circ = FFT_propagate(f_circ,shape,Lambda,aligo.LX,1) 
-		f_circ = aligo.itmX_r*FFT_apply_map(f_circ, itm, Lambda)
+		f_circ = FFT_propagate(f_circ,shape,aligo.Lambda,aligo.LX,1) 
+		f_circ = aligo.etmX_r*FFT_apply_map(f_circ, etm, aligo.Lambda)
+		f_circ = FFT_propagate(f_circ,shape,aligo.Lambda,aligo.LX,1) 
+		f_circ = aligo.itmX_r*FFT_apply_map(f_circ, itm, aligo.Lambda)
 		f_round[:,:,n] = f_circ;
 		p.update(n)
 
@@ -115,10 +130,6 @@ def main():
 	timestr = time.strftime("%Y:%m:%d-%H:%M:%S")
 	np.save('fround-'+timestr,f_round)
 
-	# now the result variables:
-	tmpfile = shelve.open(tmpresultfile)
-	tmpfile['result']=result
-	tmpfile.close()
 	
 	
 def FFT_apply_map(field, Map, Lambda):
