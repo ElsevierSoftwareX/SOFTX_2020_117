@@ -14,7 +14,7 @@ import pykat
 from pykat.components import *
 
 from pykat.utilities.plotting.tools import printPDF
-from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
+from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar, Timer
 from pykat.optics.maps import *
 from pykat.optics.gaussian_beams import HG_beam, beam_param
 from pykat.optics.fft import *
@@ -57,6 +57,7 @@ def main():
 	# loading kat file to get parameters and to compute input beam parameters
 	global kat, out
 	kat = pykat.finesse.kat()
+	kat.verbose = False
 	kat.loadKatFile('aligo_Xarm.kat')
 	Lambda = kat.lambda0
 	LX=kat.LX.L.value
@@ -71,8 +72,8 @@ def main():
 	itm=curvedmap('itm_Rc',surface.size,surface.step_size, -1.0*abs(kat.itmX.Rc.value))
 	etm=curvedmap('etm_Rc',surface.size,surface.step_size, -1.0*abs(kat.etmX.Rc.value))
 
-	# apply measured map to etm
-	#etm.data = etm.data + surface.data
+	# apply measured map to etm, using 10 times larger distortions
+	etm.data = etm.data + surface.data*surface.scaling/etm.scaling*10.0
 
 	# setup grid for FFT propagation
 	[xpoints,ypoints] = surface.size
@@ -119,7 +120,7 @@ def precompute_roundtrips(shape, laser, kat):
 	LX=kat.LX.L.value
 	R=kat.etmX.R.value*kat.itmX.R.value
 	Loss = 1-R
-	accuracy=100E-6
+	accuracy=1E-6
 	print("cavity loss: {0}".format(Loss))	
 	N=int(required_roundtrips(Loss,accuracy))
 	print("required rountrips: {0} (for accuracy of {1})".format(N, accuracy))
@@ -136,7 +137,7 @@ def precompute_roundtrips(shape, laser, kat):
 
 	print(" --- pre computing all rountrip fields ---")
 	# This will take some time, let's show a progress bar
-	p = ProgressBar(maxval=N, widgets=["computing f_circ:", Percentage(),"|", ETA(), Bar()])
+	p = ProgressBar(maxval=N, widgets=["f_circ:", Percentage(),"|", Timer(), "|", ETA(), Bar()])
 
 	for n in range(1,N):
 		f_circ = FFT_propagate(f_circ,shape,Lambda,LX,1) 
@@ -145,6 +146,7 @@ def precompute_roundtrips(shape, laser, kat):
 		f_circ = np.sqrt(kat.itmX.R.value)*FFT_apply_map(f_circ, itm, Lambda)
 		f_round[:,:,n] = f_circ;
 		p.update(n)
+	p.finish()
 
 	print(" --- saving data to file ---")
 	import time
