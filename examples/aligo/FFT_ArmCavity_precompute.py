@@ -9,10 +9,12 @@ from collections import OrderedDict
 import shelve
 
 import pylab as pl
-from  pykat.utilities.plotting.tools import printPDF
+
+import pykat
+from pykat.components import *
+
+from pykat.utilities.plotting.tools import printPDF
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
-
-
 from pykat.optics.maps import *
 from pykat.optics.gaussian_beams import HG_beam, beam_param
 from pykat.optics.fft import *
@@ -51,13 +53,23 @@ def main():
 	# w1 [cm] 5.3
 	# w2 [cm] 6.2
 	# z1 [m] -1834
-	Lambda = aligo.Lambda
 
+	# loading kat file to get parameters and to compute input beam parameters
+	global kat, out
+	kat = pykat.finesse.kat()
+	kat.loadKatFile('aligo_Xarm.kat')
+	Lambda = kat.lambda0
+	LX=kat.LX.L.value
+	kat.maxtem=0
+	out = kat.run()
+	w0=out.y[0]
+	z0=-out.y[1]
+		
 	# load and create mirror maps
 	global itm, etm
 	surface=read_map('etm08_virtual.txt')
-	itm=curvedmap('itm_Rc',surface.size,surface.step_size, aligo.itmX_Rc)
-	etm=curvedmap('etm_Rc',surface.size,surface.step_size, aligo.etmX_Rc)
+	itm=curvedmap('itm_Rc',surface.size,surface.step_size, -1.0*abs(kat.itmX.Rc.value))
+	etm=curvedmap('etm_Rc',surface.size,surface.step_size, -1.0*abs(kat.etmX.Rc.value))
 
 	# apply measured map to etm
 	#etm.data = etm.data + surface.data
@@ -65,7 +77,7 @@ def main():
 	# setup grid for FFT propagation
 	[xpoints,ypoints] = surface.size
 	xsize = xpoints * surface.step_size[0]
-	ysize = ypoints * surface.step_size[0]
+	ysize = ypoints * surface.step_size[1]
 	xoffset = 0.0
 	yoffset = 0.0
 
@@ -73,30 +85,39 @@ def main():
 	shape = grid(xpoints, ypoints, xsize, ysize, xoffset, yoffset)
 	x = shape.xaxis
 	y = shape.yaxis
-
 	result['shape']=shape
-	global gx, gy, beam, laser
+
 	# generate roughly mode-matched input beam
-	gx = beam_param(w0=0.012, z=-1834.0)
-	gy = gx
-	beam = HG_beam(gx,gy,0,0)
+	global laser
+	gx = beam_param(w0=w0, z=z0)
+	beam = HG_beam(gx,gx,0,0)
 	laser = beam.Unm(x,y) 
 
 	# some debugging plots
-	#plot_field(laser)
-	#Lrange= np.linspace(0,4000,200)
-	#plot_propagation(laser, shape, Lambda, 0, 1, Lrange, 1)
+	"""
+	plot_field(laser)
+	Lrange= np.linspace(0,4000,200)
+	plot_propagation(laser, shape, Lambda, 0, 1, Lrange, 1)
+	laser1=FFT_propagate(laser,shape,Lambda,LX,1)
+	laser2=np.sqrt(kat.etmX.R.value)*FFT_apply_map(laser1, etm, Lambda)
+	laser3=FFT_propagate(laser2,shape,Lambda,LX,1)
+	Lrange= np.linspace(0,4000,200)
+	plot_propagation(laser2, shape, Lambda, 0, 1, Lrange, 1)
+	plot_field(laser3)
+	"""
 
-	precompute_roundtrips(shape, laser)
-
+	precompute_roundtrips(shape, laser, kat)
+	
 	# now save any `result' variables:
 	tmpfile = shelve.open(tmpresultfile)
 	tmpfile['result']=result
 	tmpfile.close()
 
 		
-def precompute_roundtrips(shape, laser):
-	R=aligo.etmX_R*aligo.itmX_R
+def precompute_roundtrips(shape, laser, kat):
+	Lambda=kat.lambda0
+	LX=kat.LX.L.value
+	R=kat.etmX.R.value*kat.itmX.R.value
 	Loss = 1-R
 	accuracy=100E-6
 	print("cavity loss: {0}".format(Loss))	
@@ -109,19 +130,19 @@ def precompute_roundtrips(shape, laser):
 	f_round=np.zeros((shape.xpoints,shape.ypoints,N),dtype=np.complex128)
       
 	# move impinging field into cavity
-	f_circ = np.sqrt(aligo.itmX_T) * laser
+	f_circ = np.sqrt(kat.itmX.T.value) * laser
 	# this counts as the first (zeroth) roundtrip
-	f_round[:,:,1] = f_circ
+	f_round[:,:,0] = f_circ
 
 	print(" --- pre computing all rountrip fields ---")
 	# This will take some time, let's show a progress bar
 	p = ProgressBar(maxval=N, widgets=["computing f_circ:", Percentage(),"|", ETA(), Bar()])
 
-	for n in range(2,N):
-		f_circ = FFT_propagate(f_circ,shape,aligo.Lambda,aligo.LX,1) 
-		f_circ = aligo.etmX_r*FFT_apply_map(f_circ, etm, aligo.Lambda)
-		f_circ = FFT_propagate(f_circ,shape,aligo.Lambda,aligo.LX,1) 
-		f_circ = aligo.itmX_r*FFT_apply_map(f_circ, itm, aligo.Lambda)
+	for n in range(1,N):
+		f_circ = FFT_propagate(f_circ,shape,Lambda,LX,1) 
+		f_circ = np.sqrt(kat.etmX.R.value)*FFT_apply_map(f_circ, etm, Lambda)
+		f_circ = FFT_propagate(f_circ,shape,Lambda,LX,1) 
+		f_circ = np.sqrt(kat.itmX.R.value)*FFT_apply_map(f_circ, itm, Lambda)
 		f_round[:,:,n] = f_circ;
 		p.update(n)
 
@@ -134,7 +155,7 @@ def precompute_roundtrips(shape, laser):
 	
 def FFT_apply_map(field, Map, Lambda):
 	k=2.0*np.pi/Lambda
-	return field*np.exp(-1j * k * Map.data*Map.scaling);
+	return field*np.exp(-1j * 2.0 * k * Map.data*Map.scaling);
 
 if __name__ == '__main__':
     main()
