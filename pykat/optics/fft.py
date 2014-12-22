@@ -15,10 +15,6 @@ from __future__ import unicode_literals
 import numpy as np
 import math
 
-def FFT_apply_map(field, Map, Lambda):
-	k=2.0*np.pi/Lambda
-	return field*np.exp(-1j * k * Map.data*Map.scaling);
-
 def apply_lens(field, grid, Lambda, f):
 	# apply a phase factor representing a lens
 	k= 2.0*np.pi/Lambda
@@ -28,7 +24,7 @@ def apply_thin_lens(field, grid, Lambda, f):
 	# apply a phase factor representing a thin lens
 	k= 2.0*np.pi/Lambda
 	return field*(np.exp(1.0 * 1j * k * grid.r_squared/(2.0*f)))
-
+	
 def FFT_propagate(field, grid, Lambda, distance, nr):
 	# FFT propagation code in a fixed grid
 

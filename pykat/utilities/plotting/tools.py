@@ -30,6 +30,37 @@ def printPDF(fig, filename):
 		pdfp.savefig(fig, dpi=300,bbox_inches='tight')
 		pdfp.close()
 
+def plot_field(field):
+	ax,fig=plot_setup()
+	im = ax.imshow(np.abs(field),origin='lower', aspect='auto')
+	cb = fig.colorbar(im, format="%.4g")
+	#cb.set_clim(-1.0*zlimit, zlimit) 
+	ax.autoscale(False)
+	plt.show(block=0)
+
+def plot_propagation(field, grid, Lambda, axis, normalise, Lrange, nr):
+	# axis = 0 for x and =1 for y crosssection
+	# if normalise = 1, each slice is normalises to peak intensity
+	[n,m]=field.shape
+	slices = np.zeros((n,np.size(Lrange)))
+	from pykat.optics.fft import FFT_propagate
+	for idx, L in enumerate(Lrange):
+		field2 = FFT_propagate(field,grid, Lambda, L, nr)
+		if axis==0:
+			slices[:,idx]=np.abs(field2[:,int(m/2)])**2
+		else:
+			slices[:,idx]=np.abs(field2[int(n/2),:])**2
+		if normalise==1:
+			peak_intensity= np.abs(field2[int(n/2),int(m/2)])**2
+			slices[:,idx]=slices[:,idx]/peak_intensity
+	ax,fig=plot_setup()
+	im = ax.imshow(slices, aspect='auto')
+	cb = fig.colorbar(im, format="%.4g")
+	#cb.set_clim(-1.0*zlimit, zlimit) 
+	ax.autoscale(False)
+	plt.show(block=0)
+
+			
 def plot_power_contour(x,y,z,xlabel, ylabel, clabel, title='', filename=''):
 	ax,fig=plot_setup()
 	xm,ym=np.meshgrid(x,y)
@@ -52,7 +83,6 @@ def plot_power_contour(x,y,z,xlabel, ylabel, clabel, title='', filename=''):
 	fig.canvas.manager.set_window_title(title)
 	plt.show(block=0)
 	printPDF(fig, filename)
-
 
 
 	
