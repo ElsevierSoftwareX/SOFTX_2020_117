@@ -15,7 +15,7 @@ from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 
 from pykat.optics.maps import *
 from pykat.optics.gaussian_beams import HG_beam, beam_param
-from pykat.fft.fft import *
+from pykat.optics.fft import *
 
 from aligo import *
 

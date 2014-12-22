@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 import pylab as pl
 
 from pykat.optics.gaussian_beams import HG_beam, beam_param
-from pykat.fft.fft import *
+from pykat.optics.fft import *
 import numpy as np
 import scipy
 
