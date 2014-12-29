@@ -42,8 +42,8 @@ def FFT_propagate_simple(field, xpoints, ypoints, xstep, ystep, Lambda, distance
 	# - xpoints, xsize give the number of points and physical size of one
 	#   tile in the grid on which the field is defined along the xaxis.
 	#   ypoints, ysize do the same for the yaxis.
-    # - field is the initial field E
-    # - distance is the ditance over which to propgagte in meters
+	# - field is the initial field E
+	# - distance is the ditance over which to propgagte in meters
 	# - Lambda is the vacuum wavelength, nr the index of refraction
 
 	k = 2.0*np.pi/Lambda*nr
