@@ -37,6 +37,32 @@ def FFT_propagate(field, grid, Lambda, distance, nr):
 
 	return field
 
+def FFT_propagate_simple(field, xpoints, ypoints, xstep, ystep, Lambda, distance, nr):
+	# FFT propagation code
+	# - xpoints, xsize give the number of points and physical size of one
+	#   tile in the grid on which the field is defined along the xaxis.
+	#   ypoints, ysize do the same for the yaxis.
+    # - field is the initial field E
+    # - distance is the ditance over which to propgagte in meters
+	# - Lambda is the vacuum wavelength, nr the index of refraction
+
+	k = 2.0*np.pi/Lambda*nr
+	plD = np.pi*Lambda*distance/nr
+
+	# compute FFT axis vectors and compute propagator
+	f_x = np.fft.fftshift(np.fft.fftfreq(xpoints)/xstep)
+	f_y = np.fft.fftshift(np.fft.fftfreq(ypoints)/ystep)
+	F_x, F_y = np.meshgrid(f_x,f_y)
+	f_r_squared = F_x**2 + F_y**2
+	Kp=np.fft.fftshift(np.exp(1j*plD*f_r_squared))
+	
+	field = np.fft.fft2(field) # perform FFT
+	field = field * np.exp(-1j*k*distance) * Kp # apply propagator 
+	field = np.fft.ifft2(field) # perform reverse FFT
+
+	return field
+
+
 def FFT_scale_propagate(field, grid0, grid1, Lambda, distance, w0, w1, nr):
 	# FFT propagation code with an adaptive grid size.
 	# Propagates to a scaled coordinate system, see Virgo Book of
