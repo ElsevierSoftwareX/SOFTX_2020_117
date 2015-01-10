@@ -36,7 +36,7 @@ def cavity_info(Lambda, L, Rc1, Rc2):
 	zr = np.sqrt( L**2 * G * (1.0-G)/G1**2) 
 	z1 = L * g2 * (1-g1) / G1
 	z2 = L * g1 * (1-g2) / G1
-	w0 = L * Lambda / np.pi * np.sqrt( G * (1-G) / G1**2 )
+	w0 =  np.sqrt( zr * Lambda / np.pi ) 
 	w1 = np.sqrt( L * Lambda /np.pi * np.sqrt( g2 / (g1 * (1-G)) ))
 	w2 = np.sqrt( L * Lambda /np.pi * np.sqrt( g1 / (g2 * (1-G)) ))
 	return [zr, w0, z1, w1, w2]
