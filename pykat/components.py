@@ -13,6 +13,7 @@ import pykat
 from pykat.node_network import *
 from pykat.exceptions import *
 import abc
+import copy
 
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
@@ -70,8 +71,15 @@ class NodeGaussSetter(object):
         
 class Component(object):
     __metaclass__ = abc.ABCMeta
-    
-    def __init__(self, name):
+
+    def __new__(cls, *args, **kwargs):
+        # This creates an instance specific class for the component
+        # this enables us to add properties to instances rather than
+        # all classes
+        return object.__new__(type(cls.__name__, (cls,), {}), *args, **kwargs)
+        
+    def __init__(self, name=None):
+        
         self.__name = name
         self._svgItem = None
         self._requested_node_names = []
@@ -86,12 +94,20 @@ class Component(object):
         self.__id = next_component_id
         next_component_id += 1
         
-        # This creates an instance specific class for the component
-        # this enables us to add properties to instances rather than
-        # all classes
-        cls = type(self)
-        self.__class__ = type(cls.__name__, (cls,), {})
-    
+       
+        
+    def __deepcopy__(self, memo):
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties.
+        """
+        result = self.__class__.__new__(self.__class__)
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
+        
+        result.__update_node_setters             
+        
+        return result
+        
     def _register_param(self, param):
         self._params.append(param)
     

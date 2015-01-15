@@ -15,9 +15,18 @@ import pykat.exceptions as pkex
 from pykat.components import Component, NodeGaussSetter
 from pykat.detectors import BaseDetector as Detector
 from pykat.optics.gaussian_beams import beam_param
+from copy import deepcopy
 
 class NodeNetwork(object):
+    
+    def __new__(cls, *args, **kwargs):
+        # This creates an instance specific class for the component
+        # this enables us to add properties to instances rather than
+        # all classes
+        return object.__new__(type(cls.__name__, (cls,), {}), *args, **kwargs)
+        
     def __init__(self, kat):
+        
         self.__nodes = {}
         self.__kat = kat
         self.__nodeComponents = {} # dictionary of tuples containing which components are connected to a node
@@ -25,9 +34,8 @@ class NodeNetwork(object):
         self.__componentCallback = {}
         self.__node_id = 1
         
-        cls = type(self)
-        self.__class__ = type(cls.__name__, (cls,), {})
-    
+
+        
     @property
     def kat(self): return self.__kat
         

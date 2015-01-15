@@ -183,10 +183,9 @@ class katRun(object):
     
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
-
+        out = None
+        
         if len(idx) > 0:
-            out = self.y[:, idx]
-            
             if len(idx) == 1:
                 if self.yaxis == "abs:deg":
                     out = self.y[:, idx[0]]
@@ -197,6 +196,9 @@ class katRun(object):
                     out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
                 elif self.yaxis == "re:im":
                     out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
+            
+            if out == None:
+                out = self.y[:, idx]
             
             if out.size == 1:
                 return out[0].squeeze()
@@ -375,10 +377,18 @@ Constant = namedtuple('Constant', 'name, value, usedBy')
     
 class kat(object):  
         
+    def __new__(cls, *args, **kwargs):
+        # This may seem like an arbitrary step but here we are creating a 
+        # new class that is a base class of itself. This is because when
+        # the kat object adds new components it also adds properties for
+        # each of these. There properties are unique to each kat object,
+        # but properties are part of the class definition. Thus if two
+        # kat objects share the same class definition they also have the
+        # same properties regardless of whether they have the actual
+        # object added to it. So we create an instance specific class.
+        return object.__new__(type(pykat.finesse.kat.__name__, (pykat.finesse.kat,), {}), *args, **kwargs)
+        
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
-
-        cls = type(self)
-        self.__class__ = type(cls.__name__, (cls,), {})
         
         self.scene = None # scene object for GUI
         self.verbose = True
@@ -424,7 +434,30 @@ class kat(object):
         
         if kat_file != None:
             self.loadKatFile(kat_file)
-
+			
+    def __deepcopy__(self, memo):
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties. This is because when
+        the kat object adds new components it also adds properties for
+        each of these. There properties are unique to each kat object,
+        but properties are part of the class definition. Thus if two
+        kat objects share the same class definition they also have the
+        same properties regardless of whether they have the actual
+        object added to it. So we create an instance specific class.
+        """
+        result = self.__class__.__new__(self.__class__)
+        memo[id(self)] = result
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
+        
+        # Find all properties in class we are copying
+        # and deep copy these to the new class instance
+        for x in self.__class__.__dict__.items():
+            if isinstance(x[1], property):
+                setattr(result.__class__, x[0], x[1])
+                        
+        return result
+		
     @property
     def signals(self): return self.__signals
 
@@ -1229,7 +1262,7 @@ class kat(object):
             # need to parse 2D outputs slightly different as they are effectively 2D matrices
             # written in linear form
             x = data[0::(1+self.x2axis.steps),0].squeeze()
-            y = data[0:(1+self.x2axis.steps),1].squeeze()
+            y = data[0:(1+self.x2axis.steps),1]
             # get rows and columns lined up so that we can reshape a single column of all x/y data
             # into a matrix
             z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps).squeeze()
@@ -1242,7 +1275,7 @@ class kat(object):
             rows,cols = data.shape
             
             x = data[:,0].squeeze()
-            y = data[:,1:cols].squeeze()
+            y = data[:,1:cols]
         
             return [x, y, hdr]
 
