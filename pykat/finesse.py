@@ -853,25 +853,28 @@ class kat(object):
                 
                 if len(v) == 5:
                     param == None
-                    freq = float(v[3])
-                    phase = float(v[4])
+                    freq = SIfloat(v[3])
+                    phase = SIfloat(v[4])
                 elif len(v) == 6:
-                    if v[3].isdigit():
-                        freq = float(v[3])
-                        phase = float(v[4])
-                        amp = float(v[5])
+                    if v[3][0].isdigit():
+                        freq = SIfloat(v[3])
+                        phase = SIfloat(v[4])
+                        amp = SIfloat(v[5])
                     else:
-                        param = v[3]
-                        freq = float(v[4])
-                        phase = float(v[5])
+                        param = str(v[3])
+                        freq = SIfloat(v[4])
+                        phase = SIfloat(v[5])
+                        
                 elif len(v) == 7:
                     param = v[3]
-                    freq = float(v[4])
-                    phase = float(v[5])
-                    amp = float(v[6])
+                    freq = SIfloat(v[4])
+                    phase = SIfloat(v[5])
+                    amp = SIfloat(v[6])
                 else:
                     raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                 
+                print(param, freq, phase, amp)
+                self.signals.f = freq
                 self.signals.apply(comp._default_fsig(), amp, phase, name)
                 
             else:
