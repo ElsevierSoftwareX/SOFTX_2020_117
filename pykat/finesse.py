@@ -873,7 +873,6 @@ class kat(object):
                 else:
                     raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                 
-                print(param, freq, phase, amp)
                 self.signals.f = freq
                 self.signals.apply(comp._default_fsig(), amp, phase, name)
                 
