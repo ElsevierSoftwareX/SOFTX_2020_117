@@ -5,6 +5,9 @@ Created on Mon Jan 28 11:10:01 2013
 @author: Daniel
 """
 from __future__ import print_function
+
+from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
+
 import pykat.external.six as six
 if six.PY2:
 	import exceptions
@@ -15,14 +18,15 @@ from pykat.exceptions import *
 import abc
 import copy
 
+if HAS_OPTIVIS:
+    import optivis.bench.components as optivis_components
+
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 import weakref
 import pykat.exceptions as pkex
 
 next_component_id = 1
-
-from pykat import USE_GUI, NoGUIException
 
 if USE_GUI:
     import pykat.gui.resources
@@ -80,6 +84,7 @@ class Component(object):
         
     def __init__(self, name=None):
         
+        self._optivis_component = None
         self.__name = name
         self._svgItem = None
         self._requested_node_names = []
@@ -444,6 +449,31 @@ class mirror(AbstractMirrorComponent):
             rtn.extend(p.getFinesseText())
                     
         return rtn
+    
+    def getOptivisComponent(self):
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.CavityMirror(name=self.name, aoi=0)
+        
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output not %s" % mode)
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("fr")
+            else:
+                return self._optivis_component.getInputNode("bk")
+                
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getOutputNode("fr")
+            else:
+                return self._optivis_component.getOutputNode("bk")
+          
         
     def getQGraphicsItem(self):
         if not USE_GUI:
@@ -477,7 +507,38 @@ class beamSplitter(AbstractMirrorComponent):
                     self.alpha = values[key]
                 else:
                     raise pkex.BasePyKatException("No attribute {0} for mirrors".format(key))
-                
+    
+    def getOptivisComponent(self):
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.BeamSplitter(name=self.name, aoi=self.alpha)
+        
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("frA")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getInputNode("frB")
+            elif kat_node is self.nodes[2]:
+                return self._optivis_component.getInputNode("bkA")
+            elif kat_node is self.nodes[3]:
+                return self._optivis_component.getInputNode("bkB")
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getOutputNode("frA")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("frB")
+            elif kat_node is self.nodes[2]:
+                return self._optivis_component.getOutputNode("bkA")
+            elif kat_node is self.nodes[3]:
+                return self._optivis_component.getOutputNode("bkB")
+                     
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
@@ -574,6 +635,18 @@ class space(Component):
     @gy.setter
     def gy(self,value): self.__gy.value = SIfloat(value)
     
+    def connectingComponents(self):
+        """
+        Returns the two components that this space connects.
+        """
+        a = list(self.nodes[0].components + self.nodes[1].components)
+        a = [value for value in a if value != self]
+        
+        if len(a) != 2:
+            raise pkex.BasePyKatException("Space should only connect 2 components")
+            
+        return a
+        
     def parseAttributes(self, values):
         
         for key in values.keys():
@@ -993,7 +1066,24 @@ class laser(Component):
             rtn.extend(p.getFinesseText())
         
         return rtn
-         
+
+    def getOptivisComponent(self):
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.Laser(name=self.name)
+        
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            return None
+        elif mode == "output":
+            return self._optivis_component.getOutputNode("out")
+                
     def getQGraphicsItem(self):
         if not USE_GUI:
             raise NoGUIException

@@ -53,7 +53,7 @@ from pykat.param import Param, AttrParam
 
 import pykat.exceptions as pkex
 
-from pykat import USE_GUI, NoGUIException
+from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
 
 if USE_GUI:
     from pykat.gui.gui import pyKatGUI
@@ -1444,6 +1444,49 @@ class kat(object):
         #out.append("pyterm no\n")
         
         return out
+    
+    def optivis(self):
+        if not HAS_OPTIVIS:
+            print("Optivis is not installed")
+            return None
+        
+        import optivis.scene as scene
+        import optivis.bench.links as links
+        import optivis.view.canvas as canvas
+        
+        scene = scene.Scene(title="Example 2", azimuth=180)
+        
+        # Run through once to add components, ignoring spaces
+        for c in self.getComponents():
+            if isinstance(c, pykat.components.space): continue
+            print("Adding %s" % c.name)
+            optivis_op = getattr(c, "getOptivisComponent", None)
+            
+            if callable(optivis_op):
+                scene.addComponent(c.getOptivisComponent())
+
+        # Run through again to add links
+        for c in self.getComponents():
+            if not isinstance(c, pykat.components.space):
+                continue
+            
+            a = c.connectingComponents()
+            
+            c1 = a[0].getOptivisComponent()
+            c2 = a[1].getOptivisComponent()
+            
+            no = a[0].getOptivisNode("Output", c.nodes[0])
+            ni = a[1].getOptivisNode("Input", c.nodes[1])
+            
+            if no is None or ni is None:
+                raise pkex.BasePyKatException("Optivis node is None")
+            
+            print("Link %s (%s) -> %s (%s)" %(a[0].name, no.name, a[1].name, ni.name))
+            scene.addLink(links.Link(no, ni, c.L.value))
+                
+        gui = canvas.Simple(scene=scene)
+        
+        return gui
         
     def openGUI(self):
         if not USE_GUI:
@@ -1451,17 +1494,17 @@ class kat(object):
         else:
             self.app = QCoreApplication.instance() 
             created = False
-            
+        
             if self.app == None:
                 created = True
                 self.app = QApplication([""])
-                
+            
             if self.pykatgui == None:
                 self.pykatgui = pyKatGUI(self)
                 self.pykatgui.main()
             else:
                 self.pykatgui.show()
-                
+            
             if created: self.app.exec_()
     
     def getComponents(self):
