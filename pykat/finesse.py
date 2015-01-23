@@ -1585,8 +1585,6 @@ class kat(object):
         
         name = com.__class__.__name__
         
-        print(getattr(self.__class__, name))
-        
         delattr(self.__class__, name)
         delattr(self, '__com_' + name)
         
