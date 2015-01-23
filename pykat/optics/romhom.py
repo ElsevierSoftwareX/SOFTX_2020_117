@@ -28,37 +28,48 @@ class ROMWeights:
         self.limits = limits
         
     def writeToFile(self, filename):
-        f = open(filename, 'w+')
+        """
+        Writes this map's ROM weights to a file
+        that can be used with Finesse. The filename
+        is appended with '.rom' internally.
+        """
+        f = open(filename + ".rom", 'w+')
         
-        f.write(repr(self.limits) + "\n")
+        f.write("zmin=%16.16e\n" % self.limits.zmin)
+        f.write("zmax=%16.16e\n" % self.limits.zmax)
+        f.write("w0min=%16.16e\n" % self.limits.w0min)
+        f.write("w0max=%16.16e\n" % self.limits.w0max)
+        f.write("maxorder=%i\n" % self.limits.max_order)
         
+        f.write("xnodes=%i\n" % len(self.EI["xm"].nodes))
+        
+        for v in self.EI["xm"].nodes.flatten():
+            f.write("%s\n" % repr(float(v)))
+        
+        f.write("ynodes=%i\n" % len(self.EI["ym"].nodes))
+        
+        for v in self.EI["ym"].nodes.flatten():
+            f.write("%s\n" % repr(float(v)))
+            
         f.write(repr(self.w_ij_Q1.shape) + "\n")
         
         for v in self.w_ij_Q1.flatten():
-            f.write("%s " % repr(complex(v))[1:-1])
-        
-        f.write("\n")
+            f.write("%s\n" % repr(complex(v))[1:-1])
         
         f.write(repr(self.w_ij_Q2.shape) + "\n")
         
         for v in self.w_ij_Q2.flatten():
-            f.write("%s " % repr(complex(v))[1:-1])
-        
-        f.write("\n")
+            f.write("%s\n" % repr(complex(v))[1:-1])
         
         f.write(repr(self.w_ij_Q3.shape) + "\n")
         
         for v in self.w_ij_Q3.flatten():
-            f.write("%s " % repr(complex(v))[1:-1])
-        
-        f.write("\n")
+            f.write("%s\n" % repr(complex(v))[1:-1])
         
         f.write(repr(self.w_ij_Q4.shape) + "\n")
         
         for v in self.w_ij_Q4.flatten():
-            f.write("%s " % repr(complex(v))[1:-1])
-        
-        f.write("\n")
+            f.write("%s\n" % repr(complex(v))[1:-1])
             
         f.close()
 

@@ -143,28 +143,30 @@ class surfacemap(object):
             raise BasePyKatException("Map type needs handling")
         
 
-    def generateROMWeights(self, isModeMatched=True, verbose=False, interpolate=False, tolerance = 1e-12, sigma = 1, sort=False, greedyfile=None):
+    def generateROMWeights(self, isModeMatched=True, verbose=False, interpolate=False, interpolate_N=None, tolerance = 1e-12, sigma = 1, sort=False, greedyfile=None):
         
         if interpolate:
             from scipy.interpolate import interp2d
             import numpy as np
 
             D = interp2d(self.x, self.y, self.data, fill_value=0)
-
+            if interpolate_N is None:
+                interpolate_N = (self.size[0], self.size[1])
+                
             # only want even number of data points spread equally
             # about the axes
-            if self.size[0] % 2 == 0:
-                Nx = self.size[0]
+            if interpolate_N[0] % 2 == 0:
+                Nx = interpolate_N[0]
             else:
-                Nx = self.size[0]-1
+                Nx = interpolate_N[0]-1
 
-            if self.size[1] % 2 == 0:
-                Ny = self.size[1]
+            if interpolate_N[1] % 2 == 0:
+                Ny = interpolate_N[1]
             else:
-                Ny = self.size[1]-1
+                Ny = interpolate_N[1]-1
             
-            nx = np.linspace(min(self.x), max(self.x), Nx) 
-            ny = np.linspace(min(self.y), max(self.y), Ny)
+            nx = np.linspace(min(self.x), max(self.x), interpolate_N[0]) 
+            ny = np.linspace(min(self.y), max(self.y), interpolate_N[1])
             
             data = D(nx-self.offset[0], ny-self.offset[0])
             
