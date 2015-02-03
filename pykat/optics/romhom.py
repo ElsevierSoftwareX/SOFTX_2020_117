@@ -2,7 +2,7 @@ import math
 import os.path
 import pykat
 import collections
-    
+
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from itertools import combinations_with_replacement as combinations
 from pykat.optics.gaussian_beams import beam_param, HG_beam

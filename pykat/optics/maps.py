@@ -293,7 +293,7 @@ class curvedmap(surfacemap):
 class tiltmap(surfacemap):
     
     def __init__(self, name, size, step_size, tilt):
-        surfacemap.__init__(self, name, "phase", size, (np.array(size)+1)/2.0, step_size, 1e-9)
+        surfacemap.__init__(self, name, "phase reflection", size, (np.array(size)+1)/2.0, step_size, 1e-9)
         self.tilt = tilt
         
     @property
@@ -311,7 +311,7 @@ class tiltmap(surfacemap):
 
 class zernikemap(surfacemap):
 	def __init__(self, name, size, step_size, radius, scaling=1e-9):
-		surfacemap.__init__(self, name, "phase", size, (np.array(size)+1)/2.0, step_size, scaling)
+		surfacemap.__init__(self, name, "phase reflection", size, (np.array(size)+1)/2.0, step_size, scaling)
 		self.__zernikes = {}
 		self.radius = radius
 		

@@ -30,6 +30,7 @@ import subprocess
 import tempfile
 import numpy as np
 import datetime
+import time
 import pickle
 import pykat
 import warnings
@@ -153,7 +154,8 @@ def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
                                              
 class katRun(object):
     def __init__(self):
-        self.runDateTime = datetime.datetime.now()
+        self.runtime = None
+        self.StartDateTime = datetime.datetime.now()
         self.x = None
         self.y = None
         self.xlabel = None
@@ -162,11 +164,12 @@ class katRun(object):
         self.katVersion = None
         self.yaxis = None
         
-    def plot(self):
+    def plot(self, logy=False):
         import pylab
         
         pylab.plot(self.x, self.y)
-        pylab.legend(self.ylabels,0)
+            
+        pylab.legend(self.ylabels, 0)
         pylab.xlabel(self.xlabel)
         pylab.show()
         
@@ -209,7 +212,8 @@ class katRun(object):
       
 class katRun2D(object):
     def __init__(self):
-        self.runDateTime = datetime.datetime.now()
+        self.runtime
+        self.startDateTime = datetime.datetime.now()
         self.x = None
         self.y = None
         self.z = None
@@ -956,7 +960,8 @@ class kat(object):
                 
             r.yaxis = self.yaxis
             r.katScript = "".join(self.generateKatScript())   
-
+            r.katScript += "time\n"
+            
             if (plot==None):
                 # ensure we don't do any plotting. That should be handled
                 # by user themselves
@@ -1022,13 +1027,18 @@ class kat(object):
                         
                         if printerr == 1:
                             sys.stdout.write("\r{0} {1}".format(action, prc))
-                            
                     else:
                         err += line
 
             
             [out,errpipe] = p.communicate()
             
+            _out = out.split("\n")
+            
+            for line in _out[::-1]:
+                if line.lstrip().startswith('computation time:'):
+                    r.runtime = float(line.split(":")[1].replace("s",""))
+                
             if printout == 1: 
                 print(out)
             else:
@@ -1039,8 +1049,6 @@ class kat(object):
             ix2 = out.find(')',ix)
             r.katVersion = out[ix:ix2]
             
-            r.runDateTime = datetime.datetime.now()
-
             # If Finesse returned an error, just print that and exit!
             if p.returncode != 0:
                 print(err)

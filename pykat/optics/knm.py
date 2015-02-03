@@ -311,15 +311,15 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
 
     elif n_mod_2 != m_mod_2:
         if npr_mod_2 == mpr_mod_2:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q2Q3)
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q3)
         else:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q3)
 
     elif npr_mod_2 != mpr_mod_2:
         if n_mod_2 == m_mod_2:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q3Q4) + np.einsum('ij,ij', -u_xy_nodes,  w_ij_Q1Q2)
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q3Q4) - np.einsum('ij,ij', u_xy_nodes,  w_ij_Q1Q2)
         else:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) + np.einsum('ij,ij', -u_xy_nodes, w_ij_Q1Q3)
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q3)
     
      
     return k_ROQ
