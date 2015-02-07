@@ -97,7 +97,7 @@ def readFinesseDownloadData(data_filename, unique=True, geo_filename=None):
         with open(geo_filename, "r") as data:
             for line in data:
                 split = line.split()
-                IPGeo[split[0]] = (split[1], split[2])
+                IPGeo[split[0]] = (float(split[1]), float(split[2]))
         
         return files, IPGeo
     else:
