@@ -115,37 +115,29 @@ def getFinesseDownloadIPGeoData(input_file, output_file):
     input_file: filename and path to processRedmineProductionLog output file
     output_file: Output filename and path
     """
-    
-    IPGeo = {}
 
     with open(input_file, "r") as data:
-        for line in data:
-            split = line.split()
-            file = split[0].lower()
-            ip = split[1]
-            date = parse(split[2])
+        with open(output_file, "w") as w:
+            for line in data:
+                split = line.split()
+                file = split[0].lower()
+                ip = split[1]
+                date = parse(split[2])
                 
-            if ip not in IPGeo:
-                IPGeo[ip] = ([], [])
+                if ip not in IPGeo:
+                    IPGeo[ip] = ([], [])
             
-                response = urllib.urlopen('http://api.hostip.info/get_html.php?ip=%s&position=true' % ip).read()
+                    response = urllib.urlopen('http://api.hostip.info/get_html.php?ip=%s&position=true' % ip).read()
         
-                lat = response.split('\n')[3].split()
-                lon = response.split('\n')[4].split()
+                    lat = response.split('\n')[3].split()
+                    lon = response.split('\n')[4].split()
             
-                if len(lat) == 2 and len(lon) == 2:
-                    IPGeo[ip][0].append(float(lat[1]))
-                    IPGeo[ip][1].append(float(lon[1]))
-                else:
-                    response = json.loads(urllib.urlopen('https://freegeoip.net/json/%s' % ip).read())
-        
-                    if 'latitude' in response:
-                        IPGeo[ip][0].append(float(response['latitude']))
-                        IPGeo[ip][1].append(float(response['longitude']))
-            
-                print response        
+                    if len(lat) == 2 and len(lon) == 2:
+                        w.write("%s %g %g\n" % (ip, float(lat[1]), float(lon[1]) ))
+                    else:
+                        response = json.loads(urllib.urlopen('https://freegeoip.net/json/%s' % ip).read())
 
-    with open(output_file, "w") as w:
-        for ip in IPGeo.keys():
-            w.write("%s %g %g\n" % (ip, IPGeo[ip][0],  IPGeo[ip][1]))
-        
+                        if 'latitude' in response:
+                            w.write("%s %g %g\n" % (ip, float(response['latitude']), float(response['longitude'])))
+                    
+                    print(response)
