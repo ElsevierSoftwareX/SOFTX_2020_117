@@ -512,9 +512,9 @@ class kat(object):
     def phase(self,value): self.__phase = int(value)
         
     @property
-    def getPerformanceData(self): return self.__time_code
-    @getPerformanceData.setter
-    def getPerformanceData(self,value): self.__time_code = bool(value)
+    def timeCode(self): return self.__time_code
+    @timeCode.setter
+    def timeCode(self,value): self.__time_code = bool(value)
     
     @property
     def components(self):
@@ -1118,7 +1118,7 @@ class kat(object):
                 
                 for l in perffile.readlines():
                     vals = l.strip().split()
-                    perfData.append((vals[0], float(vals[1]), float(vals[2]), float(vals[3])))
+                    perfData.append((vals[0], long(vals[1]), long(vals[2])))
                     
                 return [r, perfData]
             else:
