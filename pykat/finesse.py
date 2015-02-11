@@ -1462,7 +1462,7 @@ class kat(object):
         import optivis.bench.links as links
         import optivis.view.canvas as canvas
         
-        scene = scene.Scene(title="Example 2", azimuth=180)
+        scene = scene.Scene(title="My pykat layout")
         
         # Run through once to add components, ignoring spaces
         for c in self.getComponents():
