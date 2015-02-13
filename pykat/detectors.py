@@ -10,7 +10,7 @@ if six.PY2:
 	import exceptions
 import abc
 from pykat.node_network import *
-from pykat.param import Param
+from pykat.param import Param, AttrParam
 from pykat.SIfloat import SIfloat
 
 import collections
@@ -683,7 +683,7 @@ class qnoised(pd):
 class qshot(pd):
     
     def __init__(self, name, num_demods, node_name, alternate_beam=False, **kwargs):
-        super(qnoised, self).__init__(name, num_demods, node_name, alternate_beam=alternate_beam, pdtype=None, senstype=None, **kwargs)
+        super(qshot, self).__init__(name, num_demods, node_name, alternate_beam=alternate_beam, pdtype=None, senstype=None, **kwargs) 
     
     @pd.pdtype.setter
     def pdtype(self, value):
