@@ -143,7 +143,7 @@ class surfacemap(object):
             raise BasePyKatException("Map type needs handling")
         
 
-    def generateROMWeights(self, isModeMatched=True, verbose=False, interpolate=False, interpolate_N=None, tolerance = 1e-12, sigma = 1, sort=False, greedyfile=None):
+    def generateROMWeights(self, isModeMatched=True, verbose=False, interpolate=False, interpolate_N=None, tolerance = 1e-12, sigma = 1, sort=False, greedyfile=None, useSymmetry=True):
         
         if interpolate:
             from scipy.interpolate import interp2d
@@ -175,27 +175,31 @@ class surfacemap(object):
             self.center = (np.array(data.shape)+1)/2.0
             
             self.data = data
-        
-        xm = self.x[self.x<0]
-        ym = self.y[self.y<0]
-        
-        symm = False
+    
+        if useSymmetry:
+            xm = self.x[self.x<0]
+            ym = self.y[self.y<0]
+        else:
+            xm = self.x
+            ym = self.y
         
         if min(xm) == min(ym) and max(xm) == max(ym) and len(xm) == len(ym):
             symm = True
-        
+        else:
+            symm = False
+            
         EI = {}
         
-        EI["xm"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma, greedyfile=greedyfile), sort=sort)
+        EI["x"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma, greedyfile=greedyfile), sort=sort)
         
         if symm:
-            EI["ym"] = EI["xm"]
+            EI["y"] = EI["x"]
         else:
-            EI["ym"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma, greedyfile=greedyfile), sort=sort)
+            EI["y"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma, greedyfile=greedyfile), sort=sort)
         
-        EI["limits"] = EI["xm"].limits
+        EI["limits"] = EI["x"].limits
         
-        self._rom_weights = makeWeights(self, EI, verbose=verbose)
+        self._rom_weights = makeWeights(self, EI, verbose=verbose, useSymmetry=useSymmetry)
         
         return self.ROMWeights, EI
         
@@ -306,7 +310,7 @@ class tiltmap(surfacemap):
         
         xx, yy = np.meshgrid(self.x, self.y)
         
-        self.data = (xx * self.tilt[1] + yy * self.tilt[0])/self.scaling
+        self.data = (yy * self.tilt[1] + xx * self.tilt[0])/self.scaling
         
 
 class zernikemap(surfacemap):

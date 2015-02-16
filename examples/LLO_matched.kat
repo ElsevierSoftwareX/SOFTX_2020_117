@@ -1,0 +1,283 @@
+%--------------------------------------------------------------------------
+%
+% Finesse model for the full dual recycled inteferometer, with Fabry-Perot
+% arm cavities and OMC.
+%
+% Currently plots the DARM coupled cavity transfer function for determining
+% cavity pole.
+%
+% Sources of 'real' numbers, unless otherwise stated:
+% - Mirror parameters (curvatures, losses etc.) from
+%   https://galaxy.ligo.caltech.edu/optics/  If no number for the loss is
+%   given we use 0.
+% - Distances between optics from LIGO-E1200274, the L1 master coordinate
+%   list.
+%
+% 3/12/14 - Updated with Galaxy page values for installed SRM-w
+%         - Includes locks for DARM (10pm offset), PRCL, MICH, CARM and SRCL
+% 4/12/14 - Added in more details about which Galaxy mirror data is taken from
+%
+% To-do:
+% - Check frequency and modulation index for side-bands
+% - AR surface for PRM
+%
+%
+# Charlotte Bond, Paul Fulda, Daniel Brown 
+%--------------------------------------------------------------------------
+
+
+# %%% FTblock Laser
+# ###########################################################################
+# # Laser
+# l L0 2 0 n0
+# s lmod1 1 n0 n1
+# # Modulation indices updated from LLO logbook denis.martynov@LIGO.ORG - 02:01,
+# # Thursday 03 October 2013 (8940)
+# mod mod1 $f1 0.25 1 pm n1 n2
+# s lmod2 1 n2 n3
+# mod mod2 $f2 0.25 1 pm n3 nin
+# # Input beam mode-matched to case with 50km lens in itm substrates (matched
+# # to arm cavities) for LLO design case
+# gauss gparam L0 n0 1.3498243m 4.3433202 1.3619432m 4.5706208
+# ###########################################################################
+# %%% FTend Laser
+
+# %%% FTblock PR
+# ###########################################################################
+# # Distance to power recycling mirror
+# s lin 1 nin nREFL
+# # Power recycling mirror PRM-02
+# m1 PRM $T_PRM $L_PRM $phi_PRM nREFL nPRMb
+# attr PRM Rc 11.009
+# # Distance between PRM and PR2
+# s lp1 16.6107 nPRMb nPR2a
+# # PR2 PR2-02
+# bs1 PR2 $T_PR2 $L_PR2 0 -0.79 nPR2a nPR2b dump nPOP
+# attr PR2 Rc -4.545
+# # Distance from PR2 to PR3
+# s lp2 16.1647 nPR2b nPR3a
+# # PR3 PR3-03
+# bs1 PR3 $T_PR3 $L_PR3 0 0.615 nPR3a nPR3b dump dump
+# attr PR3 Rc 36.027
+# # Distance from PR3 to BS
+# s lp3 19.5381 nPR3b nHRBS_PR
+# ###########################################################################
+# %%% FTend PR
+
+l L0 2 0 n0
+s s1 100 n0 nHRBS_PR
+%%% FTblock BS
+###########################################################################
+# BS beamsplitter BS-02
+##------------------------------------------------------------ 
+## BS 
+##                             ^ 
+##                  to IMY     |      
+##                             |      ,'-.
+##                             |     +    `. 
+##                        nYBS |   ,'       :'
+##      nPR3b                  |  +i1      +
+##         ---------------->    ,:._  i2 ,'
+##    from the PRC       nPRBS + \  `-. + nXBS
+##                           ,' i3\   ,' --------------->
+##                          +      \ +     to IMX
+##                        ,'     i4.'
+##                       `._      ..
+##                          `._ ,' |nSRBS
+##                             -   |
+##                                 |to the SRC
+##                                 |
+##                                 v
+##------------------------------------------------------------
+# BS BS-02
+bs1 HRBS 0.5 8.6u $phi_BS 45 nHRBS_PR nHRBS_Y nHRBS_X nHRBS_SR
+s sHRBStoARBSX 5 $nsilica nHRBS_X nARBSX_sub
+bs2 ARBSX 30u 1.7u $phi_ARBSX 29.1951 nARBSX_sub dump nARBSX_X dump
+s sHRBStoARBSSR 5 $nsilica nHRBS_SR nARBSSR_sub
+bs2 ARBSSR 30u 1.7u $phi_ARBSSR -29.1951 nARBSSR_sub dump nARBSSR_SR dump
+###########################################################################
+%%% FTend BS
+
+
+# %%% FTblock SR
+# ###########################################################################
+# # Distance from BS to SR3
+# s ls3 19.3661 nARBSSR_SR nSR3a
+#
+# # SR3 SR3-01
+# bs1 SR3 $T_SR2 $L_SR3 0 0.785 nSR3a nSR3b dump dump
+# attr SR3 Rc 35.97
+#
+# # Distance from SR3 to SR2
+# s ls2 15.4435 nSR3b nSR2a
+#
+# # SR2 SR2-04
+# bs1 SR2 $T_SR2 $L_SR2 0 0.87 nSR2a nSR2b dump dump
+# attr SR2 Rc -6.406
+#
+# # Distance from SR2 to SRMHR
+# s ls1 15.7566 nSR2b nSRMHRa
+#
+# # Signal recycling mirror SRM-08
+# m1 SRMHR $T_SRM $L_SRM $phi_SRM nSRMHRa nSRMHRb
+# s SRMsub 0.0749 $nsilica nSRMHRb nSRMARa
+# attr SRMHR Rc -5.677
+# m2 SRMAR 50u 0 $phi_SRM nSRMARa nSRMARb
+# ###########################################################################
+# %%% FTend SR
+
+
+%%% FTblock Yarm
+###########################################################################
+# Using values from E1200274
+s ly1 4.847 nHRBS_Y nCPYar1
+# Y arm compensation plate CP-08
+m2 CPYar1 48.9u 0.4u 0 nCPYar1 nCPYar1s
+s sCPY 0.10032 $nsilica nCPYar1s nCPYar2s
+m2 CPYar2 30.5u 0.3u 0 nCPYar2s nCPYar2
+s sCPYtoITMYar 0.02 nCPYar2 nITMYTLin
+# Y arm input mirror ITM-08
+# Thermal lens
+lens ITMYTL $TL_f nITMYTLin nITMYTLtrans
+s ITMYTL_null 10 nITMYTLtrans nITMYconstL_in
+# Constant ITMY substrate lens
+lens ITMYconstL inf nITMYconstL_in nITMYconstL_trans
+# s ITMYTL_null2 0 nITMYconstL_trans nITMYar_in
+# m2 ITMYar 250u 0.6u $phi_ITMY nITMYar_in nITMYs1
+# s lITMY 0.19961 $nsilica nITMYs1 nITMYs2
+# m1 ITMY $T_ITMY $L_ITMY $phi_ITMY nITMYs2 nITMY2
+# attr ITMY Rc -1940.7
+# # Y-arm
+# s Ly 10 nITMY2 nETMY1
+# # ETMY
+# m1 ETMY $T_ETMY $L_ETMY $phi_ETMY nETMY1 nTY
+# attr ETMY Rc 2242.4
+###########################################################################
+%%% FTend Yarm
+
+# %%% FTblock Xarm
+# ###########################################################################
+# # Now using length taken from E1200616
+# s lx1 4.829 nARBSX_X nCPXar1
+# # X arm compensation plate CP-06
+# m2 CPXar1 33u 0.6u 0 nCPXar1 nCPXar1s
+# s sCPX 0.10031 $nsilica nCPXar1s nCPXar2s
+# m2 CPXar2 8u 0.6u 0 nCPXar2s nCPXar2
+# s sCPXtoITMXar 0.02 nCPXar2 nITMXTLin
+# # X arm input mirror ITM-04
+# # Thermal lens
+# lens ITMXTL $TL_f nITMXTLin nITMXTLtrans
+# s ITMXtl_null 0 nITMXTLtrans nITMXconstL_in
+# # Non-thermal ITM lens
+# lens ITMXconstL inf nITMXconstL_in nITMXconstL_trans
+# s ITMXTL_null2 0 nITMXconstL_trans nITMXar_in
+# m2 ITMXar 164u 0.5u $phi_ITMX nITMXar_in nITMXs1
+# s lITMX1 0.20027 $nsilica nITMXs1 nITMXs2
+# m1 ITMX $T_ITMX $L_ITMX $phi_ITMX nITMXs2 nITMX2
+# # default Rc from nebula page
+# attr ITMX Rc -1937.9
+# # X-arm
+# s Lx 10 nITMX2 nETMX1
+# # ETMX
+# m1 ETMX $T_ETMX $L_ETMX $phi_ETMX nETMX1 nTX
+# attr ETMX Rc 2239.7
+# ###########################################################################
+# %%% FTend Xarm
+
+
+%%% FTblock Reflectivities
+###########################################################################
+# Galaxy number 100
+const T_PR2 243u
+const L_PR2 8.6u
+
+# Galaxy number 105
+const T_PR3 5.3u
+const L_PR3 17u
+
+# Galaxy number 107
+const T_PRM 0.021
+const L_PRM 5.9u
+
+# Galaxy number 113
+const T_SR2 18.3u
+const L_SR2 6.1u
+
+# Galaxy number 114
+const T_SR3 5u
+const L_SR3 19.1u
+
+# Galaxy number 126
+const T_SRM 0.3688	
+const L_SRM 8.3u
+
+# Galaxy number 75
+const T_ITMX 0.0148
+const L_ITMX 10.4u
+
+# Galaxy number 79
+const T_ITMY 0.0148
+const L_ITMY 14.3u
+
+# Galaxy number 30
+const T_ETMX 3.7u
+const L_ETMX 100.9u
+
+# Galaxy number 32
+const T_ETMY 3.6u
+const L_ETMY 9.3u
+###########################################################################
+%%% FTend Reflectivities
+
+
+%%% FTblock Constants
+###########################################################################
+const nsilica 1.44963098985906
+% Sidebands tuned to be resonant for PRC in this file (lprc = 57.6564)
+% Design sidebands
+%const f1 9099471
+%const mf1 -9099471
+%const f2 45497355
+%const mf2 -45497355
+% Measured?
+const f1 9099055
+const mf1 9099055
+const f2 45495275
+const mf2 -45495275
+const TL_f 34.5k
+###########################################################################
+%%% FTend Constants
+
+
+%%% FTblock Tunings
+###########################################################################
+# offset computed with zero_locks.py
+const phi_ETMX 0.106992111770048
+const phi_ETMY -0.109282418715425
+const phi_ITMX 0.106389383390564
+const phi_ITMY -0.106389383390564
+const phi_PRM -0.024603392339103
+const phi_SRM 90.108393822523524
+
+const phi_BS 0
+const phi_ARBSX 0
+const phi_ARBSSR 0
+const phi_IC 0
+###########################################################################
+%%% FTend Tunings
+
+
+%%% FTblock HOMs
+###########################################################################
+# Set PRY and PRX to use cavity eigenmodes for mode calculations
+cav SRCY SRMHR nSRMHRa ITMY nITMYs2
+cav SRCX SRMHR nSRMHRa ITMX nITMXs2
+cav PRCY PRM nPRMb ITMY nITMYs2
+cav PRCX PRM nPRMb ITMX nITMXs2
+cav Xarm ITMX nITMX2 ETMX nETMX1
+cav Yarm ITMY nITMY2 ETMY nETMY1
+cav OMC IC nICtrans IC nICout
+maxtem 4
+phase 2
+###########################################################################
+%%% FTend HOMs

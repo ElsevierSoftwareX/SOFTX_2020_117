@@ -5,6 +5,7 @@ from pykat.optics.romhom import u_star_u
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from scipy.interpolate import interp2d
 from scipy.integrate import dblquad
+from pykat.optics.romhom import ROMWeights
 
 import time
 import pykat.optics.maps
@@ -271,65 +272,84 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
     npr = mode_in[1]
     mpr = mode_out[1]
     
-    if cache == None:
-        u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EI["xm"].nodes)
-        u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EI["ym"].nodes)
+    if isinstance(weights, ROMWeights):
+        if cache == None:
+            u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EI["x"].nodes)
+            u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EI["y"].nodes)
         
-        w_ij_Q1Q3 = weights.w_ij_Q1 + weights.w_ij_Q3
-        w_ij_Q2Q4 = weights.w_ij_Q2 + weights.w_ij_Q4
-        w_ij_Q1Q2 = weights.w_ij_Q1 + weights.w_ij_Q2
-        w_ij_Q1Q4 = weights.w_ij_Q1 + weights.w_ij_Q4
-        w_ij_Q2Q3 = weights.w_ij_Q2 + weights.w_ij_Q3
-        w_ij_Q3Q4 = weights.w_ij_Q3 + weights.w_ij_Q4
-        w_ij_Q1Q2Q3Q4 = weights.w_ij_Q1 + weights.w_ij_Q2 + weights.w_ij_Q3 + weights.w_ij_Q4
+            w_ij_Q1Q3 = weights.w_ij_Q1 + weights.w_ij_Q3
+            w_ij_Q2Q4 = weights.w_ij_Q2 + weights.w_ij_Q4
+            w_ij_Q1Q2 = weights.w_ij_Q1 + weights.w_ij_Q2
+            w_ij_Q1Q4 = weights.w_ij_Q1 + weights.w_ij_Q4
+            w_ij_Q2Q3 = weights.w_ij_Q2 + weights.w_ij_Q3
+            w_ij_Q3Q4 = weights.w_ij_Q3 + weights.w_ij_Q4
+            w_ij_Q1Q2Q3Q4 = weights.w_ij_Q1 + weights.w_ij_Q2 + weights.w_ij_Q3 + weights.w_ij_Q4
         
-    else:
-        strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
-        stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
-
-        u_x_nodes = cache[strx]
-        u_y_nodes = cache[stry]
-        
-        w_ij_Q1Q3 = cache["w_ij_Q1Q3"]
-        w_ij_Q2Q4 = cache["w_ij_Q2Q4"]
-        w_ij_Q1Q2 = cache["w_ij_Q1Q2"]
-        w_ij_Q1Q4 = cache["w_ij_Q1Q4"]
-        w_ij_Q2Q3 = cache["w_ij_Q2Q3"]
-        w_ij_Q3Q4 = cache["w_ij_Q3Q4"]
-        w_ij_Q1Q2Q3Q4 = cache["w_ij_Q1Q2Q3Q4"]
-        
-
-    u_xy_nodes = np.outer(u_x_nodes, u_y_nodes)
-
-    n_mod_2 = n % 2
-    m_mod_2 = m % 2
-    npr_mod_2 = npr % 2
-    mpr_mod_2 = mpr % 2
-
-    if n_mod_2 == m_mod_2 and npr_mod_2 == mpr_mod_2:
-        k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
-
-    elif n_mod_2 != m_mod_2:
-        if npr_mod_2 == mpr_mod_2:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q3)
         else:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q3)
+            strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
+            stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
 
-    elif npr_mod_2 != mpr_mod_2:
-        if n_mod_2 == m_mod_2:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q3Q4) - np.einsum('ij,ij', u_xy_nodes,  w_ij_Q1Q2)
-        else:
-            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q3)
+            u_x_nodes = cache[strx]
+            u_y_nodes = cache[stry]
+        
+            w_ij_Q1Q3 = cache["w_ij_Q1Q3"]
+            w_ij_Q2Q4 = cache["w_ij_Q2Q4"]
+            w_ij_Q1Q2 = cache["w_ij_Q1Q2"]
+            w_ij_Q1Q4 = cache["w_ij_Q1Q4"]
+            w_ij_Q2Q3 = cache["w_ij_Q2Q3"]
+            w_ij_Q3Q4 = cache["w_ij_Q3Q4"]
+            w_ij_Q1Q2Q3Q4 = cache["w_ij_Q1Q2Q3Q4"]
+        
+
+        u_xy_nodes = np.outer(u_x_nodes, u_y_nodes)
+
+        n_mod_2 = n % 2
+        m_mod_2 = m % 2
+        npr_mod_2 = npr % 2
+        mpr_mod_2 = mpr % 2
+
+        if n_mod_2 == m_mod_2 and npr_mod_2 == mpr_mod_2:
+            k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q2Q3Q4)
+
+        elif n_mod_2 != m_mod_2:
+            if npr_mod_2 == mpr_mod_2:
+                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q3)
+            else:
+                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q3)
+
+        elif npr_mod_2 != mpr_mod_2:
+            if n_mod_2 == m_mod_2:
+                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q3Q4) - np.einsum('ij,ij', u_xy_nodes,  w_ij_Q1Q2)
+            else:
+                k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q3)
     
-     
+    else:
+        if cache == None:
+            u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EI["x"].nodes)
+            u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EI["y"].nodes)
+    
+            w_ij = weights.w_ij
+        else:
+            strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
+            stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
+
+            u_x_nodes = cache[strx]
+            u_y_nodes = cache[stry]
+    
+        u_xy_nodes = np.outer(u_x_nodes, u_y_nodes)
+
+        k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij)
+         
     return k_ROQ
 
 __fac_cache = []
 
 def fac(n):
     global __fac_cache
-    return __fac_cache[n]
-    #return math.factorial(int(n))
+    if len(__fac_cache) == 0:
+        return math.factorial(int(n))
+    else:
+        return __fac_cache[n]
 
 def m_1_pow(n):
     if n % 2 == 0:

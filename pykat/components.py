@@ -510,7 +510,7 @@ class beamSplitter(AbstractMirrorComponent):
     
     def getOptivisComponent(self):
         if self._optivis_component is None:
-            self._optivis_component = optivis_components.BeamSplitter(name=self.name, aoi=self.alpha)
+            self._optivis_component = optivis_components.BeamSplitter(name=self.name, aoi=-self.alpha)
         
         return self._optivis_component
     
@@ -526,14 +526,14 @@ class beamSplitter(AbstractMirrorComponent):
             elif kat_node is self.nodes[1]:
                 return self._optivis_component.getInputNode("frB")
             elif kat_node is self.nodes[2]:
-                return self._optivis_component.getInputNode("bkA")
-            elif kat_node is self.nodes[3]:
                 return self._optivis_component.getInputNode("bkB")
+            elif kat_node is self.nodes[3]:
+                return self._optivis_component.getInputNode("bkA")
         elif mode == "output":
             if kat_node is self.nodes[0]:
-                return self._optivis_component.getOutputNode("frA")
-            elif kat_node is self.nodes[1]:
                 return self._optivis_component.getOutputNode("frB")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("frA")
             elif kat_node is self.nodes[2]:
                 return self._optivis_component.getOutputNode("bkA")
             elif kat_node is self.nodes[3]:
@@ -915,7 +915,30 @@ class lens(Component):
             rtn.extend(p.getFinesseText())
             
         return rtn
+    
+    def getOptivisComponent(self):
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.ConvexLens(name=self.name)
         
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getInputNode("bk")
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getnOutputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("bk")
+                
     def getQGraphicsItem(self):
         if not USE_GUI:
             raise NoGUIException
@@ -997,6 +1020,30 @@ class modulator(Component):
             
         return rtn
         
+    def getOptivisComponent(self):
+        if self._optivis_component is None:
+            #self._optivis_component = optivis_components.Modulator(name=self.name)
+            self._optivis_component = optivis_components.ConvexLens(name=self.name)
+            
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getInputNode("bk")
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getnOutputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("bk")
+                
     def getQGraphicsItem(self):
         if not USE_GUI:
             raise NoGUIException

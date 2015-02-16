@@ -41,14 +41,14 @@ class ROMWeights:
         f.write("w0max=%16.16e\n" % self.limits.w0max)
         f.write("maxorder=%i\n" % self.limits.max_order)
         
-        f.write("xnodes=%i\n" % len(self.EI["xm"].nodes))
+        f.write("xnodes=%i\n" % len(self.EI["x"].nodes))
         
-        for v in self.EI["xm"].nodes.flatten():
+        for v in self.EI["x"].nodes.flatten():
             f.write("%s\n" % repr(float(v)))
         
-        f.write("ynodes=%i\n" % len(self.EI["ym"].nodes))
+        f.write("ynodes=%i\n" % len(self.EI["y"].nodes))
         
-        for v in self.EI["ym"].nodes.flatten():
+        for v in self.EI["y"].nodes.flatten():
             f.write("%s\n" % repr(float(v)))
             
         f.write(repr(self.w_ij_Q1.shape) + "\n")
@@ -73,6 +73,45 @@ class ROMWeights:
             
         f.close()
 
+class ROMWeightsFull:
+    
+    def __init__(self, w_ij, EI, limits):
+        self.w_ij = w_ij
+        
+        self.EI = EI
+        self.limits = limits
+        
+    def writeToFile(self, filename):
+        """
+        Writes this map's ROM weights to a file
+        that can be used with Finesse. The filename
+        is appended with '.rom' internally.
+        """
+        f = open(filename + ".rom", 'w+')
+        
+        f.write("zmin=%16.16e\n" % self.limits.zmin)
+        f.write("zmax=%16.16e\n" % self.limits.zmax)
+        f.write("w0min=%16.16e\n" % self.limits.w0min)
+        f.write("w0max=%16.16e\n" % self.limits.w0max)
+        f.write("maxorder=%i\n" % self.limits.max_order)
+        
+        f.write("xnodes=%i\n" % len(self.EI["x"].nodes))
+        
+        for v in self.EI["x"].nodes.flatten():
+            f.write("%s\n" % repr(float(v)))
+        
+        f.write("ynodes=%i\n" % len(self.EI["y"].nodes))
+        
+        for v in self.EI["y"].nodes.flatten():
+            f.write("%s\n" % repr(float(v)))
+            
+        f.write(repr(self.w_ij.shape) + "\n")
+        
+        for v in self.w_ij.flatten():
+            f.write("%s\n" % repr(complex(v))[1:-1])
+        
+        f.close()
+        
 def combs(a, r):
     """
     Return successive r-length combinations of elements in the array a.
@@ -273,100 +312,136 @@ def makeEmpiricalInterpolant(RB, sort=False):
     return EmpiricalInterpolant(B=B, nodes=nodes, node_indices=node_indices, limits=RB.limits, x=RB.x)
     
 
-def makeWeights(smap, EI, verbose=True):
+def makeWeights(smap, EI, verbose=True, useSymmetry=True):
     
-    # get full A_xy
-    A_xy = smap.z_xy()
+    if useSymmetry:
+        # get full A_xy
+        A_xy = smap.z_xy().transpose()
     
-    xm = smap.x[smap.x < 0]
-    xp = smap.x[smap.x > 0]
+        xm = smap.x[smap.x < 0]
+        xp = smap.x[smap.x > 0]
     
-    ym = smap.y[smap.y < 0]
-    yp = smap.y[smap.y > 0]
+        ym = smap.y[smap.y < 0]
+        yp = smap.y[smap.y > 0]
     
-    Q1xy = np.ix_(smap.x < 0, smap.y > 0)
-    Q2xy = np.ix_(smap.x > 0, smap.y > 0)
-    Q3xy = np.ix_(smap.x > 0, smap.y < 0)
-    Q4xy = np.ix_(smap.x < 0, smap.y < 0)
+        Q1xy = np.ix_(smap.x < 0, smap.y > 0)
+        Q2xy = np.ix_(smap.x > 0, smap.y > 0)
+        Q3xy = np.ix_(smap.x > 0, smap.y < 0)
+        Q4xy = np.ix_(smap.x < 0, smap.y < 0)
     
-    # get A_xy in the four quadrants of the x-y plane
-    A_xy_Q1 = A_xy[Q1xy]
-    A_xy_Q2 = A_xy[Q2xy]
-    A_xy_Q3 = A_xy[Q3xy]
-    A_xy_Q4 = A_xy[Q4xy]
+        # get A_xy in the four quadrants of the x-y plane
+        A_xy_Q1 = A_xy[Q1xy]
+        A_xy_Q2 = A_xy[Q2xy]
+        A_xy_Q3 = A_xy[Q3xy]
+        A_xy_Q4 = A_xy[Q4xy]
     
-    # Not sure if there is a neater way to select the x=0,y=0 cross elements
-    A_xy_0  = np.hstack([A_xy[:,smap.x==0].flatten(), A_xy[smap.y==0,:].flatten()])
+        # Not sure if there is a neater way to select the x=0,y=0 cross elements
+        A_xy_0  = np.hstack([A_xy[:,smap.x==0].flatten(), A_xy[smap.y==0,:].flatten()])
     
-    full_x = smap.x
-    full_y = smap.y
+        full_x = smap.x
+        full_y = smap.y
 
-    dx = full_x[1] - full_x[0]
-    dy = full_y[1] - full_y[0]
+        dx = full_x[1] - full_x[0]
+        dy = full_y[1] - full_y[0]
 
-    if verbose:
-        count  = 4*len(EI["xm"].B) * len(EI["ym"].B)
-        p = ProgressBar(maxval=count, widgets=["Computing weights: ", Percentage(), Bar(), ETA()])
+        if verbose:
+            count  = 4*len(EI["x"].B) * len(EI["y"].B)
+            p = ProgressBar(maxval=count, widgets=["Computing weights: ", Percentage(), Bar(), ETA()])
     
-    n = 0
+        n = 0
     
-    # make integration weights
-    Bx = EI["xm"].B
-    By = EI["ym"].B[:,::-1]
-    w_ij_Q1 = np.zeros((len(Bx),len(By)), dtype = complex)
+        # make integration weights
+        Bx = EI["x"].B
+        By = EI["y"].B[:,::-1]
+        w_ij_Q1 = np.zeros((len(Bx),len(By)), dtype = complex)
     
-    for i in range(len(Bx)):
-        for j in range(len(By)):
-            B_ij_Q1 = np.outer(Bx[i], By[j])
-            w_ij_Q1[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q1, A_xy_Q1)	
+        for i in range(len(Bx)):
+            for j in range(len(By)):
+                B_ij_Q1 = np.outer(Bx[i], By[j])
+                w_ij_Q1[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q1, A_xy_Q1)	
             
-            if verbose:
-                p.update(n)
-                n+=1
+                if verbose:
+                    p.update(n)
+                    n+=1
 
-    Bx = EI["xm"].B[:,::-1]
-    By = EI["ym"].B[:,::-1]
-    w_ij_Q2 = np.zeros((len(Bx),len(By)), dtype = complex)
+        Bx = EI["x"].B[:,::-1]
+        By = EI["y"].B[:,::-1]
+        w_ij_Q2 = np.zeros((len(Bx),len(By)), dtype = complex)
     
-    for i in range(len(Bx)):
-        for j in range(len(By)):
-            B_ij_Q2 = np.outer(Bx[i], By[j])
-            w_ij_Q2[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q2, A_xy_Q2)
+        for i in range(len(Bx)):
+            for j in range(len(By)):
+                B_ij_Q2 = np.outer(Bx[i], By[j])
+                w_ij_Q2[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q2, A_xy_Q2)
             
-            if verbose:
-                p.update(n)
-                n+=1
+                if verbose:
+                    p.update(n)
+                    n+=1
 
-    Bx = EI["xm"].B[:,::-1]
-    By = EI["ym"].B
-    w_ij_Q3 = np.zeros((len(Bx),len(By)), dtype = complex)
+        Bx = EI["x"].B[:,::-1]
+        By = EI["y"].B
+        w_ij_Q3 = np.zeros((len(Bx),len(By)), dtype = complex)
     
-    for i in range(len(Bx)):
-        for j in range(len(By)):
-            B_ij_Q3 = np.outer(Bx[i], By[j])
-            w_ij_Q3[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q3, A_xy_Q3)
+        for i in range(len(Bx)):
+            for j in range(len(By)):
+                B_ij_Q3 = np.outer(Bx[i], By[j])
+                w_ij_Q3[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q3, A_xy_Q3)
 
-            if verbose:
-                p.update(n)
-                n+=1
+                if verbose:
+                    p.update(n)
+                    n+=1
 
-    Bx = EI["xm"].B
-    By = EI["ym"].B
-    w_ij_Q4 = np.zeros((len(Bx),len(By)), dtype = complex)
+        Bx = EI["x"].B
+        By = EI["y"].B
+        w_ij_Q4 = np.zeros((len(Bx),len(By)), dtype = complex)
     
-    for i in range(len(Bx)):
-        for j in range(len(By)):
-            B_ij_Q4 = np.outer(Bx[i], By[j])
-            w_ij_Q4[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q4, A_xy_Q4)
+        for i in range(len(Bx)):
+            for j in range(len(By)):
+                B_ij_Q4 = np.outer(Bx[i], By[j])
+                w_ij_Q4[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q4, A_xy_Q4)
 
-            if verbose:
-                p.update(n)
-                n+=1
-    if verbose:
-        p.finish()
+                if verbose:
+                    p.update(n)
+                    n+=1
+        if verbose:
+            p.finish()
         
-    return ROMWeights(w_ij_Q1=w_ij_Q1, w_ij_Q2=w_ij_Q2, w_ij_Q3=w_ij_Q3, w_ij_Q4=w_ij_Q4, EI=EI, limits=EI["xm"].limits)
+        return ROMWeights(w_ij_Q1=w_ij_Q1, w_ij_Q2=w_ij_Q2, w_ij_Q3=w_ij_Q3, w_ij_Q4=w_ij_Q4, EI=EI, limits=EI["x"].limits)
+        
+    else:
+        # get full A_xy
+        A_xy = smap.z_xy()
+
+        full_x = smap.x
+        full_y = smap.y
+
+        dx = full_x[1] - full_x[0]
+        dy = full_y[1] - full_y[0]
+
+        if verbose:
+            count  = len(EI["x"].B) * len(EI["y"].B)
+            p = ProgressBar(maxval=count, widgets=["Computing weights: ", Percentage(), Bar(), ETA()])
+
+        n = 0
+
+        # make integration weights
+        Bx = EI["x"].B
+        By = EI["y"].B
+        
+        w_ij = np.zeros((len(Bx), len(By)), dtype = complex)
+
+        for i in range(len(Bx)):
+            for j in range(len(By)):
+                B_ij = np.outer(Bx[i], By[j])
+                w_ij[i][j] = dx*dy*np.einsum('ij,ij', B_ij, A_xy)	
     
-    
+                if verbose:
+                    p.update(n)
+                    n+=1
+                    
+        if verbose:
+            p.finish()
+
+        return ROMWeightsFull(w_ij=w_ij, EI=EI, limits=EI["x"].limits)
+
     
     

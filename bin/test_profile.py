@@ -13,6 +13,8 @@ attr m2 Rc 2
 pd circ n2
 xaxis m1 phi lin 0 180 1000
 yaxis log abs
+maxtem 0
+cav c1 m1 n1 m2 n2
 """)
 
 kat.timeCode = True

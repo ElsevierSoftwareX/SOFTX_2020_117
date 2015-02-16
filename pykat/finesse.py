@@ -1480,6 +1480,11 @@ class kat(object):
             
             a = c.connectingComponents()
             
+            # Need to handle where spaces don't connect two components but there is a loose
+            # node, which may or may not have detectors attached
+            if a[0] is None or a[1] is None:
+                continue
+                
             c1 = a[0].getOptivisComponent()
             c2 = a[1].getOptivisComponent()
             
