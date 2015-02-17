@@ -1470,9 +1470,6 @@ class kat(object):
             print("Adding %s" % c.name)
             optivis_op = getattr(c, "getOptivisComponent", None)
             
-            if callable(optivis_op):
-                scene.addComponent(c.getOptivisComponent())
-
         # Run through again to add links
         for c in self.getComponents():
             if not isinstance(c, pykat.components.space):

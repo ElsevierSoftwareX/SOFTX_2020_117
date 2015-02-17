@@ -15,8 +15,8 @@ m m2 1 0 0 n7a n7b
 
 s s4 50 n5 n5a
 m m3 1 0 0 n5a n5b
-s s4a 200 n5b n8a
-m m4 1 0 0 n8a n8b
+#s s4a 200 n5b n8a
+#m m4 1 0 0 n8a n8b
 """)
 
 kat.optivis().show()

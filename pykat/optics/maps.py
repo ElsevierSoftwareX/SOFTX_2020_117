@@ -170,7 +170,7 @@ class surfacemap(object):
             
             data = D(nx-self.offset[0], ny-self.offset[0])
             
-            self.name += " [ROMHOM interpolated]"
+            self.name += "[ROMHOM_Interpolated]"
             
             self.center = (np.array(data.shape)+1)/2.0
             
