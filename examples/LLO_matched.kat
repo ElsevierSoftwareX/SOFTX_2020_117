@@ -31,12 +31,12 @@
 # Laser
 l L0 2 0 n0
 s lmod1 1 n0 n1
-# Modulation indices updated from LLO logbook denis.martynov@LIGO.ORG - 02:01,
-# Thursday 03 October 2013 (8940)
+# Modulation indices updated from LLO logbook denis.martynov@LIGO.ORG - 02:01, 
+# Thursday 03 October 2013 (8940) 
 mod mod1 $f1 0.25 1 pm n1 n2
 s lmod2 1 n2 n3
-mod mod2 $f2 0.25 1 pm n3 nin
-# Input beam mode-matched to case with 50km lens in itm substrates (matched
+mod mod2 $f2 0.25 1 pm n3 nin 
+# Input beam mode-matched to case with 50km lens in itm substrates (matched 
 # to arm cavities) for LLO design case
 gauss gparam L0 n0 1.3498243m 4.3433202 1.3619432m 4.5706208
 ###########################################################################
@@ -103,28 +103,16 @@ bs2 ARBSSR 30u 1.7u $phi_ARBSSR -29.1951 nARBSSR_sub dump nARBSSR_SR dump
 # Distance from BS to SR3
 s ls3 19.3661 nARBSSR_SR nSR3a
 
-<<<<<<< HEAD:tasks/20141203/H1_DRMI_20141023_matched.kat
-# SR3 SR3-02
-bs1 SR3 5u 19.1u 0 0.765 nSR3a nSR3b dump dump
-attr SR3 Rc 36.013
-=======
 # SR3 SR3-01
 bs1 SR3 $T_SR2 $L_SR3 0 0.785 nSR3a nSR3b dump dump
 attr SR3 Rc 35.97
->>>>>>> 194f08ff4863645a5922cddb8c7b8e61224547f4:finesse_files/core/2014_12_5/LLO_matched.kat
 
 # Distance from SR3 to SR2
 s ls2 15.4435 nSR3b nSR2a
 
-<<<<<<< HEAD:tasks/20141203/H1_DRMI_20141023_matched.kat
-# SR2 SR2-03
-bs1 SR2 18.3u 7.2u 0 0.86 nSR2a nSR2b dump dump
-attr SR2 Rc -6.424
-=======
 # SR2 SR2-04
 bs1 SR2 $T_SR2 $L_SR2 0 0.87 nSR2a nSR2b dump dump
 attr SR2 Rc -6.406
->>>>>>> 194f08ff4863645a5922cddb8c7b8e61224547f4:finesse_files/core/2014_12_5/LLO_matched.kat
 
 # Distance from SR2 to SRMHR
 s ls1 15.7566 nSR2b nSRMHRa
@@ -160,7 +148,7 @@ s lITMY 0.19961 $nsilica nITMYs1 nITMYs2
 m1 ITMY $T_ITMY $L_ITMY $phi_ITMY nITMYs2 nITMY2
 attr ITMY Rc -1940.7
 # Y-arm
-s Ly $L_yARM nITMY2 nETMY1
+s Ly 3994.515 nITMY2 nETMY1
 # ETMY
 m1 ETMY $T_ETMY $L_ETMY $phi_ETMY nETMY1 nTY
 attr ETMY Rc 2242.4
@@ -189,7 +177,7 @@ m1 ITMX $T_ITMX $L_ITMX $phi_ITMX nITMXs2 nITMX2
 # default Rc from nebula page
 attr ITMX Rc -1937.9
 # X-arm
-s Lx $L_xARM nITMX2 nETMX1
+s Lx 3994.485 nITMX2 nETMX1
 # ETMX
 m1 ETMX $T_ETMX $L_ETMX $phi_ETMX nETMX1 nTX
 attr ETMX Rc 2239.7
@@ -298,9 +286,6 @@ const L_ETMY 9.3u
 %%% FTblock Constants
 ###########################################################################
 const nsilica 1.44963098985906
-const L_xARM 3994.485
-const L_yARM 3994.515
-
 % Sidebands tuned to be resonant for PRC in this file (lprc = 57.6564)
 % Design sidebands
 %const f1 9099471
@@ -349,3 +334,92 @@ maxtem 4
 phase 2
 ###########################################################################
 %%% FTend HOMs
+
+%%% FTblock Powers
+###########################################################################
+# pd Px nITMX2
+# pd Py nITMY2
+# pd Pprc nPRMb
+# pd Psrc nSRMHRa*
+# ad prc0 0 nPRMb
+# ad prcf1 $f1 nPRMb
+# ad prcf2 $f2 nPRMb
+# ad src0 0 nSRMHRa*
+# ad srcf1 $f1 nSRMHRa*
+# ad srcf2 $f2 nSRMHRa*
+###########################################################################
+%%% FTend Powers
+
+%%% FTblock errsigs
+###########################################################################
+# N.B. the P signal refers to most symmetric signal, not greatest slope.
+pd1 REFL_f1_P $f1 -10 nREFL
+pd1 REFL_f1_Q $f1 80 nREFL
+pd1 REFL_f2_P $f2 79 nREFL
+pd1 REFL_f2_Q $f2 169 nREFL
+pd1 POP_f1_P $f1 10 nPOP
+pd1 POP_f1_Q $f1 100 nPOP
+pd1 POP_f2_P $f2 78 nPOP
+pd1 POP_f2_Q $f2 168 nPOP
+pd1 AS_f1_P $f1 0 nSRMARb
+pd1 AS_f1_Q $f1 90 nSRMARb
+pd1 AS_f2_P $f2 130 nSRMARb
+pd1 AS_f2_Q $f2 40 nSRMARb
+pd P_DC nAS
+
+noplot REFL_f1_P
+noplot REFL_f1_Q
+noplot REFL_f2_P
+noplot REFL_f2_Q
+noplot POP_f1_P
+noplot POP_f1_Q
+noplot POP_f2_P
+noplot POP_f2_Q
+noplot AS_f1_P
+noplot AS_f1_Q
+noplot AS_f2_P
+noplot AS_f2_Q
+noplot P_DC
+###########################################################################
+%%% FTend errsigs
+
+
+%%% FTblock locks
+###########################################################################
+set PRCL_err POP_f1_P  re
+set MICH_err POP_f2_P  re
+set CARM_err REFL_f1_P re
+set SRCL_err REFL_f2_P re
+set DARMerr AS_f2_P re
+
+func DARMerr10pm = $DARMerr+0.02142517601
+lock DARM_lock $DARMerr10pm 0.081 1n
+
+lock PRCL_lock $PRCL_err 300  10u
+lock MICH_lock $MICH_err 400  0.1m
+lock CARM_lock $CARM_err -3m  0.1m
+lock SRCL_lock $SRCL_err 100  10u
+
+func mMICH_lock = 0 - $MICH_lock
+func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock
+func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock
+
+put* PRM   phi     $PRCL_lock
+put* ITMX  phi     $MICH_lock
+put* ETMX  phi     $ETMX_lock
+put* ITMY  phi     $mMICH_lock
+put* ETMY  phi     $ETMY_lock
+put* SRMHR phi     $SRCL_lock
+
+noplot PRCL_lock
+noplot SRCL_lock
+noplot MICH_lock
+noplot DARM_lock
+noplot CARM_lock
+noplot mMICH_lock
+noplot ETMX_lock
+noplot ETMY_lock
+noplot DARMerr10pm
+###########################################################################
+%%% FTend locks
+
