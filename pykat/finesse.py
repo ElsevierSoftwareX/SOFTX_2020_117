@@ -154,9 +154,9 @@ def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
 
 def GUILength(L):
     """
-    Should scale the lengths in some way to handle km and mm
+    Should scale the lengths in some way to handle km and mm for time being
     """                                  
-    return 10 * erfc(L/1e3) + 0.01
+    return L * ( 20 * erfc(L/2e3) + 0.01)
     
 class katRun(object):
     def __init__(self):
