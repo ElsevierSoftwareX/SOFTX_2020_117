@@ -34,8 +34,7 @@ import time
 import pickle
 import pykat
 import warnings
-import re
-import math       
+import re   
 import itertools
 import ctypes
 import ctypes.util
@@ -43,8 +42,9 @@ import collections
 import re
 import copy
 
-from collections import namedtuple, OrderedDict
+from math import erfc, pi
 
+from collections import namedtuple, OrderedDict
 from pykat.node_network import NodeNetwork
 from pykat.detectors import BaseDetector as Detector
 from pykat.components import Component
@@ -151,7 +151,13 @@ def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
             trace_info[space.name] = space_trace(gouyx = space.gouy_x,
                                                  gouyy = space.gouy_y)
                      
-                                             
+
+def GUILength(L):
+    """
+    Should scale the lengths in some way to handle km and mm
+    """                                  
+    return 10 * erfc(L/1e3) + 0.01
+    
 class katRun(object):
     def __init__(self):
         self.runtime = None
@@ -196,7 +202,7 @@ class katRun(object):
                     out = self.y[:, idx[0]]
             else: 
                 if self.yaxis == "abs:deg":
-                    out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
+                    out = self.y[:, idx[0]] * np.exp(1j*pi*self.y[:, idx[1]]/180.0)
                 elif self.yaxis == "re:im":
                     out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
             
@@ -1467,7 +1473,7 @@ class kat(object):
         # Run through once to add components, ignoring spaces
         for c in self.getComponents():
             if isinstance(c, pykat.components.space): continue
-            print("Adding %s" % c.name)
+            
             optivis_op = getattr(c, "getOptivisComponent", None)
             
         # Run through again to add links
@@ -1491,8 +1497,7 @@ class kat(object):
             if no is None or ni is None:
                 raise pkex.BasePyKatException("Optivis node is None")
             
-            print("Link %s (%s) -> %s (%s)" %(a[0].name, no.name, a[1].name, ni.name))
-            scene.addLink(links.Link(no, ni, c.L.value))
+            scene.addLink(links.Link(no, ni, GUILength(c.L.value) ))
                 
         gui = canvas.Simple(scene=scene)
         

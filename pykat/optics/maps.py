@@ -17,7 +17,7 @@ from pykat.optics.romhom import makeReducedBasis, makeEmpiricalInterpolant, make
 from scipy.interpolate import interp2d
 import numpy as np
 import math
-from pykat.math.zernike import *        
+from pykat.maths.zernike import *        
 		   
 class surfacemap(object):
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None):

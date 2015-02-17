@@ -8,7 +8,7 @@ from itertools import combinations_with_replacement as combinations
 from pykat.optics.gaussian_beams import beam_param, HG_beam
 from scipy.linalg import inv
 from math import factorial
-from pykat.math.hermite import *
+from pykat.maths.hermite import *
 
 import numpy as np
 
