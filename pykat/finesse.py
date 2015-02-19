@@ -56,6 +56,11 @@ import pykat.exceptions as pkex
 
 from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
 
+if HAS_OPTIVIS:
+    from optivis.bench.labels import Label as optivis_label
+    from optivis.geometry import Coordinates as optivis_coord
+    import PyQt4
+    
 if USE_GUI:
     from pykat.gui.gui import pyKatGUI
     from PyQt4.QtCore import QCoreApplication
@@ -156,7 +161,7 @@ def GUILength(L):
     """
     Should scale the lengths in some way to handle km and mm for time being
     """                                  
-    return L * ( 20 * erfc(L/2e3) + 0.01)
+    return L # * ( 40 * erfc(L/400.0) + 0.01)
     
 class katRun(object):
     def __init__(self):
@@ -914,7 +919,7 @@ class kat(object):
         
         return Process(target=f__lkat_process, args=(callback, cmd, kwargs))
            
-    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None) :
+    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False):
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
@@ -926,6 +931,11 @@ class kat(object):
         save_kat (bool) - if true does not delete kat file
         kat_name (string) - name of kat file if needed, will be randomly generated otherwise
         cmd_args (list of strings) - command line flags to pass to FINESSE
+        getTraceData (bool) - If true a list of dictionaries is returned along with the
+                              output file. Each dictionary is the result of the beam tracing
+                              that Finesse performs, the keys are the node names and the values
+                              are the x and y beam parameters. If no tracing is done a None
+                              is returned.
         """
         start = datetime.datetime.now()
         
@@ -996,6 +1006,9 @@ class kat(object):
             
             if cmd_args != None:
                 cmd.extend(cmd_args)
+            
+            if getTraceData:
+                cmd.append('--trace')
                 
             cmd.append('--no-backspace')
             # set default format so that less repeated numbers are printed to the
@@ -1059,13 +1072,57 @@ class kat(object):
             if p.returncode != 0:
                 print(err)
                 sys.exit(1) 
-            
+                
             self.__prevrunfilename = katfile.name
             
             root = os.path.splitext(katfile.name)
-            base = os.path.basename(root[0])            
+            base = os.path.basename(root[0])
+            path = os.path.split(katfile.name)[0]
+            
             outfile = root[0] + ".out"
             
+            traceData = None
+            
+            if getTraceData:
+                # First see if we have any trace files
+                
+                traceFiles = [file for file in os.listdir(path) if file.endswith(".trace") and file.startswith(base)]
+                
+                print("Found %i trace files" % len(traceFiles))
+                print(path)
+                print(traceFiles)
+                
+                if len(traceFiles) > 0:
+                    import fileinput
+                    traceData = []
+                    
+                    for file in traceFiles:
+                        traceData.append({})
+                        ifile = fileinput.input(os.path.join(path, file))
+                    
+                        for line in ifile:
+                            line = line.strip()
+                        
+                            if len(line) > 0:
+                                a = line.split(':', 1)
+                        
+                                if a[0].isdigit():
+                                    print("Found %s" % a[0])
+                                
+                                    values = a[1].split()
+                                
+                                    node_name = values[1].split("(")[0]
+                                
+                                    line1x = ifile.readline()
+                                    line2x = ifile.readline()
+                                    line1y = ifile.readline()
+                                    line2y = ifile.readline()
+
+                                    qx = line2x.strip().split()[0].split("=")[1]
+                                    qy = line2y.strip().split()[0].split("=")[1]
+                                
+                                    traceData[-1][node_name] = (pykat.beam_param(q=complex(qx)), pykat.beam_param(q=complex(qy)))
+                                                
             if save_output:        
                 newoutfile = "{0}.out".format(base)
                 
@@ -1079,18 +1136,19 @@ class kat(object):
 
                 if self.verbose: print("\nOutput data saved to '{0}'".format(newoutfile))
             
-            if hasattr(self, "x2axis") and self.noxaxis == False:
-                [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
+            if len(self.detectors.keys()) > 0:
+                if hasattr(self, "x2axis") and self.noxaxis == False:
+                    [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
                 
-                r.xlabel = hdr[0]
-                r.ylabel = hdr[1]
-                r.zlabels = map(str.strip, hdr[2:])
+                    r.xlabel = hdr[0]
+                    r.ylabel = hdr[1]
+                    r.zlabels = map(str.strip, hdr[2:])
                          
-            else:
-                [r.x,r.y,hdr] = self.readOutFile(outfile)
+                else:
+                    [r.x,r.y,hdr] = self.readOutFile(outfile)
             
-                r.xlabel = hdr[0]
-                r.ylabels = map(str.strip, hdr[1:])
+                    r.xlabel = hdr[0]
+                    r.ylabels = map(str.strip, hdr[1:])
                     
             if save_kat:
                 if kat_name == None:
@@ -1119,6 +1177,8 @@ class kat(object):
             katfile.close()
             perfData = []
             
+            rtn = [r]
+            
             if self.__time_code:
                 perffile = open(root[0] + ".perf",'r')
                 
@@ -1126,9 +1186,15 @@ class kat(object):
                     vals = l.strip().split()
                     perfData.append((vals[0], long(vals[1]), long(vals[2])))
                     
-                return [r, perfData]
+                rtn.append(perfData)
+            
+            if getTraceData:
+                rtn.append(traceData)
+                
+            if len(rtn) == 1:
+                return rtn[0]
             else:
-                return r
+                return rtn
             
         except pkex.FinesseRunError as fe:
             print(fe)
@@ -1470,12 +1536,6 @@ class kat(object):
         
         scene = scene.Scene(title="My pykat layout")
         
-        # Run through once to add components, ignoring spaces
-        for c in self.getComponents():
-            if isinstance(c, pykat.components.space): continue
-            
-            optivis_op = getattr(c, "getOptivisComponent", None)
-            
         # Run through again to add links
         for c in self.getComponents():
             if not isinstance(c, pykat.components.space):
@@ -1497,12 +1557,54 @@ class kat(object):
             if no is None or ni is None:
                 raise pkex.BasePyKatException("Optivis node is None")
             
-            scene.addLink(links.Link(no, ni, GUILength(c.L.value) ))
-                
-        gui = canvas.Simple(scene=scene)
+            c._optivis_component = links.Link(outputNode=no, inputNode=ni, length=c.L.value)
+            
+            c.label_node1 = optivis_label(text="", position=optivis_coord(-0.5, 0), item=c._optivis_component)
+            c.label_node2 = optivis_label(text="", position=optivis_coord( 0.5, 0), item=c._optivis_component)
+            
+            c._optivis_component.labels.append(c.label_node1)
+            c._optivis_component.labels.append(c.label_node2)
+            
+            scene.addLink(c._optivis_component)
         
+        gui = canvas.Full(scene=scene)
+        
+        ### add menu and menu items
+        menubar = gui.qMainWindow.menuBar()
+        fileMenu = menubar.addMenu('&Pykat')
+    
+        trace = PyQt4.QtGui.QAction('Trace', gui.qMainWindow)
+        trace.triggered.connect(self.optivis_updateTraceData)
+        fileMenu.addAction(trace)
+    
         return gui
+    
+    def optivis_updateTraceData(self, gui, tdata):
+        """
+        Change at some point to use a stored GUI reference
+        """
+        if not HAS_OPTIVIS:
+            print("Optivis is not installed")
+            return None
         
+        for c in self.getComponents():
+            if not isinstance(c, pykat.components.space):
+                continue
+        
+            c.label_node1.content["w0_x"] = tdata[c.nodes[0].name][0].w0
+            c.label_node1.content["w_x"] = tdata[c.nodes[0].name][0].w
+            c.label_node1.content["z_x"] = tdata[c.nodes[0].name][0].z
+            c.label_node1.content["Rc_x"] = tdata[c.nodes[0].name][0].Rc
+            c.label_node1.content["Zr_x"] = tdata[c.nodes[0].name][0].zr
+            
+            c.label_node1.content["w0_y"] = tdata[c.nodes[0].name][1].w0
+            c.label_node1.content["w_y"] = tdata[c.nodes[0].name][1].w
+            c.label_node1.content["z_y"] = tdata[c.nodes[0].name][1].z
+            c.label_node1.content["Rc_y"] = tdata[c.nodes[0].name][1].Rc
+            c.label_node1.content["Zr_y"] = tdata[c.nodes[0].name][1].zr
+            
+        gui.draw()
+    
     def openGUI(self):
         if not USE_GUI:
             raise NoGUIException
@@ -1521,7 +1623,7 @@ class kat(object):
                 self.pykatgui.show()
             
             if created: self.app.exec_()
-    
+        
     def getComponents(self):
         return self.__components.values()
     

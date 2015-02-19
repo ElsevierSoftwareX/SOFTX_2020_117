@@ -379,47 +379,9 @@ noplot AS_f1_P
 noplot AS_f1_Q
 noplot AS_f2_P
 noplot AS_f2_Q
-noplot P_DC
+#noplot P_DC
 ###########################################################################
 %%% FTend errsigs
 
-
-%%% FTblock locks
-###########################################################################
-set PRCL_err POP_f1_P  re
-set MICH_err POP_f2_P  re
-set CARM_err REFL_f1_P re
-set SRCL_err REFL_f2_P re
-set DARMerr AS_f2_P re
-
-func DARMerr10pm = $DARMerr+0.02142517601
-lock DARM_lock $DARMerr10pm 0.081 1n
-
-lock PRCL_lock $PRCL_err 300  10u
-lock MICH_lock $MICH_err 400  0.1m
-lock CARM_lock $CARM_err -3m  0.1m
-lock SRCL_lock $SRCL_err 100  10u
-
-func mMICH_lock = 0 - $MICH_lock
-func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock
-func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock
-
-put* PRM   phi     $PRCL_lock
-put* ITMX  phi     $MICH_lock
-put* ETMX  phi     $ETMX_lock
-put* ITMY  phi     $mMICH_lock
-put* ETMY  phi     $ETMY_lock
-put* SRMHR phi     $SRCL_lock
-
-noplot PRCL_lock
-noplot SRCL_lock
-noplot MICH_lock
-noplot DARM_lock
-noplot CARM_lock
-noplot mMICH_lock
-noplot ETMX_lock
-noplot ETMY_lock
-noplot DARMerr10pm
-###########################################################################
-%%% FTend locks
-
+time
+noxaxis

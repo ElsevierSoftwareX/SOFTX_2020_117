@@ -9,17 +9,21 @@ from __future__ import print_function
 from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
 
 import pykat.external.six as six
+
 if six.PY2:
 	import exceptions
+
 import pykat.exceptions as pkex
 import pykat
 from pykat.node_network import *
 from pykat.exceptions import *
 import abc
 import copy
+from collections import OrderedDict
 
 if HAS_OPTIVIS:
     import optivis.bench.components as optivis_components
+    from optivis.view.canvas import OptivisCanvasItemDataType
 
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
@@ -93,6 +97,7 @@ class Component(object):
         self._params = []
         self.__removed = False
         self._default_fsig_param = None
+        self.optivisLabelContent = None
         
         # store a unique ID for this component
         global next_component_id
@@ -100,7 +105,6 @@ class Component(object):
         next_component_id += 1
         
        
-        
     def __deepcopy__(self, memo):
         """
         When deep copying a kat object we need to take into account
@@ -222,7 +226,38 @@ class Component(object):
         del self._params[:]
 
         self.__removed = True
+    
+    def getOptivisParameterDict(self):
+        if len(self._params) == 0:
+            return None
+            
+        d = OrderedDict()
         
+        for p in self._params:
+            d[p.name] = OptivisCanvasItemDataType.TEXTBOX
+        
+        return d
+        
+    def getOptivisTooltip(self):
+        tooltip = "Name: %s" % self.name
+        
+        for p in self._params:
+            if p.value is not None:
+                tooltip += "\n%s = %s" %(p.name, str(p.value))
+        
+        return tooltip
+
+    def setOptivisLabelContent(self):
+        """
+        Sets default Optivis label contents
+        """
+
+        if self.optivisLabelContent is None:
+            self.optivisLabelContent = {}
+
+        self.optivisLabelContent["Name"] = self.name
+
+
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
         
@@ -258,12 +293,12 @@ class AbstractMirrorComponent(Component):
         self.__rxmech = AttrParam("rxmech", self, rxmech)
         self.__rymech = AttrParam("rymech", self, rymech)
         
-        self.__z = Param("z", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="z")
-        self.__rx = Param("rx", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="rx")
-        self.__ry = Param("ry", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="ry")
-        self.__Fz = Param("Fz", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fz")
-        self.__Frx = Param("Frx", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Frx")
-        self.__Fry = Param("Fry", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fry")
+        self.__z = Param("z", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="z")
+        self.__rx = Param("rx", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="rx")
+        self.__ry = Param("ry", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="ry")
+        self.__Fz = Param("Fz", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fz")
+        self.__Frx = Param("Frx", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Frx")
+        self.__Fry = Param("Fry", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fry")
         
         self._default_fsig_param = self.__phi
         
@@ -451,8 +486,10 @@ class mirror(AbstractMirrorComponent):
         return rtn
     
     def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
         if self._optivis_component is None:
-            self._optivis_component = optivis_components.CavityMirror(name=self.name, aoi=0)
+            self._optivis_component = optivis_components.CavityMirror(name=self.name, aoi=0, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
         
         return self._optivis_component
     
@@ -509,8 +546,10 @@ class beamSplitter(AbstractMirrorComponent):
                     raise pkex.BasePyKatException("No attribute {0} for mirrors".format(key))
     
     def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
         if self._optivis_component is None:
-            self._optivis_component = optivis_components.BeamSplitter(name=self.name, aoi=-self.alpha)
+            self._optivis_component = optivis_components.BeamSplitter(name=self.name, aoi=-self.alpha, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
         
         return self._optivis_component
     
@@ -870,7 +909,33 @@ class isolator(Component):
             rtn.extend(p.getFinesseText())
             
         return rtn
-
+    
+    def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.FaradayIsolator(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
+        
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getInputNode("bk")
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getnOutputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("bk")
+     
+     
     def getQGraphicsItem(self):
         if not USE_GUI:
             raise NoGUIException
@@ -917,8 +982,10 @@ class lens(Component):
         return rtn
     
     def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
         if self._optivis_component is None:
-            self._optivis_component = optivis_components.ConvexLens(name=self.name)
+            self._optivis_component = optivis_components.ConvexLens(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
         
         return self._optivis_component
     
@@ -1021,9 +1088,10 @@ class modulator(Component):
         return rtn
         
     def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
         if self._optivis_component is None:
-            #self._optivis_component = optivis_components.Modulator(name=self.name)
-            self._optivis_component = optivis_components.ConvexLens(name=self.name)
+            self._optivis_component = optivis_components.ElectroopticModulator(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
             
         return self._optivis_component
     
@@ -1115,8 +1183,10 @@ class laser(Component):
         return rtn
 
     def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
         if self._optivis_component is None:
-            self._optivis_component = optivis_components.Laser(name=self.name)
+            self._optivis_component = optivis_components.Laser(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
         
         return self._optivis_component
     
