@@ -1561,10 +1561,12 @@ class kat(object):
             
             c.label_node1 = optivis_label(text="", position=optivis_coord(-0.5, 0), item=c._optivis_component)
             c.label_node2 = optivis_label(text="", position=optivis_coord( 0.5, 0), item=c._optivis_component)
+            label_name = optivis_label(text="", position=optivis_coord(0, -0.5), item=c._optivis_component)
+            label_name.content["Name"] = c.name
             
             c._optivis_component.labels.append(c.label_node1)
             c._optivis_component.labels.append(c.label_node2)
-            
+            c._optivis_component.labels.append(label_name)
             scene.addLink(c._optivis_component)
         
         gui = canvas.Full(scene=scene)
@@ -1574,12 +1576,12 @@ class kat(object):
         fileMenu = menubar.addMenu('&Pykat')
     
         trace = PyQt4.QtGui.QAction('Trace', gui.qMainWindow)
-        trace.triggered.connect(self.optivis_updateTraceData)
+        trace.triggered.connect(lambda: self._optivis_doTrace(gui))
         fileMenu.addAction(trace)
     
         return gui
     
-    def optivis_updateTraceData(self, gui, tdata):
+    def _optivis_doTrace(self, gui, **kwargs):
         """
         Change at some point to use a stored GUI reference
         """
@@ -1587,10 +1589,23 @@ class kat(object):
             print("Optivis is not installed")
             return None
         
+        prev = self.noxaxis
+        
+        self.noxaxis = True
+        out, tdata = self.run(getTraceData=True, **kwargs)
+        self.noxaxis = prev
+        
+        # For now just select the first trace computed
+        # Later we could add some gui list to show the different ones
+        tdata = tdata[0]
+        
         for c in self.getComponents():
             if not isinstance(c, pykat.components.space):
                 continue
-        
+                
+            if not (hasattr(c, "label_node1") and hasattr(c, "label_node2")):
+                continue
+                
             c.label_node1.content["w0_x"] = tdata[c.nodes[0].name][0].w0
             c.label_node1.content["w_x"] = tdata[c.nodes[0].name][0].w
             c.label_node1.content["z_x"] = tdata[c.nodes[0].name][0].z
@@ -1602,6 +1617,18 @@ class kat(object):
             c.label_node1.content["z_y"] = tdata[c.nodes[0].name][1].z
             c.label_node1.content["Rc_y"] = tdata[c.nodes[0].name][1].Rc
             c.label_node1.content["Zr_y"] = tdata[c.nodes[0].name][1].zr
+            
+            c.label_node2.content["w0_x"] = tdata[c.nodes[1].name][0].w0
+            c.label_node2.content["w_x"] = tdata[c.nodes[1].name][0].w
+            c.label_node2.content["z_x"] = tdata[c.nodes[1].name][0].z
+            c.label_node2.content["Rc_x"] = tdata[c.nodes[1].name][0].Rc
+            c.label_node2.content["Zr_x"] = tdata[c.nodes[1].name][0].zr
+            
+            c.label_node2.content["w0_y"] = tdata[c.nodes[1].name][1].w0
+            c.label_node2.content["w_y"] = tdata[c.nodes[1].name][1].w
+            c.label_node2.content["z_y"] = tdata[c.nodes[1].name][1].z
+            c.label_node2.content["Rc_y"] = tdata[c.nodes[1].name][1].Rc
+            c.label_node2.content["Zr_y"] = tdata[c.nodes[1].name][1].zr
             
         gui.draw()
     

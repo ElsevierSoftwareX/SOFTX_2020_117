@@ -53,10 +53,12 @@ s rs7 $lrs7 nM6e nM7w
 bs M7 1 0 0 49.39870535E0 nM7w nM7n dump dump 
 s rs8 $lrs8 nM7n nM1an
 
+
+#attr M1a backscatter 0.6u
 bs1 M1a 500u 0 0 $AoI nM1aw nM1an nM1ae nM1as 
 attr M1a Rc -7.91
 attr M1a mass $MassM1 
-s rs12 1.315 nM3an nM1ae
+s rs12 0.6575 nM3an nM1ae
 bs1 M3a $T_ETM $L_ETM 0 $AoI2 nM3aw nM3an nM3aT1 nM3aT2
 attr M3a mass $MassM23
 s rs11 0.2 1. nM2an nM3aw   
@@ -79,6 +81,7 @@ s rs26 $lrs26 nM8n nM1bw
 
 #################################################################
 ## Cavity b
+#attr M1b backscatter 0.6u
 bs1 M1b 500u 0 0 $AoI nM1bw nM1bn nM1be nM1bs  
 attr M1b Rc -7.91
 attr M1b mass $MassM1 
@@ -112,11 +115,11 @@ s sl2 1n nl2 nl3
 bs dHD .5 .5 0 0 nHD1 nout1 nout2 nl3
 
 # homodyne detector, use 180 deg phase for normal use, i.e. output=nout1-nout2
-#qhdS sens 180 nout1 nout2
+qhdS sens 180 nout1 nout2
 # re-scaling output to m/sqrt(Hz)
-#scale meter sens
+scale meter sens
 
-%xaxis sig1 f log 100 100k 99
+xaxis sig1 f log 100 100k 99
 yaxis log abs
 
 maxtem off

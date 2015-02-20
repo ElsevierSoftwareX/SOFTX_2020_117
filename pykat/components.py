@@ -24,6 +24,9 @@ from collections import OrderedDict
 if HAS_OPTIVIS:
     import optivis.bench.components as optivis_components
     from optivis.view.canvas import OptivisCanvasItemDataType
+    from optivis.bench.labels import Label as optivis_label
+    from optivis.geometry import Coordinates as optivis_coord
+    import PyQt4
 
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
@@ -490,6 +493,10 @@ class mirror(AbstractMirrorComponent):
         
         if self._optivis_component is None:
             self._optivis_component = optivis_components.CavityMirror(name=self.name, aoi=0, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
+            
+            lbl = optivis_label(text="", position=optivis_coord(0, -1), item=self._optivis_component)
+            lbl.content["Name"] = self.name
+            self._optivis_component.labels.append(lbl)
         
         return self._optivis_component
     
@@ -1187,7 +1194,10 @@ class laser(Component):
         
         if self._optivis_component is None:
             self._optivis_component = optivis_components.Laser(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
-        
+            lbl = optivis_label(text="", position=optivis_coord(0, -1), item=self._optivis_component)
+            lbl.content["Name"] = self.name
+            self._optivis_component.labels.append(lbl)
+            
         return self._optivis_component
     
     def getOptivisNode(self, mode, kat_node):
