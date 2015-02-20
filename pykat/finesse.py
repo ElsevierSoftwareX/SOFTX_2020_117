@@ -1603,7 +1603,7 @@ class kat(object):
             c.label_node1.content["Rc_y"] = tdata[c.nodes[0].name][1].Rc
             c.label_node1.content["Zr_y"] = tdata[c.nodes[0].name][1].zr
             
-        gui.draw()
+        gui.redraw()
     
     def openGUI(self):
         if not USE_GUI:
