@@ -1629,8 +1629,8 @@ class kat(object):
             c.label_node2.content["z_y"] = tdata[c.nodes[1].name][1].z
             c.label_node2.content["Rc_y"] = tdata[c.nodes[1].name][1].Rc
             c.label_node2.content["Zr_y"] = tdata[c.nodes[1].name][1].zr
-            
-        gui.draw()
+       
+        gui.redraw()
     
     def openGUI(self):
         if not USE_GUI:
