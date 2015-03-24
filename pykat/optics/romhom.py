@@ -177,7 +177,11 @@ def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1, greedy
     
     greedyfile = os.path.join(pykat.__path__[0],'optics','greedypoints',greedypts)
     
-    limits = np.loadtxt(greedyfile, usecols=(1,))[:5]
+    # Two potential different formats
+    try:
+        limits = np.loadtxt(greedyfile, usecols=(3,))[:5]
+    except IndexError:
+        limits = np.loadtxt(greedyfile, usecols=(1,))[:5]
     
     romlimits = ROMLimits(w0min=limits[0], w0max=limits[1], zmin=limits[2], zmax=limits[3], max_order=limits[4])
     

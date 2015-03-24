@@ -6,6 +6,10 @@ from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from scipy.interpolate import interp2d
 from scipy.integrate import dblquad
 from pykat.optics.romhom import ROMWeights
+from math import factorial
+from pykat.maths.hermite import hermite
+from scipy.misc import comb
+from scipy.integrate import newton_cotes
 
 import time
 import pykat.optics.maps
@@ -144,15 +148,16 @@ def adaptive_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, smap=None, delta
     
     return R + 1j * I
     
-def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None, cache=None, delta=(0,0), params={}):
+def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
+                     Axy=None, cache=None, delta=(0,0), params={}, newtonCotesOrder=0):
 
-    if Axy == None:
+    if Axy is None:
         Axy == np.ones((len(x), len(y)))
     
-    if q1y == None:
+    if q1y is None:
         q1y = q1
         
-    if q2y == None:
+    if q2y is None:
         q2y = q2
         
     if len(mode_in) != 2 or len(mode_out) != 2:
@@ -164,11 +169,35 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None, Axy=None
     if cache == None:
         Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
         Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
-    
+        
         U1 = Hg_in.Unm(x+delta[0], y+delta[1])
         U2 = Hg_out.Unm(x,y).conjugate()
-        
-        return dx * dy * np.einsum('ij,ij', Axy, U1*U2)
+
+        if newtonCotesOrder > 0:
+                
+            W = newton_cotes(newtonCotesOrder, 1)[0]
+            
+            if newtonCotesOrder > 1:
+                if (len(x) - len(W)) % newtonCotesOrder != 0:
+                    raise ValueError("To use Newton-Cotes order {0} the number of data points in x must ensure: (N_x - ({0}+1)) mod {0} == 0".format(newtonCotesOrder) )
+
+                if (len(y) - len(W)) % newtonCotesOrder != 0:
+                    raise ValueError("To use Newton-Cotes order {0} the number of data points in y must ensure: (N_y - ({0}+1)) mod {0} == 0".format(newtonCotesOrder) )
+                
+            wx = np.zeros(x.shape, dtype=np.float64)    
+            wy = np.zeros(y.shape, dtype=np.float64)
+    
+            N = len(W)
+
+            for i in range(0, (len(wx)-1)/newtonCotesOrder): wx[(i*(N-1)):(i*(N-1)+N)] += W
+            for i in range(0, (len(wy)-1)/newtonCotesOrder): wy[(i*(N-1)):(i*(N-1)+N)] += W
+            
+            Wxy = np.outer(wx, wy)
+            
+        if newtonCotesOrder == 0:
+            return dx * dy * np.einsum('ij,ij', Axy, U1*U2)
+        else:
+            return dx * dy * np.einsum('ij,ij', Axy, U1*U2*Wxy)
     else:
         
         strx = "u1[%i,%i]" % (mode_in[0], mode_out[0])
@@ -438,6 +467,63 @@ def bayerhelms_HG_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, gamma=(0,0)
 
     return __bayerhelms_kn(n,_n, q1, q2, 2*gamma[0]) * __bayerhelms_kn(m, _m, q1y, q2y, 2*gamma[1])
 
+def __sqaure_knm_int(n, _n, R):
+    # This uses the H_n(x) * H_m(x) product identity to reduce the overlap into
+    # a sum of factorial and an integral of a single Hermite with a gaussian function
+    # thus making it easier to solve
+    expR = math.exp(-(R**2))
+    S = 0
+    
+    for j in range(0, min(n, _n)+1):
+        _j1 = _n + n - 2*j - 1
+        
+        if _j1+1 == 0:
+            # for the zeroth order we just have the gaussian integral to solve
+            L = math.sqrt(math.pi) * math.erf(R)    
+        elif (_j1+1) % 2 == 1:
+            # if the Hermite is odd then the integral is always 0 as its anti-symmetric
+            L = 0
+        else:
+            L = 2 * hermite(_j1, 0) - expR * (hermite(_j1, R) - hermite(_j1, -R))
+        
+        I = 2**j * factorial(j) * comb(n, j) * comb(_n, j)
+        
+        S += I * L
+                
+    return S
+
+
+def square_aperture_HG_knm(mode_in, mode_out, q, R):
+    """
+    Computes the coupling coefficients for a square aperture.
+    """
+    # x modes
+    n = mode_in[0]
+    _n = mode_out[0]
+
+    # y modes
+    m = mode_in[1]
+    _m = mode_out[1]
+    
+    hg1 = HG_beam(q, n=n, m=m)
+    hg2 = HG_beam(q, n=_n, m=_m)
+        
+    kx = hg1.constant_x * hg2.constant_x.conjugate()
+    ky = hg1.constant_y * hg2.constant_y.conjugate()
+    
+    print hg1.constant_x, hg2.constant_x, hg1.constant_y, hg2.constant_y
+    
+    f = q.w / math.sqrt(2)
+    R = R / (q.w / math.sqrt(2))
+    
+    kx *= f
+    kx *= __sqaure_knm_int(n, _n, R)
+    
+    ky *= f
+    ky *= __sqaure_knm_int(m, _m, R)
+    
+    return kx * ky
+
 
 
 def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann", verbose=False, profile=False, gamma=(0,0), delta=(0,0), params={}):
@@ -545,6 +631,9 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         return K.reshape(couplings.shape[:-1]), Ktime.reshape(couplings.shape[:-1]), cache_time
     else:
         return K.reshape(couplings.shape[:-1])
+
+
+
 
 
 def plot_knm_matrix(couplings, knm):

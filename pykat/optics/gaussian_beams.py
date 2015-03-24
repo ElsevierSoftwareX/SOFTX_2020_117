@@ -318,7 +318,15 @@ class HG_beam(object):
             self._qy = copy.deepcopy(value)
         else:
             self._qy = beam_param(q=complex(value))
-            
+    
+    @property
+    def constant_x(self):
+        return self.__xpre_const
+        
+    @property
+    def constant_y(self):
+        return self.__ypre_const
+        
     def _calc_constants(self):
         self.__xpre_const = math.pow(2.0/math.pi, 0.25)
         self.__xpre_const *= np.sqrt(1.0/(self._qx.w0 * 2**(self._n) * np.math.factorial(self._n)))
@@ -338,7 +346,7 @@ class HG_beam(object):
         
         self.__invqx = 1/ self._qx.q
         self.__invqy = 1/ self._qy.q
-        
+    
     def Un(self, x):
         return self.__xpre_const * self._hn(self.__sqrt2_wxz * x) * np.exp(-0.5j * self.__kx * x*x * self.__invqx)
     
