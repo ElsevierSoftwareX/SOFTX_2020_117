@@ -1571,13 +1571,23 @@ class kat(object):
         
         gui = canvas.Full(scene=scene)
         
-        ### add menu and menu items
+        ### get menu bar from Optivis
         menubar = gui.qMainWindow.menuBar()
-        fileMenu = menubar.addMenu('&Pykat')
+        
+        ### add new Pykat menu and menu items
+        pykatMenu = menubar.addMenu('&Pykat')
     
+	# save
+	save = PyQt4.QtGui.QAction('Save', gui.qMainWindow)
+	save.setShortcut('Ctrl+S')
+	save.triggered.connect(lambda: self._optivis_doSave(gui))
+	pykatMenu.addAction(save)
+    
+	# trace
         trace = PyQt4.QtGui.QAction('Trace', gui.qMainWindow)
+        trace.setShortcut('Ctrl+T')
         trace.triggered.connect(lambda: self._optivis_doTrace(gui))
-        fileMenu.addAction(trace)
+        pykatMenu.addAction(trace)
     
         return gui
     
@@ -1631,6 +1641,51 @@ class kat(object):
             c.label_node2.content["Zr_y"] = tdata[c.nodes[1].name][1].zr
        
         gui.redraw()
+        
+    def _optivis_doSave(self, gui, **kwargs):
+        """
+        Save kat script from Optivis
+        """
+        if not HAS_OPTIVIS:
+            print("Optivis is not installed")
+            return None
+	
+	# generate file path
+	directory = os.path.join(os.path.expanduser('~'), '{0}.kat'.format(gui.scene.title))
+	
+	# desired save path
+	path = None
+	
+	# get path to file to export to
+	while True:    
+	    dialog = PyQt4.Qt.QFileDialog(parent=gui.qMainWindow, caption='Save Finesse Script', directory=directory)
+	    dialog.setAcceptMode(PyQt4.Qt.QFileDialog.AcceptSave)
+	    dialog.setFileMode(PyQt4.Qt.QFileDialog.AnyFile)
+
+	    # show dialog
+	    dialog.exec_()
+	  
+	    if len(dialog.selectedFiles()) is 0:
+		# no filename specified
+		return
+
+	    # get file path and format
+	    path = str(dialog.selectedFiles()[0])
+	  
+	    try:
+		# check if we can write to the path
+		open(path, 'w').close()
+		os.unlink(path)
+	    
+		# if we get this far, all is good so we can break out the infinite loop
+		break
+	    except OSError:
+		PyQt4.Qt.QMessageBox.critical(gui.qMainWindow, 'Filename invalid', 'The specified filename is invalid')
+	    except IOError:
+		PyQt4.Qt.QMessageBox.critical(gui.qMainWindow, 'Permission denied', 'You do not have permission to save the file to the specified location.')
+    
+	# save kat file
+	self.saveScript(filename=path)
     
     def openGUI(self):
         if not USE_GUI:
