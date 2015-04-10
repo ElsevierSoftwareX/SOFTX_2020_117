@@ -59,6 +59,10 @@ def main():
 	kat = pykat.finesse.kat()
 	kat.verbose = False
 	kat.loadKatFile('aligo_Xarm.kat')
+
+	# setting ITM T to larger value for better plots
+	kat.itmX.T=0.1
+	kat.itmX.R=0.9
 	Lambda = kat.lambda0
 	LX=kat.LX.L.value
 	kat.maxtem=0
@@ -71,9 +75,10 @@ def main():
 	surface=read_map('etm08_virtual.txt')
 	itm=curvedmap('itm_Rc',surface.size,surface.step_size, -1.0*abs(kat.itmX.Rc.value))
 	etm=curvedmap('etm_Rc',surface.size,surface.step_size, -1.0*abs(kat.etmX.Rc.value))
-
-	# apply measured map to etm, using 10 times larger distortions
-	etm.data = etm.data + surface.data*surface.scaling/etm.scaling*10.0
+	#itm.plot()
+	#etm.plot()
+	# apply measured map to etm, using 20 times larger distortions
+	etm.data = etm.data + surface.data*surface.scaling/etm.scaling*20
 
 	# setup grid for FFT propagation
 	[xpoints,ypoints] = surface.size
@@ -120,7 +125,7 @@ def precompute_roundtrips(shape, laser, kat):
 	LX=kat.LX.L.value
 	R=kat.etmX.R.value*kat.itmX.R.value
 	Loss = 1-R
-	accuracy=1E-6
+	accuracy=100E-6
 	print("cavity loss: {0}".format(Loss))	
 	N=int(required_roundtrips(Loss,accuracy))
 	print("required rountrips: {0} (for accuracy of {1})".format(N, accuracy))
@@ -140,9 +145,11 @@ def precompute_roundtrips(shape, laser, kat):
 	p = ProgressBar(maxval=N, widgets=["f_circ:", Percentage(),"|", Timer(), "|", ETA(), Bar()])
 
 	for n in range(1,N):
-		f_circ = FFT_propagate(f_circ,shape,Lambda,LX,1) 
+		#f_circ = FFT_propagate(f_circ,shape,Lambda,LX,1) 
+		f_circ = FFT_propagate_simple(f_circ,shape.xpoints,shape.ypoints, shape.xstep, shape.ystep,Lambda,LX,1) 
 		f_circ = np.sqrt(kat.etmX.R.value)*FFT_apply_map(f_circ, etm, Lambda)
-		f_circ = FFT_propagate(f_circ,shape,Lambda,LX,1) 
+		#f_circ = FFT_propagate(f_circ,shape,Lambda,LX,1) 
+		f_circ = FFT_propagate_simple(f_circ,shape.xpoints,shape.ypoints, shape.xstep, shape.ystep,Lambda,LX,1) 
 		f_circ = np.sqrt(kat.itmX.R.value)*FFT_apply_map(f_circ, itm, Lambda)
 		f_round[:,:,n] = f_circ;
 		p.update(n)
@@ -152,7 +159,7 @@ def precompute_roundtrips(shape, laser, kat):
 	import time
 	timestr = time.strftime("%Y:%m:%d-%H:%M:%S")
 	np.save('fround-'+timestr,f_round)
-
+	print("Saved data into file: {0}".format('fround-'+timestr))
 	
 	
 def FFT_apply_map(field, Map, Lambda):

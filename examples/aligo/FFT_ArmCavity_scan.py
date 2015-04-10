@@ -33,7 +33,8 @@ def main():
 	k = 2.0*np.pi/Lambda
 
 	#filename='fround_mode_matched_no_map.npy'
-	filename='fround-2014:12:22-15:07:11.npy'
+	#filename='fround_mode_matched_10map.npy'
+	filename='fround-2014:12:29-19:55:28.npy'
 	print(" --- loading data from file {0} ---".format(filename))
 	global f_round
 	f_round=np.load(filename)
@@ -48,7 +49,7 @@ def main():
         
 	scan_start = 0.0
 	scan_stop  = Lambda
-	scan_points = 200
+	scan_points = 100
 	global scan
 	scan = np.linspace(scan_start, scan_stop, scan_points)
 
@@ -70,7 +71,11 @@ def main():
 		power[i] = field_power(f_temp,result['shape'])
 		p.update(i)
 	p.finish()
-		
+
+	fileName, fileExtension = os.path.splitext(filename)
+	txtfile='power_{0}.txt'.format(fileName)
+	np.savetxt(txtfile, power, fmt='%.18e', delimiter=' ')
+
 	# plot scan 
 	ax,fig=plot_setup()
 	ax.plot(power)

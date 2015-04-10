@@ -46,17 +46,16 @@ def FFT_propagate_simple(field, xpoints, ypoints, xstep, ystep, Lambda, distance
 	# - distance is the ditance over which to propgagte in meters
 	# - Lambda is the vacuum wavelength, nr the index of refraction
 
-	k = 2.0*np.pi/Lambda*nr
-	plD = np.pi*Lambda*distance/nr
-
 	# compute FFT axis vectors and compute propagator
 	f_x = np.fft.fftshift(np.fft.fftfreq(xpoints)/xstep)
 	f_y = np.fft.fftshift(np.fft.fftfreq(ypoints)/ystep)
 	F_x, F_y = np.meshgrid(f_x,f_y)
 	f_r_squared = F_x**2 + F_y**2
+	plD = np.pi*Lambda*distance/nr
 	Kp=np.fft.fftshift(np.exp(1j*plD*f_r_squared))
 	
 	field = np.fft.fft2(field) # perform FFT
+	k = 2.0*np.pi/Lambda*nr
 	field = field * np.exp(-1j*k*distance) * Kp # apply propagator 
 	field = np.fft.ifft2(field) # perform reverse FFT
 

@@ -141,7 +141,7 @@ def get_qs(tmpkat):
 
         # beam at laser when matched to cold cavity
         # (note the sign flip of the real part to change direction of gauss param)
-        q0 = complex(-1.0*out['w0'][0],out['w0'][1])
+        q0 = -1.0*out['w0'].conjugate()
         beam0 = gauss_param(q=q0)
         kat.psl.npsl.node.setGauss(kat.psl, beam0)
         kat.parseKatCode("startnode npsl")
@@ -154,7 +154,7 @@ def get_qs(tmpkat):
         
         # computing beam size at ITM 
         # and then we reflect of ITM, an set it as new startnode
-        q_in = complex(out['w1'][0],out['w1'][1])
+        q_in = out['w1']
         from pykat.optics.ABCD import apply, mirror_refl
         abcd = mirror_refl(1,-2500)
         q_out = apply(abcd,q_in,1,1)
@@ -170,9 +170,9 @@ def get_qs(tmpkat):
         out = kat.run(printout=0,printerr=0)
 
         # computing beam size at WFS1 and WFS2
-        q2 = complex(out['w2'][0],out['w2'][1])    
+        q2 = out['w2']
         beam2 = gauss_param(q=q2)    
-        q3 = complex(out['w3'][0],out['w3'][1])
+        q3 = out['w3']
         beam3 = gauss_param(q=q3)    
         print "  Sideband (input mode) beam size with thermal lens f={0}".format(f)
         print "  - WFS1 w={0:.6}cm".format(100.0*beam2.w)
