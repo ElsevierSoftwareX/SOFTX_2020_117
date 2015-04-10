@@ -92,6 +92,15 @@ class Param(putable, putter):
         putter.__init__(self, var_name, isPutter)
             
         putable.__init__(self, owner.name, name, isPutable)
+
+    def _updateOwner(self, newOwner):
+        """
+        This updates the internal weak reference to link a parameter to who owns it.
+        Should only be called by the __deepcopy__ component method to ensure things
+        are kept up to date.
+        """
+        del self._owner
+        self._owner = weakref.ref(newOwner)
         
     @property
     def canFsig(self): return self._canFsig
