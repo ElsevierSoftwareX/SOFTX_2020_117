@@ -1,4 +1,11 @@
-import exceptions
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import pykat.external.six as six
+if six.PY2:
+	import exceptions
 import os
 
 class BasePyKatException(Exception):
