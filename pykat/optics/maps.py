@@ -13,11 +13,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from pykat.optics.romhom import makeReducedBasis, makeEmpiricalInterpolant, makeWeights
-from scipy.interpolate import interp2d
+from pykat.optics.romhom import makeReducedBasis, makeEmpiricalInterpolant, makeWeights, makeWeightsNew
+from scipy.interpolate import interp2d, interp1d
+from pykat.maths.zernike import *        
+
 import numpy as np
 import math
-from pykat.maths.zernike import *        
+import pickle
 		   
 class surfacemap(object):
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
@@ -202,7 +204,56 @@ class surfacemap(object):
         self._rom_weights = makeWeights(self, EI, verbose=verbose, useSymmetry=useSymmetry)
         
         return self.ROMWeights, EI
+    
+    
+    def generateROMWeightsNew(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False):
+        if interpolate == True:
+            # Use EI nodes to interpolate if we
+            with open(EIxFilename, 'rb') as f:
+                EIx = pickle.load(f)
+
+            if EIyFilename is None:
+                EIy = EIx
+            else:
+                with open(EIyFilename, 'rb') as f:
+                    EIy = pickle.load(f)
+
+            x = EIx.x
+            x.sort()
+            nx = np.unique(np.hstack((x, -x[::-1])))
         
+            y = EIy.x
+            y.sort()
+            ny = np.unique(np.hstack((y, -y[::-1])))
+            
+            self.interpolate(nx, ny)
+        
+        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose)
+        return self.ROMWeights
+
+    def interpolate(self, nx, ny, **kwargs):
+        """
+        Interpolates the map for some new x and y values.
+        
+        Uses scipy.interpolate.interp2d and any keywords arguments are
+        passed on to it, thus settings like interpolation type and
+        fill values can be set.
+        
+        The range of nx and ny must contain the value zero so that the
+        center point of the map can be set.
+        """
+
+        D = interp2d(self.x, self.y, self.data, **kwargs)
+        
+        data = D(nx-self.offset[0], ny-self.offset[0])
+        
+        Dx = interp1d(nx, np.arange(1,len(nx)+1))
+        Dy = interp1d(ny, np.arange(1,len(ny)+1))
+        
+        self.center = (Dx(0), Dy(0))
+        self.step_size = (nx[1]-nx[0], ny[1]-ny[0])
+        self.data = data
+
     def plot(self, show=True, clabel=None, xlim=None, ylim=None):
         
         import pylab

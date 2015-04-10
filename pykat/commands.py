@@ -12,7 +12,7 @@ from structs import *
 from pykat.param import Param, putter
 import pykat.exceptions as pkex
 from collections import namedtuple
-from pykat.utilities.optics.gaussian_beams import beam_param
+from pykat.optics.gaussian_beams import beam_param
 
 class Command(object):
     __metaclass__ = abc.ABCMeta

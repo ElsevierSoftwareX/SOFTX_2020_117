@@ -2,30 +2,40 @@ import math
 import os.path
 import pykat
 import collections
+import numpy as np
+import multiprocessing
+import h5py
+import time
+import datetime
+import pickle
+import itertools
 
+from copy import copy
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from itertools import combinations_with_replacement as combinations
 from pykat.optics.gaussian_beams import beam_param, HG_beam
 from scipy.linalg import inv
 from math import factorial
 from pykat.maths.hermite import *
+from pykat.maths import newton_weights
+from scipy.integrate import newton_cotes
+from multiprocessing import Process, Queue, Array, Value, Event
 
-import numpy as np
 
 EmpiricalInterpolant = collections.namedtuple('EmpiricalInterpolant', 'B nodes node_indices limits x')
 ReducedBasis = collections.namedtuple('ReducedBasis', 'RB limits x')
-ROMLimits = collections.namedtuple('ROMLimits', 'zmin zmax w0min w0max max_order')
-
+ROMLimits = collections.namedtuple('ROMLimits', 'zmin zmax w0min w0max R mapSamples newtonCotesOrder max_order')
+                       
 class ROMWeights:
     
-    def __init__(self, w_ij_Q1, w_ij_Q2, w_ij_Q3, w_ij_Q4, EI, limits):
+    def __init__(self, w_ij_Q1, w_ij_Q2, w_ij_Q3, w_ij_Q4, EIx, EIy):
         self.w_ij_Q1 = w_ij_Q1
         self.w_ij_Q2 = w_ij_Q2
         self.w_ij_Q3 = w_ij_Q3
         self.w_ij_Q4 = w_ij_Q4
         
-        self.EI = EI
-        self.limits = limits
+        self.EIx = EIx
+        self.EIy = EIy
         
     def writeToFile(self, filename):
         """
@@ -35,20 +45,20 @@ class ROMWeights:
         """
         f = open(filename + ".rom", 'w+')
         
-        f.write("zmin=%16.16e\n" % self.limits.zmin)
-        f.write("zmax=%16.16e\n" % self.limits.zmax)
-        f.write("w0min=%16.16e\n" % self.limits.w0min)
-        f.write("w0max=%16.16e\n" % self.limits.w0max)
-        f.write("maxorder=%i\n" % self.limits.max_order)
+        f.write("zmin=%16.16e\n" % self.EIx.limits.zmin)
+        f.write("zmax=%16.16e\n" % self.EIx.limits.zmax)
+        f.write("w0min=%16.16e\n" % self.EIx.limits.w0min)
+        f.write("w0max=%16.16e\n" % self.EIx.limits.w0max)
+        f.write("maxorder=%i\n" % self.EIx.limits.max_order)
         
-        f.write("xnodes=%i\n" % len(self.EI["x"].nodes))
+        f.write("xnodes=%i\n" % len(self.EIx.nodes))
         
-        for v in self.EI["x"].nodes.flatten():
+        for v in self.EIx.nodes.flatten():
             f.write("%s\n" % repr(float(v)))
         
-        f.write("ynodes=%i\n" % len(self.EI["y"].nodes))
+        f.write("ynodes=%i\n" % len(self.EIy.nodes))
         
-        for v in self.EI["y"].nodes.flatten():
+        for v in self.EIy.nodes.flatten():
             f.write("%s\n" % repr(float(v)))
             
         f.write(repr(self.w_ij_Q1.shape) + "\n")
@@ -164,7 +174,13 @@ def u_star_u(re_q1, re_q2, w0_1, w0_2, n1, n2, x, x2=None):
         
     return u(re_q1, w0_1, n1, x) * u(re_q2, w0_2, n2, x2).conjugate()
 
+def u_star_u_mm(z, w0, n1, n2, x):
+    return u(z, w0, n1, x) * u(z, w0, n2, x).conjugate()
     
+################################################################################################
+################################################################################################
+################################################################################################
+
 def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1, greedyfile=None):
     
     if greedyfile != None:
@@ -316,11 +332,11 @@ def makeEmpiricalInterpolant(RB, sort=False):
     return EmpiricalInterpolant(B=B, nodes=nodes, node_indices=node_indices, limits=RB.limits, x=RB.x)
     
 
-def makeWeights(smap, EI, verbose=True, useSymmetry=True):
+def makeWeights(smap, EI, verbose=True, useSymmetry=True, newtonCotesOrder=1):
     
     if useSymmetry:
         # get full A_xy
-        A_xy = smap.z_xy().transpose()
+        A_xy = smap.z_xy()#.transpose()
     
         xm = smap.x[smap.x < 0]
         xp = smap.x[smap.x > 0]
@@ -358,10 +374,15 @@ def makeWeights(smap, EI, verbose=True, useSymmetry=True):
         Bx = EI["x"].B
         By = EI["y"].B[:,::-1]
         w_ij_Q1 = np.zeros((len(Bx),len(By)), dtype = complex)
-    
+
+        from pykat.optics.knm import newton_weights
+        
+        wx = newton_weights(xm, newtonCotesOrder)
+        wy = newton_weights(ym, newtonCotesOrder)
+        
         for i in range(len(Bx)):
             for j in range(len(By)):
-                B_ij_Q1 = np.outer(Bx[i], By[j])
+                B_ij_Q1 = np.outer(wx*Bx[i], wy*By[j])
                 w_ij_Q1[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q1, A_xy_Q1)	
             
                 if verbose:
@@ -374,7 +395,7 @@ def makeWeights(smap, EI, verbose=True, useSymmetry=True):
     
         for i in range(len(Bx)):
             for j in range(len(By)):
-                B_ij_Q2 = np.outer(Bx[i], By[j])
+                B_ij_Q2 = np.outer(wx*Bx[i], wy*By[j])
                 w_ij_Q2[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q2, A_xy_Q2)
             
                 if verbose:
@@ -387,7 +408,7 @@ def makeWeights(smap, EI, verbose=True, useSymmetry=True):
     
         for i in range(len(Bx)):
             for j in range(len(By)):
-                B_ij_Q3 = np.outer(Bx[i], By[j])
+                B_ij_Q3 = np.outer(wx*Bx[i], wy*By[j])
                 w_ij_Q3[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q3, A_xy_Q3)
 
                 if verbose:
@@ -400,7 +421,7 @@ def makeWeights(smap, EI, verbose=True, useSymmetry=True):
     
         for i in range(len(Bx)):
             for j in range(len(By)):
-                B_ij_Q4 = np.outer(Bx[i], By[j])
+                B_ij_Q4 = np.outer(wx*Bx[i], wy*By[j])
                 w_ij_Q4[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q4, A_xy_Q4)
 
                 if verbose:
@@ -447,5 +468,450 @@ def makeWeights(smap, EI, verbose=True, useSymmetry=True):
 
         return ROMWeightsFull(w_ij=w_ij, EI=EI, limits=EI["x"].limits)
 
+
+###################################################################################################
+###################################################################################################
+###################################################################################################
+# !!! New ROM code below that doesn't need supercomputer
+###################################################################################################
+###################################################################################################
+###################################################################################################
+def _compute_TS(queue, oqueue, x, w):
+    while True:
+        msg = queue.get()
+        
+        if msg is None:
+            break
+        else:
+            tmp = u_star_u_mm(msg[0], msg[1], msg[2], msg[3], x)
+            # includes normalisation with quadrature rule weights
+            norm = np.sqrt(1/(abs(np.vdot(w*tmp,tmp))))
+            oqueue.put((msg, tmp*norm))
+
+
+def _write_TS(queue, filename, tssize):
+    hfile = h5py.File("%s.h5" % filename, 'a') 
+    
+    i = 0
+    
+    try:
+        while True:
+            msg = queue.get()
+            
+            if msg is None:
+                break
+            else:
+                # Dump each TS into a group
+                key = 'TS/%i' % msg[0][4]
+                
+                hfile[key+"/data"] = msg[1]
+                hfile[key+"/z"]  = msg[0][0]
+                hfile[key+"/w0"] = msg[0][1]
+                hfile[key+"/n1"] = msg[0][2]
+                hfile[key+"/n2"] = msg[0][3]
+                
+                i += 1
+                
+                if i % 1000 == 0:
+                    print i/float(tssize)
+                    hfile.flush()
+    finally:
+        hfile.close()
+        
+def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, newtonCotesOrder=1, NProcesses=1):
+    """
+    newtonCotesOrder: Order of integration to use
+                        0 - Midpoint
+                        1 - Trapezoid
+                        2 - Simpsons
+                        Or higher orders
+    """
+    
+    iq = Queue()
+    oq = Queue()
+        
+    Ns = halfMapSamples
+    
+    h = R / float(Ns-1) # step size
+    
+    # Close newton-cotes quadrature goes right upto the boundary
+    # unlike previous midpoint rule.
+    x = np.linspace(-R, 0, Ns, dtype=np.float64)
+    
+    w = newton_weights(x, newtonCotesOrder)
+
+    nModes = 0
+    
+    for n in xrange(0, maxOrder+1):
+        for m in xrange(0, maxOrder+1):
+            if n+m <= maxOrder and n <= m:
+                nModes += 1
+            
+    tssize = len(w0) * len(z) * nModes
+    
+    hfile = h5py.File("%s.h5" % filename, 'w')
+     
+    hfile['TSSize'] = tssize
+    hfile['x'] = x
+    hfile['zRange'] = (min(z), max(z))
+    hfile['w0Range'] = (min(w0), max(w0))
+    hfile['R'] = R
+    hfile['halfMapSamples'] = halfMapSamples
+    hfile['maxOrder'] = maxOrder
+    hfile['newtonCotesOrder'] = newtonCotesOrder
+    hfile['weights'] = w
+    
+    hfile.close() # make sure it's closed before
+    
+    print "Starting processes..."
+    # Have a bunch of processes doing the computation and one doing the writing
+    iprocesses = [Process(target=_compute_TS, name="irom%i" % i, args=(iq, oq, x, w)) for i in range(NProcesses)]
+    oprocess = Process(target=_write_TS, name="orom%i" % i, args=(oq, filename, tssize))
+    
+    oprocess.start()
+    
+    try:
+        for P in iprocesses:
+            P.start()
+        
+        print "Filling queue..."
+        curr = 0
+        for n in xrange(0, maxOrder+1):
+            for m in xrange(0, maxOrder+1):
+                if n+m <= maxOrder and n <= m:
+                    for _z in z:
+                        for _w0 in w0:
+                            iq.put((_z, _w0, n, m, curr))
+                            # Can't use Queue.qsize() on OSX so count normally...
+                            curr += 1
+        
+        for P in iprocesses:
+            iq.put(None) # put a None for each thread to catch to end
+            
+        for P in iprocesses:
+            P.join()
+    
+        # Put none to stop output process
+        oq.put(None)
+        
+        oprocess.join()
+        
+    except:
+        print("Exception occurred")
+        
+        for P in iprocesses:
+            P.terminate()
+        
+        oprocess.terminate()
+    
+    print("Completed training set creation")
+    print("Data written to %s.h5" % filename)
     
     
+def _worker_ROM(hdf5Filename, job_queue, result_err, result_idx, event):
+    # h5py drivers: 'core', 'sec2', 'stdio', 'mpio'
+    # Need to use something ot her than sec2, the default on OSX,
+    # as it doesn't play nice with multiple processes reading files
+    with h5py.File("%s.h5" % hdf5Filename, driver="core", mode='r') as file:
+    
+        TS = file["TS"]
+        
+        while True:
+            
+            msg = job_queue.get()
+            
+            if msg is None:
+                break
+            else:
+                TSidx, B, EI_indices = msg
+                TSidx = np.array(TSidx)
+                
+                max_err = []
+                
+                for ll in TSidx:
+                    a = TS['%i/data' % ll].value
+                    
+                    _err = np.max(np.abs(a - emp_interp(B, a, EI_indices)))
+                        
+                    max_err.append(_err)
+                    
+                result_err.value = np.max(max_err)
+                result_idx.value = TSidx[np.argmax(max_err)]
+                
+                event.set()
+
+def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-10, NProcesses=1, maxRBsize=50):
+    start = time.time()
+    
+    #### Start reading TS file ####
+    TSdata = h5py.File("%s.h5" % hdf5Filename, 'r') 
+    TS = TSdata['TS']		
+    
+    quadratureWeights = TSdata['weights'][...]
+    x = TSdata['x'][...]
+    maxRBsize = maxRBsize
+    TSsize = TSdata['TSSize'][...]
+    
+    #### Set up stuff for greedy #### 
+    tol = tol
+    rb_errors = []
+    x_nodes = []
+    
+    # Initial RB to seed with
+    next_RB_index = 0  
+    #EI_indices = [next_RB_index]
+    #x_nodes.append(x[EI_indices])
+	
+    RB0 = TS['%i/data' % next_RB_index][...]
+    #RB0 /= RB0[EI_indices[0]]
+    EI_indices = [np.argmax(RB0)]
+    x_nodes.extend(x[EI_indices])
+    RB0 /= RB0[EI_indices[0]]		
+    RB_matrix = [RB0] 
+
+    V = np.zeros(((maxRBsize), (maxRBsize)), dtype=complex)
+
+    V[0][0] = RB_matrix[0][EI_indices[0]]
+    invV = inv(V[0:len(EI_indices), 0:len(EI_indices)])
+    B = B_matrix(invV, np.array(RB_matrix))	
+    
+    RBs = []
+    
+    if NProcesses > 1:
+        queue = Queue()
+        locks = [Event() for l in range(NProcesses)]
+        
+        result_err = [Value('d', np.inf) for l in range(NProcesses)]
+        result_idx = [Value('i', -1)     for l in range(NProcesses)]
+        
+        Names = range(NProcesses)
+        procs = [Process(name="process_%i" % l[0], target=_worker_ROM, 
+                         args=(hdf5Filename, queue, l[1], l[2], l[3])) for l in itertools.izip(Names, result_err, result_idx, locks)]
+
+        max_res = np.zeros((NProcesses), dtype='d')
+        max_idx = np.zeros((NProcesses), dtype='i')
+        
+        for P in procs: P.start()
+    
+    dstr = datetime.datetime.strftime(datetime.datetime.now(), "%d%m%Y_%H%M%S")
+    
+    if greedyFilename is None:
+        greedyFilename = "GreedyPoints_%s" % dstr
+    
+    greedyFilename += ".dat"
+    
+    limits = ROMLimits(zmin=min(TSdata['zRange'].value),
+                       zmax=max(TSdata['zRange'].value),
+                       w0min=min(TSdata['w0Range'].value),
+                       w0max=max(TSdata['w0Range'].value),
+                       R=TSdata['R'].value,
+                       mapSamples=TSdata['halfMapSamples'].value,
+                       newtonCotesOrder=int(TSdata['newtonCotesOrder'].value),
+                       max_order=int(TSdata['maxOrder'].value))
+                       
+    with open(greedyFilename, "w") as f:
+        f.write("min w0 = %15.15e\n" % limits.zmin)
+        f.write("max w0 = %15.15e\n" % limits.zmax)
+        f.write("min z  = %15.15e\n" % limits.w0min)
+        f.write("min z  = %15.15e\n" % limits.w0max)
+        f.write("R      = %15.15e\n" % limits.R)
+        f.write("max order   = %i\n" % limits.max_order)
+        f.write("NC order    = %i\n" % limits.newtonCotesOrder)
+        f.write("half map samples = %i\n" % limits.mapSamples)
+        
+        # write initial RB
+        _TS = TS[str(next_RB_index)]
+        f.write("%15.15e %15.15e %i %i\n" % (_TS["z"].value, _TS["w0"].value, _TS["n1"].value, _TS["n2"].value))
+    
+        for k in range(1, maxRBsize): 
+        
+            if NProcesses == 1:
+                max_res = []
+
+                TSidx = np.array(range(TSsize))
+
+                for ll in TSidx:
+                    a = TS['%i/data' % ll].value
+                    max_res.append(np.max(a - emp_interp(B, a, EI_indices)))
+
+                worst_error = max(np.abs(max_res))
+                next_RB_index = np.argmax(max_res)
+            
+            else:
+            
+                TSs = [range(TSsize)[i::NProcesses] for i in range(NProcesses)]
+            
+                for l in TSs: queue.put((l, B, EI_indices))
+            
+                end_locks = copy(locks)
+            
+                while len(end_locks) > 0:
+                    for e in end_locks:
+                        if e.wait():
+                            end_locks.remove(e)
+            
+                for e in locks: e.clear()
+                
+                for i in range(NProcesses):
+                    max_res[i] = result_err[i].value
+                    max_idx[i] = result_idx[i].value
+            
+                worst_error = max(np.abs(max_res))
+                next_RB_index = max_idx[np.argmax(max_res)]
+        
+            if worst_error <= tol:
+                print "Final basis size = %d, Final error = %e, Tolerance=%e" % (k, worst_error, tol) 
+                break
+
+            print "worst error = %e at %i on iteration %d" % (worst_error, next_RB_index, k)			
+        
+            epsilon = TS['%i/data' % next_RB_index].value
+            res   = epsilon - emp_interp(B, epsilon, EI_indices)
+            index = np.argmax(res)
+            EI_indices.append(index)
+            x_nodes.append(TSdata['x'][index])
+            RB_matrix.append(res/max(res))
+
+            for l in range(len(EI_indices)): # Part of (5) of Algorithm 2: making V_{ij} 
+                for m in range(len(EI_indices)): # Part of (5) of Algorithm 2: making V_{ij} 
+                    V[m][l] = RB_matrix[l][EI_indices[m]] # Part of (5) of Algorithm 2: making V_{ij}
+
+            invV = inv(V[0:len(EI_indices), 0:len(EI_indices)])
+            B = B_matrix(invV, np.array(RB_matrix))
+            
+            _TS = TS[str(next_RB_index)]
+            f.write("%15.15e %15.15e %i %i\n" % (_TS["w0"].value, _TS["z"].value, _TS["n1"].value, _TS["n2"].value))
+                
+    print time.time() - start, "Seconds"
+    
+    if NProcesses > 1:
+        for P in procs: P.terminate()
+
+    TSdata.close()
+
+    greedyFilenameBase = os.path.splitext(greedyFilename)[0]
+    
+    print "Writing to %s" % greedyFilename
+                       
+    EI = EmpiricalInterpolant(B=np.matrix(B).real,
+                              nodes=np.array(x_nodes).squeeze(),
+                              node_indices=np.array(EI_indices).squeeze(),
+                              limits=limits,
+                              x=x.squeeze())
+    
+    if EIFilename is not None:
+        with open("%s.p" % EIFilename, 'wb') as f:
+            pickle.dump(EI, f)
+        
+        print "Writing to %s.p" % EIFilename
+                              
+    return EI
+    
+    
+def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCotesOrder=1):
+    with open("%s" % EIxFilename, 'rb') as f:
+        EIx = pickle.load(f)
+        
+    if EIyFilename is None:
+        EIy = EIx
+    else:
+        with open("%s" % EIyFilename, 'rb') as f:
+            EIy = pickle.load(f)
+
+    # get full A_xy
+    A_xy = smap.z_xy().transpose()
+
+    xm = smap.x[smap.x <= 0]
+    xp = smap.x[smap.x >= 0]
+    ym = smap.y[smap.y <= 0]
+    yp = smap.y[smap.y >= 0]
+
+    Q1xy = np.ix_(smap.x <= 0, smap.y >= 0)
+    Q2xy = np.ix_(smap.x >= 0, smap.y >= 0)
+    Q3xy = np.ix_(smap.x >= 0, smap.y <= 0)
+    Q4xy = np.ix_(smap.x <= 0, smap.y <= 0)
+
+    # get A_xy in the four quadrants of the x-y plane
+    A_xy_Q1 = A_xy[Q1xy]
+    A_xy_Q2 = A_xy[Q2xy]
+    A_xy_Q3 = A_xy[Q3xy]
+    A_xy_Q4 = A_xy[Q4xy]
+
+    full_x = smap.x
+    full_y = smap.y
+    
+    dx = full_x[1] - full_x[0]
+    dy = full_y[1] - full_y[0]
+
+    if verbose:
+        count  = 4*len(EIx.B) * len(EIy.B)
+        p = ProgressBar(maxval=count, widgets=["Computing weights: ", Percentage(), Bar(), ETA()])
+
+    n = 0
+
+    # make integration weights
+    Bx = EIx.B
+    By = EIy.B[:,::-1]
+    w_ij_Q1 = np.zeros((len(Bx),len(By)), dtype = complex)
+    
+    wx = newton_weights(Bx[0], EIx.limits.newtonCotesOrder)
+    wy = newton_weights(By[0], EIy.limits.newtonCotesOrder)
+    W = np.outer(wx, wy)
+
+    A = A_xy_Q1 * W
+    
+    for i in range(len(Bx)):
+        for j in range(len(By)):
+            B_ij_Q1 = np.outer(Bx[i], By[j])
+            w_ij_Q1[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q1, A)	
+        
+            if verbose:
+                p.update(n)
+                n+=1
+
+    Bx = EIx.B[:,::-1]
+    By = EIy.B[:,::-1]
+    w_ij_Q2 = np.zeros((len(Bx),len(By)), dtype = complex)
+    A = A_xy_Q2 * W
+    
+    for i in range(len(Bx)):
+        for j in range(len(By)):
+            B_ij_Q2 = np.outer(Bx[i], By[j])
+            w_ij_Q2[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q2, A)
+        
+            if verbose:
+                p.update(n)
+                n+=1
+
+    Bx = EIx.B[:,::-1]
+    By = EIy.B
+    w_ij_Q3 = np.zeros((len(Bx),len(By)), dtype = complex)
+    A = A_xy_Q3 * W
+    
+    for i in range(len(Bx)):
+        for j in range(len(By)):
+            B_ij_Q3 = np.outer(Bx[i], By[j])
+            w_ij_Q3[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q3, A)
+
+            if verbose:
+                p.update(n)
+                n+=1
+
+    Bx = EIx.B
+    By = EIy.B
+    w_ij_Q4 = np.zeros((len(Bx),len(By)), dtype = complex)
+    A = A_xy_Q4 * W
+    
+    for i in range(len(Bx)):
+        for j in range(len(By)):
+            B_ij_Q4 = np.outer(Bx[i], By[j])
+            w_ij_Q4[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q4, A)
+
+            if verbose:
+                p.update(n)
+                n+=1
+                
+    if verbose:
+        p.finish()
+    
+    return ROMWeights(w_ij_Q1=w_ij_Q1, w_ij_Q2=w_ij_Q2, w_ij_Q3=w_ij_Q3, w_ij_Q4=w_ij_Q4, EIx=EIx, EIy=EIy)

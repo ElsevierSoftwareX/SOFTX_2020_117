@@ -10,6 +10,7 @@ from math import factorial
 from pykat.maths.hermite import hermite
 from scipy.misc import comb
 from scipy.integrate import newton_cotes
+from pykat.maths import newton_weights
 
 import time
 import pykat.optics.maps
@@ -303,8 +304,8 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
     
     if isinstance(weights, ROMWeights):
         if cache == None:
-            u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EI["x"].nodes)
-            u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EI["y"].nodes)
+            u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EIx.nodes)
+            u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EIy.nodes)
         
             w_ij_Q1Q3 = weights.w_ij_Q1 + weights.w_ij_Q3
             w_ij_Q2Q4 = weights.w_ij_Q2 + weights.w_ij_Q4
@@ -354,8 +355,8 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
     
     else:
         if cache == None:
-            u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EI["x"].nodes)
-            u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EI["y"].nodes)
+            u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EIx.nodes)
+            u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EIy.nodes)
     
             w_ij = weights.w_ij
         else:
@@ -510,9 +511,7 @@ def square_aperture_HG_knm(mode_in, mode_out, q, R):
         
     kx = hg1.constant_x * hg2.constant_x.conjugate()
     ky = hg1.constant_y * hg2.constant_y.conjugate()
-    
-    print hg1.constant_x, hg2.constant_x, hg1.constant_y, hg2.constant_y
-    
+     
     f = q.w / math.sqrt(2)
     R = R / (q.w / math.sqrt(2))
     
