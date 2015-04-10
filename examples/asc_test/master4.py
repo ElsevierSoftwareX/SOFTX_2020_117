@@ -187,11 +187,12 @@ def get_qs(tmpkat,f):
 
         # add thermal lens and propagate input beam to ITM
         kat = set_thermal_lens(kat, f)
+        global out
         out = kat.run(printout=0,printerr=0)
         
         # computing beam size at ITM 
         # and then we reflect of ITM, an set it as new startnode
-        q_in = complex(out['w1'][0],out['w1'][1])
+        q_in = out['w1']
         from pykat.optics.ABCD import apply, mirror_refl
         abcd = mirror_refl(1,-2500)
         q_out = apply(abcd,q_in,1,1)
@@ -207,13 +208,13 @@ def get_qs(tmpkat,f):
         out = kat.run(printout=0,printerr=0)
 
         # computing beam size at WFS1 and WFS2
-        q2 = complex(out['w2'][0],out['w2'][1])    
+        q2 = out['w2']
         beam2 = gauss_param(q=q2)    
-        q3 = complex(out['w3'][0],out['w3'][1])
+        q3 = out['w3']
         beam3 = gauss_param(q=q3)    
 
         # computing beam size at pick off
-        q4 = complex(out['w4'][0],out['w4'][1])    
+        q4 = out['w4']
         beam4 = gauss_param(q=q4)    
         print " Input mode beam size with thermal lens f={0}".format(f)
         print " - ITM  w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam1.w,beam1.w0, beam1.z)
@@ -223,13 +224,14 @@ def get_qs(tmpkat,f):
         #raw_input("Press enter to continue")
         
         return [beam1, beam2, beam3, beam4]
-
+    global out, kat
+    print "".join(kat.generateKatScript())
     # run finesse with input laser mode matched to cavity (no thermal lens)
     out = kat.run(printout=0,printerr=0)
 
     # beam at laser when matched to cold cavity
     # (note the sign flip of the real part to change direction of gauss param)
-    q0 = complex(-1.0*out['w0'][0],out['w0'][1])
+    q0 = -1.0*out['w0'].conjugate()
     beam0 = gauss_param(q=q0)   
     # compute beam sizes when tracing this beam back through the system
     (beam1,beam2,beam3, beam4)=beam_size(kat,f,beam0)

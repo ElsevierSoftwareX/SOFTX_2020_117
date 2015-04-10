@@ -100,8 +100,9 @@ def pd_signal(tmpkat):
         """
     kat.parseKatCode(code1)
     kat.noxaxis = True
+    #global out
     out = kat.run()
-    print " Cavity power: {0:.6f}W".format(out.y[2,0])
+    print " Cavity power: {0:.6f}W".format(out.y[0,2])
     return (out.y[0,0], out.y[0,1])
     
 def pd_phase(tmpkat):
