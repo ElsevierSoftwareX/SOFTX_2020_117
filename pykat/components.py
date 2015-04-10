@@ -209,6 +209,19 @@ class Component(object):
         del self._params[:]
 
         self.__removed = True
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        
+        for p in result._params:
+            p._updateOwner(result)
+        
+        return result
             
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
