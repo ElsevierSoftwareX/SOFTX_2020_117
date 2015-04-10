@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 from pykat import finesse
 from pykat.commands import *
 import numpy as np
@@ -8,7 +13,7 @@ import shutil
 
 def main():
 
-    print """
+    print("""
     --------------------------------------------------------------
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
@@ -26,7 +31,7 @@ def main():
     
     Andreas Freise 16.01.2014    
     --------------------------------------------------------------
-    """
+    """)
     
     # shall we clear the workspace?
     # %reset -f
@@ -44,7 +49,7 @@ def main():
     kat.loadKatFile('asc_base3.kat')
     try:
         tmpfile = shelve.open(tmpresultfile)
-        result=tmpfile['result']
+        result=tmpfile[str('result')]
         tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
 
@@ -52,12 +57,12 @@ def main():
     kat.WFS1_Q.enables = False
     kat.WFS2_Q.enables = False
 
-    print "--------------------------------------------------------"
-    print " 9. ASC signals for large misalignments (ITM)"
+    print("--------------------------------------------------------")
+    print(" 9. ASC signals for large misalignments (ITM)")
     asc_large(kat, 'ITM')
 
-    print "--------------------------------------------------------"
-    print " 10. ASC signals for large misalignments (ETM)"
+    print("--------------------------------------------------------")
+    print(" 10. ASC signals for large misalignments (ETM)")
     asc_large(kat, 'ETM')
 
 
@@ -90,17 +95,17 @@ def asc_large(tmpkat, mir_name):
     
     for tem in maxtems:
         done_maxtems.append(tem)
-        print " Calculating maxtem = %d " % tem
+        print(" Calculating maxtem = %d " % tem)
         kat.maxtem = tem
         out[str(tem)] = kat.run(printout=0,printerr=1)
         import os.path
         if os.path.isfile(tmpfilename):
             shutil.copyfile(tmpfilename, backupname)
 
-        print " current results saved in: {0}".format(tmpfilename)
+        print(" current results saved in: {0}".format(tmpfilename))
         tmpfile = shelve.open(tmpfilename)
-        tmpfile['out']=out
-        tmpfile['maxtems']=done_maxtems
+        tmpfile[str('out')]=out
+        tmpfile[str('maxtems')]=done_maxtems
         tmpfile.close()
     
     

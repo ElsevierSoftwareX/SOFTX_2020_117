@@ -7,10 +7,10 @@ import pykat.exceptions as pkex
 
 NoGUIException = pkex.BasePyKatException("No PyQt4 module was found so cannot open a GUI")
 
-import finesse
-import components
-import detectors
-import commands
+import pykat.finesse as finesse
+import pykat.components as components
+import pykat.detectors as detectors
+import pykat.commands as commands
 
 from pykat.optics.gaussian_beams import beam_param
 

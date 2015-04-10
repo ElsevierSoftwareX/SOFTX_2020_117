@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import abc
 import pykat.exceptions as pkex
 import weakref
@@ -87,7 +92,7 @@ class Param(putable, putter):
         putter.__init__(self, var_name, isPutter)
             
         putable.__init__(self, owner.name, name, isPutable)
-    
+
     def _updateOwner(self, newOwner):
         """
         This updates the internal weak reference to link a parameter to who owns it.
@@ -159,7 +164,7 @@ class Param(putable, putter):
         #if this param can be put somewhere we need to check if it is
         if self.isPutable:
             for a in self.putees:
-                print "Removing put from {0} {1} to {2} {3}".format(self.owner.name, self.name, a.owner.name, a.name)
+                print ("Removing put from {0} {1} to {2} {3}".format(self.owner.name, self.name, a.owner.name, a.name))
                 a._putter = None
                 self.put_count -= 1
                 
@@ -169,7 +174,7 @@ class Param(putable, putter):
         # check if we have anything being put to us
         if self.isPutter:
             if self._putter != None:
-                print "Removing put from {0} {1} to {2} {3}".format(self._putter.owner.name, self._putter.name, self.owner.name, self.name)
+                print ("Removing put from {0} {1} to {2} {3}".format(self._putter.owner.name, self._putter.name, self.owner.name, self.name))
                 self._putter.put_count -= 1
                 self._putter.putees.remove(self)
                 self._putter = None

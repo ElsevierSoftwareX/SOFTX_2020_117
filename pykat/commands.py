@@ -4,11 +4,19 @@ Created on Mon Jan 28 11:58:09 2013
 
 @author: Daniel
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import numpy
 from numpy import min,max
-import exceptions
-from components import *
-from structs import *
+import pykat.external.six as six
+if six.PY2:
+	import exceptions
+from pykat.components import *
+from pykat.structs import *
+
 from pykat.param import Param, putter
 import pykat.exceptions as pkex
 from collections import namedtuple
@@ -145,7 +153,7 @@ class xaxis(Command):
             scale = Scale.linear
         elif scale == "log":
             scale = Scale.logarithmic
-        elif isinstance(scale, str):
+        elif isinstance(scale, six.string_types):
             # else we have a string but not a recognisable one
             raise pkex.BasePyKatException("scale argument '{0}' is not valid, must be 'lin' or 'log'".format(scale))
 
@@ -159,12 +167,12 @@ class xaxis(Command):
 
         self.limits = numpy.array(SIfloat(limits)).astype(float)
 
-        if steps <= 0 :
+        if int(steps) <= 0 :
             raise pkex.BasePyKatException("steps value should be > 0")
 
         self.steps = int(steps)
 
-        if isinstance(param, str):
+        if isinstance(param, six.string_types):
             self.__param = param
             if comp == None:
                 raise pkex.BasePyKatException("If parameter is set with a string, the comp argument must set the component name")

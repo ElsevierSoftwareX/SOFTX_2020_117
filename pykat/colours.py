@@ -4,6 +4,10 @@ Created on Mon Jan 28 10:43:18 2013
 
 @author: Daniel
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 class colours:
     HEADER = '\033[95m'
