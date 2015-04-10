@@ -4,7 +4,11 @@ Created on Fri Feb 01 0split()9:09:10 2013
 
 @author: Daniel
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+from __future__ import unicode_literals
+
 import pykat.external.six as six
 if six.PY2:
 	import exceptions
@@ -13,8 +17,10 @@ from pykat.node_network import *
 from pykat.param import Param, AttrParam
 from pykat.SIfloat import SIfloat
 
-import collections
+import pykat.external.six as six
 import pykat.exceptions as pkex
+
+import collections
 import warnings
 import copy
 
@@ -63,7 +69,7 @@ class BaseDetector(object) :
                         self._alternate_beam.append(False)
                         
                     self._requested_nodes.append(n)
-            elif isinstance(nodes, str):
+            elif isinstance(nodes, six.string_types):
                 # if we don't have a collection
                 if nodes[-1]=='*':
                     self._alternate_beam.append(True)
@@ -151,7 +157,7 @@ class BaseDetector(object) :
     
     def _getScaleCmds(self, rtn):
         if self.scale != None:
-            if isinstance(self.scale, str):
+            if isinstance(self.scale, six.string_types):
                 rtn.append("scale {1} {0}".format(self.name, self.scale))
             elif isinstance(self.scale, (list, tuple)):
                 for s in self.scale:
@@ -383,9 +389,11 @@ class pd(Detector1):
         
         fs = [self.__f1, self.__f2, self.__f3, self.__f4, self.__f5]
         ps = [self.__phi1, self.__phi2, self.__phi3, self.__phi4, self.__phi5]
-        
+
+        print("-------------------------------------------------------")
         for i in range(num_demods):
             f = 'f{0}'.format(i+1)
+            print("i {0} fs {1} f {2} keys {3}".format(i,len(fs),f, kwargs.keys()))
             
             if f in kwargs:
                 fs[i].value = kwargs[f]
@@ -462,7 +470,7 @@ class pd(Detector1):
             # check if we are setting no phase that this is only on the last
             # demodulation phase.
             raise pkex.BasePyKatException("Only last demodulation phase can be set to None")
-        elif isinstance(value, str) and not isinstance(value,float) and value.lower() != "max":
+        elif isinstance(value, six.string_types) and not isinstance(value,float) and value.lower() != "max":
             raise pkex.BasePyKatException("Demodulation phase can only be set to a 'max' or a number (or None if the last demodulation phase)")
             
         setattr(self, '_'+ self.__class__.__name__ +'__phi' + num, value)

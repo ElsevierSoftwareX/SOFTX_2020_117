@@ -4,7 +4,10 @@ Created on Mon Jan 28 11:10:01 2013
 
 @author: Daniel
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+from __future__ import unicode_literals
 
 from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
 

@@ -4,14 +4,18 @@ Created on Mon Jan 28 11:58:09 2013
 
 @author: Daniel
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+from __future__ import unicode_literals
+
 import numpy
 from numpy import min,max
 import pykat.external.six as six
 if six.PY2:
 	import exceptions
-from components import *
-from structs import *
+from pykat.components import *
+from pykat.structs import *
 from pykat.param import Param, putter
 import pykat.exceptions as pkex
 from collections import namedtuple

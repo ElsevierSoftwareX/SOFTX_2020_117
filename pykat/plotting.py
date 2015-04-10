@@ -4,6 +4,10 @@ Created on Sat Feb 02 10:35:04 2013
 
 @author: Daniel
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import numpy as np
 import matplotlib

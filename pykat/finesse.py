@@ -23,7 +23,11 @@ Contact at ddb@star.sr.bham.ac.uk
 
 @author: Daniel Brown
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+from __future__ import unicode_literals
+
 import sys
 import os
 import subprocess
@@ -51,6 +55,8 @@ from pykat.components import Component
 from pykat.commands import Command, xaxis
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
+
+import pykat.external.six as six
 
 import pykat.exceptions as pkex
 
@@ -772,7 +778,7 @@ class kat(object):
                         # manually add the line to the block contents
                         self.__blocks[self.__currentTag].contents.append(line) 
                 
-                    if obj != None and not isinstance(obj, str):
+                    if obj != None and not isinstance(obj, six.string_types):
                         if self.hasNamedObject(obj.name):
                             getattr(self, obj.name).remove()
                             print("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
@@ -1142,13 +1148,15 @@ class kat(object):
                 
                     r.xlabel = hdr[0]
                     r.ylabel = hdr[1]
-                    r.zlabels = map(str.strip, hdr[2:])
+                    r.zlabels = [s.strip for s in hdr[2:]]
+                    #r.zlabels = map(str.strip, hdr[2:])
                          
                 else:
                     [r.x,r.y,hdr] = self.readOutFile(outfile)
             
                     r.xlabel = hdr[0]
-                    r.ylabels = map(str.strip, hdr[1:])
+                    r.ylabels = [s.strip for s in hdr[1:]]
+                    #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
                     
             if save_kat:
                 if kat_name == None:
@@ -1376,7 +1384,7 @@ class kat(object):
         for key in self.__blocks:
             objs = self.__blocks[key].contents
             for obj in objs:
-                if isinstance(obj, str):
+                if isinstance(obj,  six.string_types):
                     if fragment in obj:
                         print("  ** removing line '{0}'".format(obj))
                         objs.remove(obj)
@@ -1405,7 +1413,7 @@ class kat(object):
         for key in self.__blocks:
             objs = self.__blocks[key].contents
             for obj in objs:
-                if isinstance(obj, str):
+                if isinstance(obj, six.string_types):
                     print(obj)
                     found = True
         
@@ -1418,7 +1426,7 @@ class kat(object):
 
         def writeBlock():
             for obj in objs:
-                if isinstance(obj, str):
+                if isinstance(obj, six.string_types):
                     out.append(obj + '\n')
                     
                 elif isinstance(obj, Component) or isinstance(obj, Detector) or isinstance(obj, Command):
@@ -1492,7 +1500,7 @@ class kat(object):
 
                     out.append("vacuum {0}\n".format(" ".join(objs)))
                                         
-            elif isinstance(self.vacuum, str):
+            elif isinstance(self.vacuum, six.string_types):
                 out.append("vacuum {0}\n".format(self.vacuum))
             else:
                 pkex.BasePyKatException("Couldn't understand vacuum input list")
