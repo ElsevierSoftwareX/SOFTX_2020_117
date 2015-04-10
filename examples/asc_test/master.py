@@ -77,7 +77,7 @@ def main():
 	print(" new ETM phi tuning = %g " % kat.ETM.phi)
 
 	(result['pd_p'], result['pd_q']) = pd_signal(kat)
-	print(" PDH inphase		= %e " % result['pd_p'])
+	print(" PDH inphase     = %e " % result['pd_p'])
 	print(" PDH quadrtature = %e " % result['pd_q'])
 	
 	print("--------------------------------------------------------")
@@ -90,7 +90,7 @@ def main():
 	kat.saveScript(tmpkatfile)
 	# now the result variables:
 	tmpfile = shelve.open(tmpresultfile)
-	tmpfile['result']=result
+	tmpfile[b'result']=result
 	tmpfile.close()
 	
 #---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ def pd_signal(tmpkat):
     kat.noxaxis = True
     #global out
     out = kat.run()
-    print " Cavity power: {0:.6f}W".format(out.y[0,2])
+    print(" Cavity power: {0:.6f}W".format(out.y[0,2]))
     return (out.y[0,0], out.y[0,1])
     
 def pd_phase(tmpkat):
@@ -166,12 +166,13 @@ def powers(tmpkat):
 
 	kat.parseKatCode(code1)
 
+	global out
 	out = kat.run()
 
 	code1 = code1.split("\n")
 	for i in range(len(out.y)):
 		print(" %8s: %.4e" % (out.ylabels[i], out.y[0,i]))
- 
+
 
 def resonance(tmpkat):
 	kat = copy.deepcopy(tmpkat)

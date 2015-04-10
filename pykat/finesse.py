@@ -99,7 +99,7 @@ def f__lkat_process(callback, cmd, kwargs):
         callback(lkat, **kwargs)
     
     except Exception as ex: 
-        print "Exception caught in python: ", ex.message
+        print ("Exception caught in python: ", ex.message)
     finally:
         # This should always be called no matter what
         lkat._pykat_finish(0)
@@ -514,7 +514,7 @@ class kat(object):
 
     @staticmethod
     def logo():
-        print """                                              ..-
+        print ("""                                              ..-
     PyKat {0:7}         _                  '(
                           \\`.|\\.__...-\"\"""-_." )
        ..+-----.._        /  ' `            .-'
@@ -522,7 +522,7 @@ class kat(object):
   (        '::;;+;;:      `-"' =" /,`"" `) /
   L.        \\`:::a:f            c_/     n_'
   ..`--...___`.  .    ,  
-   `^-....____:   +.      {1}\n""".format(pykat.__version__, pykat_web)
+   `^-....____:   +.      {1}\n""".format(pykat.__version__, pykat_web))
     
     def loadKatFile(self, katfile, blocks=None):
         commands=open(katfile).read()
@@ -730,7 +730,7 @@ class kat(object):
                             self.deriv_h = float(v[1])
                     elif(first == "gnuterm" or first == "pyterm"):
                         if self.verbose:
-                            print "Ignoring Gnuplot/Python terminal command '{0}'".format(line)
+                            print ("Ignoring Gnuplot/Python terminal command '{0}'".format(line))
                     elif(first == "fsig"):
                         after_process.append(line)
                     elif(first == "noplot"):
@@ -738,7 +738,7 @@ class kat(object):
                         self.__blocks[self.__currentTag].contents.append(line) 
                     else:
                         if self.verbose:
-                            print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
+                            print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
                         
                         obj = line
                         # manually add the line to the block contents
@@ -747,13 +747,13 @@ class kat(object):
                     if obj != None and not isinstance(obj, six.string_types):
                         if self.hasNamedObject(obj.name):
                             getattr(self, obj.name).remove()
-                            print "Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line)
+                            print ("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
                         
                         self.add(obj)
             except:
-                print "--------------------------------------------------------"
-                print "Error parsing line: " + line
-                print "--------------------------------------------------------"
+                print ("--------------------------------------------------------")
+                print ("Error parsing line: " + line)
+                print ("--------------------------------------------------------")
                 raise
                 
                 
@@ -878,7 +878,7 @@ class kat(object):
             katfile.close()
 
         except pkex.BasePyKatException as ex:
-            print ex
+            print (ex)
 
             
     def getProcess(self, callback, **kwargs):
@@ -931,8 +931,8 @@ class kat(object):
             if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
                 raise pkex.MissingFinesse()
                 
-            if self.verbose: print "--------------------------------------------------------------"
-            if self.verbose: print "Running kat - Started at " + str(start)
+            if self.verbose: print ("--------------------------------------------------------------")
+            if self.verbose: print ("Running kat - Started at " + str(start))
             
             if hasattr(self, "x2axis") and self.noxaxis == False:
                 r = katRun2D()
@@ -983,11 +983,13 @@ class kat(object):
             err = ""
             
             #if self.verbose: print "Finesse output:"            
-            for line in iter(p.stderr.readline, ""):
+            for aline in iter(p.stderr.readline, b""):
+                line = unicode(aline, "utf-8")
                 if len(line) > 0:
                     # remove any ANSI commands
-                    ansi = re.compile(r'\x1b[^m]*m')
-                    line = ansi.sub('', line)
+                    #ansi = re.compile(r'\x1b[^m]*m')
+                    #line = ansi.sub('', line)
+                    line = re.sub(r'\x1b[^m]*m', '', line, re.UNICODE)
 
                     # warnings and errors start with an asterisk 
                     # so if verbose show them
@@ -1016,9 +1018,9 @@ class kat(object):
             [out,errpipe] = p.communicate()
             
             if printout == 1: 
-                print out
+                print (out)
             else:
-                if printerr == 1: print ""
+                if printerr == 1: print ("")
 
             # get the version number
             ix = out.find('build ') + 6
@@ -1029,7 +1031,7 @@ class kat(object):
 
             # If Finesse returned an error, just print that and exit!
             if p.returncode != 0:
-                print err
+                print (err)
                 sys.exit(1) 
             
             self.__prevrunfilename = katfile.name
@@ -1049,20 +1051,20 @@ class kat(object):
                     
                 os.rename(outfile, newoutfile)
 
-                if self.verbose: print "\nOutput data saved to '{0}'".format(newoutfile)
+                if self.verbose: print ("\nOutput data saved to '{0}'".format(newoutfile))
             
             if hasattr(self, "x2axis") and self.noxaxis == False:
                 [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
                 
                 r.xlabel = hdr[0]
                 r.ylabel = hdr[1]
-                r.zlabels = [s.strip for s in hdr[2:]]
+                r.zlabels = [s.strip() for s in hdr[2:]]
                 #r.zlabels = map(str.strip, hdr[2:])
             else:
                 [r.x,r.y,hdr] = self.readOutFile(outfile)
             
                 r.xlabel = hdr[0]
-                r.ylabels = [s.strip for s in hdr[1:]]
+                r.ylabels = [s.strip() for s in hdr[1:]]
                 #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
                     
             if save_kat:
@@ -1077,17 +1079,17 @@ class kat(object):
                   
                 os.rename(katfile.name, newkatfile)         
                 
-                if self.verbose: print "Kat file saved to '{0}'".format(newkatfile)
+                if self.verbose: print ("Kat file saved to '{0}'".format(newkatfile))
                 
             if self.trace != None and self.trace > 0:
-                #print "{0}".format(out)
+                #print ("{0}".format(out))
                 #if self.trace & 1:
                     #search = out.find(' --- highest order of TEM modes')
                     #if search > -1:
-                        #print "Trace 1: {0}".format(out[search:])
+                        #print ("Trace 1: {0}".format(out[search:]))
 
                 # for now, just try to print the trace block in full
-                print out[out.find(' ---') :]
+                print (out[out.find(' ---') :])
 
             katfile.close()
             perfData = []
@@ -1104,10 +1106,10 @@ class kat(object):
                 return r
             
         except pkex.FinesseRunError as fe:
-            print fe
+            print (fe)
         finally:
-            if self.verbose: print ""
-            if self.verbose: print "Finished in " + str(datetime.datetime.now()-start)
+            if self.verbose: print ("")
+            if self.verbose: print ("Finished in " + str(datetime.datetime.now()-start))
             
     def remove(self, obj):
         if not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
@@ -1147,7 +1149,7 @@ class kat(object):
         del nodes
         
         #import gc
-        #print gc.get_referrers(obj)
+        #print (gc.get_referrers(obj))
     
     def getMatrices(self):
         
@@ -1158,7 +1160,7 @@ class kat(object):
         
         self.noxaxis = True
         self.printmatrix = True
-        print "".join(self.generateKatScript())
+        print ("".join(self.generateKatScript()))
         self.verbose = True
         self.run(printout=1)
         self.printmatrix = None
@@ -1230,7 +1232,7 @@ class kat(object):
             obj._on_kat_add(self)
             
         except pkex.BasePyKatException as ex:
-            print ex
+            print (ex)
 
     def readOutFile(self, filename):
         
@@ -1281,7 +1283,7 @@ class kat(object):
             for obj in objs:
                 if isinstance(obj,  six.string_types):
                     if fragment in obj:
-                        print "  ** removing line '{0}'".format(obj)
+                        print ("  ** removing line '{0}'".format(obj))
                         objs.remove(obj)
 
     def addLine(self, line, block=NO_BLOCK) :
@@ -1311,7 +1313,6 @@ class kat(object):
         if not found:
             print("No extra lines were found")
         
->>>>>>> starting cnversion to pykat2 and 3 compatibility
                         
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
@@ -1565,7 +1566,7 @@ class kat(object):
         
         name = com.__class__.__name__
         
-        print getattr(self.__class__, name)
+        print (getattr(self.__class__, name))
         
         delattr(self.__class__, name)
         delattr(self, '__com_' + name)

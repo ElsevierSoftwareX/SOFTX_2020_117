@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 from pykat import finesse
 from pykat.commands import *
 import pylab as pl
@@ -15,7 +20,7 @@ def printPDF(self, filename):
         pdfp.close()
 
 def main():
-    print """
+    print("""
     --------------------------------------------------------------
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
@@ -25,19 +30,19 @@ def main():
         
     Andreas Freise 16.01.2014
     --------------------------------------------------------------
-    """
+    """)
     
     # shall we clear the workspace?
     # %reset -f
     # maybe close all plot windows?
     # close('all')
             
-    print "--------------------------------------------------------"
-    print " Plotting beam tilt with thermal lens "
+    print("--------------------------------------------------------")
+    print(" Plotting beam tilt with thermal lens ")
     gravity_tilt()
 
-    print "--------------------------------------------------------"
-    print " Plotting WFS signal with thermal lens "
+    print("--------------------------------------------------------")
+    print(" Plotting WFS signal with thermal lens ")
     asc_signal('asc_signals_5.txt', (0.3,0.15))
     asc_signal('asc_signals_50.txt', (0.3,0.15))
 

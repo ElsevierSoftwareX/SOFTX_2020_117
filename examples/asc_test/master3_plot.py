@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 from pykat import finesse
 from pykat.commands import *
 import pylab as pl
@@ -16,7 +21,7 @@ def printPDF(self, filename):
         pdfp.close()
 
 def main():
-    print """
+    print("""
     --------------------------------------------------------------
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
@@ -26,7 +31,7 @@ def main():
         
     Andreas Freise 16.01.2014
     --------------------------------------------------------------
-    """
+    """)
     
     # shall we clear the workspace?
     # %reset -f
@@ -38,8 +43,8 @@ def main():
     #global out
     #global result
         
-    print "--------------------------------------------------------"
-    print " Plotting ASC signals for large misalignments"
+    print("--------------------------------------------------------")
+    print(" Plotting ASC signals for large misalignments")
     asc_large('ITM')
     asc_large('ETM')
     
@@ -57,8 +62,8 @@ def asc_large(mir_name):
 
     try:
         tmpfile = shelve.open(tmpfilename)
-        out=tmpfile['out']
-        maxtems=tmpfile['maxtems']
+        out=tmpfile[b'out']
+        maxtems=tmpfile[b'maxtems']
         tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpfilename))
 

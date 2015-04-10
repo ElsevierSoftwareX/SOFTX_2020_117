@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 from pykat import finesse
 from pykat.commands import *
 from pykat.optics.gaussian_beams import gauss_param
@@ -19,7 +24,7 @@ def set_thermal_lens(kat, f):
 
 def main():
 
-    print """
+    print("""
     --------------------------------------------------------------
     Example file for using PyKat to automate Finesse simulations
     Finesse: http://www.gwoptics.org/finesse
@@ -37,7 +42,7 @@ def main():
         
     Andreas Freise 16.01.2014
     --------------------------------------------------------------
-    """
+    """)
     
     # shall we clear the workspace?
     # %reset -f
@@ -55,7 +60,7 @@ def main():
     kat.loadKatFile('asc_base3.kat')
     try:
         tmpfile = shelve.open(tmpresultfile)
-        result=tmpfile['result']
+        result=tmpfile[b'result']
         tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
     
@@ -69,8 +74,8 @@ def main():
 
     kat.ETM.phi=result['phi_tuned']
 
-    print "--------------------------------------------------------"
-    print " 11. Do beam tracing to measure beam parameters"
+    print("--------------------------------------------------------")
+    print(" 11. Do beam tracing to measure beam parameters")
     # get beam parameters at nodes: "npsl", "nITM1", "nWFS1", "nWFS2", "npo2"
     beam1 = get_qs(kat,1e13)
     beam2 = get_qs(kat,50e3)
@@ -101,19 +106,19 @@ def main():
         t_node=kat.s2.npo2
     
     kat = set_thermal_lens(kat,50e3)
-    print "--------------------------------------------------------"
-    print " 12. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f)
+    print("--------------------------------------------------------")
+    print(" 12. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f))
 
-    print " Setting compromise beam parameter {0}: w0={1}, z={2}".format(node_text, beam50.w0, beam50.z)
+    print(" Setting compromise beam parameter {0}: w0={1}, z={2}".format(node_text, beam50.w0, beam50.z))
     t_node.node.setGauss(t_comp, beam50)
     kat.maxtem=8
-    print " Calculating maxtem = %d " % kat.maxtem
+    print(" Calculating maxtem = %d " % kat.maxtem)
     tmp = gravity_tilt(kat)
 
     kat = set_thermal_lens(kat,5e3)
-    print "--------------------------------------------------------"
-    print " 13. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f)
-    print " Setting compromise beam parameter {0}: w0={1}, z={2}".format(node_text, beam5.w0, beam5.z)
+    print("--------------------------------------------------------")
+    print(" 13. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f))
+    print(" Setting compromise beam parameter {0}: w0={1}, z={2}".format(node_text, beam5.w0, beam5.z))
     t_node.node.setGauss(t_comp, beam5)
     #maxtems = [1, 3, 5, 9, 11, 13, 15, 19, 23, 25, 27, 29]
     maxtems = [1, 3, 5, 7]
@@ -124,16 +129,16 @@ def main():
     kat.WFS2_I.enabled = True
     
     kat = set_thermal_lens(kat,50e3)
-    print "--------------------------------------------------------"
-    print " 12. computing alignment signal with thermal lens (f={0})".format(kat.ITM_TL.f)
+    print("--------------------------------------------------------")
+    print(" 12. computing alignment signal with thermal lens (f={0})".format(kat.ITM_TL.f))
     t_node.node.setGauss(t_comp, beam50)
     #maxtems = [1, 3, 5, 9, 11, 13, 15, 17, 19]
     maxtems = [1, 3, 5, 7]
     converge_asc(kat, maxtems, 'asc_signals_50.txt')
 
     kat = set_thermal_lens(kat,5e3)
-    print "--------------------------------------------------------"
-    print " 13. computing alignment signal with thermal lens (f={0})".format(kat.ITM_TL.f)
+    print("--------------------------------------------------------")
+    print(" 13. computing alignment signal with thermal lens (f={0})".format(kat.ITM_TL.f))
     t_node.node.setGauss(t_comp, beam5)
     #maxtems = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
     maxtems = [1, 3, 5, 7]
@@ -146,12 +151,12 @@ def converge_asc(tmpkat, maxtems, filename):
     savedata = np.zeros([len(maxtems),5])
     for idx, tem in enumerate(maxtems):
         savedata[idx,0]=tem
-        print " Calculating maxtem = %d " % tem
+        print(" Calculating maxtem = %d " % tem)
         kat.maxtem = tem
         tmp = asc_signal(kat)
         savedata[idx,1:5]=tmp.reshape([1,4])
-        print " Saving results in file: {0}".format(filename)
-        np.savetxt(filename, savedata[0:idx+1,:], fmt='%.18e', delimiter=' ')    
+        print(" Saving results in file: {0}".format(filename))
+        np.savetxt(filename, savedata[0:idx+1,:], fmt=b'%.18e', delimiter=' ')    
 
 def converge_tilt(tmpkat, maxtems):
     kat = copy.deepcopy(tmpkat)
@@ -159,12 +164,12 @@ def converge_tilt(tmpkat, maxtems):
     filename = "thermal_gravity.txt"
     for idx, tem in enumerate(maxtems):
         savedata[idx,0]=tem
-        print " Calculating maxtem = %d " % tem
+        print(" Calculating maxtem = %d " % tem)
         kat.maxtem = tem
         tmp = gravity_tilt(kat)
         savedata[idx,1:5]=tmp
-        print " Saving results in file: {0}".format(filename)
-        np.savetxt(filename, savedata[0:idx+1,:], fmt='%.18e', delimiter=' ')    
+        print(" Saving results in file: {0}".format(filename))
+        np.savetxt(filename, savedata[0:idx+1,:], fmt=b'%.18e', delimiter=' ')    
 
 def get_qs(tmpkat,f):
     kat = copy.deepcopy(tmpkat)
@@ -181,17 +186,17 @@ def get_qs(tmpkat,f):
 
     def beam_size(tmpkat, f, beam0):
         kat = copy.deepcopy(tmpkat)
-        print "setting q param ---------------"
+        print("setting q param ---------------")
         kat.psl.npsl.node.setGauss(kat.psl, beam0)
-        print kat.psl.npsl.node.q
+        print(kat.psl.npsl.node.q)
 		#kat.parseKatCode("startnode npsl")
-        print "".join(kat.generateKatScript())
+        print("".join(kat.generateKatScript()))
 
 		
         # add thermal lens and propagate input beam to ITM
         kat = set_thermal_lens(kat, f)
         global out
-        print "".join(kat.generateKatScript())
+        print("".join(kat.generateKatScript()))
 
         out = kat.run(printout=0,printerr=0)
         
@@ -221,11 +226,11 @@ def get_qs(tmpkat,f):
         # computing beam size at pick off
         q4 = out['w4']
         beam4 = gauss_param(q=q4)    
-        print " Input mode beam size with thermal lens f={0}".format(f)
-        print " - ITM  w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam1.w,beam1.w0, beam1.z)
-        print " - WFS1 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam2.w,beam2.w0, beam2.z)
-        print " - WFS2 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam3.w,beam3.w0, beam3.z)
-        print " - npo2 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam4.w,beam4.w0, beam4.z)
+        print(" Input mode beam size with thermal lens f={0}".format(f))
+        print(" - ITM  w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam1.w,beam1.w0, beam1.z))
+        print(" - WFS1 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam2.w,beam2.w0, beam2.z))
+        print(" - WFS2 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam3.w,beam3.w0, beam3.z))
+        print(" - npo2 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam4.w,beam4.w0, beam4.z))
         #raw_input("Press enter to continue")
         
         return [beam1, beam2, beam3, beam4]
@@ -271,12 +276,12 @@ def asc_signal(tmpkat):
     signal = signal *1e10
     sensors=('WFS1', 'WFS2')
     mirrors=('ITM', 'ETM')
-    print " ASC Matrix:"
+    print(" ASC Matrix:")
     for i in range(2):
-        print "  ", sensors[i], " ",
+        print("  ", sensors[i], " ", end=' ')
         for j in range(2):
-            print "%12.10g" % signal[i,j],
-        print mirrors[i]
+            print("%12.10g" % signal[i,j], end=' ')
+        print(mirrors[i])
     return signal
     
 def gravity_tilt(tmpkat):
@@ -339,10 +344,10 @@ def gravity_tilt(tmpkat):
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
     t4=compute_gravity_tilt(kat)
-    print "  WFS1 ITM {0:.4} nrad".format(t1*1e9)    
-    print "  WFS2 ITM {0:.4} nrad".format(t3*1e9)    
-    print "  WFS1 ETM {0:.4} nrad".format(t2*1e9)    
-    print "  WFS2 ETM {0:.4} nrad".format(t4*1e9)    
+    print("  WFS1 ITM {0:.4} nrad".format(t1*1e9))    
+    print("  WFS2 ITM {0:.4} nrad".format(t3*1e9))    
+    print("  WFS1 ETM {0:.4} nrad".format(t2*1e9))    
+    print("  WFS2 ETM {0:.4} nrad".format(t4*1e9))    
     return [t1,t2,t3,t4]
     
 if __name__ == '__main__':

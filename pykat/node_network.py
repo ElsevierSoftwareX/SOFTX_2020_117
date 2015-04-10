@@ -15,6 +15,7 @@ if USE_GUI:
     import pykat.gui.graphics
     
 import pykat.exceptions as pkex
+import pykat.external.six as six
 
 from pykat.components import Component, NodeGaussSetter
 from pykat.detectors import BaseDetector as Detector
@@ -76,10 +77,10 @@ class NodeNetwork(object):
         connected to it have changed.
         """
         
-        if isinstance(node_old, str):
+        if isinstance(node_old, six.string_types):
             node_old = self.__kat.nodes[node_old]
         
-        if isinstance(node_new, str):
+        if isinstance(node_new, six.string_types):
             node_new = self.__kat.nodes[node_new]
             
         if isinstance(node_old, NodeGaussSetter):
@@ -213,7 +214,7 @@ class NodeNetwork(object):
               
         """
         
-        if isinstance(node, str):
+        if isinstance(node, six.string_types):
             node = self.__kat.nodes[node]
             
         if isinstance(node, NodeGaussSetter):
@@ -354,7 +355,7 @@ class NodeNetwork(object):
             return False
             
         elif isinstance(currcomp, pykat.components.isolator):
-            print "isol"
+            print ("isol")
         elif isinstance(currcomp, pykat.components.laser):
             # if we are at a laser then we can't go any further
             # and it isn;t this node as we checked before
@@ -401,13 +402,13 @@ class NodeNetwork(object):
         of the components it finds between them.
         """
         
-        if isinstance(from_node, str):
+        if isinstance(from_node, six.string_types):
             from_node = self.__kat.nodes[from_node]
             
         if isinstance(from_node, NodeGaussSetter):
             from_node = from_node.node
             
-        if isinstance(to_node, str):
+        if isinstance(to_node, six.string_types):
             to_node = self.__kat.nodes[to_node]
             
         if isinstance(to_node, NodeGaussSetter):

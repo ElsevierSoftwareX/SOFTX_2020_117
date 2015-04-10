@@ -383,10 +383,9 @@ class pd(Detector1):
         fs = [self.__f1, self.__f2, self.__f3, self.__f4, self.__f5]
         ps = [self.__phi1, self.__phi2, self.__phi3, self.__phi4, self.__phi5]
 
-        print("-------------------------------------------------------")
         for i in range(num_demods):
             f = 'f{0}'.format(i+1)
-            print("i {0} fs {1} f {2} keys {3}".format(i,len(fs),f, kwargs.keys()))
+            #print("i {0} fs {1} f {2} keys {3}".format(i,len(fs),f, kwargs.keys()))
             
             if f in kwargs:
                 fs[i].value = kwargs[f]

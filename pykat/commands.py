@@ -153,7 +153,7 @@ class xaxis(Command):
             scale = Scale.linear
         elif scale == "log":
             scale = Scale.logarithmic
-        elif isinstance(scale, str):
+        elif isinstance(scale, six.string_types):
             # else we have a string but not a recognisable one
             raise pkex.BasePyKatException("scale argument '{0}' is not valid, must be 'lin' or 'log'".format(scale))
 
@@ -172,7 +172,7 @@ class xaxis(Command):
 
         self.steps = int(steps)
 
-        if isinstance(param, str):
+        if isinstance(param, six.string_types):
             self.__param = param
             if comp == None:
                 raise pkex.BasePyKatException("If parameter is set with a string, the comp argument must set the component name")

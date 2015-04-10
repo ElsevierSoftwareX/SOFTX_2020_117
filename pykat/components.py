@@ -9,7 +9,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
+from pykat import USE_GUI, NoGUIException
 
 import pykat.external.six as six
 
