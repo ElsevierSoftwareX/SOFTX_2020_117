@@ -14,7 +14,7 @@ import pykat.exceptions as pkex
 
 from pykat.components import Component, NodeGaussSetter
 from pykat.detectors import BaseDetector as Detector
-from pykat.optics.gaussian_beams import beam_param
+from pykat import beam_param
 from copy import deepcopy
 
 class NodeNetwork(object):
