@@ -186,18 +186,10 @@ def get_qs(tmpkat,f):
 
     def beam_size(tmpkat, f, beam0):
         kat = copy.deepcopy(tmpkat)
-        print("setting q param ---------------")
         kat.psl.npsl.node.setGauss(kat.psl, beam0)
-        print(kat.psl.npsl.node.q)
-		#kat.parseKatCode("startnode npsl")
-        print("".join(kat.generateKatScript()))
-
 		
         # add thermal lens and propagate input beam to ITM
         kat = set_thermal_lens(kat, f)
-        global out
-        print("".join(kat.generateKatScript()))
-
         out = kat.run(printout=0,printerr=0)
         
         # computing beam size at ITM 

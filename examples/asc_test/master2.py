@@ -290,15 +290,14 @@ def tilt(tmpkat):
 		out = kat.run()
 
 		# compute data x range in meters
-		beamsize = out["w0y"][0]
-		deng
+		beamsize = out["w0y"][0].real
 		xrange = beamsize*(out.x.max()-out.x.min())
 		stepsize=xrange/(len(out.x)-1)
 		print(" Beamsize %e m" % beamsize)
 		print(" Measurement range: %e m, stepszie: %e m" % (xrange, stepsize))
 		# compute difference in angle between wavefront of carrier and sidebands
-		diff_l = (out["PDrefl_low"]-out["PDrefl_car"])/stepsize
-		diff_u = (out["PDrefl_up"]-out["PDrefl_car"])/stepsize
+		diff_l = (out["PDrefl_low"].real-out["PDrefl_car"].real)/stepsize
+		diff_u = (out["PDrefl_up"].real-out["PDrefl_car"].real)/stepsize
 		tilt_l = diff_l[1:-1]-diff_l[0:-2]
 		tilt_u = diff_u[1:-1]-diff_u[0:-2]
 		print(" Tilt (upper	 - car), mean: %e m/deg, stddev %e m/deg" % (np.mean(tilt_u), np.std(tilt_u)))
