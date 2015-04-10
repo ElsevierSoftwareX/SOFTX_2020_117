@@ -1,7 +1,4 @@
-from __future__ import print_function
-import pykat.external.six as six
-if six.PY2:
-	import exceptions
+import exceptions
 import os
 
 class BasePyKatException(Exception):

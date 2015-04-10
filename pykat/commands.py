@@ -4,18 +4,15 @@ Created on Mon Jan 28 11:58:09 2013
 
 @author: Daniel
 """
-from __future__ import print_function
 import numpy
 from numpy import min,max
-import pykat.external.six as six
-if six.PY2:
-	import exceptions
+import exceptions
 from components import *
 from structs import *
 from pykat.param import Param, putter
 import pykat.exceptions as pkex
 from collections import namedtuple
-from pykat.optics.gaussian_beams import beam_param
+from pykat.utilities.optics.gaussian_beams import beam_param
 
 class Command(object):
     __metaclass__ = abc.ABCMeta
