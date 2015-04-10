@@ -23,18 +23,17 @@ Contact at ddb@star.sr.bham.ac.uk
 
 @author: Daniel Brown
 """
-from __future__ import print_function
 import sys
 import os
 import subprocess
 import tempfile
 import numpy as np
 import datetime
-import time
 import pickle
 import pykat
 import warnings
-import re   
+import re
+import math       
 import itertools
 import ctypes
 import ctypes.util
@@ -42,9 +41,8 @@ import collections
 import re
 import copy
 
-from math import erfc, pi
-
 from collections import namedtuple, OrderedDict
+
 from pykat.node_network import NodeNetwork
 from pykat.detectors import BaseDetector as Detector
 from pykat.components import Component
@@ -54,13 +52,8 @@ from pykat.param import Param, AttrParam
 
 import pykat.exceptions as pkex
 
-from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
+from pykat import USE_GUI, NoGUIException
 
-if HAS_OPTIVIS:
-    from optivis.bench.labels import Label as optivis_label
-    from optivis.geometry import Coordinates as optivis_coord
-    import PyQt4
-    
 if USE_GUI:
     from pykat.gui.gui import pyKatGUI
     from PyQt4.QtCore import QCoreApplication
@@ -99,7 +92,7 @@ def f__lkat_process(callback, cmd, kwargs):
         callback(lkat, **kwargs)
     
     except Exception as ex: 
-        print("Exception caught in python: ", ex.message)
+        print "Exception caught in python: ", ex.message
     finally:
         # This should always be called no matter what
         lkat._pykat_finish(0)
@@ -156,17 +149,10 @@ def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
             trace_info[space.name] = space_trace(gouyx = space.gouy_x,
                                                  gouyy = space.gouy_y)
                      
-
-def GUILength(L):
-    """
-    Should scale the lengths in some way to handle km and mm for time being
-    """                                  
-    return L # * ( 40 * erfc(L/400.0) + 0.01)
-    
+                                             
 class katRun(object):
     def __init__(self):
-        self.runtime = None
-        self.StartDateTime = datetime.datetime.now()
+        self.runDateTime = datetime.datetime.now()
         self.x = None
         self.y = None
         self.xlabel = None
@@ -175,12 +161,11 @@ class katRun(object):
         self.katVersion = None
         self.yaxis = None
         
-    def plot(self, logy=False):
+    def plot(self):
         import pylab
         
         pylab.plot(self.x, self.y)
-            
-        pylab.legend(self.ylabels, 0)
+        pylab.legend(self.ylabels,0)
         pylab.xlabel(self.xlabel)
         pylab.show()
         
@@ -197,9 +182,10 @@ class katRun(object):
     
     def __getitem__(self, value):
         idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
-        out = None
-        
+
         if len(idx) > 0:
+            out = self.y[:, idx]
+            
             if len(idx) == 1:
                 if self.yaxis == "abs:deg":
                     out = self.y[:, idx[0]]
@@ -207,12 +193,9 @@ class katRun(object):
                     out = self.y[:, idx[0]]
             else: 
                 if self.yaxis == "abs:deg":
-                    out = self.y[:, idx[0]] * np.exp(1j*pi*self.y[:, idx[1]]/180.0)
+                    out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
                 elif self.yaxis == "re:im":
                     out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
-            
-            if out == None:
-                out = self.y[:, idx]
             
             if out.size == 1:
                 return out[0].squeeze()
@@ -223,8 +206,7 @@ class katRun(object):
       
 class katRun2D(object):
     def __init__(self):
-        self.runtime
-        self.startDateTime = datetime.datetime.now()
+        self.runDateTime = datetime.datetime.now()
         self.x = None
         self.y = None
         self.z = None
@@ -392,18 +374,10 @@ Constant = namedtuple('Constant', 'name, value, usedBy')
     
 class kat(object):  
         
-    def __new__(cls, *args, **kwargs):
-        # This may seem like an arbitrary step but here we are creating a 
-        # new class that is a base class of itself. This is because when
-        # the kat object adds new components it also adds properties for
-        # each of these. There properties are unique to each kat object,
-        # but properties are part of the class definition. Thus if two
-        # kat objects share the same class definition they also have the
-        # same properties regardless of whether they have the actual
-        # object added to it. So we create an instance specific class.
-        return object.__new__(type(pykat.finesse.kat.__name__, (pykat.finesse.kat,), {}), *args, **kwargs)
-        
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
+
+        cls = type(self)
+        self.__class__ = type(cls.__name__, (cls,), {})
         
         self.scene = None # scene object for GUI
         self.verbose = True
@@ -449,30 +423,7 @@ class kat(object):
         
         if kat_file != None:
             self.loadKatFile(kat_file)
-			
-    def __deepcopy__(self, memo):
-        """
-        When deep copying a kat object we need to take into account
-        the instance specific properties. This is because when
-        the kat object adds new components it also adds properties for
-        each of these. There properties are unique to each kat object,
-        but properties are part of the class definition. Thus if two
-        kat objects share the same class definition they also have the
-        same properties regardless of whether they have the actual
-        object added to it. So we create an instance specific class.
-        """
-        result = self.__class__.__new__(self.__class__)
-        memo[id(self)] = result
-        result.__dict__ = copy.deepcopy(self.__dict__, memo)
-        
-        # Find all properties in class we are copying
-        # and deep copy these to the new class instance
-        for x in self.__class__.__dict__.items():
-            if isinstance(x[1], property):
-                setattr(result.__class__, x[0], x[1])
-                        
-        return result
-		
+
     @property
     def signals(self): return self.__signals
 
@@ -523,9 +474,9 @@ class kat(object):
     def phase(self,value): self.__phase = int(value)
         
     @property
-    def timeCode(self): return self.__time_code
-    @timeCode.setter
-    def timeCode(self,value): self.__time_code = bool(value)
+    def getPerformanceData(self): return self.__time_code
+    @getPerformanceData.setter
+    def getPerformanceData(self,value): self.__time_code = bool(value)
     
     @property
     def components(self):
@@ -542,7 +493,7 @@ class kat(object):
 
     @staticmethod
     def logo():
-        print("""                                              ..-
+        print """                                              ..-
     PyKat {0:7}         _                  '(
                           \\`.|\\.__...-\"\"""-_." )
        ..+-----.._        /  ' `            .-'
@@ -550,7 +501,7 @@ class kat(object):
   (        '::;;+;;:      `-"' =" /,`"" `) /
   L.        \\`:::a:f            c_/     n_'
   ..`--...___`.  .    ,  
-   `^-....____:   +.      {1}\n""".format(pykat.__version__, pykat_web))
+   `^-....____:   +.      {1}\n""".format(pykat.__version__, pykat_web)
     
     def loadKatFile(self, katfile, blocks=None):
         commands=open(katfile).read()
@@ -758,7 +709,7 @@ class kat(object):
                             self.deriv_h = float(v[1])
                     elif(first == "gnuterm" or first == "pyterm"):
                         if self.verbose:
-                            print("Ignoring Gnuplot/Python terminal command '{0}'".format(line))
+                            print "Ignoring Gnuplot/Python terminal command '{0}'".format(line)
                     elif(first == "fsig"):
                         after_process.append(line)
                     elif(first == "noplot"):
@@ -766,7 +717,7 @@ class kat(object):
                         self.__blocks[self.__currentTag].contents.append(line) 
                     else:
                         if self.verbose:
-                            print("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
+                            print "Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line)
                         
                         obj = line
                         # manually add the line to the block contents
@@ -775,13 +726,13 @@ class kat(object):
                     if obj != None and not isinstance(obj, str):
                         if self.hasNamedObject(obj.name):
                             getattr(self, obj.name).remove()
-                            print("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
+                            print "Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line)
                         
                         self.add(obj)
             except:
-                print("--------------------------------------------------------")
-                print("Error parsing line: " + line)
-                print("--------------------------------------------------------")
+                print "--------------------------------------------------------"
+                print "Error parsing line: " + line
+                print "--------------------------------------------------------"
                 raise
                 
                 
@@ -868,27 +819,25 @@ class kat(object):
                 
                 if len(v) == 5:
                     param == None
-                    freq = SIfloat(v[3])
-                    phase = SIfloat(v[4])
+                    freq = float(v[3])
+                    phase = float(v[4])
                 elif len(v) == 6:
-                    if v[3][0].isdigit():
-                        freq = SIfloat(v[3])
-                        phase = SIfloat(v[4])
-                        amp = SIfloat(v[5])
+                    if v[3].isdigit():
+                        freq = float(v[3])
+                        phase = float(v[4])
+                        amp = float(v[5])
                     else:
-                        param = str(v[3])
-                        freq = SIfloat(v[4])
-                        phase = SIfloat(v[5])
-                        
+                        param = v[3]
+                        freq = float(v[4])
+                        phase = float(v[5])
                 elif len(v) == 7:
                     param = v[3]
-                    freq = SIfloat(v[4])
-                    phase = SIfloat(v[5])
-                    amp = SIfloat(v[6])
+                    freq = float(v[4])
+                    phase = float(v[5])
+                    amp = float(v[6])
                 else:
                     raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                 
-                self.signals.f = freq
                 self.signals.apply(comp._default_fsig(), amp, phase, name)
                 
             else:
@@ -908,7 +857,7 @@ class kat(object):
             katfile.close()
 
         except pkex.BasePyKatException as ex:
-            print(ex)
+            print ex
 
             
     def getProcess(self, callback, **kwargs):
@@ -919,7 +868,7 @@ class kat(object):
         
         return Process(target=f__lkat_process, args=(callback, cmd, kwargs))
            
-    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False):
+    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None) :
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
@@ -931,11 +880,6 @@ class kat(object):
         save_kat (bool) - if true does not delete kat file
         kat_name (string) - name of kat file if needed, will be randomly generated otherwise
         cmd_args (list of strings) - command line flags to pass to FINESSE
-        getTraceData (bool) - If true a list of dictionaries is returned along with the
-                              output file. Each dictionary is the result of the beam tracing
-                              that Finesse performs, the keys are the node names and the values
-                              are the x and y beam parameters. If no tracing is done a None
-                              is returned.
         """
         start = datetime.datetime.now()
         
@@ -966,8 +910,8 @@ class kat(object):
             if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
                 raise pkex.MissingFinesse()
                 
-            if self.verbose: print("--------------------------------------------------------------")
-            if self.verbose: print("Running kat - Started at " + str(start))
+            if self.verbose: print "--------------------------------------------------------------"
+            if self.verbose: print "Running kat - Started at " + str(start)
             
             if hasattr(self, "x2axis") and self.noxaxis == False:
                 r = katRun2D()
@@ -976,8 +920,7 @@ class kat(object):
                 
             r.yaxis = self.yaxis
             r.katScript = "".join(self.generateKatScript())   
-            r.katScript += "time\n"
-            
+
             if (plot==None):
                 # ensure we don't do any plotting. That should be handled
                 # by user themselves
@@ -1006,9 +949,6 @@ class kat(object):
             
             if cmd_args != None:
                 cmd.extend(cmd_args)
-            
-            if getTraceData:
-                cmd.append('--trace')
                 
             cmd.append('--no-backspace')
             # set default format so that less repeated numbers are printed to the
@@ -1046,83 +986,36 @@ class kat(object):
                         
                         if printerr == 1:
                             sys.stdout.write("\r{0} {1}".format(action, prc))
+                            
                     else:
                         err += line
 
             
             [out,errpipe] = p.communicate()
             
-            _out = out.split("\n")
-            
-            for line in _out[::-1]:
-                if line.lstrip().startswith('computation time:'):
-                    r.runtime = float(line.split(":")[1].replace("s",""))
-                
             if printout == 1: 
-                print(out)
+                print out
             else:
-                if printerr == 1: print("")
+                if printerr == 1: print ""
 
             # get the version number
             ix = out.find('build ') + 6
             ix2 = out.find(')',ix)
             r.katVersion = out[ix:ix2]
             
+            r.runDateTime = datetime.datetime.now()
+
             # If Finesse returned an error, just print that and exit!
             if p.returncode != 0:
-                print(err)
+                print err
                 sys.exit(1) 
-                
+            
             self.__prevrunfilename = katfile.name
             
             root = os.path.splitext(katfile.name)
-            base = os.path.basename(root[0])
-            path = os.path.split(katfile.name)[0]
-            
+            base = os.path.basename(root[0])            
             outfile = root[0] + ".out"
             
-            traceData = None
-            
-            if getTraceData:
-                # First see if we have any trace files
-                
-                traceFiles = [file for file in os.listdir(path) if file.endswith(".trace") and file.startswith(base)]
-                
-                print("Found %i trace files" % len(traceFiles))
-                print(path)
-                print(traceFiles)
-                
-                if len(traceFiles) > 0:
-                    import fileinput
-                    traceData = []
-                    
-                    for file in traceFiles:
-                        traceData.append({})
-                        ifile = fileinput.input(os.path.join(path, file))
-                    
-                        for line in ifile:
-                            line = line.strip()
-                        
-                            if len(line) > 0:
-                                a = line.split(':', 1)
-                        
-                                if a[0].isdigit():
-                                    print("Found %s" % a[0])
-                                
-                                    values = a[1].split()
-                                
-                                    node_name = values[1].split("(")[0]
-                                
-                                    line1x = ifile.readline()
-                                    line2x = ifile.readline()
-                                    line1y = ifile.readline()
-                                    line2y = ifile.readline()
-
-                                    qx = line2x.strip().split()[0].split("=")[1]
-                                    qy = line2y.strip().split()[0].split("=")[1]
-                                
-                                    traceData[-1][node_name] = (pykat.beam_param(q=complex(qx)), pykat.beam_param(q=complex(qy)))
-                                                
             if save_output:        
                 newoutfile = "{0}.out".format(base)
                 
@@ -1134,21 +1027,20 @@ class kat(object):
                     
                 os.rename(outfile, newoutfile)
 
-                if self.verbose: print("\nOutput data saved to '{0}'".format(newoutfile))
+                if self.verbose: print "\nOutput data saved to '{0}'".format(newoutfile)
             
-            if len(self.detectors.keys()) > 0:
-                if hasattr(self, "x2axis") and self.noxaxis == False:
-                    [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
+            if hasattr(self, "x2axis") and self.noxaxis == False:
+                [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
                 
-                    r.xlabel = hdr[0]
-                    r.ylabel = hdr[1]
-                    r.zlabels = map(str.strip, hdr[2:])
+                r.xlabel = hdr[0]
+                r.ylabel = hdr[1]
+                r.zlabels = map(str.strip, hdr[2:])
                          
-                else:
-                    [r.x,r.y,hdr] = self.readOutFile(outfile)
+            else:
+                [r.x,r.y,hdr] = self.readOutFile(outfile)
             
-                    r.xlabel = hdr[0]
-                    r.ylabels = map(str.strip, hdr[1:])
+                r.xlabel = hdr[0]
+                r.ylabels = map(str.strip, hdr[1:])
                     
             if save_kat:
                 if kat_name == None:
@@ -1162,7 +1054,7 @@ class kat(object):
                   
                 os.rename(katfile.name, newkatfile)         
                 
-                if self.verbose: print("Kat file saved to '{0}'".format(newkatfile))
+                if self.verbose: print "Kat file saved to '{0}'".format(newkatfile)
                 
             if self.trace != None and self.trace > 0:
                 #print "{0}".format(out)
@@ -1172,35 +1064,27 @@ class kat(object):
                         #print "Trace 1: {0}".format(out[search:])
 
                 # for now, just try to print the trace block in full
-                print(out[out.find(' ---') :])
+                print out[out.find(' ---') :]
 
             katfile.close()
             perfData = []
-            
-            rtn = [r]
             
             if self.__time_code:
                 perffile = open(root[0] + ".perf",'r')
                 
                 for l in perffile.readlines():
                     vals = l.strip().split()
-                    perfData.append((vals[0], long(vals[1]), long(vals[2])))
+                    perfData.append((vals[0], float(vals[1]), float(vals[2]), float(vals[3])))
                     
-                rtn.append(perfData)
-            
-            if getTraceData:
-                rtn.append(traceData)
-                
-            if len(rtn) == 1:
-                return rtn[0]
+                return [r, perfData]
             else:
-                return rtn
+                return r
             
         except pkex.FinesseRunError as fe:
-            print(fe)
+            print fe
         finally:
-            if self.verbose: print("")
-            if self.verbose: print("Finished in " + str(datetime.datetime.now()-start))
+            if self.verbose: print ""
+            if self.verbose: print "Finished in " + str(datetime.datetime.now()-start)
             
     def remove(self, obj):
         if not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
@@ -1251,7 +1135,7 @@ class kat(object):
         
         self.noxaxis = True
         self.printmatrix = True
-        print("".join(self.generateKatScript()))
+        print "".join(self.generateKatScript())
         self.verbose = True
         self.run(printout=1)
         self.printmatrix = None
@@ -1323,7 +1207,7 @@ class kat(object):
             obj._on_kat_add(self)
             
         except pkex.BasePyKatException as ex:
-            print(ex)
+            print ex
 
     def readOutFile(self, filename):
         
@@ -1343,11 +1227,11 @@ class kat(object):
         if hasattr(self, "x2axis") and self.noxaxis == False:
             # need to parse 2D outputs slightly different as they are effectively 2D matrices
             # written in linear form
-            x = data[0::(1+self.x2axis.steps),0].squeeze()
+            x = data[0::(1+self.x2axis.steps),0]
             y = data[0:(1+self.x2axis.steps),1]
             # get rows and columns lined up so that we can reshape a single column of all x/y data
             # into a matrix
-            z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps).squeeze()
+            z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps)
             # once you do this the data for y and x axes need swapping
             z = z.swapaxes(1,2)
             return [x, y, z, hdr]
@@ -1356,34 +1240,26 @@ class kat(object):
             
             rows,cols = data.shape
             
-            x = data[:,0].squeeze()
+            x = data[:,0]
             y = data[:,1:cols]
         
             return [x, y, hdr]
 
     def removeLine(self, fragment) :
         """
-        This will search all blocks and search for the string
-        fragment specified and remove it.
-        
-        WARNING: This will only remove non-parsed commands, it will not
-        remove commands that have already been parsed
-        into a pykat object, such as mirrors and beamsplitters, use
-        kat.remove or kat.component.remove() to delete parsed objects.
+        This will search all blocks by default and search for the string
+        fragment specified and remove it. This will only remove non-parsed
+        commands, it will not remove commands that have already been parsed
+        into the pykat structure, such as mirrors and beamsplitters, use the
+        kat.remove(...) function for that purpose.
         """
-        found = False
-        
         for key in self.__blocks:
             objs = self.__blocks[key].contents
             for obj in objs:
                 if isinstance(obj, str):
                     if fragment in obj:
-                        print("  ** removing line '{0}'".format(obj))
+                        print "  ** removing line '{0}'".format(obj)
                         objs.remove(obj)
-                        found = True
-            
-        if not found:
-            pkex.BasePyKatException("The command fragment '%s' is not an extra line added to this kat object. Please check that the item you are trying to remove has not been parsed as a pykat object." % fragment)
 
     def addLine(self, line, block=NO_BLOCK) :
         """
@@ -1393,25 +1269,6 @@ class kat(object):
         pykat object that create similar commands so becareful.
         """
         self.__blocks[block].contents.append(line)
-        
-    def printExtraLines(self):
-        """
-        This prints all the Finesse commands that have not been parsed
-        into pykat objects. This should be used for reference only. To
-        add or remove extra lines use the addLine and removeLine methods.
-        """
-        found = False
-        
-        for key in self.__blocks:
-            objs = self.__blocks[key].contents
-            for obj in objs:
-                if isinstance(obj, str):
-                    print(obj)
-                    found = True
-        
-        if not found:
-            print("No extra lines were found")
-        
                         
     def generateKatScript(self) :
         """ Generates the kat file which can then be run """
@@ -1524,188 +1381,26 @@ class kat(object):
         #out.append("pyterm no\n")
         
         return out
-    
-    def optivis(self):
-        if not HAS_OPTIVIS:
-            print("Optivis is not installed")
-            return None
         
-        import optivis.scene as scene
-        import optivis.bench.links as links
-        import optivis.view.canvas as canvas
-        
-        scene = scene.Scene(title="My pykat layout")
-        
-        # Run through again to add links
-        for c in self.getComponents():
-            if not isinstance(c, pykat.components.space):
-                continue
-            
-            a = c.connectingComponents()
-            
-            # Need to handle where spaces don't connect two components but there is a loose
-            # node, which may or may not have detectors attached
-            if a[0] is None or a[1] is None:
-                continue
-                
-            c1 = a[0].getOptivisComponent()
-            c2 = a[1].getOptivisComponent()
-            
-            no = a[0].getOptivisNode("Output", c.nodes[0])
-            ni = a[1].getOptivisNode("Input", c.nodes[1])
-            
-            if no is None or ni is None:
-                raise pkex.BasePyKatException("Optivis node is None")
-            
-            c._optivis_component = links.Link(outputNode=no, inputNode=ni, length=c.L.value)
-            
-            c.label_node1 = optivis_label(text="", position=optivis_coord(-0.5, 0), item=c._optivis_component)
-            c.label_node2 = optivis_label(text="", position=optivis_coord( 0.5, 0), item=c._optivis_component)
-            label_name = optivis_label(text="", position=optivis_coord(0, -0.5), item=c._optivis_component)
-            label_name.content["Name"] = c.name
-            
-            c._optivis_component.labels.append(c.label_node1)
-            c._optivis_component.labels.append(c.label_node2)
-            c._optivis_component.labels.append(label_name)
-            scene.addLink(c._optivis_component)
-        
-        gui = canvas.Full(scene=scene)
-        
-        ### get menu bar from Optivis
-        menubar = gui.qMainWindow.menuBar()
-        
-        ### add new Pykat menu and menu items
-        pykatMenu = menubar.addMenu('&Pykat')
-    
-	# save
-	save = PyQt4.QtGui.QAction('Save', gui.qMainWindow)
-	save.setShortcut('Ctrl+S')
-	save.triggered.connect(lambda: self._optivis_doSave(gui))
-	pykatMenu.addAction(save)
-    
-	# trace
-        trace = PyQt4.QtGui.QAction('Trace', gui.qMainWindow)
-        trace.setShortcut('Ctrl+T')
-        trace.triggered.connect(lambda: self._optivis_doTrace(gui))
-        pykatMenu.addAction(trace)
-    
-        return gui
-    
-    def _optivis_doTrace(self, gui, **kwargs):
-        """
-        Change at some point to use a stored GUI reference
-        """
-        if not HAS_OPTIVIS:
-            print("Optivis is not installed")
-            return None
-        
-        prev = self.noxaxis
-        
-        self.noxaxis = True
-        out, tdata = self.run(getTraceData=True, **kwargs)
-        self.noxaxis = prev
-        
-        # For now just select the first trace computed
-        # Later we could add some gui list to show the different ones
-        tdata = tdata[0]
-        
-        for c in self.getComponents():
-            if not isinstance(c, pykat.components.space):
-                continue
-                
-            if not (hasattr(c, "label_node1") and hasattr(c, "label_node2")):
-                continue
-                
-            c.label_node1.content["w0_x"] = tdata[c.nodes[0].name][0].w0
-            c.label_node1.content["w_x"] = tdata[c.nodes[0].name][0].w
-            c.label_node1.content["z_x"] = tdata[c.nodes[0].name][0].z
-            c.label_node1.content["Rc_x"] = tdata[c.nodes[0].name][0].Rc
-            c.label_node1.content["Zr_x"] = tdata[c.nodes[0].name][0].zr
-            
-            c.label_node1.content["w0_y"] = tdata[c.nodes[0].name][1].w0
-            c.label_node1.content["w_y"] = tdata[c.nodes[0].name][1].w
-            c.label_node1.content["z_y"] = tdata[c.nodes[0].name][1].z
-            c.label_node1.content["Rc_y"] = tdata[c.nodes[0].name][1].Rc
-            c.label_node1.content["Zr_y"] = tdata[c.nodes[0].name][1].zr
-            
-            c.label_node2.content["w0_x"] = tdata[c.nodes[1].name][0].w0
-            c.label_node2.content["w_x"] = tdata[c.nodes[1].name][0].w
-            c.label_node2.content["z_x"] = tdata[c.nodes[1].name][0].z
-            c.label_node2.content["Rc_x"] = tdata[c.nodes[1].name][0].Rc
-            c.label_node2.content["Zr_x"] = tdata[c.nodes[1].name][0].zr
-            
-            c.label_node2.content["w0_y"] = tdata[c.nodes[1].name][1].w0
-            c.label_node2.content["w_y"] = tdata[c.nodes[1].name][1].w
-            c.label_node2.content["z_y"] = tdata[c.nodes[1].name][1].z
-            c.label_node2.content["Rc_y"] = tdata[c.nodes[1].name][1].Rc
-            c.label_node2.content["Zr_y"] = tdata[c.nodes[1].name][1].zr
-       
-        gui.redraw()
-        
-    def _optivis_doSave(self, gui, **kwargs):
-        """
-        Save kat script from Optivis
-        """
-        if not HAS_OPTIVIS:
-            print("Optivis is not installed")
-            return None
-	
-	# generate file path
-	directory = os.path.join(os.path.expanduser('~'), '{0}.kat'.format(gui.scene.title))
-	
-	# desired save path
-	path = None
-	
-	# get path to file to export to
-	while True:    
-	    dialog = PyQt4.Qt.QFileDialog(parent=gui.qMainWindow, caption='Save Finesse Script', directory=directory)
-	    dialog.setAcceptMode(PyQt4.Qt.QFileDialog.AcceptSave)
-	    dialog.setFileMode(PyQt4.Qt.QFileDialog.AnyFile)
-
-	    # show dialog
-	    dialog.exec_()
-	  
-	    if len(dialog.selectedFiles()) is 0:
-		# no filename specified
-		return
-
-	    # get file path and format
-	    path = str(dialog.selectedFiles()[0])
-	  
-	    try:
-		# check if we can write to the path
-		open(path, 'w').close()
-		os.unlink(path)
-	    
-		# if we get this far, all is good so we can break out the infinite loop
-		break
-	    except OSError:
-		PyQt4.Qt.QMessageBox.critical(gui.qMainWindow, 'Filename invalid', 'The specified filename is invalid')
-	    except IOError:
-		PyQt4.Qt.QMessageBox.critical(gui.qMainWindow, 'Permission denied', 'You do not have permission to save the file to the specified location.')
-    
-	# save kat file
-	self.saveScript(filename=path)
-    
     def openGUI(self):
         if not USE_GUI:
             raise NoGUIException
         else:
             self.app = QCoreApplication.instance() 
             created = False
-        
+            
             if self.app == None:
                 created = True
                 self.app = QApplication([""])
-            
+                
             if self.pykatgui == None:
                 self.pykatgui = pyKatGUI(self)
                 self.pykatgui.main()
             else:
                 self.pykatgui.show()
-            
+                
             if created: self.app.exec_()
-        
+    
     def getComponents(self):
         return self.__components.values()
     
@@ -1826,6 +1521,8 @@ class kat(object):
             raise exceptions.ValueError("Argument is not of type Command")
         
         name = com.__class__.__name__
+        
+        print getattr(self.__class__, name)
         
         delattr(self.__class__, name)
         delattr(self, '__com_' + name)

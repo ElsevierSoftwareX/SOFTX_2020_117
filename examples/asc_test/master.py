@@ -101,8 +101,8 @@ def pd_signal(tmpkat):
     kat.parseKatCode(code1)
     kat.noxaxis = True
     out = kat.run()
-    print " Cavity power: {0:.6f}W".format(out.y[2])
-    return (out.y[0], out.y[1])
+    print " Cavity power: {0:.6f}W".format(out.y[2,0])
+    return (out.y[0,0], out.y[0,1])
     
 def pd_phase(tmpkat):
 
@@ -164,7 +164,7 @@ def powers(tmpkat):
 
     code1 = code1.split("\n")
     for i in range(len(out.y)):
-        print " %8s: %.4e" % (out.ylabels[i], out.y[i])
+        print " %8s: %.4e" % (out.ylabels[i], out.y[0,i])
  
 
 def resonance(tmpkat):
@@ -182,7 +182,7 @@ def resonance(tmpkat):
     def carrier_resonance(x):
         kat.ETM.phi=x
         out = kat.run()
-        phase = (out.y[0]-out.y[1]-90)%360-180
+        phase = (out.y[0,0]-out.y[0,1]-90)%360-180
         print '\r root finding: function value %g                    ' % phase ,
         sys.stdout.flush()
         return phase

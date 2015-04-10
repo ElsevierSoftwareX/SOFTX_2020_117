@@ -4,13 +4,10 @@ Created on Fri Feb 01 0split()9:09:10 2013
 
 @author: Daniel
 """
-from __future__ import print_function
-import pykat.external.six as six
-if six.PY2:
-	import exceptions
+import exceptions
 import abc
 from pykat.node_network import *
-from pykat.param import Param, AttrParam
+from pykat.param import Param
 from pykat.SIfloat import SIfloat
 
 import collections
@@ -75,8 +72,6 @@ class BaseDetector(object) :
             else:
                 raise pkex.BasePyKatException("Nodes should be a list or tuple of node names or a singular node name as a string.")
                 
-                
-                  
     def _register_param(self, param):
         self._params.append(param)
         
@@ -351,13 +346,7 @@ class bp(Detector1):
 
 class pd(Detector1):
 
-    def __new__(cls, *args, **kwargs):
-        # This creates an instance specific class for the component
-        # this enables us to add properties to instances rather than
-        # all classes
-        return object.__new__(type(cls.__name__, (cls,), {}), *args, **kwargs)
-        
-    def __init__(self, name=None, num_demods=1, node_name=None, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
+    def __init__(self, name, num_demods, node_name, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
         BaseDetector.__init__(self, name, node_name)
         
         self.__num_demods = num_demods
@@ -402,28 +391,11 @@ class pd(Detector1):
             elif i<num_demods-1:
                 raise pkex.BasePyKatException("Missing demodulation phase {0} (phi{0})".format(i+1))
         
+        # define new class for assigning new attributes
+        cls = type(self)
+        self.__class__ = type(cls.__name__, (cls,), {})
     
         self.__set_demod_attrs()
-    
-    
-    def __deepcopy__(self, memo):
-        """
-        When deep copying a kat object we need to take into account
-        the instance specific properties.
-        """
-        
-        result = pd(self.name, self.num_demods, self.node.name)
-        
-        memo[id(self)] = result 
-        result.__dict__ = copy.deepcopy(self.__dict__, memo)
-
-        # Find all properties in class we are copying
-        # and deep copy these to the new class instance
-        for x in self.__class__.__dict__.items():
-            if isinstance(x[1], property):
-                setattr(result.__class__, x[0], x[1])
-                        
-        return result
         
     @property
     def senstype(self): return self.__senstype
@@ -683,7 +655,7 @@ class qnoised(pd):
 class qshot(pd):
     
     def __init__(self, name, num_demods, node_name, alternate_beam=False, **kwargs):
-        super(qshot, self).__init__(name, num_demods, node_name, alternate_beam=alternate_beam, pdtype=None, senstype=None, **kwargs) 
+        super(qnoised, self).__init__(name, num_demods, node_name, alternate_beam=alternate_beam, pdtype=None, senstype=None, **kwargs)
     
     @pd.pdtype.setter
     def pdtype(self, value):
