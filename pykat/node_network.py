@@ -498,7 +498,7 @@ class Node(object):
     def setGauss(self, component, *args):
         self.__q_comp = component
         
-        if len(args) == 1:
+        if len(args) == 1:  
             self.__q_x = beam_param(self._network.kat.lambda0, q=args[0])
             self.__q_y = beam_param(self._network.kat.lambda0, q=args[0])
         elif len(args) == 2:
@@ -506,7 +506,7 @@ class Node(object):
             self.__q_y = beam_param(self._network.kat.lambda0, q=args[1])
         else:
             raise pkex.BasePyKatException("Must specify either 1 Gaussian beam parameter or 2 for astigmatic beams")
-        
+                
     def getFinesseText(self):    
         if self.__q_x is None or self.__q_y is None or self.__q_comp is None:
             return []

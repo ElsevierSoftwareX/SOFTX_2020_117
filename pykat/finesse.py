@@ -424,6 +424,20 @@ class kat(object):
         if kat_file != None:
             self.loadKatFile(kat_file)
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        
+        for k, v in self.__dict__.items():
+            setattr(result, k, copy.deepcopy(v, memo))
+        
+        # Update any weakrefs
+        for c in result.components:
+            result.components[c]._Component__update_node_setters()
+            
+        return result
+    
     @property
     def signals(self): return self.__signals
 
@@ -919,8 +933,9 @@ class kat(object):
                 r = katRun()
                 
             r.yaxis = self.yaxis
-            r.katScript = "".join(self.generateKatScript())   
-
+            
+            r.katScript = "".join(self.generateKatScript()) 
+            
             if (plot==None):
                 # ensure we don't do any plotting. That should be handled
                 # by user themselves

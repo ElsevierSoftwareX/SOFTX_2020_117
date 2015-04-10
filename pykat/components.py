@@ -15,7 +15,7 @@ from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 import weakref
 import pykat.exceptions as pkex
-
+from copy import deepcopy
 next_component_id = 1
 
 from pykat import USE_GUI, NoGUIException
@@ -198,7 +198,7 @@ class Component(object):
         del self._params[:]
 
         self.__removed = True
-        
+            
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
         
