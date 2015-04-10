@@ -46,6 +46,23 @@ import collections
 import re
 import copy
 
+
+try:
+    # Python 2
+    from itertools import izip_longest
+except ImportError:
+    # Python 3
+    from itertools import zip_longest as izip_longest
+"""
+try:
+    from future_builtins import zip_longest
+except ImportError: # not 2.6+ or is 3.x
+    try:
+        from itertools import izip_longest as zip_longest # < 2.5 or 3.x
+    except ImportError:
+        print("boom")
+        pass
+"""
 from collections import namedtuple, OrderedDict
 
 from pykat.node_network import NodeNetwork
@@ -817,7 +834,8 @@ class kat(object):
                         raise pkex.BasePyKatException("Attr command '{0}' must specify both parameter and value pairs".format(line))
                                                 
                     # convert split list to key value pairs
-                    kv = dict(itertools.izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
+                    #kv = dict(itertools.izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
+                    kv = dict(izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
 
                     comp.parseAttributes(kv)
                     
@@ -984,35 +1002,45 @@ class kat(object):
             
             #if self.verbose: print "Finesse output:"            
             for aline in iter(p.stderr.readline, b""):
-                line = unicode(aline, "utf-8")
+                if six.PY2:
+                    line = unicode(aline, "utf-8")
+                else:
+                    line = aline
                 if len(line) > 0:
                     # remove any ANSI commands
                     #ansi = re.compile(r'\x1b[^m]*m')
                     #line = ansi.sub('', line)
-                    line = re.sub(r'\x1b[^m]*m', '', line, re.UNICODE)
+                    line = re.sub(br'\x1b[^m]*m', '', line, re.UNICODE)
 
                     # warnings and errors start with an asterisk 
                     # so if verbose show them
-                    if line.lstrip().startswith('*PROG*'):
+                    if line.lstrip().startswith(b'*PROG*'):
                         line = line[8:-1]
-                        vals = line.split("-",1)
+                        vals = line.split(b"-",1)
                         action = vals[0].strip()
                         prc = vals[1].strip()[:]
                     
                         if printerr == 1:
-                            sys.stdout.write("\r{0} {1}".format(action, prc))
-                    elif line.lstrip().startswith('*'):
-                        if self.verbose: sys.stdout.write(line)        
-                    elif line.rstrip().endswith('%'):
+                            if six.PY2:
+                                sys.stdout.write("\r{0} {1}".format(action, prc))
+                            else:
+                                sys.stdout.write("\r{0} {1}".format(str(action, 'utf-8'), str(prc, 'utf-8')))
+                    elif line.lstrip().startswith(b'*'):
+                        if self.verbose:
+                            if six.PY2:
+                                sys.stdout.write(line)        
+                            else:
+                                sys.stdout.write(line) # todo fix this if needed        
+                    elif line.rstrip().endswith(b'%'):
                         vals = line.split("-")
                         action = vals[0].strip()
                         prc = vals[1].strip()[:]
                         
                         if printerr == 1:
-                            sys.stdout.write("\r{0} {1}".format(action, prc))
+                            sys.stdout.write("\r{0} {1}".format(action, str(prc)))
                             
                     else:
-                        err += line
+                        err += str(line)
 
             
             [out,errpipe] = p.communicate()
@@ -1023,8 +1051,8 @@ class kat(object):
                 if printerr == 1: print ("")
 
             # get the version number
-            ix = out.find('build ') + 6
-            ix2 = out.find(')',ix)
+            ix = out.find(b'build ') + 6
+            ix2 = out.find(b')',ix)
             r.katVersion = out[ix:ix2]
             
             r.runDateTime = datetime.datetime.now()
@@ -1625,8 +1653,9 @@ class kat(object):
                 line = " ".join(line.split())
                 # add to a list all the positions of any inline comment markers
                 i = [line.find('#'), line.find('\\')]
-                i = filter(lambda a: a != -1, i)
-        
+                #i = filter(lambda a: a != -1, i)
+                i = [a for a in i if a != -1]    
+
                 if len(i) == 0:
                     commands.append(line)
                 else:

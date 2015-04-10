@@ -46,13 +46,13 @@ def main():
 	kat = finesse.kat(tempdir=".",tempname="test")
 	kat.verbose = False
 	
-	tmpresultfile = 'myshelf1.dat'
+	tmpresultfile = "myshelf1.dat"
 	
 	# loading data saved by master.py
 	kat.loadKatFile('asc_base2.kat')
 	try:
-		tmpfile = shelve.open(tmpresultfile)
-		result=tmpfile[b'result']
+		tmpfile = shelve.open(tmpresultfile, flag="c")
+		result=tmpfile[str('result')]
 		tmpfile.close()
 	except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
 		
@@ -126,7 +126,7 @@ def main():
 	kat.saveScript(tmpkatfile)
 	# now the result variables:
 	tmpfile = shelve.open(tmpresultfile)
-	tmpfile[b'result']=result
+	tmpfile[str('result')]=result
 	tmpfile.close()
 
 

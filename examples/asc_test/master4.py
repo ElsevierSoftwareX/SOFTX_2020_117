@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 from pykat import finesse
 from pykat.commands import *
-from pykat.optics.gaussian_beams import gauss_param
+from pykat.optics.gaussian_beams import beam_param
 
 import pylab as pl
 import scipy
@@ -60,7 +60,7 @@ def main():
     kat.loadKatFile('asc_base3.kat')
     try:
         tmpfile = shelve.open(tmpresultfile)
-        result=tmpfile[b'result']
+        result=tmpfile[str('result')]
         tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
     
@@ -77,6 +77,7 @@ def main():
     print("--------------------------------------------------------")
     print(" 11. Do beam tracing to measure beam parameters")
     # get beam parameters at nodes: "npsl", "nITM1", "nWFS1", "nWFS2", "npo2"
+    global beam1, beam2, beam3
     beam1 = get_qs(kat,1e13)
     beam2 = get_qs(kat,50e3)
     beam3 = get_qs(kat,5e3)
@@ -85,7 +86,6 @@ def main():
     kat.psl.npsl.node.setGauss(kat.psl, beam1[0])
     kat.parseKatCode("startnode npsl")
 
-    global beam1, beam2, beam3
 
     # if we use bs-based cavity we try to set good beam
     # parameter for reflected beam, first by
@@ -93,14 +93,14 @@ def main():
     x1=0.70
     x2=0.30
     if "ITM_TL_r" in kat._kat__components:
-        beam50 = gauss_param(z=(x1*beam1[1].z+x2*beam2[1].z), w0=(x1*beam1[1].w0+x2*beam2[1].w0))
-        beam5  = gauss_param(z=(x1*beam1[1].z+x2*beam3[1].z), w0=(x1*beam1[1].w0+x2*beam3[1].w0))
+        beam50 = beam_param(z=(x1*beam1[1].z+x2*beam2[1].z), w0=(x1*beam1[1].w0+x2*beam2[1].w0))
+        beam5  = beam_param(z=(x1*beam1[1].z+x2*beam3[1].z), w0=(x1*beam1[1].w0+x2*beam3[1].w0))
         node_text = "at ITM->nITM1r"
         t_comp=kat.ITM
         t_node=kat.ITM.nITM1r
     else:
-        beam50 = gauss_param(z=(x1*beam1[4].z+x2*beam2[4].z), w0=(x1*beam1[4].w0+x2*beam2[4].w0))
-        beam5  = gauss_param(z=(x1*beam1[4].z+x2*beam3[4].z), w0=(x1*beam1[4].w0+x2*beam3[4].w0))
+        beam50 = beam_param(z=(x1*beam1[4].z+x2*beam2[4].z), w0=(x1*beam1[4].w0+x2*beam2[4].w0))
+        beam5  = beam_param(z=(x1*beam1[4].z+x2*beam3[4].z), w0=(x1*beam1[4].w0+x2*beam3[4].w0))
         node_text = "at s2->npo2"
         t_comp=kat.s2
         t_node=kat.s2.npo2
@@ -198,7 +198,7 @@ def get_qs(tmpkat,f):
         from pykat.optics.ABCD import apply, mirror_refl
         abcd = mirror_refl(1,-2500)
         q_out = apply(abcd,q_in,1,1)
-        beam1 = gauss_param(q=q_out)    
+        beam1 = beam_param(q=q_out)    
         kat.removeLine("startnode")
         kat.psl.npsl.node.removeGauss()
         if "ITM_TL_r" in kat._kat__components:
@@ -211,13 +211,13 @@ def get_qs(tmpkat,f):
 
         # computing beam size at WFS1 and WFS2
         q2 = out['w2']
-        beam2 = gauss_param(q=q2)    
+        beam2 = beam_param(q=q2)    
         q3 = out['w3']
-        beam3 = gauss_param(q=q3)    
+        beam3 = beam_param(q=q3)    
 
         # computing beam size at pick off
         q4 = out['w4']
-        beam4 = gauss_param(q=q4)    
+        beam4 = beam_param(q=q4)    
         print(" Input mode beam size with thermal lens f={0}".format(f))
         print(" - ITM  w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam1.w,beam1.w0, beam1.z))
         print(" - WFS1 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam2.w,beam2.w0, beam2.z))
@@ -233,7 +233,7 @@ def get_qs(tmpkat,f):
     # beam at laser when matched to cold cavity
     # (note the sign flip of the real part to change direction of gauss param)
     q0 = -1.0*out['w0'].conjugate()
-    beam0 = gauss_param(q=q0)   
+    beam0 = beam_param(q=q0)   
     # compute beam sizes when tracing this beam back through the system
     (beam1,beam2,beam3, beam4)=beam_size(kat,f,beam0)
     

@@ -167,7 +167,7 @@ class xaxis(Command):
 
         self.limits = numpy.array(SIfloat(limits)).astype(float)
 
-        if steps <= 0 :
+        if int(steps) <= 0 :
             raise pkex.BasePyKatException("steps value should be > 0")
 
         self.steps = int(steps)

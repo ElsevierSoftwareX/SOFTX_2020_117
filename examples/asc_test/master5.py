@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 from pykat import finesse
 from pykat.commands import *
-from pykat.optics.gaussian_beams import gauss_param
+from pykat.optics.gaussian_beams import beam_param
 
 import pylab as pl
 import scipy
@@ -15,6 +15,11 @@ import shelve
 import copy
 import sys
 
+# making python2 and python3 compatible
+try:
+   input = raw_input
+except NameError:
+   pass
 
 def main():
 
@@ -51,7 +56,7 @@ def main():
 	kat.loadKatFile('asc_base3.kat')
 	try:
 		tmpfile = shelve.open(tmpresultfile)
-		result=tmpfile[b'result']
+		result=tmpfile[str('result')]
 		tmpfile.close()
 	except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
 
@@ -117,7 +122,7 @@ def main():
 	kat.saveScript(tmpkatfile)
 	# now the result variables:
 	tmpfile = shelve.open(tmpresultfile)
-	tmpfile[b'result']=result
+	tmpfile[str('result')]=result
 	tmpfile.close()
 
 
@@ -146,7 +151,7 @@ def get_qs(tmpkat):
 		# beam at laser when matched to cold cavity
 		# (note the sign flip of the real part to change direction of gauss param)
 		q0 = -1.0*out['w0'].conjugate()
-		beam0 = gauss_param(q=q0)
+		beam0 = beam_param(q=q0)
 		kat.psl.npsl.node.setGauss(kat.psl, beam0)
 		kat.parseKatCode("startnode npsl")
 
@@ -162,7 +167,7 @@ def get_qs(tmpkat):
 		from pykat.optics.ABCD import apply, mirror_refl
 		abcd = mirror_refl(1,-2500)
 		q_out = apply(abcd,q_in,1,1)
-		beam1 = gauss_param(q=q_out)	
+		beam1 = beam_param(q=q_out)	
 		kat.removeLine("startnode")
 		kat.psl.npsl.node.removeGauss()
 		if "ITM_TL_r" in kat._kat__components:
@@ -175,15 +180,15 @@ def get_qs(tmpkat):
 
 		# computing beam size at WFS1 and WFS2
 		q2 = out['w2']
-		beam2 = gauss_param(q=q2)	 
+		beam2 = beam_param(q=q2)	 
 		q3 = out['w3']
-		beam3 = gauss_param(q=q3)	 
+		beam3 = beam_param(q=q3)	 
 		print("	 Sideband (input mode) beam size with thermal lens f={0}".format(f))
 		print("	 - WFS1 w={0:.6}cm".format(100.0*beam2.w))
 		print("	   (w0={0}, z={1})".format(beam2.w0, beam2.z))
 		print("	 - WFS2 w={0:.6}cm".format(100.0*beam3.w))
 		print("	   (w0={0}, z={1})".format(beam3.w0, beam3.z))
-		raw_input("Press enter to continue")
+		input("Press enter to continue")
 		return(beam1, beam2, beam3)
 		
 	f=50e3

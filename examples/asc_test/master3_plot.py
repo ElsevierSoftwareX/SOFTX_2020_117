@@ -62,8 +62,8 @@ def asc_large(mir_name):
 
     try:
         tmpfile = shelve.open(tmpfilename)
-        out=tmpfile[b'out']
-        maxtems=tmpfile[b'maxtems']
+        out=tmpfile[str('out')]
+        maxtems=tmpfile[str('maxtems')]
         tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpfilename))
 

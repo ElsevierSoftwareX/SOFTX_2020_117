@@ -89,8 +89,8 @@ def main():
 	# first the current kat file
 	kat.saveScript(tmpkatfile)
 	# now the result variables:
-	tmpfile = shelve.open(tmpresultfile)
-	tmpfile[b'result']=result
+	tmpfile = shelve.open(tmpresultfile, flag="c")
+	tmpfile[str('result')]=result
 	tmpfile.close()
 	
 #---------------------------------------------------------------------------

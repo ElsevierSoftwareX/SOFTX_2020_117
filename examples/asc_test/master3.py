@@ -49,7 +49,7 @@ def main():
     kat.loadKatFile('asc_base3.kat')
     try:
         tmpfile = shelve.open(tmpresultfile)
-        result=tmpfile[b'result']
+        result=tmpfile[str('result')]
         tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
 
@@ -104,8 +104,8 @@ def asc_large(tmpkat, mir_name):
 
         print(" current results saved in: {0}".format(tmpfilename))
         tmpfile = shelve.open(tmpfilename)
-        tmpfile[b'out']=out
-        tmpfile[b'maxtems']=done_maxtems
+        tmpfile[str('out')]=out
+        tmpfile[str('maxtems')]=done_maxtems
         tmpfile.close()
     
     
