@@ -959,7 +959,7 @@ class kat(object):
                 
             r.yaxis = self.yaxis
             
-            r.katScript = "".join(self.generateKatScript()) 
+            r.katScript = "".join(self.generateKatScript())
             
             if (plot==None):
                 # ensure we don't do any plotting. That should be handled
@@ -971,12 +971,13 @@ class kat(object):
             
             # create a kat file which we will write the script into
             if self.__tempname == None:
-                katfile = tempfile.NamedTemporaryFile(suffix=".kat", dir=self.__tempdir)
+                katfile = tempfile.NamedTemporaryFile(mode ='w', suffix=".kat", dir=self.__tempdir)
             else:
                 filepath =os.path.join(self.__tempdir, self.__tempname+".kat" )
                 katfile = open( filepath, 'w' ) 
                 
             katfile.writelines(r.katScript)
+            #katfile.writelines(bytes(r.katScript, 'UTF-8'))
             katfile.flush()
 
             if printout == 1 or plot != None:
