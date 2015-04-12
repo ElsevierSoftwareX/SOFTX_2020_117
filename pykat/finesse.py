@@ -1031,17 +1031,23 @@ class kat(object):
                             if six.PY2:
                                 sys.stdout.write(line)        
                             else:
-                                sys.stdout.write(line) # todo fix this if needed        
+                                sys.stdout.write(str(line,'utf-8')) 
                     elif line.rstrip().endswith(b'%'):
                         vals = line.split("-")
                         action = vals[0].strip()
                         prc = vals[1].strip()[:]
                         
                         if printerr == 1:
-                            sys.stdout.write("\r{0} {1}".format(action, str(prc)))
+                            if six.PY2:
+                                sys.stdout.write("\r{0} {1}".format(action, prc))
+                            else:
+                                sys.stdout.write("\r{0} {1}".format(str(action, 'utf-8'), str(prc, 'utf-8')))
                             
                     else:
-                        err += str(line)
+                        if six.PY2:
+                            err="".join((err,line))
+                        else:
+                            err="".join((err,str(line, 'utf-8')))
 
             
             [out,errpipe] = p.communicate()
