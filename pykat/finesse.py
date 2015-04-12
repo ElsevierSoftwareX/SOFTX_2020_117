@@ -1157,45 +1157,49 @@ class kat(object):
             if self.verbose: print ("Finished in " + str(datetime.datetime.now()-start))
             
     def remove(self, obj):
-        if not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
-            raise pkex.BasePyKatException("{0} is not currently in the simulation".format(obj.name))
+        try:
+            if not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
+                raise pkex.BasePyKatException("{0} is not currently in the simulation".format(obj.name))
             
-        if obj.removed:
-            raise pkex.BasePyKatException("{0} has already been removed".format(obj.name))        
+            if obj.removed:
+                raise pkex.BasePyKatException("{0} has already been removed".format(obj.name))        
 
-        nodes = None
+            nodes = None
         
-        # store nodes that this componet is attached to as a reference for gui
-        if isinstance(obj, Component):
-            nodes = self.nodes.getComponentNodes(obj)
+            # store nodes that this componet is attached to as a reference for gui
+            if isinstance(obj, Component):
+                nodes = self.nodes.getComponentNodes(obj)
 
-        if isinstance(obj, Component):    
-            del self.__components[obj.name]
-            self.__del_component(obj)
-            self.nodes._removeComponent(obj)
-        elif isinstance(obj, Command):    
-            del self.__commands[obj.name]
-            self.__del_command(obj)
-        elif isinstance(obj, Detector):    
-            del self.__detectors[obj.name]
-            self.__del_detector(obj)
-        elif isinstance(obj, pykat.finesse.Signals):
-            obj.remove()
-        elif isinstance(obj, pykat.finesse.Signals.fsig):
-            obj._on_remove()
+            if isinstance(obj, Component):    
+                del self.__components[obj.name]
+                self.__del_component(obj)
+                self.nodes._removeComponent(obj)
+            elif isinstance(obj, Command):    
+                del self.__commands[obj.name]
+                self.__del_command(obj)
+            elif isinstance(obj, Detector):    
+                del self.__detectors[obj.name]
+                self.__del_detector(obj)
+            elif isinstance(obj, pykat.finesse.Signals):
+                obj.remove()
+            elif isinstance(obj, pykat.finesse.Signals.fsig):
+                obj._on_remove()
             
-        for b in self.__blocks:
-            if obj in self.__blocks[b].contents:
-                self.__blocks[b].contents.remove(obj)
+            for b in self.__blocks:
+                if obj in self.__blocks[b].contents:
+                    self.__blocks[b].contents.remove(obj)
         
-        if self.pykatgui != None:
-            self.pykatgui._onComponentRemoved(obj, nodes)
+            if self.pykatgui != None:
+                self.pykatgui._onComponentRemoved(obj, nodes)
     
-        del nodes
+            del nodes
         
-        #import gc
-        #print (gc.get_referrers(obj))
-    
+            #import gc
+            #print (gc.get_referrers(obj))
+            
+        except pkex.BasePyKatException as ex:
+            pkex.PrintError("Error on removing object:", ex)
+            
     def getMatrices(self):
         
         import scipy
@@ -1277,7 +1281,7 @@ class kat(object):
             obj._on_kat_add(self)
             
         except pkex.BasePyKatException as ex:
-            print (ex)
+            pkex.PrintError("Error on adding object:", ex)
 
     def readOutFile(self, filename):
         
