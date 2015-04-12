@@ -603,49 +603,49 @@ class kat(object):
         return commands_new
         
     def parseCommands(self, commands, blocks=None):
-        blockComment = False
+        try:
+            blockComment = False
         
-        commands=self.remove_comments(commands)
+            commands=self.remove_comments(commands)
         
-        commands=self.processConstants(commands)
+            commands=self.processConstants(commands)
         
-        after_process = [] # list of commands that should be processed after 
-                           # objects have been set and created
+            after_process = [] # list of commands that should be processed after 
+                               # objects have been set and created
         
-        for line in commands:
-            try:
+            for line in commands:
                 if len(line.strip()) >= 2:
                     line = line.strip()
 
                     # Looking for block start or end
                     values = line.split()
-                
+            
                     if values[0] == "%%%":
                         if values[1] == "FTblock":
                             newTag = values[2]
-                        
+                    
                             if self.__currentTag != None and self.__currentTag != NO_BLOCK: 
                                 warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
-                            
+                        
                             if newTag in self.__blocks:
                                 raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
-                            
+                        
                             self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
                             self.__currentTag = newTag
-                        
+                    
                         if values[1] == "FTend":
                             self.__currentTag = NO_BLOCK
-                        
+                    
                         continue
 
                     # only include listed blocks, if we have specfied them
                     if blocks != None and self.__currentTag not in blocks:
                         continue
-                    
+                
                     # don't read comment lines
                     if line[0] == "#" or line[0] == "%":
                         continue
-                
+            
                     # check if block comment is being used
                     if not blockComment and line[0:2] == "/*":
                         blockComment = True
@@ -653,10 +653,10 @@ class kat(object):
                     elif blockComment and line[0:2] == "*/":
                         blockComment = False
                         continue
-                
+            
                     first = line.split(" ",1)[0]
                     obj = None
-                    
+                
                     if(first == "m" or first == "m1" or first == "m2"):
                         obj = pykat.components.mirror.parseFinesseText(line)
                     elif(first == "s"):
@@ -710,7 +710,7 @@ class kat(object):
                         self.lambda0 = SIfloat(v[-1])
                     elif(first == "yaxis"):
                         v = line.split()
-                    
+                
                         self.yaxis = v[-1]
                     elif(first == "phase"):
                         v = line.split()
@@ -756,134 +756,134 @@ class kat(object):
                     else:
                         if self.verbose:
                             print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
-                        
+                    
                         obj = line
                         # manually add the line to the block contents
                         self.__blocks[self.__currentTag].contents.append(line) 
-                
+            
                     if obj != None and not isinstance(obj, six.string_types):
                         if self.hasNamedObject(obj.name):
                             getattr(self, obj.name).remove()
                             print ("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
-                        
+                    
                         self.add(obj)
-            except:
-                print ("--------------------------------------------------------")
-                print ("Error parsing line: " + line)
-                print ("--------------------------------------------------------")
-                raise
                 
                 
-        # now process all the varous gauss/attr etc. commands which require
-        # components to exist first before they can be processed
-        for line in after_process:
-            first = line.split(" ",1)[0]            
-            if first == "gauss" or first == "gauss*" or first == "gauss**":
-                pykat.commands.gauss.parseFinesseText(line, self)
-            elif (first == "scale"):
-                v = line.split()
-                accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "degs"]
+            # now process all the varous gauss/attr etc. commands which require
+            # components to exist first before they can be processed
+            for line in after_process:
+                first = line.split(" ",1)[0]            
+                if first == "gauss" or first == "gauss*" or first == "gauss**":
+                    pykat.commands.gauss.parseFinesseText(line, self)
+                elif (first == "scale"):
+                    v = line.split()
+                    accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "degs"]
                 
-                if len(v) == 3:
-                    component_name = v[2]
+                    if len(v) == 3:
+                        component_name = v[2]
                     
-                    if v[1].lower() in accepted:
-                        val = v[1]
-                    else:
-                        try:
-                            val = SIfloat(v[1])
-                        except ValueError as ex:
-                            raise pkex.BasePyKatException("Line `{0}`:\nAccepted scale values are decimal numbers or %s." % (line,str(accepted)))
+                        if v[1].lower() in accepted:
+                            val = v[1]
+                        else:
+                            try:
+                                val = SIfloat(v[1])
+                            except ValueError as ex:
+                                raise pkex.BasePyKatException("Line `{0}`:\nAccepted scale values are decimal numbers or %s." % (line,str(accepted)))
                             
-                    if component_name in self.__detectors :
-                        self.__detectors[component_name].scale.append(val)
+                        if component_name in self.__detectors :
+                            self.__detectors[component_name].scale.append(val)
+                        else:
+                            raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(component_name))
+                    elif len(v) == 2:
+                        if v[1] == "meter" or v[1] == "ampere" or v[1] == "deg":
+                            self.scale = v[1]
+                        else:
+                            self.scale = SIfloat(v[1])
                     else:
-                        raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(component_name))
-                elif len(v) == 2:
-                    if v[1] == "meter" or v[1] == "ampere" or v[1] == "deg":
-                        self.scale = v[1]
+                        raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(line))
+                elif (first == "pdtype"):
+                    v = line.split()
+                    if len(v) == 3:
+                        component_name = v[1]
+                        if component_name in self.__detectors :
+                            self.__detectors[component_name].pdtype = v[2]
+                        else:
+                            raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(component_name))
                     else:
-                        self.scale = SIfloat(v[1])
-                else:
-                    raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(line))
-            elif (first == "pdtype"):
-                v = line.split()
-                if len(v) == 3:
-                    component_name = v[1]
-                    if component_name in self.__detectors :
-                        self.__detectors[component_name].pdtype = v[2]
-                    else:
-                        raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(component_name))
-                else:
-                    raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(line))
-            elif(first == "attr"):
-                v = line.split()
+                        raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(line))
+                elif(first == "attr"):
+                    v = line.split()
 
-                if len(v) < 4:
-                    raise pkex.BasePyKatException("attr command `{0}` is incorrect.".format(line))
-                else:
-                    # get the component/detector in question
-                    if v[1] in self.__components:
-                        comp = self.__components[v[1]]
-                    elif v[1] in self.__detectors:
-                        comp = self.__detectors[v[1]]
+                    if len(v) < 4:
+                        raise pkex.BasePyKatException("attr command `{0}` is incorrect.".format(line))
                     else:
-                        raise pkex.BasePyKatException("Could not find the component '{0}' for attr command in line '{1}'".format(v[1], line))
+                        # get the component/detector in question
+                        if v[1] in self.__components:
+                            comp = self.__components[v[1]]
+                        elif v[1] in self.__detectors:
+                            comp = self.__detectors[v[1]]
+                        else:
+                            raise pkex.BasePyKatException("Could not find the component '{0}' for attr command in line '{1}'".format(v[1], line))
                 
-                    if len(v[2:]) % 2 == 1:
-                        raise pkex.BasePyKatException("Attr command '{0}' must specify both parameter and value pairs".format(line))
+                        if len(v[2:]) % 2 == 1:
+                            raise pkex.BasePyKatException("Attr command '{0}' must specify both parameter and value pairs".format(line))
                                                 
-                    # convert split list to key value pairs
-                    #kv = dict(itertools.izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
-                    kv = dict(izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
+                        # convert split list to key value pairs
+                        #kv = dict(itertools.izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
+                        kv = dict(izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
 
-                    comp.parseAttributes(kv)
+                        comp.parseAttributes(kv)
                     
-            elif(first == "fsig"):
+                elif(first == "fsig"):
                 
-                v = line.split()
+                    v = line.split()
                 
-                name = str(v[1])
+                    name = str(v[1])
                 
-                if v[2] not in self.__components:
-                    raise pkex.BasePyKatException("Could not find the component '{0}'. Line: '{1}'".format(v[2], line))
+                    if v[2] not in self.__components:
+                        raise pkex.BasePyKatException("Could not find the component '{0}'. Line: '{1}'".format(v[2], line))
                 
-                comp = self.__components[v[2]]
+                    comp = self.__components[v[2]]
                 
-                if comp._default_fsig() == None:
-                    raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
+                    if comp._default_fsig() == None:
+                        raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
                     
-                param = None
-                amp = None
+                    param = None
+                    amp = None
                 
-                if len(v) == 5:
-                    param == None
-                    freq = float(v[3])
-                    phase = float(v[4])
-                elif len(v) == 6:
-                    if v[3].isdigit():
+                    if len(v) == 5:
+                        param == None
                         freq = float(v[3])
                         phase = float(v[4])
-                        amp = float(v[5])
-                    else:
+                    elif len(v) == 6:
+                        if v[3].isdigit():
+                            freq = float(v[3])
+                            phase = float(v[4])
+                            amp = float(v[5])
+                        else:
+                            param = v[3]
+                            freq = float(v[4])
+                            phase = float(v[5])
+                    elif len(v) == 7:
                         param = v[3]
                         freq = float(v[4])
                         phase = float(v[5])
-                elif len(v) == 7:
-                    param = v[3]
-                    freq = float(v[4])
-                    phase = float(v[5])
-                    amp = float(v[6])
+                        amp = float(v[6])
+                    else:
+                        raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
+                
+                    self.signals.apply(comp._default_fsig(), amp, phase, name)
+                
                 else:
-                    raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
-                
-                self.signals.apply(comp._default_fsig(), amp, phase, name)
-                
-            else:
-                raise pkex.BasePyKatException("Haven't handled parsing of '{0}'".format(line))
+                    raise pkex.BasePyKatException("Haven't handled parsing of '{0}'".format(line))
                     
-        self.__currentTag = NO_BLOCK 
+            self.__currentTag = NO_BLOCK 
         
+
+        except pkex.BasePyKatException as ex:
+            pkex.PrintError("Error parsing line: '%s':"%  line, ex)
+            sys.exit(1)
+            
     def saveScript(self, filename=None):
         """
         Saves the current kat object to a Finesse input file
@@ -1031,23 +1031,17 @@ class kat(object):
                             if six.PY2:
                                 sys.stdout.write(line)        
                             else:
-                                sys.stdout.write(str(line,'utf-8')) 
+                                sys.stdout.write(line) # todo fix this if needed        
                     elif line.rstrip().endswith(b'%'):
                         vals = line.split("-")
                         action = vals[0].strip()
                         prc = vals[1].strip()[:]
                         
                         if printerr == 1:
-                            if six.PY2:
-                                sys.stdout.write("\r{0} {1}".format(action, prc))
-                            else:
-                                sys.stdout.write("\r{0} {1}".format(str(action, 'utf-8'), str(prc, 'utf-8')))
+                            sys.stdout.write("\r{0} {1}".format(action, str(prc)))
                             
                     else:
-                        if six.PY2:
-                            err="".join((err,line))
-                        else:
-                            err="".join((err,str(line, 'utf-8')))
+                        err += str(line)
 
             
             [out,errpipe] = p.communicate()

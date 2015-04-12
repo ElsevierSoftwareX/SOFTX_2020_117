@@ -6,14 +6,30 @@ from __future__ import unicode_literals
 import pykat.external.six as six
 if six.PY2:
 	import exceptions
-import os
+import os, sys
+
+def PrintError(message, exception):
+    size = 60
+    
+    print("\033[91m")
+    
+    try:
+        from textwrap import wrap, fill
+        print ("-" * size)
+        for a in wrap(message, size): print(a)
+        for a in wrap(str(exception.msg), size): print(a)
+        print ("-" * size)
+    finally:
+        print ("\033[0m")
+        sys.exit(1)
+    
 
 class BasePyKatException(Exception):
     def __init__(self, msg):
-        self.__msg = msg
+        self.msg = msg
         
     def __str__(self):
-        return self.__msg
+        return self.msg
 
 class FinesseParse(BasePyKatException) :    
     def __init__(self, msg):
