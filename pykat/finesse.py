@@ -554,53 +554,59 @@ class kat(object):
         Before fully parsing a bunch of commands firstly any constants or variables
         to be recorded and replaced.
         """
-        constants = self.constants
         
-        for line in commands:
-            values = line.split()
+        try:
+            constants = self.constants
+        
+            for line in commands:
+                values = line.split()
             
-            if len(values)>0 and values[0] == 'const':
+                if len(values)>0 and values[0] == 'const':
                 
-                if len(values) >= 3:
-                    if values[1] in constants:
-                        raise pkex.BasePyKatException('const command with the name "{0}" already used'.format(values[1]))
+                    if len(values) >= 3:
+                        if values[1] in constants:
+                            raise pkex.BasePyKatException('const command with the name "{0}" already used'.format(values[1]))
+                        else:
+                            constants[str(values[1])] = Constant(values[1], values[2], [])
                     else:
-                        constants[str(values[1])] = Constant(values[1], values[2], [])
-                else:
-                    raise pkex.BasePyKatException('const command "{0}" was not the correct format'.format(line))
+                        raise pkex.BasePyKatException('const command "{0}" was not the correct format'.format(line))
         
-        commands_new = []
+            commands_new = []
         
-        for line in commands:
-            values = line.split()
+            for line in commands:
+                values = line.split()
             
-            if len(values) > 0 and values[0] != 'const':
-                # check if we have a var/constant in this line
-                if line.find('$') >= 0:
-                    for key in constants.keys():
-                        # TODO: need to fix this for checking mulitple instances of const in a single line
+                if len(values) > 0 and values[0] != 'const':
+                    # check if we have a var/constant in this line
+                    if line.find('$') >= 0:
+                        for key in constants.keys():
+                            # TODO: need to fix this for checking mulitple instances of const in a single line
                         
-                        chars = [' ', '+', '-', '*', '/', ')']
+                            chars = [' ', '+', '-', '*', '/', ')']
 
-                        for c in chars:
-                            none_found = False
+                            for c in chars:
+                                none_found = False
                             
-                            while not none_found:
-                                if line.find('$'+key+c) > -1:
-                                    constants[key].usedBy.append(line)
-                                    line = line.replace('$'+key+c, str(constants[key].value)+ c)
-                                else:
-                                    none_found = True
+                                while not none_found:
+                                    if line.find('$'+key+c) > -1:
+                                        constants[key].usedBy.append(line)
+                                        line = line.replace('$'+key+c, str(constants[key].value)+ c)
+                                    else:
+                                        none_found = True
                         
-                        if line.endswith('$'+key):
-                            constants[key].usedBy.append(line)
-                            line = line.replace('$'+key, str(constants[key].value))
+                            if line.endswith('$'+key):
+                                constants[key].usedBy.append(line)
+                                line = line.replace('$'+key, str(constants[key].value))
                         
-                commands_new.append(line)
+                    commands_new.append(line)
     
-        self.constants = constants
+            self.constants = constants
         
-        return commands_new
+            return commands_new
+            
+        except pkex.BasePyKatException as ex:
+            pkex.PrintError("Error processing constants:", ex)
+            sys.exit(1)
         
     def parseCommands(self, commands, blocks=None):
         try:
@@ -1007,6 +1013,7 @@ class kat(object):
                     line = unicode(aline, "utf-8")
                 else:
                     line = aline
+                    
                 if len(line) > 0:
                     # remove any ANSI commands
                     #ansi = re.compile(r'\x1b[^m]*m')
@@ -1026,12 +1033,14 @@ class kat(object):
                                 sys.stdout.write("\r{0} {1}".format(action, prc))
                             else:
                                 sys.stdout.write("\r{0} {1}".format(str(action, 'utf-8'), str(prc, 'utf-8')))
+                                
                     elif line.lstrip().startswith(b'*'):
                         if self.verbose:
                             if six.PY2:
                                 sys.stdout.write(line)        
                             else:
                                 sys.stdout.write(str(line,'utf-8')) 
+                                
                     elif line.rstrip().endswith(b'%'):
                         vals = line.split("-")
                         action = vals[0].strip()
@@ -1066,8 +1075,7 @@ class kat(object):
 
             # If Finesse returned an error, just print that and exit!
             if p.returncode != 0:
-                print (err)
-                sys.exit(1) 
+                raise pkex.FinesseRunError(err, katfile.name)
             
             self.__prevrunfilename = katfile.name
             
@@ -1139,9 +1147,11 @@ class kat(object):
                 return [r, perfData]
             else:
                 return r
-            
-        except pkex.FinesseRunError as fe:
-            print (fe)
+
+        except pkex.FinesseRunError as ex:
+            pkex.PrintError("Error from Finesse:", ex)
+        except pkex.BasePyKatException as ex:
+            pkex.PrintError("Error from pykat:", ex)
         finally:
             if self.verbose: print ("")
             if self.verbose: print ("Finished in " + str(datetime.datetime.now()-start))
