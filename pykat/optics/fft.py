@@ -106,18 +106,18 @@ class grid():
 	# of complex beam amplitudes. Also contain also data structures for
 	# FFT propagation
 	
-	def __init__ (self,xpoints, ypoints, xsize, ysize, xoffset, yoffset):
+	def __init__ (self, _xpoints, _ypoints, _xlength, _ylength, _xoffset, _yoffset):
 
-		self.xpoints=xpoints
-		self.ypoints=ypoints
-		self.xsize=xsize
-		self.ysize=ysize
-		self.xoffset=xoffset
-		self.yoffset=yoffset
+		self.xpoints=_xpoints # [number of tiles]
+		self.ypoints=_ypoints # [number of tiles]
+		self.xsize=_xlength # [m]
+		self.ysize=_ylength # [m]
+		self.xoffset=_xoffset # [m]
+		self.yoffset=_yoffset # [m]
 
 		# compute x and y axis
-		self.xstep=self.xsize/self.xpoints
-		self.ystep=self.ysize/self.ypoints
+		self.xstep=self.xsize/self.xpoints # [m]
+		self.ystep=self.ysize/self.ypoints # [m]
 		xvector= np.arange(self.xpoints)
 		yvector= np.arange(self.ypoints)
 		self.xaxis=-self.xsize/2.0 + self.xstep/2.0 + xvector*self.xstep + self.xoffset
