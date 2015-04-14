@@ -23,6 +23,13 @@ from pykat.optics.gaussian_beams import beam_param
 from copy import deepcopy
 
 class NodeNetwork(object):
+
+    def __new__(cls, *args, **kwargs):
+    # This creates an instance specific class for the component
+    # this enables us to add properties to instances rather than
+    # all classes
+        return object.__new__(type(cls.__name__, (cls,), {}), *args, **kwargs)
+
     def __init__(self, kat):
         self.__nodes = {}
         self.__kat = kat
@@ -30,10 +37,7 @@ class NodeNetwork(object):
         self.__componentNodes = {} # dictionary of tuples containing which nodes are connected to a given component
         self.__componentCallback = {}
         self.__node_id = 1
-        
-        cls = type(self)
-        self.__class__ = type(cls.__name__, (cls,), {})
-    
+            
     @property
     def kat(self): return self.__kat
         

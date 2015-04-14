@@ -9,7 +9,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from pykat import USE_GUI, NoGUIException
+from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
 
 import pykat.external.six as six
 
@@ -21,15 +21,22 @@ import pykat
 from pykat.node_network import *
 from pykat.exceptions import *
 import abc
+import copy
+from collections import OrderedDict
+
+if HAS_OPTIVIS:
+    import optivis.bench.components as optivis_components
+    from optivis.view.canvas import OptivisCanvasItemDataType
+    from optivis.bench.labels import Label as optivis_label
+    from optivis.geometry import Coordinates as optivis_coord
+    import PyQt4
 
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 import weakref
 import pykat.exceptions as pkex
-from copy import deepcopy
-next_component_id = 1
 
-from pykat import USE_GUI, NoGUIException
+next_component_id = 1
 
 if USE_GUI:
     import pykat.gui.resources
@@ -78,8 +85,16 @@ class NodeGaussSetter(object):
         
 class Component(object):
     __metaclass__ = abc.ABCMeta
-    
-    def __init__(self, name):
+
+    def __new__(cls, *args, **kwargs):
+        # This creates an instance specific class for the component
+        # this enables us to add properties to instances rather than
+        # all classes
+        return object.__new__(type(cls.__name__, (cls,), {}), *args, **kwargs)
+        
+    def __init__(self, name=None):
+        
+        self._optivis_component = None
         self.__name = name
         self._svgItem = None
         self._requested_node_names = []
@@ -88,18 +103,26 @@ class Component(object):
         self._params = []
         self.__removed = False
         self._default_fsig_param = None
+        self.optivisLabelContent = None
         
         # store a unique ID for this component
         global next_component_id
         self.__id = next_component_id
         next_component_id += 1
         
-        # This creates an instance specific class for the component
-        # this enables us to add properties to instances rather than
-        # all classes
-        cls = type(self)
-        self.__class__ = type(cls.__name__, (cls,), {})
-    
+       
+    def __deepcopy__(self, memo):
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties.
+        """
+        result = self.__class__.__new__(self.__class__)
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
+        
+        result.__update_node_setters             
+        
+        return result
+        
     def _register_param(self, param):
         self._params.append(param)
     
@@ -209,20 +232,38 @@ class Component(object):
         del self._params[:]
 
         self.__removed = True
-
-    def __deepcopy__(self, memo):
-        cls = self.__class__
-        result = cls.__new__(cls)
-        memo[id(self)] = result
-        
-        for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
-        
-        for p in result._params:
-            p._updateOwner(result)
-        
-        return result
+    
+    def getOptivisParameterDict(self):
+        if len(self._params) == 0:
+            return None
             
+        d = OrderedDict()
+        
+        for p in self._params:
+            d[p.name] = OptivisCanvasItemDataType.TEXTBOX
+        
+        return d
+        
+    def getOptivisTooltip(self):
+        tooltip = "Name: %s" % self.name
+        
+        for p in self._params:
+            if p.value is not None:
+                tooltip += "\n%s = %s" %(p.name, str(p.value))
+        
+        return tooltip
+
+    def setOptivisLabelContent(self):
+        """
+        Sets default Optivis label contents
+        """
+
+        if self.optivisLabelContent is None:
+            self.optivisLabelContent = {}
+
+        self.optivisLabelContent["Name"] = self.name
+
+
 class AbstractMirrorComponent(Component):
     __metaclass__ = abc.ABCMeta
         
@@ -258,12 +299,12 @@ class AbstractMirrorComponent(Component):
         self.__rxmech = AttrParam("rxmech", self, rxmech)
         self.__rymech = AttrParam("rymech", self, rymech)
         
-        self.__z = Param("z", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="z")
-        self.__rx = Param("rx", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="rx")
-        self.__ry = Param("ry", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="ry")
-        self.__Fz = Param("Fz", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fz")
-        self.__Frx = Param("Frx", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Frx")
-        self.__Fry = Param("Fry", self, 0, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fry")
+        self.__z = Param("z", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="z")
+        self.__rx = Param("rx", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="rx")
+        self.__ry = Param("ry", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="ry")
+        self.__Fz = Param("Fz", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fz")
+        self.__Frx = Param("Frx", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Frx")
+        self.__Fry = Param("Fry", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fry")
         
         self._default_fsig_param = self.__phi
         
@@ -449,6 +490,37 @@ class mirror(AbstractMirrorComponent):
             rtn.extend(p.getFinesseText())
                     
         return rtn
+    
+    def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.CavityMirror(name=self.name, aoi=0, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
+            
+            lbl = optivis_label(text="", position=optivis_coord(0, -1), item=self._optivis_component)
+            lbl.content["Name"] = self.name
+            self._optivis_component.labels.append(lbl)
+        
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output not %s" % mode)
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("fr")
+            else:
+                return self._optivis_component.getInputNode("bk")
+                
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getOutputNode("fr")
+            else:
+                return self._optivis_component.getOutputNode("bk")
+          
         
     def getQGraphicsItem(self):
         if not USE_GUI:
@@ -482,7 +554,40 @@ class beamSplitter(AbstractMirrorComponent):
                     self.alpha = values[key]
                 else:
                     raise pkex.BasePyKatException("No attribute {0} for mirrors".format(key))
-                
+    
+    def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.BeamSplitter(name=self.name, aoi=-self.alpha, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
+        
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("frA")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getInputNode("frB")
+            elif kat_node is self.nodes[2]:
+                return self._optivis_component.getInputNode("bkB")
+            elif kat_node is self.nodes[3]:
+                return self._optivis_component.getInputNode("bkA")
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getOutputNode("frB")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("frA")
+            elif kat_node is self.nodes[2]:
+                return self._optivis_component.getOutputNode("bkA")
+            elif kat_node is self.nodes[3]:
+                return self._optivis_component.getOutputNode("bkB")
+                     
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
@@ -579,6 +684,18 @@ class space(Component):
     @gy.setter
     def gy(self,value): self.__gy.value = SIfloat(value)
     
+    def connectingComponents(self):
+        """
+        Returns the two components that this space connects.
+        """
+        a = list(self.nodes[0].components + self.nodes[1].components)
+        a = [value for value in a if value != self]
+        
+        if len(a) != 2:
+            raise pkex.BasePyKatException("Space should only connect 2 components")
+            
+        return a
+        
     def parseAttributes(self, values):
         
         for key in values.keys():
@@ -802,7 +919,33 @@ class isolator(Component):
             rtn.extend(p.getFinesseText())
             
         return rtn
-
+    
+    def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.FaradayIsolator(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
+        
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getInputNode("bk")
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getnOutputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("bk")
+     
+     
     def getQGraphicsItem(self):
         if not USE_GUI:
             raise NoGUIException
@@ -847,7 +990,32 @@ class lens(Component):
             rtn.extend(p.getFinesseText())
             
         return rtn
+    
+    def getOptivisComponent(self):
+        self.setOptivisLabelContent()
         
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.ConvexLens(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
+        
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getInputNode("bk")
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getnOutputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("bk")
+                
     def getQGraphicsItem(self):
         if not USE_GUI:
             raise NoGUIException
@@ -929,6 +1097,31 @@ class modulator(Component):
             
         return rtn
         
+    def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.ElectroopticModulator(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
+            
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getInputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getInputNode("bk")
+        elif mode == "output":
+            if kat_node is self.nodes[0]:
+                return self._optivis_component.getnOutputNode("fr")
+            elif kat_node is self.nodes[1]:
+                return self._optivis_component.getOutputNode("bk")
+                
     def getQGraphicsItem(self):
         if not USE_GUI:
             raise NoGUIException
@@ -998,7 +1191,29 @@ class laser(Component):
             rtn.extend(p.getFinesseText())
         
         return rtn
-         
+
+    def getOptivisComponent(self):
+        self.setOptivisLabelContent()
+        
+        if self._optivis_component is None:
+            self._optivis_component = optivis_components.Laser(name=self.name, tooltip=self.getOptivisTooltip, paramList=self.getOptivisParameterDict(), pykatObject=weakref.ref(self))
+            lbl = optivis_label(text="", position=optivis_coord(0, -1), item=self._optivis_component)
+            lbl.content["Name"] = self.name
+            self._optivis_component.labels.append(lbl)
+            
+        return self._optivis_component
+    
+    def getOptivisNode(self, mode, kat_node):
+        mode = mode.lower()
+        
+        if mode != "input" and mode.lower() != "output":
+            raise pkex.BasePyKatException("Mode must be either input or output")
+        
+        if mode == "input":
+            return None
+        elif mode == "output":
+            return self._optivis_component.getOutputNode("out")
+                
     def getQGraphicsItem(self):
         if not USE_GUI:
             raise NoGUIException
