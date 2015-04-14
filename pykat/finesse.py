@@ -428,10 +428,9 @@ class kat(object):
         # kat objects share the same class definition they also have the
         # same properties regardless of whether they have the actual
         # object added to it. So we create an instance specific class.
-        return object.__new__(type(pykat.finesse.kat.__name__, (pykat.finesse.
-                                                                kat,), {}), *args, **kwargs)
+        return object.__new__(type(pykat.finesse.kat.__name__, (pykat.finesse.kat,), {}), *args, **kwargs)
+	
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
-        
         self.scene = None # scene object for GUI
         self.verbose = True
         self.__blocks = OrderedDict() # dictionary of blocks that are used

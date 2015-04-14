@@ -35,6 +35,7 @@ from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 import weakref
 import pykat.exceptions as pkex
+from copy import deepcopy
 
 next_component_id = 1
 
@@ -108,8 +109,7 @@ class Component(object):
         # store a unique ID for this component
         global next_component_id
         self.__id = next_component_id
-        next_component_id += 1
-        
+        next_component_id += 1    
        
     def __deepcopy__(self, memo):
         """
