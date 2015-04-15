@@ -30,7 +30,9 @@ from pykat import USE_GUI, NoGUIException
 if USE_GUI:
     import pykat.gui.resources
     from pykat.gui.graphics import *
-    
+
+id___ = 0
+
 class BaseDetector(object) :
     """
     This is a base class for all detectors. Classes Detector1 and Detector2 should be used directly.
@@ -39,6 +41,18 @@ class BaseDetector(object) :
     
     __metaclass__ = abc.ABCMeta
     
+    def __new__(cls, *args, **kwargs):
+        # This creates an instance specific class for the component
+        # this enables us to add properties to instances rather than
+        # all classes
+        global id___
+        id___ += 1
+        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id___))
+        
+        cnew = type(cnew_name, (cls,), {})
+        
+        return object.__new__(cnew, *args, **kwargs)
+        
     def __init__(self, name, nodes=None, max_nodes=1):
         
         self.__name = name
@@ -81,6 +95,19 @@ class BaseDetector(object) :
                 self._requested_nodes.append(nodes)
             else:
                 raise pkex.BasePyKatException("Nodes should be a list or tuple of node names or a singular node name as a string.")
+    
+    def __deepcopy__(self, memo):
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties.
+        """
+        
+        # Here we create a copy of this object based of the base class
+        # of this one, otherwise we're making a copy of a copy of a copy...
+        result = self.__class__.__new__(self.__class__.__base__)
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
+        
+        return result
                 
     def _register_param(self, param):
         self._params.append(param)
@@ -412,20 +439,22 @@ class pd(Detector1):
         self.__set_demod_attrs()
 
 
-    def __deepcopy__(self, memo):
-        """
-        When deep copying a kat object we need to take into account
-        the instance specific properties.
-        """
-        result = pd(self.name, self.num_demods, self.node.name)
-        memo[id(self)] = result
-        result.__dict__ = copy.deepcopy(self.__dict__, memo)
-        # Find all properties in class we are copying
-        # and deep copy these to the new class instance
-        for x in self.__class__.__dict__.items():
-            if isinstance(x[1], property):
-                setattr(result.__class__, x[0], x[1])
-        return result       
+    # def __deepcopy__(self, memo):
+    #     """
+    #     When deep copying a kat object we need to take into account
+    #     the instance specific properties.
+    #     """
+    #     result = pd(self.name, self.num_demods, self.node.name)
+    #     memo[id(self)] = result
+    #     result.__dict__ = copy.deepcopy(self.__dict__, memo)
+    #
+    #     # Find all properties in class we are copying
+    #     # and deep copy these to the new class instance
+    #     for x in self.__class__.__dict__.items():
+    #         if isinstance(x[1], property):
+    #             setattr(result.__class__, x[0], x[1])
+    #
+    #     return result
                 
     @property
     def senstype(self): return self.__senstype

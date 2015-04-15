@@ -492,7 +492,7 @@ class kat(object):
         same properties regardless of whether they have the actual
         object added to it. So we create an instance specific class.
         """
-        result = self.__class__.__new__(self.__class__)
+        result = self.__class__.__new__(self.__class__.__base__)
         memo[id(self)] = result
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
 

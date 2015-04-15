@@ -8,6 +8,8 @@ from copy import deepcopy
 kat0 = pykat.finesse.kat()
 
 kat0.parseCommands("m m1 1 0 0 n0 n1")
+kat0.parseCommands("pd o0 n1")
+kat0.parseCommands("pd1 o1 1 0 n1")
 
 kat1 = deepcopy(kat0)
 
