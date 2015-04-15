@@ -380,6 +380,7 @@ class bp(Detector1):
         
         return rtn
 
+id___2 = 0
 
 class pd(Detector1):
 
@@ -387,7 +388,28 @@ class pd(Detector1):
         # This creates an instance specific class for the component
         # this enables us to add properties to instances rather than
         # all classes
-        return object.__new__(type(cls.__name__, (cls,), {}), *args, **kwargs)
+        global id___2
+        id___2 += 1
+        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id___2))
+    
+        cnew = type(cnew_name, (cls,), {})
+    
+        return object.__new__(cnew, *args, **kwargs)
+
+    def __deepcopy__(self, memo):
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties.
+        """
+        
+        # Here we create a copy of this object based of the base class
+        # of this one, otherwise we're making a copy of a copy of a copy...
+        result = self.__class__.__new__(self.__class__.__base__)
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
+        
+        result.__set_demod_attrs()
+        
+        return result
 
     def __init__(self, name=None, num_demods=1, node_name=None, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
         BaseDetector.__init__(self, name, node_name)
@@ -437,24 +459,6 @@ class pd(Detector1):
         
    
         self.__set_demod_attrs()
-
-
-    # def __deepcopy__(self, memo):
-    #     """
-    #     When deep copying a kat object we need to take into account
-    #     the instance specific properties.
-    #     """
-    #     result = pd(self.name, self.num_demods, self.node.name)
-    #     memo[id(self)] = result
-    #     result.__dict__ = copy.deepcopy(self.__dict__, memo)
-    #
-    #     # Find all properties in class we are copying
-    #     # and deep copy these to the new class instance
-    #     for x in self.__class__.__dict__.items():
-    #         if isinstance(x[1], property):
-    #             setattr(result.__class__, x[0], x[1])
-    #
-    #     return result
                 
     @property
     def senstype(self): return self.__senstype
@@ -486,17 +490,23 @@ class pd(Detector1):
         return getattr(self, '_pd__' + name)
     
     def __set_f(self, num, value):
-        setattr(self, '_pd__f' + num, value)
+        value = SIfloat(value)
+        
+        p = getattr(self, '_pd__f' + num)
+        p.value = value
     
     def __set_phi(self, num, value):
+        value = SIfloat(value)
+        
         if value == None and num != self.num_demods:
             # check if we are setting no phase that this is only on the last
             # demodulation phase.
             raise pkex.BasePyKatException("Only last demodulation phase can be set to None")
         elif isinstance(value, six.string_types) and not isinstance(value,float) and value.lower() != "max":
             raise pkex.BasePyKatException("Demodulation phase can only be set to a 'max' or a number (or None if the last demodulation phase)")
-            
-        setattr(self, '_'+ self.__class__.__name__ +'__phi' + num, value)
+          
+        p = getattr(self, '_pd__phi' + num)  
+        p.value = value
         
     def __set_demod_attrs(self):
         """
@@ -510,15 +520,20 @@ class pd(Detector1):
         if self.__num_demods > 0:
             for i in range(1,6):
                 name = str(i)
+                
                 if i <= self.num_demods:
                     if not hasattr(self, "f"+name):
-                        setattr(self.__class__, "f"+name, property(fget=lambda self, i=i: self.__get_fphi('f'+str(i)), fset=lambda self, value, i=i: self.__set_f(str(i), value)))
+                        fget = lambda self, i=i:        self.__get_fphi('f'+str(i))
+                        fset = lambda self, value, i=i: self.__set_f(str(i), value)
+                        
+                        setattr(self.__class__, "f"+name, property(fget=fget, fset=fset))
                     
                     if not hasattr(self, "phi"+name):
                         setattr(self.__class__, "phi"+name, property(fget=lambda self, i=i: self.__get_fphi('phi'+str(i)), fset=lambda self, value, i=i: self.__set_phi(str(i), value)))
                 else:
                     if hasattr(self, "f"+name):
                         delattr(self.__class__, "f"+name)
+                        
                     if hasattr(self, "phi"+name):
                         delattr(self.__class__, "phi"+name)
         else:

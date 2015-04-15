@@ -124,6 +124,7 @@ def pd_phase(tmpkat):
 	# function for root finding
 	def PD_q_test(x):
 		kat.PDrefl_q.phi1=x
+
 		out = kat.run()
 		print('\r root finding: function value %g					 ' % out.y, end=' ')
 		sys.stdout.flush()
@@ -131,6 +132,7 @@ def pd_phase(tmpkat):
 
 	# do root finding
 	xtol=1e-8
+    
 	(result, info)=scipy.optimize.bisect(PD_q_test,80.0,100.0, xtol=xtol, maxiter=500, full_output=True)
 
 	print("")
