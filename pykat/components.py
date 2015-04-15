@@ -99,7 +99,7 @@ class Component(object):
         
         cnew = type(cnew_name, (cls,), {})
         
-        return object.__new__(cnew, *args, **kwargs)
+        return object.__new__(cnew)
         
     def __init__(self, name=None):
         
