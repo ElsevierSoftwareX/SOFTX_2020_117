@@ -124,7 +124,6 @@ def pd_phase(tmpkat):
 	# function for root finding
 	def PD_q_test(x):
 		kat.PDrefl_q.phi1=x
-		print("\n!!!!!!", kat.PDrefl_q.phi1, x)
 
 		out = kat.run()
 		print('\r root finding: function value %g					 ' % out.y, end=' ')
