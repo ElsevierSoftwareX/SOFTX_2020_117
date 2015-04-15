@@ -416,7 +416,9 @@ class Block:
     def name(self): return self.__name
     
 Constant = namedtuple('Constant', 'name, value, usedBy')
-    
+
+id___ = 0
+
 class kat(object):  
 
     def __new__(cls, *args, **kwargs):
@@ -428,7 +430,10 @@ class kat(object):
         # kat objects share the same class definition they also have the
         # same properties regardless of whether they have the actual
         # object added to it. So we create an instance specific class.
-        return object.__new__(type(pykat.finesse.kat.__name__, (pykat.finesse.kat,), {}), *args, **kwargs)
+        global id___
+        id___ += 1
+        cnew = type(pykat.finesse.kat.__name__ + str("_") + str(id___), (pykat.finesse.kat,), {})
+        return object.__new__(cnew, *args, **kwargs)
 	
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
         self.scene = None # scene object for GUI
@@ -477,17 +482,32 @@ class kat(object):
             self.loadKatFile(kat_file)
 
     def __deepcopy__(self, memo):
-        cls = self.__class__
-        result = cls.__new__(cls)
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties. This is because when
+        the kat object adds new components it also adds properties for
+        each of these. There properties are unique to each kat object,
+        but properties are part of the class definition. Thus if two
+        kat objects share the same class definition they also have the
+        same properties regardless of whether they have the actual
+        object added to it. So we create an instance specific class.
+        """
+        result = self.__class__.__new__(self.__class__)
         memo[id(self)] = result
-        
-        for k, v in self.__dict__.items():
-            setattr(result, k, copy.deepcopy(v, memo))
-        
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
+
+        # Find all properties in class we are copying
+        # and deep copy these to the new class instance
+        for x in self.__class__.__dict__.items():
+            if isinstance(x[1], property):
+                setattr(result.__class__, x[0], x[1])
+    
+        result.nodes._NodeNetwork__update_nodes_properties()
+                
         # Update any weakrefs
         for c in result.components:
             result.components[c]._Component__update_node_setters()
-            
+        
         return result
     
     @property

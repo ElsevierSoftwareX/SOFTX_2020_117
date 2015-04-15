@@ -84,6 +84,8 @@ class NodeGaussSetter(object):
     def qy(self, value):
         self.__node().setGauss(self.__comp(), self.qx, complex(value))
         
+id___ = 0
+  
 class Component(object):
     __metaclass__ = abc.ABCMeta
 
@@ -91,7 +93,13 @@ class Component(object):
         # This creates an instance specific class for the component
         # this enables us to add properties to instances rather than
         # all classes
-        return object.__new__(type(cls.__name__, (cls,), {}), *args, **kwargs)
+        global id___
+        id___ += 1
+        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id___))
+        
+        cnew = type(cnew_name, (cls,), {})
+        
+        return object.__new__(cnew, *args, **kwargs)
         
     def __init__(self, name=None):
         
@@ -116,10 +124,11 @@ class Component(object):
         When deep copying a kat object we need to take into account
         the instance specific properties.
         """
-        result = self.__class__.__new__(self.__class__)
-        result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
-        result.__update_node_setters             
+        # Here we create a copy of this object based of the base class
+        # of this one, otherwise we're making a copy of a copy of a copy...
+        result = self.__class__.__new__(self.__class__.__base__)
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
         return result
         
@@ -163,13 +172,19 @@ class Component(object):
         # need to remove them. This function should get called if the nodes
         # are updated, either by some function call or the GUI
         key_rm = [k for k in self.__dict__ if k.startswith("__nodesetter_", 0, 13)]
-        
+
         # now we have a list of which to remove
         for key in key_rm:
             ns = self.__dict__[key]
-            delattr(self, '__nodesetter_' + ns.node.name)
-            delattr(self.__class__, ns.node.name)
+            name = str(ns.node.name)
             
+            if '__nodesetter_' + name in self.__dict__:
+                delattr(self, '__nodesetter_' + name)
+            
+            if name in self.__class__.__dict__:
+                delattr(self.__class__, name)
+        
+        # Now re-add them pointing to the recent nodes
         for node in self.nodes:
             if type(node) != pykat.node_network.DumpNode:
                 ns = NodeGaussSetter(self, node)
@@ -180,9 +195,12 @@ class Component(object):
         if not isinstance(ns, NodeGaussSetter):
             raise exceptions.ValueError("Argument is not of type NodeGaussSetter")
         
-        name = ns.node.name
+        name = str(ns.node.name)
         fget = lambda self: self.__get_node_setter(name)
         
+        if name == "nITM1":
+            print(self.__class__)
+            
         setattr(self.__class__, name, property(fget))
         setattr(self, '__nodesetter_' + name, ns)                   
 

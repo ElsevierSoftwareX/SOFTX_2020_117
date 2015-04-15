@@ -22,13 +22,21 @@ from pykat.detectors import BaseDetector as Detector
 from pykat.optics.gaussian_beams import beam_param
 from copy import deepcopy
 
+id___ = 0
+    
 class NodeNetwork(object):
-
+    
     def __new__(cls, *args, **kwargs):
-    # This creates an instance specific class for the component
-    # this enables us to add properties to instances rather than
-    # all classes
-        return object.__new__(type(cls.__name__, (cls,), {}), *args, **kwargs)
+        # This creates an instance specific class for the component
+        # this enables us to add properties to instances rather than
+        # all classes
+        global id___
+        id___ += 1
+        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id___))
+        
+        cnew = type(cnew_name, (cls,), {})
+        
+        return object.__new__(cnew, *args, **kwargs)
 
     def __init__(self, kat):
         self.__nodes = {}
@@ -37,7 +45,20 @@ class NodeNetwork(object):
         self.__componentNodes = {} # dictionary of tuples containing which nodes are connected to a given component
         self.__componentCallback = {}
         self.__node_id = 1
-            
+    
+    def __deepcopy__(self, memo):
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties.
+        """
+        
+        # Here we create a copy of this object based of the base class
+        # of this one, otherwise we're making a copy of a copy of a copy...
+        result = self.__class__.__new__(self.__class__.__base__)
+        result.__dict__ = deepcopy(self.__dict__, memo)
+        
+        return result
+                
     @property
     def kat(self): return self.__kat
         
@@ -151,7 +172,29 @@ class NodeNetwork(object):
         self.__nodeComponents[node.id] = tuple(l)
         
         if do_callback: self.__componentCallback[comp.id]()
+    
+    def __update_nodes_properties(self):
+        # check if any node setters have already been added. If so we
+        # need to remove them. This function should get called if the nodes
+        # are updated, either by some function call or the GUI
+        key_rm = [k for k in self.__dict__ if k.startswith("__node_", 0, 7)]
+
+        # now we have a list of which to remove
+        for key in key_rm:
+            ns = self.__dict__[key]
+            name = str(ns.name)
+            
+            if '__node_' + name in self.__dict__:
+                delattr(self, '__node_' + name)
+            
+            if name in self.__class__.__dict__:
+                delattr(self.__class__, name)
         
+        # Now re-add them pointing to the recent nodes
+        for node in self.__nodes:
+            if not self.__nodes[node].isDump:
+                self.__add_node_attr(self.__nodes[node])
+         
     def createNode(self, node_name):
         """
         This creates a new node object. It won't be connected to anything or added to a
@@ -285,6 +328,7 @@ class NodeNetwork(object):
             kat.nodes.replaceNode(kat.bs1, "n1", kat.nodes.createNode("test1"))
         
         name = node.name
+        
         delattr(self, '__node_' + name)
         delattr(self.__class__, name)
         
