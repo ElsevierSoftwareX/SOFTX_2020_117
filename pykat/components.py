@@ -197,9 +197,6 @@ class Component(object):
         
         name = str(ns.node.name)
         fget = lambda self: self.__get_node_setter(name)
-        
-        if name == "nITM1":
-            print(self.__class__)
             
         setattr(self.__class__, name, property(fget))
         setattr(self, '__nodesetter_' + name, ns)                   
