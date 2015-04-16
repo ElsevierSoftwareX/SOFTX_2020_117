@@ -433,8 +433,8 @@ class kat(object):
         global id___
         id___ += 1
         cnew = type(pykat.finesse.kat.__name__ + str("_") + str(id___), (pykat.finesse.kat,), {})
-        return object.__new__(cnew, *args, **kwargs)
-	
+        return object.__new__(cnew)
+    
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
         self.scene = None # scene object for GUI
         self.verbose = True
@@ -1119,7 +1119,7 @@ class kat(object):
             
             [out,errpipe] = p.communicate()
 
-            _out = out.split("\n")
+            _out = str(out).split("\n")
 
             for line in _out[::-1]:
                 if line.lstrip().startswith('computation time:'):

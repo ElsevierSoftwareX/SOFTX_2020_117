@@ -51,7 +51,7 @@ class BaseDetector(object) :
         
         cnew = type(cnew_name, (cls,), {})
         
-        return object.__new__(cnew, *args, **kwargs)
+        return object.__new__(cnew)
         
     def __init__(self, name, nodes=None, max_nodes=1):
         
@@ -394,7 +394,7 @@ class pd(Detector1):
     
         cnew = type(cnew_name, (cls,), {})
     
-        return object.__new__(cnew, *args, **kwargs)
+        return object.__new__(cnew)
 
     def __deepcopy__(self, memo):
         """
