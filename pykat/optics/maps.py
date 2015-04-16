@@ -128,9 +128,9 @@ class surfacemap(object):
                 
             elif "absorption" in self.type:
                 return np.sqrt(1.0 - data)
-                
             else:
                 raise BasePyKatException("Map type needs handling")
+                
         elif direction == "transmission":
             if "phase" in self.type:
                 k = math.pi * 2 / wavelength

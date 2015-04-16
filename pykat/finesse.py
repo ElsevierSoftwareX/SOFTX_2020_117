@@ -1265,7 +1265,8 @@ class kat(object):
                 return rtn[0]
             else:
                 return rtn
-            
+        except KeyboardInterrupt as ex:
+            print("Keyboard interrupt caught, stopped simulation.")
         except pkex.FinesseRunError as ex:
             pkex.PrintError("Error from Finesse:", ex)
         except pkex.BasePyKatException as ex:

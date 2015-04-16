@@ -330,7 +330,6 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
             w_ij_Q3Q4 = cache["w_ij_Q3Q4"]
             w_ij_Q1Q2Q3Q4 = cache["w_ij_Q1Q2Q3Q4"]
         
-
         u_xy_nodes = np.outer(u_x_nodes, u_y_nodes)
 
         n_mod_2 = n % 2
