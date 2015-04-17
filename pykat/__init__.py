@@ -2,7 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-__version__ = "0.7.2"
+
+__version__ = "0.7.3"
 
 # This flag is used to switch on the gui features in pkat at import time
 USE_GUI = False

@@ -336,7 +336,7 @@ def makeWeights(smap, EI, verbose=True, useSymmetry=True, newtonCotesOrder=1):
     
     if useSymmetry:
         # get full A_xy
-        A_xy = smap.z_xy()#.transpose()
+        A_xy = smap.z_xy()
     
         xm = smap.x[smap.x < 0]
         xp = smap.x[smap.x > 0]
@@ -819,7 +819,7 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
             EIy = pickle.load(f)
 
     # get full A_xy
-    A_xy = smap.z_xy().transpose()
+    A_xy = smap.z_xy()
 
     xm = smap.x[smap.x <= 0]
     xp = smap.x[smap.x >= 0]
