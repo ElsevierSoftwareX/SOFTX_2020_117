@@ -175,9 +175,25 @@ class gauss_param(object):
         
         return q.real * (1+ (q.imag/q.real)**2)
         
+    @staticmethod
+    def overlap(q1, q2):
+        """
+        Computes the projection from one beam parameter to another to give a measure of the
+        overlap between the two beam parameters.
+        
+        This function was provided by Paul Fulda and Antonio Perreca, which came originally
+        from Chris Mueller.
+        
+        Added on 20/4/2015
+        """
+        return abs(4*q1.imag * q2.imag)/abs(q1.conjugate()-q2)**2
+        
     def conjugate(self):
         return beam_param(self.__lambda, self.__nr, self.__q.conjugate())
     
+    def __abs__(self):
+        return abs(complex(self.__q))
+        
     def __complex__(self):
         return self.__q
     
