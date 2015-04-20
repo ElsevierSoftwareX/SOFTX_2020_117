@@ -541,7 +541,7 @@ class mirror(AbstractMirrorComponent):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._svgItem == None:
+        if self._svgItem is None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
             
         return self._svgItem
@@ -647,7 +647,7 @@ class beamSplitter(AbstractMirrorComponent):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._svgItem == None:
+        if self._svgItem is None:
             # FIXME: make proper SVG component for beam splitter
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,24,self.nodes[0]), (-4,6,self.nodes[1]), (14,6,self.nodes[2]), (14,24,self.nodes[3])])
             
@@ -757,7 +757,7 @@ class space(Component):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._QItem == None:
+        if self._QItem is None:
             self._QItem = pykat.gui.graphics.SpaceQGraphicsItem(self)
         
         return self._QItem
@@ -890,7 +890,7 @@ class grating(Component):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._svgItem == None:
+        if self._svgItem is None:
             self._svgItem = pykat.gui.graphics.SpaceQGraphicsItem(self) # TODO: make SVG graphic for grating
         
         return self._svgItem
@@ -965,7 +965,7 @@ class isolator(Component):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._svgItem == None:
+        if self._svgItem is None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/isolator.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1]), (14,24,self.nodes[2])])
         
         return self._svgItem
@@ -1035,7 +1035,7 @@ class lens(Component):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._svgItem == None:
+        if self._svgItem is None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/lens.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
         
         return self._svgItem
@@ -1141,7 +1141,7 @@ class modulator(Component):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._svgItem == None:
+        if self._svgItem is None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/modulator.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
         
         return self._svgItem
@@ -1233,7 +1233,7 @@ class laser(Component):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._svgItem == None:
+        if self._svgItem is None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg", self, [(65,25,self.nodes[0])])
             
         return self._svgItem
@@ -1299,7 +1299,7 @@ class squeezer(Component):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._svgItem == None:
+        if self._svgItem is None:
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg", self, [(65,25,self.nodes[0])])
             
         return self._svgItem

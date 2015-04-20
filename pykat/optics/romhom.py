@@ -169,7 +169,7 @@ def u(re_q1, w0_1, n1, x):
 
 
 def u_star_u(re_q1, re_q2, w0_1, w0_2, n1, n2, x, x2=None):
-    if x2 == None:
+    if x2 is None:
         x2 = x
         
     return u(re_q1, w0_1, n1, x) * u(re_q2, w0_2, n2, x2).conjugate()
@@ -183,7 +183,7 @@ def u_star_u_mm(z, w0, n1, n2, x):
 
 def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1, greedyfile=None):
     
-    if greedyfile != None:
+    if greedyfile is not None:
         greedypts = str(greedyfile)
     else:
         if isModeMatched:

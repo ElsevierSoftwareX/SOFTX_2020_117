@@ -167,7 +167,7 @@ class BaseDetector(object) :
         self._mask[_id] = factor
 
     def _set_node(value, index):
-        if self._kat == None:
+        if self._kat is None:
             raise pkex.BasePyKatException("This detector has not been added to a kat object yet")
         else:
             if value[-1] == '*':
@@ -267,7 +267,7 @@ class ad(Detector1):
         else:
             alt = ''
         
-        if self.mode == None:
+        if self.mode is None:
             rtn.append("ad {name} {f} {node}{alt}".format(name=self.name, f=str(self.f.value), node=self.node.name, alt=alt))
         else:
             rtn.append("ad {name} {n} {m} {f} {node}{alt}".format(name=self.name, n=str(self.mode[0]), m=str(self.mode[1]), f=str(self.f.value), node=self.node.name, alt=alt))
@@ -289,7 +289,7 @@ class gouy(Detector1):
     def direction(self): return self.__dir
     @direction.setter
     def direction(self, value):
-        if value == None or (value != 'x' and value != 'y'):
+        if value is None or (value != 'x' and value != 'y'):
             raise pkex.BasePyKatException('Direction must be either x or y')
     
         self.__dir = value
@@ -299,7 +299,7 @@ class gouy(Detector1):
     @spaces.setter
     def spaces(self, value):
 
-        if value == None or len(value) < 1:
+        if value is None or len(value) < 1:
             raise pkex.BasePyKatException('Must be a list of space names')
     
         self.__spaces = value
@@ -338,7 +338,7 @@ class bp(Detector1):
     def direction(self): return self.__dir
     @direction.setter
     def direction(self, value):
-        if value == None or (value != 'x' and value != 'y'):
+        if value is None or (value != 'x' and value != 'y'):
             raise pkex.BasePyKatException('Direction must be either x or y')
     
         self.__dir = value
@@ -348,7 +348,7 @@ class bp(Detector1):
     @parameter.setter
     def parameter(self, value):
         
-        if value == None or (value not in self.acceptedParameters) :
+        if value is None or (value not in self.acceptedParameters) :
             raise pkex.BasePyKatException('Parameter must be one of: %s'%(", ".join(self.acceptedParameters)))
     
         self.__param = value
@@ -450,7 +450,7 @@ class pd(Detector1):
             p = 'phi{0}'.format(i+1)
             
             if p in kwargs:
-                if kwargs[p] == None and i<num_demods-1:
+                if kwargs[p] is None and i<num_demods-1:
                     raise pkex.BasePyKatException("Missing demodulation phase {0} (phi{0})".format(i+1))
                     
                 ps[i].value = kwargs[p]
@@ -498,7 +498,7 @@ class pd(Detector1):
     def __set_phi(self, num, value):
         value = SIfloat(value)
         
-        if value == None and num != self.num_demods:
+        if value is None and num != self.num_demods:
             # check if we are setting no phase that this is only on the last
             # demodulation phase.
             raise pkex.BasePyKatException("Only last demodulation phase can be set to None")
@@ -608,7 +608,7 @@ class pd(Detector1):
             
             senstype = self.senstype
             
-            if senstype == None:
+            if senstype is None:
                 senstype = ""
             
             rtn.append("pd{0}{1} {2}{3} {4}{5}".format(senstype, self.num_demods, self.name, fphi_str, self.node.name, alt_str))
@@ -714,7 +714,7 @@ class qnoised(pd):
             
             senstype = self.senstype
             
-            if senstype == None:
+            if senstype is None:
                 senstype = ""
                 
             rtn.append("qnoised{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str, senstype))
@@ -806,7 +806,7 @@ class qshot(pd):
             
             senstype = self.senstype
             
-            if senstype == None:
+            if senstype is None:
                 senstype = ""
                 
             rtn.append("qshot{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str,senstype))
@@ -915,7 +915,7 @@ class qhd(Detector2):
     def sensitivity(self, value):
         if value == 'S' or value == 'N':
             self.__sensitivity = value
-        elif value == None or value == '':
+        elif value is None or value == '':
             self.__sensitivity = ""
         else:
             raise pkex.BasePyKatException("qhd (%s) sensitivity option '%s' is not available, use either 'S' or 'N'." % (self.name, value))

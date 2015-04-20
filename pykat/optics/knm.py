@@ -52,10 +52,10 @@ def makeCouplingMatrix(max_order, Neven=True, Nodd=True, Meven=True, Modd=True):
 
 def adaptive_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, smap=None, delta=(0,0), params={}):
     
-    if q1y == None:
+    if q1y is None:
         q1y = q1
         
-    if q2y == None:
+    if q2y is None:
         q2y = q2
     
     if "epsabs" not in params: params["epsabs"] = 1e-6
@@ -71,7 +71,7 @@ def adaptive_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, smap=None, delta
     Nfuncs = []
     Nfuncs.append(0)
     
-    if smap != None:
+    if smap is not None:
         
         if not params["usepolar"]:
             xlims = (min(smap.x), max(smap.x))
@@ -167,7 +167,7 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
     dx = abs(x[1] - x[0])
     dy = abs(y[1] - y[0])    
         
-    if cache == None:
+    if cache is None:
         Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
         Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
         
@@ -210,10 +210,10 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
 
     
 def __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None, delta=(0,0), params={}):
-    if q1y == None:
+    if q1y is None:
         q1y = q1
         
-    if q2y == None:
+    if q2y is None:
         q2y = q2
         
     it = np.nditer(couplings, flags=['refs_ok','f_index'])
@@ -248,10 +248,10 @@ def __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None, delta=(
     
 def __gen_ROM_HG_knm_cache(weights, couplings, q1, q2, q1y=None, q2y=None):
 
-    if q1y == None:
+    if q1y is None:
         q1y = q1
         
-    if q2y == None:
+    if q2y is None:
         q2y = q2
         
     it = np.nditer(couplings, flags=['refs_ok','f_index'])
@@ -288,10 +288,10 @@ def __gen_ROM_HG_knm_cache(weights, couplings, q1, q2, q1y=None, q2y=None):
 
 
 def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=None):
-    if q1y == None:
+    if q1y is None:
         q1y = q1
 
-    if q2y == None:
+    if q2y is None:
         q2y = q2
     
     # x modes
@@ -303,7 +303,7 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
     mpr = mode_out[1]
     
     if isinstance(weights, ROMWeights):
-        if cache == None:
+        if cache is None:
             u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EIx.nodes)
             u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EIy.nodes)
         
@@ -353,7 +353,7 @@ def ROM_HG_knm(weights, mode_in, mode_out, q1, q2, q1y=None, q2y=None, cache=Non
                 k_ROQ = np.einsum('ij,ij', u_xy_nodes, w_ij_Q2Q4) - np.einsum('ij,ij', u_xy_nodes, w_ij_Q1Q3)
     
     else:
-        if cache == None:
+        if cache is None:
             u_x_nodes = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, n,     m,   weights.EIx.nodes)
             u_y_nodes = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, npr, mpr,   weights.EIy.nodes)
     
@@ -451,10 +451,10 @@ def __bayerhelms_kn(n, _n, q1, q2, gamma=0.0):
 
 
 def bayerhelms_HG_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, gamma=(0,0)):
-    if q1y == None:
+    if q1y is None:
         q1y = q1
 
-    if q2y == None:
+    if q2y is None:
         q2y = q2
 
     # x modes
@@ -525,10 +525,10 @@ def square_aperture_HG_knm(mode_in, mode_out, q, R):
 
 
 def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann", verbose=False, profile=False, gamma=(0,0), delta=(0,0), params={}):
-    if q1y == None:
+    if q1y is None:
         q1y = q1
         
-    if q2y == None:
+    if q2y is None:
         q2y = q2
         
     assert q1.wavelength == q2.wavelength and q1y.wavelength == q2y.wavelength and q1y.wavelength == q1.wavelength
@@ -551,7 +551,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
     for n in range(0, maxtem+1):
         __fac_cache.append(math.factorial(n))
     
-    if surface_map != None:  
+    if surface_map is not None:  
         Axy = surface_map.z_xy(wavelength=q1.wavelength)
     
         x = surface_map.x
@@ -567,18 +567,18 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         t0 = time.time()
         
     if method == "romhom":
-        if surface_map == None:
+        if surface_map is None:
             raise BasePyKatException("Using 'romhom' method requires a surface map to be specified")
             
         weights = surface_map.ROMWeights
         
-        if weights == None:
+        if weights is None:
             raise BasePyKatException("The ROM weights need to be generated for this map before use.")
 
         cache = __gen_ROM_HG_knm_cache(weights, couplings, q1=q1, q2=q2, q1y=q1y, q2y=q2y)
         
     elif method == "riemann":
-        if surface_map == None:
+        if surface_map is None:
             raise BasePyKatException("Using 'riemann' method requires a surface map to be specified")
             
         cache = __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None, delta=delta)

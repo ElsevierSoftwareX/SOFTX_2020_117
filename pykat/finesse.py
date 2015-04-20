@@ -108,7 +108,7 @@ def f__lkat_process(callback, cmd, kwargs):
     """
     """
     
-    if lkat_location == None:
+    if lkat_location is None:
         raise RuntimeError("Could not find shared library 'libkat', please install to a system location or copy to the same directory as this script")
         
     lkat = ctypes.PyDLL(lkat_location)
@@ -238,7 +238,7 @@ class katRun(object):
                 elif self.yaxis == "re:im":
                     out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
 
-            if out == None:
+            if out is None:
                 out = self.y[:, idx]
 
             if out.size == 1:
@@ -379,10 +379,10 @@ class Signals(object):
         
     def apply(self, target, amplitude, phase, name=None):
         
-        if target == None:
+        if target is None:
             raise  pkex.BasePyKatException("No target was specified for signal to be applied")
         
-        if name == None:
+        if name is None:
             name = "sig_" + target._owner().name + "_" + target.name
         
         self.targets.append(Signals.fsig(target, name, amplitude, phase, self))
@@ -899,14 +899,14 @@ class kat(object):
                 
                     comp = self.__components[v[2]]
                 
-                    if comp._default_fsig() == None:
+                    if comp._default_fsig() is None:
                         raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
                     
                     param = None
                     amp = None
                 
                     if len(v) == 5:
-                        param == None
+                        param is None
                         freq = float(v[3])
                         phase = float(v[4])
                     elif len(v) == 6:
@@ -990,7 +990,7 @@ class kat(object):
                 # Get the environment variable for where Finesse is stored
                 self.__finesse_dir = os.environ.get('FINESSE_DIR')
                 
-                if self.__finesse_dir == None :
+                if self.__finesse_dir is None :
                     raise pkex.MissingFinesseEnvVar()
             else:
                 self.__finesse_dir = self.__katdir
@@ -1031,7 +1031,7 @@ class kat(object):
                 r.katScript+=(plot+"\n")
             
             # create a kat file which we will write the script into
-            if self.__tempname == None:
+            if self.__tempname is None:
                 katfile = tempfile.NamedTemporaryFile(mode ='w', suffix=".kat", dir=self.__tempdir)
             else:
                 filepath =os.path.join(self.__tempdir, self.__tempname+".kat" )
@@ -1220,7 +1220,7 @@ class kat(object):
                     #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
                     
             if save_kat:
-                if kat_name == None:
+                if kat_name is None:
                     kat_name = "pykat_output"                
                 
                 cwd = os.path.os.getcwd()
@@ -1334,7 +1334,7 @@ class kat(object):
         self.printmatrix = None
         self.noxaxis = prev        
         
-        if self.__prevrunfilename == None:
+        if self.__prevrunfilename is None:
             return None
         else:
             
@@ -1771,11 +1771,11 @@ class kat(object):
             self.app = QCoreApplication.instance() 
             created = False
             
-            if self.app == None:
+            if self.app is None:
                 created = True
                 self.app = QApplication([""])
                 
-            if self.pykatgui == None:
+            if self.pykatgui is None:
                 self.pykatgui = pyKatGUI(self)
                 self.pykatgui.main()
             else:
@@ -1842,7 +1842,7 @@ class kat(object):
         from the beam tracing routine for each node and space components defined as well as cavity 
         commands.   
         """
-        if lkat_location == None:
+        if lkat_location is None:
             raise RuntimeError("Could not find shared library 'libkat', please install to a system location or copy to the same directory as this script")
             
         trace_info = Manager().dict()

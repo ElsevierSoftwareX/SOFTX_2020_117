@@ -85,22 +85,22 @@ class gauss_param(object):
     
     def beamsize(self, z=None, wavelength=None, nr=None, w0=None):
 
-        if z == None:
+        if z is None:
             z = self.z
         else:
             z = np.array(z)
                 
-        if wavelength == None:
+        if wavelength is None:
             wavelength = self.wavelength
         else:
             wavelength = np.array(wavelength)
             
-        if nr == None:
+        if nr is None:
             nr = self.nr
         else:
             nr = np.array(nr)
             
-        if w0 == None:
+        if w0 is None:
             w0 = self.w0
         else:
             w0 = np.array(w0)
@@ -110,22 +110,22 @@ class gauss_param(object):
         return np.abs(q)*np.sqrt(wavelength / (nr * math.pi * q.imag))
     
     def gouy(self, z=None, wavelength=None, nr=None, w0=None):
-        if z == None:
+        if z is None:
             z = self.z
         else:
             z = np.array(z)
                 
-        if wavelength == None:
+        if wavelength is None:
             wavelength = self.wavelength
         else:
             wavelength = np.array(wavelength)
             
-        if nr == None:
+        if nr is None:
             nr = self.nr
         else:
             nr = np.array(nr)
             
-        if w0 == None:
+        if w0 is None:
             w0 = self.w0
         else:
             w0 = np.array(w0)
@@ -151,22 +151,22 @@ class gauss_param(object):
         return v(self.z, self.zr)
     
     def curvature(self, z=None, wavelength=None, nr=None, w0=None):
-        if z == None:
+        if z is None:
             z = self.z
         else:
             z = np.array(z)
                 
-        if wavelength == None:
+        if wavelength is None:
             wavelength = self.wavelength
         else:
             wavelength = np.array(wavelength)
             
-        if nr == None:
+        if nr is None:
             nr = self.nr
         else:
             nr = np.array(nr)
             
-        if w0 == None:
+        if w0 is None:
             w0 = self.w0
         else:
             w0 = np.array(w0)
@@ -226,7 +226,7 @@ class gauss_param(object):
         return beam_param(self.__lambda, self.__nr, -self.__q)
         
     def __eq__(self, q):
-        if q == None:
+        if q is None:
             return False
             
         return complex(q) == self.__q
@@ -255,7 +255,7 @@ class HG_beam(object):
         self._qx = copy.deepcopy(qx)
         self._2pi_qrt = math.pow(2.0/math.pi, 0.25)
         
-        if qy == None:
+        if qy is None:
             self._qy = copy.deepcopy(qx)
         else:
             self._qy = copy.deepcopy(qy)

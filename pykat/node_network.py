@@ -163,9 +163,9 @@ class NodeNetwork(object):
         
         l = list(comps)
         
-        if l[0] == None:
+        if l[0] is None:
             l[0] = comp
-        elif l[1] == None:
+        elif l[1] is None:
             l[1] = comp
         else:
             raise pkex.BasePyKatException("Connected to two coponents already")
@@ -420,7 +420,7 @@ class NodeNetwork(object):
         else:
             raise pkex.BasePyKatException("Did not handle component {0} correctly, has more or less than 2 nodes.".format(currcomp))
         
-        if nextnode == None:
+        if nextnode is None:
             branches[-1][0] = True
             return False
         elif nextnode == tnode:
@@ -437,7 +437,7 @@ class NodeNetwork(object):
             else:
                 raise pkex.BasePyKatException("Unexpeceted condition")
 
-            if nextcomp == None:
+            if nextcomp is None:
                 branches[-1][0] = True
                 return False
             
@@ -606,7 +606,7 @@ class Node(object):
         if not USE_GUI:
             raise NoGUIException
             
-        if self._item == None:
+        if self._item is None:
             self._item = pykat.gui.graphics.NodeQGraphicItem(self,
                                                              dx,dy,
                                                              -nsize/2,-nsize/2,
@@ -625,7 +625,7 @@ class Node(object):
         comps = self.components
         
         if obj == comps[0]:
-            if comps[1] == None:
+            if comps[1] is None:
                 ix = -1
             else:
                 ix = comps[1].nodes.index(self)
@@ -633,7 +633,7 @@ class Node(object):
             return [True, comps[1], ix]
             
         elif obj == comps[1]:
-            if comps[0] == None:
+            if comps[0] is None:
                 ix = -1
             else:
                 ix = comps[0].nodes.index(self)

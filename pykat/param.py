@@ -80,13 +80,13 @@ class Param(putable, putter):
         if canFsig:
             self._canFsig = True
 
-            if fsig_name == None:
+            if fsig_name is None:
                 raise pkex.BasePyKatException("If parameter is a possible fsig target the fsig_name argument must be set")
 
             self.__fsig_name = fsig_name
         
         if isPutter:
-            if var_name == None:
+            if var_name is None:
                 var_name = "var_{0}_{1}".format(owner.name, name)
                 
         putter.__init__(self, var_name, isPutter)
