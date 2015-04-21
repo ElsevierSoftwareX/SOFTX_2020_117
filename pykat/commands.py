@@ -25,7 +25,8 @@ from pykat.optics.gaussian_beams import beam_param
 class Command(object):
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, name):
+    def __init__(self, name, unique):
+        self.__unique = unique
         self.tag = None
         self.__removed = False
         self.__name = name.strip("*")
@@ -56,16 +57,55 @@ class Command(object):
     
 class cavity(Command):
     def __init__(self, name, c1, n1, c2, n2):
-        Command.__init__(self, name)
+        Command.__init__(self, name, False)
         
         self.__c1 = c1
         self.__c2 = c2
         self.__n1 = n1
         self.__n2 = n2
+        
+        self.enabled = True
 
     def getFinesseText(self):
-        return 'cav {0} {1} {2} {3} {4}'.format(self.name, self.__c1, self.__n1, self.__c2, self.__n2);
+        if self.enabled:
+            return 'cav {0} {1} {2} {3} {4}'.format(self.name, self.__c1.name, self.__n1.name, self.__c2.name, self.__n2.name);
+        else:
+            return None
 
+    @staticmethod
+    def parseFinesseText(line, kat):
+        v = line.split()
+        
+        if len(v) != 6:
+            raise pkex.BasePyKatException("cav command format `{0}` is incorrect".format(line))
+        
+        if v[2] not in kat.components:
+            raise pkex.BasePyKatException("cav command `{0}` refers to component `{1}` which does not exist".format(line, v[2]))
+        
+        if v[4] not in kat.components:
+            raise pkex.BasePyKatException("cav command `{0}` refers to component `{1}` which does not exist".format(line, v[4]))
+        
+        if v[3] not in kat.nodes.getNodes():
+            raise pkex.BasePyKatException("cav command `{0}` refers to node `{1}` which does not exist".format(line, v[3]))
+        
+        if v[5] not in kat.nodes.getNodes():
+            raise pkex.BasePyKatException("cav command `{0}` refers to node `{1}` which does not exist".format(line, v[5]))
+        
+        c1 = getattr(kat, v[2])
+        c2 = getattr(kat, v[4])
+        
+        n1 = getattr(kat.nodes, v[3])
+        n2 = getattr(kat.nodes, v[5])
+        
+        if not hasattr(c1, n1.name):
+            raise pkex.BasePyKatException("cav command `{0}`: node `{1}` is not attached to `{2}`".format(line, n1.name, c1.name))
+        
+        if not hasattr(c2, n2.name):
+            raise pkex.BasePyKatException("cav command `{0}`: node `{1}` is not attached to `{2}`".format(line, n2.name, c2.name))
+            
+        return pykat.commands.cavity(v[1], c1, n1, c2, n2)
+        
+        
 class gauss(object):
     @staticmethod
     def parseFinesseText(text, kat):
@@ -123,7 +163,7 @@ class tf(Command):
     fQ = namedtuple('fQ', ['f', 'Q'])
     
     def __init__(self, name, poles, zeros):
-        Command.__init__(self, name)
+        Command.__init__(self, name, False)
         pass
       
 class xaxis(Command):
@@ -142,7 +182,7 @@ class xaxis(Command):
         
         steps is the number of points to compute between upper and lower limits.
         """
-        Command.__init__(self, axis_type)
+        Command.__init__(self, axis_type, True)
         
         self._axis_type = axis_type
 

@@ -481,6 +481,25 @@ class kat(object):
         if kat_file != None:
             self.loadKatFile(kat_file)
 
+    def getAll(self, type):
+        """
+        Returns a collection of all objects of the type argument that are
+        part of this kat object.
+        
+        Example:
+            # returns all cav commands that are present in this kat object
+            cavs = kat.getAll(pykat.commands.cavity)
+        """
+        items = []
+        
+        for a in (item for item in self.__class__.__dict__):
+            b = getattr(self, a)
+            
+            if isinstance(b, type):
+                items.append(b)
+
+        return tuple(items)
+        
     def __deepcopy__(self, memo):
         """
         When deep copying a kat object we need to take into account
@@ -571,6 +590,10 @@ class kat(object):
     @property
     def detectors(self):
         return self.__detectors.copy()
+        
+    @property
+    def commands(self):
+        return self.__commands.copy()
         
     @property
     def noxaxis(self): return self.__noxaxis
@@ -755,6 +778,8 @@ class kat(object):
                         after_process.append(line)
                     elif(first == "pdtype"):
                         after_process.append(line)
+                    elif(first == "cav"):
+                        after_process.append(line)
                     elif(first == "attr"):
                         after_process.append(line)
                     elif(first == "noxaxis"):
@@ -826,9 +851,15 @@ class kat(object):
             # now process all the varous gauss/attr etc. commands which require
             # components to exist first before they can be processed
             for line in after_process:
-                first = line.split(" ",1)[0]            
+                
+                first = line.split(" ",1)[0] 
+                           
                 if first == "gauss" or first == "gauss*" or first == "gauss**":
                     pykat.commands.gauss.parseFinesseText(line, self)
+                    
+                elif (first == "cav"):
+                    self.add(pykat.commands.cavity.parseFinesseText(line, self))
+                    
                 elif (first == "scale"):
                     v = line.split()
                     accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "degs"]
@@ -1293,8 +1324,12 @@ class kat(object):
                 del self.__components[obj.name]
                 self.__del_component(obj)
                 self.nodes._removeComponent(obj)
-            elif isinstance(obj, Command):    
-                del self.__commands[obj.name]
+            elif isinstance(obj, Command):  
+                if obj._Command__unique:  
+                    del self.__commands[obj.__class__.__name__]
+                else:
+                    del self.__commands[obj.name]
+                    
                 self.__del_command(obj)
             elif isinstance(obj, Detector):    
                 del self.__detectors[obj.name]
@@ -1391,7 +1426,11 @@ class kat(object):
                 
             elif isinstance(obj, Command):
                 
-                self.__commands[obj.__class__.__name__] = obj
+                if obj._Command__unique:
+                    self.__commands[obj.__class__.__name__] = obj
+                else:
+                    self.__commands[obj.name] = obj
+                    
                 self.__add_command(obj)
                 
             else:
@@ -1891,7 +1930,11 @@ class kat(object):
         if not isinstance(com, Command):
             raise pkex.BasePyKatException("Argument is not of type Command")
         
-        name = com.__class__.__name__
+        if com._Command__unique:
+            name = com.__class__.__name__
+        else:
+            name = com.name
+            
         fget = lambda self: self.__get_command(name)
         
         setattr(self.__class__, name, property(fget))
