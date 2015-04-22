@@ -1062,7 +1062,7 @@ class kat(object):
             
             # create a kat file which we will write the script into
             if self.__tempname is None:
-                katfile = tempfile.NamedTemporaryFile(mode ='w', suffix=".kat", dir=self.__tempdir)
+                katfile = tempfile.NamedTemporaryFile(mode ='w', suffix=".kat", dir=self.__tempdir, delete=False)
             else:
                 filepath =os.path.join(self.__tempdir, self.__tempname+".kat" )
                 katfile = open( filepath, 'w' ) 
