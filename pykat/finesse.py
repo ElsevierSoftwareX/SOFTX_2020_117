@@ -47,7 +47,6 @@ import collections
 import re
 import copy
 
-
 try:
     # Python 2
     from itertools import izip_longest
@@ -1074,9 +1073,7 @@ class kat(object):
                     
                 if len(line) > 0:
                     # remove any ANSI commands
-                    #ansi = re.compile(r'\x1b[^m]*m')
-                    #line = ansi.sub('', line)
-                    line = re.sub(br'\x1b[^m]*m', '', line, re.UNICODE)
+                    line = re.sub(br'\x1b[^m]*m',b'', line, re.UNICODE)
 
                     # warnings and errors start with an asterisk 
                     # so if verbose show them
@@ -1100,7 +1097,7 @@ class kat(object):
                                 sys.stdout.write(str(line,'utf-8')) 
                                 
                     elif line.rstrip().endswith(b'%'):
-                        vals = line.split("-")
+                        vals = line.split(b'-')
                         action = vals[0].strip()
                         prc = vals[1].strip()[:]
                         
@@ -1123,8 +1120,10 @@ class kat(object):
 
             for line in _out[::-1]:
                 if line.lstrip().startswith('computation time:'):
-                    r.runtime = float(line.split(":")[1].replace("s",""))
-
+                    try:
+                        r.runtime = float(line.split(":")[1].replace("s",""))
+                    except:
+                        r.runtime = 0.0
             if printout == 1: 
                 print (out)
             else:
