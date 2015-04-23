@@ -1363,6 +1363,7 @@ class kat(object):
                 del self.__components[obj.name]
                 self.__del_component(obj)
                 self.nodes._removeComponent(obj)
+                
             elif isinstance(obj, Command):  
                 if obj._Command__unique:  
                     del self.__commands[obj.__class__.__name__]
@@ -1370,11 +1371,14 @@ class kat(object):
                     del self.__commands[obj.name]
                     
                 self.__del_command(obj)
+                
             elif isinstance(obj, Detector):    
                 del self.__detectors[obj.name]
                 self.__del_detector(obj)
+                
             elif isinstance(obj, pykat.finesse.Signals):
                 obj.remove()
+                
             elif isinstance(obj, pykat.finesse.Signals.fsig):
                 obj._on_remove()
             
@@ -1960,9 +1964,6 @@ class kat(object):
             raise pkex.BasePyKatException("Argument is not of type Detector")
         
         name = det.name
-        
-        if hasattr(self, name):
-            raise pkex.BasePyKatException("There is something attached to the kat object already called `%s`" % name)
             
         delattr(self.__class__, name)
         delattr(self, '__det_' + name) 
@@ -2008,11 +2009,16 @@ class kat(object):
 
         if not isinstance(comp, Component):
             raise pkex.BasePyKatException("Argument is not of type Component")
-            
-        fget = lambda self: self.__get_component(comp.name)
         
-        setattr(self.__class__, comp.name, property(fget))
-        setattr(self, '__comp_' + comp.name, comp)                   
+        name = comp.name
+        
+        if hasattr(self, name):
+            raise pkex.BasePyKatException("There is something attached to the kat object already called `%s`" % name)
+            
+        fget = lambda self: self.__get_component(name)
+        
+        setattr(self.__class__, name, property(fget))
+        setattr(self, '__comp_' + name, comp)                   
         
     def __del_component(self, comp):
 
