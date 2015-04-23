@@ -10,17 +10,21 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import numpy
-from numpy import min,max
 import pykat.external.six as six
+import pykat.exceptions as pkex
+
 if six.PY2:
 	import exceptions
+    
 from pykat.components import *
 from pykat.structs import *
-
+from numpy import min, max
 from pykat.param import Param, putter
-import pykat.exceptions as pkex
 from collections import namedtuple
 from pykat.optics.gaussian_beams import beam_param
+
+
+
 
 class Command(object):
     __metaclass__ = abc.ABCMeta
@@ -36,7 +40,7 @@ class Command(object):
         raise NotImplementedError("This function is not implemented")
 
     @staticmethod
-    def parseFinesseText(text):
+    def parseFinesseText(line, kat):
         raise NotImplementedError("This function is not implemented")
 
     def _on_kat_add(self, kat):
@@ -54,7 +58,111 @@ class Command(object):
     
     @property
     def removed(self): return self.__removed
+
+
+
+
+
+class variable(Command):
+    def __init__(self, name, value):
+        Command.__init__(self, name, False)
+        self.__value = value
     
+    def getFinesseText(self):
+        return "variable {name} {value}".format(name=self.name, value=self.value)
+    
+    @staticmethod
+    def parseFinesseText(line, kat):
+        v = line.split()
+        
+        if len(v) != 3:
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse variable command".format(line))
+        
+        return variable(v[1], SIfloat(v[2]))
+    
+    @property
+    def value(self): return self.__value
+    @value.setter
+    def value(self, Value): self.__value = SIfloat(Value)
+
+
+
+
+
+class func(Command):
+    def __init__(self, name, value):
+        Command.__init__(self, name, False)
+        
+        self.value = value
+
+    def getFinesseText(self):
+        return "func {name} = {value}".format(name=self.name, value=str(self.value))
+
+    @staticmethod
+    def parseFinesseText(line, kat):
+        v = line.split(None, 3)
+        
+        if "=" in v and len(v) == 4:
+            v.remove("=")
+        else:
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse func command".format(line))
+        
+        return func(v[1], v[2]) 
+        
+
+
+class lock(Command):
+    def __init__(self, name, variable, gain, accuracy, singleLock=False):
+        Command.__init__(self, name, False)
+        
+        self.__variable = variable
+        self.__gain = gain
+        self.__accuracy = accuracy
+        self.singleLock = singleLock
+        self.enabled = True
+
+
+    @staticmethod
+    def parseFinesseText(line, kat):
+        v = line.split()
+        
+        if len(v) != 5:
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse lock command".format(line))
+            
+        return lock(v[1], v[2], SIfloat(v[3]), SIfloat(v[4]), "*" in v[0])
+
+
+    def getFinesseText(self):
+        if self.enabled:
+            cmds = "{name} {var} {gain} {accuracy}".format( name=self.name,
+                                                            var=str(self.variable),
+                                                            gain=str(self.gain),
+                                                            accuracy=str(self.accuracy))
+            
+            if self.singleLock:
+                return "lock* %s" % cmds
+            else:
+                return "lock %s" % cmds
+        else:
+            return None
+
+    @property
+    def variable(self): return self.__variable
+    @variable.setter
+    def variable(self, value): self.__variable = value
+
+    @property
+    def gain(self): return self.__gain
+    @gain.setter
+    def gain(self, value): self.__gain = SIfloat(value)
+
+    @property
+    def accuracy(self): return self.__accuracy
+    @accuracy.setter
+    def accuracy(self, value): self.__accuracy = SIfloat(value)
+
+
+
 class cavity(Command):
     def __init__(self, name, c1, n1, c2, n2):
         Command.__init__(self, name, False)
@@ -284,6 +392,3 @@ class x2axis(xaxis):
 
         return x2axis(values[2], [values[3], values[4]], values[1], values[5], comp=values[0],axis_type=axis_type)
 
-
-class lock(Command):
-    pass

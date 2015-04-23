@@ -677,6 +677,17 @@ class kat(object):
         except pkex.BasePyKatException as ex:
             pkex.PrintError("Error processing constants:", ex)
             sys.exit(1)
+    
+    def removeBlock(self, name):
+        
+        if name not in self.__blocks:
+            pkex.PrintError("Error removing block:", pkex.BasePyKatException('Block "{0}" was not found'.format(name)))
+            sys.exit(1)
+    
+        for o in self.__blocks[name].contents:
+            self.remove(o)
+        
+        del self.__blocks[name]
         
     def parseCommands(self, commands, blocks=None):
         try:
@@ -732,7 +743,7 @@ class kat(object):
             
                     first = line.split(" ",1)[0]
                     obj = None
-                
+
                     if(first == "m" or first == "m1" or first == "m2"):
                         obj = pykat.components.mirror.parseFinesseText(line)
                     elif(first == "s"):
@@ -772,15 +783,21 @@ class kat(object):
                     elif(first == "x2axis" or first == "x2axis*"):
                         obj = pykat.commands.x2axis.parseFinesseText(line)
                     elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
-                        after_process.append(line)
+                        after_process.append((line, self.__currentTag))
                     elif(first == "scale"):
-                        after_process.append(line)
+                        after_process.append((line, self.__currentTag))
                     elif(first == "pdtype"):
-                        after_process.append(line)
+                        after_process.append((line, self.__currentTag))
                     elif(first == "cav"):
-                        after_process.append(line)
+                        after_process.append((line, self.__currentTag))
+                    elif(first == "func"):
+                        after_process.append((line, self.__currentTag))
+                    elif(first == "variable"):
+                        after_process.append((line, self.__currentTag))
+                    elif(first == "lock"):
+                        after_process.append((line, self.__currentTag))
                     elif(first == "attr"):
-                        after_process.append(line)
+                        after_process.append((line, self.__currentTag))
                     elif(first == "noxaxis"):
                         self.noxaxis = True
                     elif(first == "lambda"):
@@ -827,10 +844,10 @@ class kat(object):
                         if self.verbose:
                             print ("Ignoring Gnuplot/Python terminal command '{0}'".format(line))
                     elif(first == "fsig"):
-                        after_process.append(line)
+                        after_process.append((line, self.__currentTag))
                     elif(first == "noplot"):
                         obj = line
-                        self.__blocks[self.__currentTag].contents.append(line) 
+                        #self.__blocks[self.__currentTag].contents.append(line) 
                     else:
                         if self.verbose:
                             print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
@@ -844,20 +861,30 @@ class kat(object):
                             getattr(self, obj.name).remove()
                             print ("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
                     
-                        self.add(obj)
+                        self.add(obj, block=self.__currentTag)
                 
                 
             # now process all the varous gauss/attr etc. commands which require
             # components to exist first before they can be processed
-            for line in after_process:
-                
+            for item in after_process:
+                line = item[0]
                 first = line.split(" ",1)[0] 
-                           
+                block = item[1]
+                
                 if first == "gauss" or first == "gauss*" or first == "gauss**":
                     pykat.commands.gauss.parseFinesseText(line, self)
                     
                 elif (first == "cav"):
-                    self.add(pykat.commands.cavity.parseFinesseText(line, self))
+                    self.add(pykat.commands.cavity.parseFinesseText(line, self), block=block)
+                    
+                elif (first == "lock"):
+                    self.add(pykat.commands.lock.parseFinesseText(line, self), block=block)
+                    
+                elif (first == "func"):
+                    self.add(pykat.commands.func.parseFinesseText(line, self), block=block)
+                    
+                elif (first == "variable"):
+                    self.add(pykat.commands.variable.parseFinesseText(line, self), block=block)
                     
                 elif (first == "scale"):
                     v = line.split()
@@ -1307,11 +1334,12 @@ class kat(object):
             
     def remove(self, obj):
         try:
-            if not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
-                raise pkex.BasePyKatException("{0} is not currently in the simulation".format(obj.name))
             
-            if obj.removed:
-                raise pkex.BasePyKatException("{0} has already been removed".format(obj.name))        
+            if hasattr(obj, "name") and not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
+                raise pkex.BasePyKatException("'{0}' is not currently in the simulation".format(obj.name))
+            
+            if hasattr(obj, "removed") and obj.removed:
+                raise pkex.BasePyKatException("'{0}' has already been removed".format(obj.name))        
 
             nodes = None
         
@@ -1402,10 +1430,10 @@ class kat(object):
     def hasNamedObject(self, name):
         return name in self.__components or name in self.__detectors or name in self.__commands
         
-    def add(self, obj):
+    def add(self, obj, block=NO_BLOCK):
         try:
-            obj.tag = self.__currentTag
-            self.__blocks[self.__currentTag].contents.append(obj)
+            obj.tag = block
+            self.__blocks[block].contents.append(obj)
             
             if isinstance(obj, Component):
                 
@@ -1903,10 +1931,13 @@ class kat(object):
     def __add_detector(self, det):
 
         if not isinstance(det, Detector):
-            raise exceptions.ValueError("Argument is not of type Detector")
+            raise pkex.BasePyKatException("Argument is not of type Detector")
         
         name = det.name
         fget = lambda self: self.__get_detector(name)
+        
+        if hasattr(self, name):
+            raise pkex.BasePyKatException("There is something attached to the kat object already called `%s`" % name)
         
         setattr(self.__class__, name, property(fget))
         setattr(self, '__det_' + name, det)                
@@ -1918,6 +1949,9 @@ class kat(object):
         
         name = det.name
         
+        if hasattr(self, name):
+            raise pkex.BasePyKatException("There is something attached to the kat object already called `%s`" % name)
+            
         delattr(self.__class__, name)
         delattr(self, '__det_' + name) 
         
@@ -1934,6 +1968,9 @@ class kat(object):
         else:
             name = com.name
             
+        if hasattr(self, name):
+            raise pkex.BasePyKatException("There is something attached to the kat object already called `%s`" % name)
+            
         fget = lambda self: self.__get_command(name)
         
         setattr(self.__class__, name, property(fget))
@@ -1944,9 +1981,10 @@ class kat(object):
         if not isinstance(com, Command):
             raise exceptions.ValueError("Argument is not of type Command")
         
-        name = com.__class__.__name__
-        
-        #print (getattr(self.__class__, name))
+        if com._Command__unique:
+            name = com.__class__.__name__
+        else:
+            name = com.name
         
         delattr(self.__class__, name)
         delattr(self, '__com_' + name)
