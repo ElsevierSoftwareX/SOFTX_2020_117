@@ -689,8 +689,16 @@ class kat(object):
         
         del self.__blocks[name]
         
-    def parseCommands(self, commands, blocks=None):
+    def parseCommands(self, commands, blocks=None, addToBlock=None):
         try:
+            if addToBlock is not None and blocks is not None:
+                raise pkex.BasePyKatException("When parsing commands you cannot set both blocks and addToBlock arguments")
+            
+            # Create a new block if one asked for isn't present
+            if addToBlock is not None:
+                if addToBlock not in self.__blocks:
+                    self.__blocks[addToBlock] = Block(addToBlock)
+                
             blockComment = False
         
             commands=self.remove_comments(commands)
@@ -706,24 +714,27 @@ class kat(object):
 
                     # Looking for block start or end
                     values = line.split()
-            
-                    if values[0] == "%%%":
-                        if values[1] == "FTblock":
-                            newTag = values[2]
                     
-                            if self.__currentTag != None and self.__currentTag != NO_BLOCK: 
-                                warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
+                    if addToBlock is None:
+                        if values[0] == "%%%":
+                            if values[1] == "FTblock":
+                                newTag = values[2]
+                    
+                                if self.__currentTag != None and self.__currentTag != NO_BLOCK: 
+                                    warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
                         
-                            if newTag in self.__blocks:
-                                raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                                if newTag in self.__blocks:
+                                    raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
                         
-                            self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
-                            self.__currentTag = newTag
+                                self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
+                                self.__currentTag = newTag
                     
-                        if values[1] == "FTend":
-                            self.__currentTag = NO_BLOCK
+                            if values[1] == "FTend":
+                                self.__currentTag = NO_BLOCK
                     
-                        continue
+                            continue
+                    else:
+                        self.__currentTag = addToBlock
 
                     # only include listed blocks, if we have specfied them
                     if blocks != None and self.__currentTag not in blocks:
@@ -775,6 +786,7 @@ class kat(object):
                     elif(first == "qnoised" or first == "qnoisedS" or first == "qnoisedN"):
                         obj = pykat.detectors.qnoised.parseFinesseText(line)
                     elif(first == "xaxis" or first == "xaxis*"):
+                        self.noxaxis = False
                         obj = pykat.commands.xaxis.parseFinesseText(line)
                     elif(first[0:2] == "hd"):
                         obj = pykat.detectors.hd.parseFinesseText(line)
