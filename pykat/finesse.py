@@ -1224,9 +1224,9 @@ class kat(object):
                 
                 traceFiles = [file for file in os.listdir(path) if file.endswith(".trace") and file.startswith(base)]
                 
-                print("Found %i trace files" % len(traceFiles))
-                print(path)
-                print(traceFiles)
+                #print("Found %i trace files" % len(traceFiles))
+                #print(path)
+                #print(traceFiles)
                 
                 if len(traceFiles) > 0:
                     import fileinput
@@ -1243,7 +1243,7 @@ class kat(object):
                                 a = line.split(':', 1)
                         
                                 if a[0].isdigit():
-                                    print("Found %s" % a[0])
+                                    #print("Found %s" % a[0])
                                 
                                     values = a[1].split()
                                 

@@ -1050,7 +1050,7 @@ class modulator(Component):
         self.__f = Param("f", self, SIfloat(f))
         self.__midx = Param("midx", self, SIfloat(midx))
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
-        self.__order = order
+        self.__order = int(order)
         self.type = modulation_type
         
         self._default_fsig_param = self.__phase
@@ -1071,13 +1071,15 @@ class modulator(Component):
     def phase(self, value): self.__phase.value = SIfloat(value)
     
     @property 
-    def order(self): return self.__order
+    def order(self): return int(self.__order)
     @order.setter
     def order(self, value):
+        value = int(value)
+        
         if value <= 1 and value > 6:
             raise pkex.BasePyKatException("modulator order must be between 1 and 6")
             
-        self.__order = int(value)
+        self.__order = value
     
     @property 
     def type(self): return self.__type
