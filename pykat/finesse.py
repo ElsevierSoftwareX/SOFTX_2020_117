@@ -1396,7 +1396,31 @@ class kat(object):
             
         except pkex.BasePyKatException as ex:
             pkex.PrintError("Error on removing object:", ex)
-            
+
+    def undumpNodes(self):
+        """
+        Loops through and removes all dump nodes. Required when running quantum noise
+        calculations using qnoised as noise must be injected in where losses occur, such as power
+        dumped.
+        
+        The nodes will be renamed 'dump0', 'dump1', ... If by change a kat file already has a
+        node called dump0, dump1, etc. then it will skip that name and move on to the next until
+        it finds one that doesn't exist.
+        """
+        
+        i = 0
+        node_name = "dump%i" % i
+    
+        for c in self.components.values():
+            for n in c.nodes:
+                if n.isDump:
+                    while hasattr(kat.nodes, node_name):
+                        node_name = "dump%i" % i
+                        i += 1
+                        
+                    self.nodes.replaceNode(c, n, self.nodes.createNode(node_name % i))
+        
+  
     def getMatrices(self):
         
         import scipy
