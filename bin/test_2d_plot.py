@@ -1,5 +1,4 @@
 from pykat import finesse
-from pykat.utilities.optics.gaussian_beams import gauss_param
 from pykat.detectors import *
 from pykat.components import *
 from pykat.commands import *
@@ -26,7 +25,7 @@ x2axis b1 y lin -6 6 100
 kat = finesse.kat()
 
 kat.parseCommands(code)
-kat.s1.n1.q = gauss_param(w0=1e-3, z=0)
+kat.s1.n1.q = pykat.beam_param(w0=1e-3, z=0)
 
 out = kat.run(printout=0,printerr=0)
 

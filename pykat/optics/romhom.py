@@ -323,7 +323,7 @@ def makeEmpiricalInterpolant(RB, sort=False):
     nodes = np.array(x_nodes, dtype=np.float64)
     
     if sort:
-        print sort
+        print (sort)
         ix = np.argsort(nodes)
         nodes = nodes[ix]
         node_indices = node_indices[ix]
@@ -513,7 +513,7 @@ def _write_TS(queue, filename, tssize):
                 i += 1
                 
                 if i % 1000 == 0:
-                    print i/float(tssize)
+                    print(i/float(tssize))
                     hfile.flush()
     finally:
         hfile.close()
@@ -542,8 +542,8 @@ def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, newtonCo
 
     nModes = 0
     
-    for n in xrange(0, maxOrder+1):
-        for m in xrange(0, maxOrder+1):
+    for n in range(0, maxOrder+1):
+        for m in range(0, maxOrder+1):
             if n+m <= maxOrder and n <= m:
                 nModes += 1
             
@@ -563,10 +563,10 @@ def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, newtonCo
     
     hfile.close() # make sure it's closed before
     
-    print "Starting processes..."
+    print("Starting processes...")
     # Have a bunch of processes doing the computation and one doing the writing
     iprocesses = [Process(target=_compute_TS, name="irom%i" % i, args=(iq, oq, x, w)) for i in range(NProcesses)]
-    oprocess = Process(target=_write_TS, name="orom%i" % i, args=(oq, filename, tssize))
+    oprocess = Process(target=_write_TS, name="orom", args=(oq, filename, tssize))
     
     oprocess.start()
     
@@ -574,10 +574,10 @@ def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, newtonCo
         for P in iprocesses:
             P.start()
         
-        print "Filling queue..."
+        print("Filling queue...")
         curr = 0
-        for n in xrange(0, maxOrder+1):
-            for m in xrange(0, maxOrder+1):
+        for n in range(0, maxOrder+1):
+            for m in range(0, maxOrder+1):
                 if n+m <= maxOrder and n <= m:
                     for _z in z:
                         for _w0 in w0:
@@ -760,10 +760,10 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
                 next_RB_index = max_idx[np.argmax(max_res)]
         
             if worst_error <= tol:
-                print "Final basis size = %d, Final error = %e, Tolerance=%e" % (k, worst_error, tol) 
+                print( "Final basis size = %d, Final error = %e, Tolerance=%e" % (k, worst_error, tol) )
                 break
 
-            print "worst error = %e at %i on iteration %d" % (worst_error, next_RB_index, k)			
+            print ("worst error = %e at %i on iteration %d" % (worst_error, next_RB_index, k))
         
             epsilon = TS['%i/data' % next_RB_index].value
             res   = epsilon - emp_interp(B, epsilon, EI_indices)
@@ -782,7 +782,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
             _TS = TS[str(next_RB_index)]
             f.write("%15.15e %15.15e %i %i\n" % (_TS["w0"].value, _TS["z"].value, _TS["n1"].value, _TS["n2"].value))
                 
-    print time.time() - start, "Seconds"
+    print (time.time() - start, "Seconds")
     
     if NProcesses > 1:
         for P in procs: P.terminate()
@@ -791,7 +791,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
 
     greedyFilenameBase = os.path.splitext(greedyFilename)[0]
     
-    print "Writing to %s" % greedyFilename
+    print ("Writing to %s" % greedyFilename)
                        
     EI = EmpiricalInterpolant(B=np.matrix(B).real,
                               nodes=np.array(x_nodes).squeeze(),
@@ -803,7 +803,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
         with open("%s.p" % EIFilename, 'wb') as f:
             pickle.dump(EI, f)
         
-        print "Writing to %s.p" % EIFilename
+        print ("Writing to %s.p" % EIFilename)
                               
     return EI
     

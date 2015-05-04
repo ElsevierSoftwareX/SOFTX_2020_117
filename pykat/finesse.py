@@ -249,7 +249,7 @@ class katRun(object):
       
 class katRun2D(object):
     def __init__(self):
-        self.runtime
+        self.runtime = None
         self.startDateTime = datetime.datetime.now()
         self.x = None
         self.y = None
@@ -1692,10 +1692,13 @@ class kat(object):
         if self.noxaxis == True:
             out.append("noxaxis\n")
             
-        if self.yaxis != None:
+        if self.yaxis is not None:
             out.append("yaxis {0}\n".format(self.yaxis))
          
-        if self.printmatrix != None and self.printmatrix == True:
+        if self.retrace is not None:
+            out.append("retrace {0}\n".format(str(self.retrace)))
+            
+        if self.printmatrix is not None and self.printmatrix == True:
             out.append("printmatrix\n")
             
         if self.lambda0 != 1064e-9:
