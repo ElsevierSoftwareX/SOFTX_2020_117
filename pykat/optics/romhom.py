@@ -686,7 +686,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
         
         Names = range(NProcesses)
         procs = [Process(name="process_%i" % l[0], target=_worker_ROM, 
-                         args=(hdf5Filename, queue, l[1], l[2], l[3])) for l in itertools.izip(Names, result_err, result_idx, locks)]
+                         args=(hdf5Filename, queue, l[1], l[2], l[3])) for l in zip(Names, result_err, result_idx, locks)]
 
         max_res = np.zeros((NProcesses), dtype='d')
         max_idx = np.zeros((NProcesses), dtype='i')

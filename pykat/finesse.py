@@ -1186,14 +1186,18 @@ class kat(object):
             
             [out,errpipe] = p.communicate()
 
-            _out = str(out).split("\n")
-
+            if six.PY2:
+                _out = str(out).split("\n")
+            else:
+                _out = str(out).split("\\n")
+            
             for line in _out[::-1]:
                 if line.lstrip().startswith('computation time:'):
                     try:
                         r.runtime = float(line.split(":")[1].replace("s",""))
                     except:
                         r.runtime = 0.0
+            
             if printout == 1: 
                 print (out)
             else:
@@ -1316,6 +1320,9 @@ class kat(object):
             perfData = []
 
             rtn = [r]
+            
+            if sys.version > '3':
+                long = int
             
             if self.__time_code:
                 perffile = open(root[0] + ".perf",'r')

@@ -577,7 +577,7 @@ def read_map(filename):
         f.readline()
         name = f.readline().split(':')[1].strip()
         maptype = f.readline().split(':')[1].strip()
-        size = tuple(map(lambda x: int(x), f.readline().split(':')[1].strip().split()))
+        size = tuple(map(lambda x: float(x), f.readline().split(':')[1].strip().split()))
         center = tuple(map(lambda x: float(x), f.readline().split(':')[1].strip().split()))
         step = tuple(map(lambda x: float(x), f.readline().split(':')[1].strip().split()))
         scaling = float(f.readline().split(':')[1].strip())
