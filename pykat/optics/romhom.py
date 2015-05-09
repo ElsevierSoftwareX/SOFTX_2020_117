@@ -608,11 +608,11 @@ def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, newtonCo
     print("Data written to %s.h5" % filename)
     
     
-def _worker_ROM(hdf5Filename, job_queue, result_err, result_idx, event):
+def _worker_ROM(hdf5Filename, job_queue, result_err, result_idx, event, driver='core'):
     # h5py drivers: 'core', 'sec2', 'stdio', 'mpio'
     # Need to use something ot her than sec2, the default on OSX,
     # as it doesn't play nice with multiple processes reading files
-    with h5py.File("%s.h5" % hdf5Filename, driver="core", mode='r') as file:
+    with h5py.File("%s.h5" % hdf5Filename, driver=driver, mode='r') as file:
     
         TS = file["TS"]
         
@@ -640,7 +640,7 @@ def _worker_ROM(hdf5Filename, job_queue, result_err, result_idx, event):
                 
                 event.set()
 
-def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-10, NProcesses=1, maxRBsize=50):
+def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-10, NProcesses=1, maxRBsize=50, driver="core"):
     start = time.time()
     
     #### Start reading TS file ####
@@ -686,7 +686,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
         
         Names = range(NProcesses)
         procs = [Process(name="process_%i" % l[0], target=_worker_ROM, 
-                         args=(hdf5Filename, queue, l[1], l[2], l[3])) for l in zip(Names, result_err, result_idx, locks)]
+                         args=(hdf5Filename, queue, l[1], l[2], l[3], driver)) for l in zip(Names, result_err, result_idx, locks)]
 
         max_res = np.zeros((NProcesses), dtype='d')
         max_idx = np.zeros((NProcesses), dtype='i')
