@@ -24,7 +24,7 @@ from multiprocessing import Process, Queue, Array, Value, Event
 
 EmpiricalInterpolant = collections.namedtuple('EmpiricalInterpolant', 'B nodes node_indices limits x')
 ReducedBasis = collections.namedtuple('ReducedBasis', 'RB limits x')
-ROMLimits = collections.namedtuple('ROMLimits', 'zmin zmax w0min w0max R mapSamples newtonCotesOrder max_order')
+ROMLimits = collections.namedtuple('ROMLimits', 'zmin zmax w0min w0max R mapSamples max_order')
                        
 class ROMWeights:
     
@@ -518,14 +518,7 @@ def _write_TS(queue, filename, tssize):
     finally:
         hfile.close()
         
-def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, newtonCotesOrder=1, NProcesses=1):
-    """
-    newtonCotesOrder: Order of integration to use
-                        0 - Midpoint
-                        1 - Trapezoid
-                        2 - Simpsons
-                        Or higher orders
-    """
+def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, NProcesses=1):
     
     iq = Queue()
     oq = Queue()
@@ -538,8 +531,9 @@ def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, newtonCo
     # unlike previous midpoint rule.
     x = np.linspace(-R, 0, Ns, dtype=np.float64)
     
-    w = newton_weights(x, newtonCotesOrder)
-
+    w = np.ones(x.shape)
+    w[x == 0] = 0.5
+    
     nModes = 0
     
     for n in range(0, maxOrder+1):
@@ -558,7 +552,6 @@ def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, newtonCo
     hfile['R'] = R
     hfile['halfMapSamples'] = halfMapSamples
     hfile['maxOrder'] = maxOrder
-    hfile['newtonCotesOrder'] = newtonCotesOrder
     hfile['weights'] = w
     
     hfile.close() # make sure it's closed before
@@ -706,7 +699,6 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
                        w0max=max(TSdata['w0Range'].value),
                        R=TSdata['R'].value,
                        mapSamples=TSdata['halfMapSamples'].value,
-                       newtonCotesOrder=int(TSdata['newtonCotesOrder'].value),
                        max_order=int(TSdata['maxOrder'].value))
                        
     with open(greedyFilename, "w") as f:
@@ -716,7 +708,6 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
         f.write("min z  = %15.15e\n" % limits.w0max)
         f.write("R      = %15.15e\n" % limits.R)
         f.write("max order   = %i\n" % limits.max_order)
-        f.write("NC order    = %i\n" % limits.newtonCotesOrder)
         f.write("half map samples = %i\n" % limits.mapSamples)
         
         # write initial RB
@@ -808,7 +799,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
     return EI
     
     
-def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCotesOrder=1):
+def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCotesOrderMapWeight=1):
     with open("%s" % EIxFilename, 'rb') as f:
         EIx = pickle.load(f)
         
@@ -817,10 +808,10 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
     else:
         with open("%s" % EIyFilename, 'rb') as f:
             EIy = pickle.load(f)
-
-    # get full A_xy
-    A_xy = smap.z_xy()
-
+    
+    A_xy = smap.z_xy() * np.outer(newton_weights(smap.x, newtonCotesOrderMapWeight), 
+                                  newton_weights(smap.y, newtonCotesOrderMapWeight))
+    
     xm = smap.x[smap.x <= 0]
     xp = smap.x[smap.x >= 0]
     ym = smap.y[smap.y <= 0]
@@ -849,16 +840,18 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
 
     n = 0
 
+    wx = np.ones(xm.shape)
+    wy = np.ones(xm.shape)
+    wx[xm == 0] = 0.5
+    wy[ym == 0] = 0.5
+    W = np.outer(wx, wy)
+
     # make integration weights
     Bx = EIx.B
     By = EIy.B[:,::-1]
     w_ij_Q1 = np.zeros((len(Bx),len(By)), dtype = complex)
     
-    wx = newton_weights(Bx[0], EIx.limits.newtonCotesOrder)
-    wy = newton_weights(By[0], EIy.limits.newtonCotesOrder)
-    W = np.outer(wx, wy)
-
-    A = A_xy_Q1 * W
+    A = A_xy_Q1 * W[:,::-1]
     
     for i in range(len(Bx)):
         for j in range(len(By)):
@@ -872,7 +865,8 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
     Bx = EIx.B[:,::-1]
     By = EIy.B[:,::-1]
     w_ij_Q2 = np.zeros((len(Bx),len(By)), dtype = complex)
-    A = A_xy_Q2 * W
+    
+    A = A_xy_Q2 * W[::-1,::-1]
     
     for i in range(len(Bx)):
         for j in range(len(By)):
@@ -886,7 +880,8 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
     Bx = EIx.B[:,::-1]
     By = EIy.B
     w_ij_Q3 = np.zeros((len(Bx),len(By)), dtype = complex)
-    A = A_xy_Q3 * W
+
+    A = A_xy_Q3 * W[::-1, :]
     
     for i in range(len(Bx)):
         for j in range(len(By)):

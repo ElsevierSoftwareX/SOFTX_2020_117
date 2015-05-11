@@ -321,7 +321,8 @@ class mergedmap:
         self.__interp = None
         self._rom_weights = None
         self.__maps = []
-      
+        self.weighting = None
+        
     def addMap(self, m):
         self.__maps.append(m)
     
@@ -379,9 +380,12 @@ class mergedmap:
         for m in self.__maps:
             z_xy *= m.z_xy(wavelength=wavelength, direction=direction, nr1=nr1, nr2=nr2)
             
-        return z_xy
+        if self.weighting is None:
+            return z_xy
+        else:
+            return z_xy * self.weighting
         
-    def generateROMWeights(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False):
+    def generateROMWeights(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=0):
         if interpolate == True:
             # Use EI nodes to interpolate if we
             with open(EIxFilename, 'rb') as f:
@@ -403,7 +407,7 @@ class mergedmap:
             
             self.interpolate(nx, ny)
         
-        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose)
+        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder)
         return self.ROMWeights
 
     def interpolate(self, nx, ny, **kwargs):
