@@ -206,7 +206,7 @@ class surfacemap(object):
         return self.ROMWeights, EI
     
     
-    def generateROMWeightsNew(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False):
+    def generateROMWeightsNew(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=8):
         if interpolate == True:
             # Use EI nodes to interpolate if we
             with open(EIxFilename, 'rb') as f:
@@ -228,7 +228,7 @@ class surfacemap(object):
             
             self.interpolate(nx, ny)
         
-        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose)
+        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose, newtonCotesOrder=newtonCotesOrder)
         return self.ROMWeights
 
     def interpolate(self, nx, ny, **kwargs):
