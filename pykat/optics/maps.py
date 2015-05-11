@@ -385,7 +385,7 @@ class mergedmap:
         else:
             return z_xy * self.weighting
         
-    def generateROMWeights(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=0):
+    def generateROMWeights(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=8):
         if interpolate == True:
             # Use EI nodes to interpolate if we
             with open(EIxFilename, 'rb') as f:
@@ -408,6 +408,7 @@ class mergedmap:
             self.interpolate(nx, ny)
         
         self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder)
+        
         return self.ROMWeights
 
     def interpolate(self, nx, ny, **kwargs):

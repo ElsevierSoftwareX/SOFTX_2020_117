@@ -74,15 +74,15 @@ a = aperturemap("flat", (N,N), (dx,dx), R)
 
 smap = read_map(mapname)
 smap.interpolate(x, x)
+smap.data *= 0
 
 mm = mergedmap("flat", (N,N), (halfMapSamples,halfMapSamples), (dx,dx), 1)
-mm.addMap(a)
+#mm.addMap(a)
 mm.addMap(smap)
 
-NCs = [0, 1, 4, 10]
+NCs = [0, 1, 5, 10]
 
 w = {}
-ww = {}
 
 for NCo in NCs:
     w[NCo] = mm.generateROMWeights("%s.p" % EIFilename, verbose=True, newtonCotesOrder=NCo)
@@ -90,15 +90,16 @@ for NCo in NCs:
 qx = pykat.beam_param(w0=w0.mean(), z=z.mean())
 qy = qx
 
-mode_i = (14,14)
-mode_o = (14,14)
+mode_i = (0,0)
+mode_o = (0,0)
 
 for NCo in NCs:
     fwx = newton_weights(x, NCo)
     
     fw_xy = np.outer(fwx, fwx) * mm.z_xy()
-
+    
+    k = square_aperture_HG_knm(mode_i, mode_o, qx, R)
     ROQ = ROM_HG_knm(w[NCo], mode_i, mode_o, qx, qx, qy, qy)
     NC  = dx**2 * np.einsum('ij,ij', fw_xy, np.outer(u_star_u_mm(qx.z, qx.w0, mode_i[0], mode_o[0], x), u_star_u_mm(qy.z, qy.w0, mode_i[1], mode_o[1], x)))
     
-    print(NCo, abs(ROQ-NC))
+    print(NCo, k, ROQ, NC, abs(ROQ-k), abs(NC-k), abs(ROQ-NC))

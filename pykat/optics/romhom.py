@@ -799,7 +799,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
     return EI
     
     
-def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCotesOrderMapWeight=1):
+def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCotesOrderMapWeight=8):
     with open("%s" % EIxFilename, 'rb') as f:
         EIx = pickle.load(f)
         
