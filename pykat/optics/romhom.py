@@ -145,6 +145,8 @@ def B_matrix(invV, e):
     return np.inner(invV.T, e[0:(invV.shape[0])].T)
 
 def emp_interp(B_matrix, func, indices):
+    if B_matrix is None: return 0
+    
     # B : RB matrix
     assert B_matrix.shape[0] == len(indices)
     interpolant = np.inner(func[indices].T, B_matrix.T)
@@ -652,21 +654,14 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
     
     # Initial RB to seed with
     next_RB_index = 0  
-    #EI_indices = [next_RB_index]
-    #x_nodes.append(x[EI_indices])
-	
-    RB0 = TS['%i/data' % next_RB_index][...]
-    #RB0 /= RB0[EI_indices[0]]
-    EI_indices = [np.argmax(RB0)]
-    x_nodes.extend(x[EI_indices])
-    RB0 /= RB0[EI_indices[0]]		
-    RB_matrix = [RB0] 
+    EI_indices = []
+    RB_matrix = [] 
 
     V = np.zeros(((maxRBsize), (maxRBsize)), dtype=complex)
 
-    V[0][0] = RB_matrix[0][EI_indices[0]]
-    invV = inv(V[0:len(EI_indices), 0:len(EI_indices)])
-    B = B_matrix(invV, np.array(RB_matrix))	
+    #V[0][0] = RB_matrix[0][EI_indices[0]]
+    #invV = inv(V[0:len(EI_indices), 0:len(EI_indices)])
+    B = None
     
     RBs = []
     
@@ -757,7 +752,9 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
             print ("worst error = %e at %i on iteration %d" % (worst_error, next_RB_index, k))
         
             epsilon = TS['%i/data' % next_RB_index].value
-            res   = epsilon - emp_interp(B, epsilon, EI_indices)
+            
+            res = epsilon - emp_interp(B, epsilon, EI_indices)
+                
             index = np.argmax(res)
             EI_indices.append(index)
             x_nodes.append(TSdata['x'][index])
