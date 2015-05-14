@@ -145,68 +145,8 @@ class surfacemap(object):
             raise BasePyKatException("Map type needs handling")
         
 
-    def generateROMWeights(self, isModeMatched=True, verbose=False, interpolate=False, interpolate_N=None, tolerance = 1e-12, sigma = 1, sort=False, greedyfile=None, useSymmetry=True):
-        
-        if interpolate:
-            from scipy.interpolate import interp2d
-            import numpy as np
-
-            D = interp2d(self.x, self.y, self.data, fill_value=0)
-            if interpolate_N is None:
-                interpolate_N = (self.size[0], self.size[1])
-                
-            # only want even number of data points spread equally
-            # about the axes
-            if interpolate_N[0] % 2 == 0:
-                Nx = interpolate_N[0]
-            else:
-                Nx = interpolate_N[0]-1
-
-            if interpolate_N[1] % 2 == 0:
-                Ny = interpolate_N[1]
-            else:
-                Ny = interpolate_N[1]-1
-            
-            nx = np.linspace(min(self.x), max(self.x), interpolate_N[0]) 
-            ny = np.linspace(min(self.y), max(self.y), interpolate_N[1])
-            
-            data = D(nx-self.offset[0], ny-self.offset[0])
-            
-            self.name += "[ROMHOM_Interpolated]"
-            
-            self.center = (np.array(data.shape)+1)/2.0
-            
-            self.data = data
     
-        if useSymmetry:
-            xm = self.x[self.x<0]
-            ym = self.y[self.y<0]
-        else:
-            xm = self.x
-            ym = self.y
-        
-        if min(xm) == min(ym) and max(xm) == max(ym) and len(xm) == len(ym):
-            symm = True
-        else:
-            symm = False
-            
-        EI = {}
-        
-        EI["x"] = makeEmpiricalInterpolant(makeReducedBasis(xm, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma, greedyfile=greedyfile), sort=sort)
-        
-        if symm:
-            EI["y"] = EI["x"]
-        else:
-            EI["y"] = makeEmpiricalInterpolant(makeReducedBasis(ym, isModeMatched=isModeMatched, tolerance = tolerance, sigma = sigma, greedyfile=greedyfile), sort=sort)
-        
-        EI["limits"] = EI["x"].limits
-        
-        self._rom_weights = makeWeights(self, EI, verbose=verbose, useSymmetry=useSymmetry)
-        
-        return self.ROMWeights, EI
-    
-    
-    def generateROMWeightsNew(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=8):
+    def generateROMWeights(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=8):
         if interpolate == True:
             # Use EI nodes to interpolate if we
             with open(EIxFilename, 'rb') as f:
@@ -228,7 +168,7 @@ class surfacemap(object):
             
             self.interpolate(nx, ny)
         
-        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose, newtonCotesOrder=newtonCotesOrder)
+        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder)
         return self.ROMWeights
 
     def interpolate(self, nx, ny, **kwargs):
