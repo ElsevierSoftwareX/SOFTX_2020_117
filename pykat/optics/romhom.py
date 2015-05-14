@@ -625,8 +625,8 @@ def _worker_ROM(hdf5Filename, job_queue, result_err, result_idx, event, driver='
                 
                 for ll in TSidx:
                     a = TS['%i/data' % ll].value
-                    
-                    _err = np.max(np.abs(a - emp_interp(B, a, EI_indices)))
+                    res = a - emp_interp(B, a, EI_indices)
+                    _err = np.max( (np.abs(res.real), np.abs(res.imag)) )
                         
                     max_err.append(_err)
                     
@@ -695,7 +695,8 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
                        R=TSdata['R'].value,
                        mapSamples=TSdata['halfMapSamples'].value,
                        max_order=int(TSdata['maxOrder'].value))
-                       
+                  
+    
     with open(greedyFilename, "w") as f:
         f.write("min w0 = %15.15e\n" % limits.zmin)
         f.write("max w0 = %15.15e\n" % limits.zmax)
@@ -718,9 +719,11 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
 
                 for ll in TSidx:
                     a = TS['%i/data' % ll].value
-                    max_res.append(np.max(a - emp_interp(B, a, EI_indices)))
+                    res = a - emp_interp(B, a, EI_indices)
+                    
+                    max_res.append(np.max( (np.abs(res.real), np.abs(res.imag)) ))
 
-                worst_error = max(np.abs(max_res))
+                worst_error = np.max(np.abs(max_res))
                 next_RB_index = np.argmax(max_res)
             
             else:
@@ -749,17 +752,24 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
                 print( "Final basis size = %d, Final error = %e, Tolerance=%e" % (k, worst_error, tol) )
                 break
 
-            print ("worst error = %e at %i on iteration %d" % (worst_error, next_RB_index, k))
-        
             epsilon = TS['%i/data' % next_RB_index].value
-            
             res = epsilon - emp_interp(B, epsilon, EI_indices)
-                
-            index = np.argmax(res)
+            
+            index_re = np.argmax(abs(res.real))
+            index_im = np.argmax(abs(res.imag))
+            
+            if abs(res.real[index_re]) > abs(res.imag[index_im]):
+                index = index_re
+            else:
+                index = index_im
+            
             EI_indices.append(index)
             x_nodes.append(TSdata['x'][index])
+            
+            print ("worst error = %e at %i on iteration %d, re.min=%e re.max=%e im.max=%e im.min=%e" % (worst_error, next_RB_index, k, min(res.real), max(res.real), min(res.imag), max(res.imag)))
+            
             RB_matrix.append(res/max(res))
-
+            
             for l in range(len(EI_indices)): # Part of (5) of Algorithm 2: making V_{ij} 
                 for m in range(len(EI_indices)): # Part of (5) of Algorithm 2: making V_{ij} 
                     V[m][l] = RB_matrix[l][EI_indices[m]] # Part of (5) of Algorithm 2: making V_{ij}
@@ -769,7 +779,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
             
             _TS = TS[str(next_RB_index)]
             f.write("%15.15e %15.15e %i %i\n" % (_TS["w0"].value, _TS["z"].value, _TS["n1"].value, _TS["n2"].value))
-                
+    
     print (time.time() - start, "Seconds")
     
     if NProcesses > 1:
