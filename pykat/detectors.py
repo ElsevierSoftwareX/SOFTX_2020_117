@@ -597,7 +597,13 @@ class pd(Detector1):
                 alt_str = "*"
                 
             for n in range(1, 1+self.num_demods):
-                fphi_str += " {0:.16g}".format(float(self.__getattribute__("f"+str(n))))
+                _f = self.__getattribute__("f"+str(n))
+                
+                if _f == "$fs":
+                    fphi_str += " $fs"
+                else:
+                    fphi_str += " {0:.16g}".format(float(_f))
+                    
                 phi_val = self.__getattribute__("phi"+str(n))
                 
                 if phi_val != None:
@@ -703,7 +709,13 @@ class qnoised(pd):
                 alt_str = "*"
             
             for n in range(1, 1+self.num_demods):
-                fphi_str += " {0:.16g}".format(float(self.__getattribute__("f"+str(n))))
+                _f = self.__getattribute__("f"+str(n))
+                
+                if _f == "$fs":
+                    fphi_str += " $fs"
+                else:
+                    fphi_str += " {0:.16g}".format(float(_f))
+                    
                 phi_val = self.__getattribute__("phi"+str(n))
                 
                 if phi_val != None:
@@ -795,7 +807,13 @@ class qshot(pd):
                 alt_str = "*"
                 
             for n in range(1, 1+self.num_demods):
-                fphi_str += " {0:.16g}".format(float(self.__getattribute__("f"+str(n))))
+                _f = self.__getattribute__("f"+str(n))
+                
+                if _f == "$fs":
+                    fphi_str += " $fs"
+                else:
+                    fphi_str += " {0:.16g}".format(float(_f))
+                    
                 phi_val = self.__getattribute__("phi"+str(n))
                 
                 if phi_val != None:

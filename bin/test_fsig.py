@@ -15,16 +15,17 @@ m m2 0.99 0.01 -0.1 n3 n4
 
 attr m2 m 1  # mech sus1
 
-ad up_refl 0 n1
-ad low_refl 0 n1
+ad up_refl $fs n1
+ad low_refl $fs n1
 
 qd refl_A 0 0 n1
 qd refl_Q 0 90 n1
 qd tran_A 0 0 n4
 qd tran_Q 0 90 n4
 
-put up_refl f $x1
-put low_refl f $mx1
+qnoised qnd 1 $fs max n4
+qshot   qsd 1 $fs max n4
+pd1 p1 $fs max n4
 
 yaxis log re:im
 
@@ -47,10 +48,10 @@ a_up = out.y[:,0] + out.y[:,1]*1j
 a_lo = out.y[:,2] + out.y[:,3]*-1j
 
 pl.figure(1)
-pl.loglog(out.x, np.abs(a_up + a_lo), out.x, np.abs((a_up - a_lo) / (1j)))
+pl.loglog(out.x, out["p1"])
 pl.xlabel(out.xlabel)
 pl.title("Reflection quadratures with no relative carrier phase")
 pl.legend(["Amplitude","Phase"])
-#pl.show()
+pl.show()
 
 kat.remove(kat.signals)

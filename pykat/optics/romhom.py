@@ -22,7 +22,7 @@ from scipy.integrate import newton_cotes
 from multiprocessing import Process, Queue, Array, Value, Event
 
 
-EmpiricalInterpolant = collections.namedtuple('EmpiricalInterpolant', 'B nodes node_indices limits x')
+EmpiricalInterpolant = collections.namedtuple('EmpiricalInterpolant', 'B nodes node_indices limits x worst_error')
 ReducedBasis = collections.namedtuple('ReducedBasis', 'RB limits x')
 ROMLimits = collections.namedtuple('ROMLimits', 'zmin zmax w0min w0max R mapSamples max_order')
                        
@@ -795,7 +795,8 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
                               nodes=np.array(x_nodes).squeeze(),
                               node_indices=np.array(EI_indices).squeeze(),
                               limits=limits,
-                              x=x.squeeze())
+                              x=x.squeeze(),
+                              worst_error=worst_error)
     
     if EIFilename is not None:
         with open("%s.p" % EIFilename, 'wb') as f:

@@ -25,8 +25,13 @@ __suffix = {'y': 'e-24',  # yocto
             'P': 'e15'   # peta
             }
             
+__exceptions = ["$fs", "$mfs"]
+
 def SIfloat(value):
-    if value==None: 
+    if value is None: 
+        return value
+    
+    if value in __exceptions:
         return value
         
     value = np.array(value)
