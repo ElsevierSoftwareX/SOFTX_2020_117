@@ -181,7 +181,47 @@ def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
             trace_info[space.name] = space_trace(gouyx = space.gouy_x,
                                                  gouyy = space.gouy_y)
                      
-                                             
+class KatBatch(object):
+    """
+    
+    """
+    
+    def __init__(self):
+        from IPython.parallel import Client
+
+        self._c = Client()
+        self._lb = c.load_balanced_view()
+        self.lb.block = False
+        
+        self._todo = []
+    
+    def _run(dir, commands, **kwargs):
+        import pykat
+        kat = pykat.finesse.kat()
+        kat.verbose = False
+        kat.parseCommands(commands)
+        
+        kw = dict()
+        
+        if "cmd_args" in kwargs:
+            kw["cmd_args"] = kwargs["cmd_args"]
+        
+        return kat.run(printerr=1, **kw)
+    
+    def addKat(self, kat, **kwargs):
+        import os
+        cdir = os.getcwd()
+        script = "\n".join(kat.generateKatScript())
+        self.todo.append(self.lb.apply_async(self._run, script, **kwargs))
+        return self.todo[-1]
+    
+    def wait(self):
+        return self.lb.wait(self.todo)
+        
+    def results(self):
+        return self.todo
+
+                                  
 def GUILength(L):
     """
     Should scale the lengths in some way to handle km and mm for time being
@@ -971,7 +1011,7 @@ class kat(object):
                     if comp._default_fsig() is None:
                         raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
                     
-                    param = None
+                    param_name = None
                     amp = None
                 
                     if len(v) == 5:
@@ -984,11 +1024,12 @@ class kat(object):
                             phase = float(v[4])
                             amp = float(v[5])
                         else:
-                            param = v[3]
+                            param_name = v[3]
                             freq = float(v[4])
                             phase = float(v[5])
+                        
                     elif len(v) == 7:
-                        param = v[3]
+                        param_name = v[3]
                         freq = float(v[4])
                         phase = float(v[5])
                         amp = float(v[6])
@@ -996,7 +1037,17 @@ class kat(object):
                         raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                     
                     self.signals.f = freq
-                    self.signals.apply(comp._default_fsig(), amp, phase, name)
+                    
+                    if param_name is None:
+                        param = comp._default_fsig()
+                    else:
+                        for p in comp._params:
+                            if p.canFsig and p.fsigName == param_name:
+                                param = p
+                                break
+                            
+                        
+                    self.signals.apply(param, amp, phase, name)
                 
                 else:
                     raise pkex.BasePyKatException("Haven't handled parsing of '{0}'".format(line))
@@ -1021,15 +1072,6 @@ class kat(object):
 
         except pkex.BasePyKatException as ex:
             print (ex)
-
-            
-    def getProcess(self, callback, **kwargs):
-        """
-        """
-        
-        cmd = "\n".join(self.generateKatScript())
-        
-        return Process(target=f__lkat_process, args=(callback, cmd, kwargs))
 
     def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False):
         """ 
@@ -1404,7 +1446,7 @@ class kat(object):
         except pkex.BasePyKatException as ex:
             pkex.PrintError("Error on removing object:", ex)
 
-    def undumpNodes(self):
+    def undumpNodes(self, undumped_name_prefix = "dump"):
         """
         Loops through and removes all dump nodes. Required when running quantum noise
         calculations using qnoised as noise must be injected in where losses occur, such as power
@@ -1416,13 +1458,13 @@ class kat(object):
         """
         
         i = 0
-        node_name = "dump%i" % i
+        node_name = "%s_%i" % (str(undumped_name_prefix), i)
     
         for c in self.components.values():
             for n in c.nodes:
                 if n.isDump:
                     while hasattr(kat.nodes, node_name):
-                        node_name = "dump%i" % i
+                        node_name = "%s_%i" % (str(undumped_name_prefix), i)
                         i += 1
                         
                     self.nodes.replaceNode(c, n, self.nodes.createNode(node_name % i))
@@ -1950,8 +1992,17 @@ class kat(object):
             rtn.append(name)
             
         return rtn
+     
+    def _lkat_getProcess(self, callback, **kwargs):
+        """
+        """
         
-    def lkat_trace(self, getCavities=True, getNodes=True, getSpaces=True):
+        cmd = "\n".join(self.generateKatScript())
+        
+        return Process(target=f__lkat_process, args=(callback, cmd, kwargs))
+    
+      
+    def _lkat_trace(self, getCavities=True, getNodes=True, getSpaces=True):
         """
         Given the current state of the kat object a new FINESSE process is called and just
         the beam tracing routine is run. The object that is returned contains all the information

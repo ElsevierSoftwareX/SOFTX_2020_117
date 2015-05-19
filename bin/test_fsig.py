@@ -25,33 +25,31 @@ qd tran_Q 0 90 n4
 
 qnoised qnd 1 $fs max n4
 qshot   qsd 1 $fs max n4
+
 pd1 p1 $fs max n4
 
-yaxis log re:im
-
-fsig noise m2 1 0
+fsig noise l1 amp 1 0
 """
 
 kat = finesse.kat(kat_code=code)
 
-kat.removeLine("fsig noise 9")
+# kat.signals.apply(kat.m2.z, 1.0, 0.0)
+# kat.yaxis = "re:im"
+# kat.add(xaxis('log', [1, 1000], kat.signals.f, 1000))
+#
+# out = kat.run(printout=0, printerr=0)
+#
+# a_up = out[kat.up_refl]
+# a_lo = out[kat.low_refl]
+#
+# pl.figure(1)
+# ax = pl.subplot(111)
+# pl.grid()
+# ax.loglog(out.x, abs(a_up))
+# ax = ax.twinx()
+# ax.plot(out.x, np.rad2deg(np.angle(a_up)), 'r')
+# pl.xlabel(out.xlabel)
 
-kat.signals.apply(kat.l1.P, 1, 0)
-kat.signals.apply(kat.m1.phi, 1, 90)
-
-kat.add(xaxis('log', [1, 1000], kat.signals.f, 100))
-
-out = kat.run(printout=0, printerr=0)
-
-# using real and imag part compute the complex value of the upper and lower sidebands
-a_up = out.y[:,0] + out.y[:,1]*1j
-a_lo = out.y[:,2] + out.y[:,3]*-1j
-
-pl.figure(1)
-pl.loglog(out.x, out["p1"])
-pl.xlabel(out.xlabel)
-pl.title("Reflection quadratures with no relative carrier phase")
-pl.legend(["Amplitude","Phase"])
-pl.show()
-
+#pl.show()
+print(kat.generateKatScript())
 kat.remove(kat.signals)

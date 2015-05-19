@@ -112,6 +112,9 @@ class Param(putable, putter):
     def fsig_name(self): return self.__fsig_name
     
     @property
+    def fsigName(self): return self.__fsig_name
+    
+    @property
     def name(self): return self._name
     
     @property
