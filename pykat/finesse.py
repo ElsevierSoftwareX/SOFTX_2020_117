@@ -1044,6 +1044,7 @@ class kat(object):
                         raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                     
                     self.signals.f = freq
+                    param = None
                     
                     if param_name is None:
                         param = comp._default_fsig()
@@ -1052,8 +1053,10 @@ class kat(object):
                             if p.canFsig and p.fsigName == param_name:
                                 param = p
                                 break
-                            
                         
+                        if param is None:
+                            raise pkex.BasePyKatException("Line: '{0}': {1} is not a valid fsig target for {2}".format(line, param_name, comp.name))
+                            
                     self.signals.apply(param, amp, phase, name)
                 
                 else:
