@@ -940,7 +940,7 @@ class kat(object):
                     
                 elif (first == "scale"):
                     v = line.split()
-                    accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "degs"]
+                    accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "deg"]
                 
                     if len(v) == 3:
                         component_name = v[2]
@@ -1013,26 +1013,33 @@ class kat(object):
                     
                     param_name = None
                     amp = None
-                
+                    
                     if len(v) == 5:
                         param is None
-                        freq = float(v[3])
-                        phase = float(v[4])
+                        freq = SIfloat(v[3])
+                        phase = SIfloat(v[4])
                     elif len(v) == 6:
-                        if v[3].isdigit():
-                            freq = float(v[3])
-                            phase = float(v[4])
-                            amp = float(v[5])
+                        
+                        try:
+                            SIfloat(v[3])
+                            isFloat = True
+                        except:
+                            isFloat = False
+                            
+                        if isFloat:
+                            freq = SIfloat(v[3])
+                            phase = SIfloat(v[4])
+                            amp = SIfloat(v[5])
                         else:
                             param_name = v[3]
-                            freq = float(v[4])
-                            phase = float(v[5])
+                            freq = SIfloat(v[4])
+                            phase = SIfloat(v[5])
                         
                     elif len(v) == 7:
                         param_name = v[3]
-                        freq = float(v[4])
-                        phase = float(v[5])
-                        amp = float(v[6])
+                        freq = SIfloat(v[4])
+                        phase = SIfloat(v[5])
+                        amp = SIfloat(v[6])
                     else:
                         raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                     
