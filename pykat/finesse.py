@@ -940,7 +940,7 @@ class kat(object):
                     
                 elif (first == "scale"):
                     v = line.split()
-                    accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "deg"]
+                    accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "deg", "rad", "1/deg", "1/rad",]
                 
                     if len(v) == 3:
                         component_name = v[2]
@@ -1329,20 +1329,23 @@ class kat(object):
 
                 if self.verbose: print ("\nOutput data saved to '{0}'".format(newoutfile))
 
-            if len(self.detectors.keys()) > 0:
-                if hasattr(self, "x2axis") and self.noxaxis == False:
-                    [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
-                
-                    r.xlabel = hdr[0]
-                    r.ylabel = hdr[1]
-                    r.zlabels = [s.strip() for s in hdr[2:]]
-                    #r.zlabels = map(str.strip, hdr[2:])
-                else:
-                    [r.x,r.y,hdr] = self.readOutFile(outfile)
+            # can't see why this check is needed, causes problems when only detectors
+            # not parsed as pykat objects are used
+            #if len(self.detectors.keys()) > 0: 
             
-                    r.xlabel = hdr[0]
-                    r.ylabels = [s.strip() for s in hdr[1:]]
-                    #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
+            if hasattr(self, "x2axis") and self.noxaxis == False:
+                [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
+            
+                r.xlabel = hdr[0]
+                r.ylabel = hdr[1]
+                r.zlabels = [s.strip() for s in hdr[2:]]
+                #r.zlabels = map(str.strip, hdr[2:])
+            else:
+                [r.x,r.y,hdr] = self.readOutFile(outfile)
+                
+                r.xlabel = hdr[0]
+                r.ylabels = [s.strip() for s in hdr[1:]]
+                #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
                     
             if save_kat:
                 if kat_name is None:
