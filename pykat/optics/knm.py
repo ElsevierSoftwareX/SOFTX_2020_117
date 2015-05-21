@@ -398,14 +398,14 @@ def __Ss(u, _u, F, _F, d=0):
 
 def __S(m, _m, X, _X, F, _F, d=0):
     if m % 2 == 1:
-        lim1 = (m-1)/2
+        lim1 = int((m-1)/2)
     else:
-        lim1 = m/2 
+        lim1 = int(m/2 )
 
     if _m % 2 == 1:
-        lim2 = (_m-1)/2
+        lim2 = int((_m-1)/2)
     else:
-        lim2 = _m/2
+        lim2 = int(_m/2)
     
     r = 0
     
