@@ -1015,7 +1015,7 @@ class kat(object):
                     amp = None
                     
                     if len(v) == 5:
-                        param is None
+                        #param is None
                         freq = SIfloat(v[3])
                         phase = SIfloat(v[4])
                     elif len(v) == 6:
