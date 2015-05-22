@@ -146,12 +146,7 @@ def B_matrix(invV, e):
 
 def emp_interp(B_matrix, func, indices):
     if B_matrix is None: return 0
-    
-    # B : RB matrix
-    assert B_matrix.shape[0] == len(indices)
-    interpolant = np.inner(func[indices].T, B_matrix.T)
-
-    return interpolant 
+    return np.inner(func[indices].T, B_matrix.T)
    
     
 def w(w0, im_q, re_q):
@@ -491,8 +486,14 @@ def _compute_TS(queue, oqueue, x, w):
             oqueue.put((msg, tmp*norm))
 
 
-def _write_TS(queue, filename, tssize):
-    hfile = h5py.File("%s.h5" % filename, 'a') 
+def _write_TS(queue, filename, tssize, Nx, driver):
+    from pykat.external.progressbar import ProgressBar
+    pb = ProgressBar()
+    pb.maxval = tssize
+                    
+    hfile = h5py.File("%s.h5" % filename, 'a', driver=driver) 
+    
+    hfile.create_dataset('data', (tssize, Nx), dtype=np.complex128)
     
     i = 0
     
@@ -506,21 +507,23 @@ def _write_TS(queue, filename, tssize):
                 # Dump each TS into a group
                 key = 'TS/%i' % msg[0][4]
                 
-                hfile[key+"/data"] = msg[1]
                 hfile[key+"/z"]  = msg[0][0]
                 hfile[key+"/w0"] = msg[0][1]
                 hfile[key+"/n1"] = msg[0][2]
                 hfile[key+"/n2"] = msg[0][3]
                 
+                hfile["data"][i] = msg[1]
+                
                 i += 1
                 
-                if i % 1000 == 0:
-                    print(i/float(tssize))
+                if i % 100 == 0:
                     hfile.flush()
+                    pb.update(i)
+                
     finally:
         hfile.close()
         
-def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, NProcesses=1):
+def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, NProcesses=1, driver=None):
     
     iq = Queue()
     oq = Queue()
@@ -561,7 +564,7 @@ def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, NProcess
     print("Starting processes...")
     # Have a bunch of processes doing the computation and one doing the writing
     iprocesses = [Process(target=_compute_TS, name="irom%i" % i, args=(iq, oq, x, w)) for i in range(NProcesses)]
-    oprocess = Process(target=_write_TS, name="orom", args=(oq, filename, tssize))
+    oprocess = Process(target=_write_TS, name="orom", args=(oq, filename, tssize, halfMapSamples, driver))
     
     oprocess.start()
     
@@ -603,13 +606,12 @@ def CreateTrainingSetHDF5(filename, maxOrder, z, w0, R, halfMapSamples, NProcess
     print("Data written to %s.h5" % filename)
     
     
-def _worker_ROM(hdf5Filename, job_queue, result_err, result_idx, event, driver='core'):
+def _worker_ROM(hdf5Filename, job_queue, result_err, result_idx, event, driver='stdio', chunk=10):
     # h5py drivers: 'core', 'sec2', 'stdio', 'mpio'
     # Need to use something ot her than sec2, the default on OSX,
     # as it doesn't play nice with multiple processes reading files
-    with h5py.File("%s.h5" % hdf5Filename, driver=driver, mode='r') as file:
     
-        TS = file["TS"]
+    with h5py.File("%s.h5" % hdf5Filename, driver=driver, mode='r') as file:
         
         while True:
             
@@ -619,23 +621,40 @@ def _worker_ROM(hdf5Filename, job_queue, result_err, result_idx, event, driver='
                 break
             else:
                 TSidx, B, EI_indices = msg
-                TSidx = np.array(TSidx)
+                TSidx = [TSidx[x:x+chunk] for x in range(0, len(TSidx), chunk)]
                 
-                max_err = []
+                max_err = 0
+                max_idx = -1
                 
-                for ll in TSidx:
-                    a = TS['%i/data' % ll].value
-                    res = a - emp_interp(B, a, EI_indices)
-                    _err = np.max( (np.abs(res.real), np.abs(res.imag)) )
-                        
-                    max_err.append(_err)
+                for l in TSidx:
+                    a = file['data'][l][:]
                     
-                result_err.value = np.max(max_err)
-                result_idx.value = TSidx[np.argmax(max_err)]
+                    for ll in range(len(a)):
+                        res = a[ll] - emp_interp(B, a[ll], EI_indices)
+                        _err = np.max( (np.abs(res.real), np.abs(res.imag)) )
+                        
+                        if _err > max_err or max_idx == -1:
+                            max_idx = l[ll]
+                            max_err = _err
+                    
+                result_err.value = max_err
+                result_idx.value = max_idx
                 
                 event.set()
 
-def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-10, NProcesses=1, maxRBsize=50, driver="core"):
+def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-10, NProcesses=1, maxRBsize=50, driver="stdio", chunk=10):
+    """
+    Using a Training Set generated using CreateTrainingSetHDF5 an empirical interpolant is computed.
+    
+    hdf5Filename = Name of HDF5 file to use
+    greedyFilename = Output text file that contains which TS elements were used to make the EI
+    EIFilename = Output Pickled file of the EI
+    tol = Tolerance for the error on the basis
+    NProcesses = Number of processes to use to generate the basis
+    maxRBsize = The maximum number of elements in the basis allowed
+    driver = The HDF5 driver to use. Use either 'core' or 'stdio'. The former loads the entire TS into memory for each process so can easily overwhelm the computer memory but is faster
+    chunk = The number of TS to read from the file at once. Typically 10-100 seem to perform best, faster harddisks can use a larger chunk
+    """
     start = time.time()
     
     #### Start reading TS file ####
@@ -674,7 +693,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
         
         Names = range(NProcesses)
         procs = [Process(name="process_%i" % l[0], target=_worker_ROM, 
-                         args=(hdf5Filename, queue, l[1], l[2], l[3], driver)) for l in zip(Names, result_err, result_idx, locks)]
+                         args=(hdf5Filename, queue, l[1], l[2], l[3], driver, chunk)) for l in zip(Names, result_err, result_idx, locks)]
 
         max_res = np.zeros((NProcesses), dtype='d')
         max_idx = np.zeros((NProcesses), dtype='i')
@@ -711,17 +730,18 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
         f.write("%15.15e %15.15e %i %i\n" % (_TS["z"].value, _TS["w0"].value, _TS["n1"].value, _TS["n2"].value))
     
         for k in range(1, maxRBsize): 
-        
+            _s = time.time()
+            
             if NProcesses == 1:
                 max_res = []
+                TSidx = range(TSsize)
+                TSidx = [TSidx[x:x+chunk] for x in range(0, len(TSidx), chunk)]
 
-                TSidx = np.array(range(TSsize))
-
-                for ll in TSidx:
-                    a = TS['%i/data' % ll].value
-                    res = a - emp_interp(B, a, EI_indices)
-                    
-                    max_res.append(np.max( (np.abs(res.real), np.abs(res.imag)) ))
+                for l in TSidx:
+                    a = TSdata['data'][l]
+                    for ll in range(len(a)):
+                        res = a[ll] - emp_interp(B, a[ll], EI_indices)                    
+                        max_res.append(np.max( (np.abs(res.real), np.abs(res.imag)) ))
 
                 worst_error = np.max(np.abs(max_res))
                 next_RB_index = np.argmax(max_res)
@@ -729,7 +749,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
             else:
             
                 TSs = [range(TSsize)[i::NProcesses] for i in range(NProcesses)]
-            
+                
                 for l in TSs: queue.put((l, B, EI_indices))
             
                 end_locks = copy(locks)
@@ -752,7 +772,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
                 print( "Final basis size = %d, Final error = %e, Tolerance=%e" % (k, worst_error, tol) )
                 break
 
-            epsilon = TS['%i/data' % next_RB_index].value
+            epsilon = TSdata['data'][next_RB_index]
             res = epsilon - emp_interp(B, epsilon, EI_indices)
             
             index_re = np.argmax(abs(res.real))
@@ -766,7 +786,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
             EI_indices.append(index)
             x_nodes.append(TSdata['x'][index])
             
-            print ("worst error = %e at %i on iteration %d, re.min=%e re.max=%e im.max=%e im.min=%e" % (worst_error, next_RB_index, k, min(res.real), max(res.real), min(res.imag), max(res.imag)))
+            print ("worst error = %e at %i on iteration %d" % (worst_error, next_RB_index, k))
             
             RB_matrix.append(res/max(res))
             
@@ -780,6 +800,8 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
             _TS = TS[str(next_RB_index)]
             f.write("%15.15e %15.15e %i %i\n" % (_TS["w0"].value, _TS["z"].value, _TS["n1"].value, _TS["n2"].value))
     
+            print("Time ", time.time() - _s)
+            
     print (time.time() - start, "Seconds")
     
     if NProcesses > 1:

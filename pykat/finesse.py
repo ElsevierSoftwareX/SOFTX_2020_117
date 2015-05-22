@@ -1580,11 +1580,11 @@ class kat(object):
             hdr = outfile.readline().replace('%','').replace('\n','').split(',')
         
         data = np.loadtxt(filename, comments='%',skiprows=4)
-
+        
         # convert 1D arrays into 2D ones for simpler selection
         if len(data.shape) == 1:
             data = np.array([data])
-                            
+        
         if hasattr(self, "x2axis") and self.noxaxis == False:
             # need to parse 2D outputs slightly different as they are effectively 2D matrices
             # written in linear form
@@ -1593,8 +1593,14 @@ class kat(object):
             # get rows and columns lined up so that we can reshape a single column of all x/y data
             # into a matrix
             z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps).squeeze()
+            
+            # ensure we have a shape (num outputs, x, y)
+            if len(z.shape) == 2:
+                z = z.reshape(1, z.shape[0], z.shape[1])
+                
             # once you do this the data for y and x axes need swapping
             z = z.swapaxes(1,2)
+            
             return [x, y, z, hdr]
         else:
             shape_len = len(data.shape)
