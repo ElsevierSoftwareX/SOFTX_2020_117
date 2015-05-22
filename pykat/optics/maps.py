@@ -534,5 +534,10 @@ def read_map(filename):
     return surfacemap(name,maptype,size,center,step,scaling,data)
     
     
-        
-        
+# TODO: Recreate functions from Simtools:, List taken from: ligo_maps/FT_convert_ligo_map_for_finesse.m
+# map=FT_recenter_mirror_map(map);
+# [map2,A2,Rc_out]=FT_remove_zernike_curvatures_from_map(map,Rc_in);
+# [map2,Rc_out]=FT_remove_curvature_from_mirror_map(map,Rc_in,w, display_style);
+# [map2,offset]=FT_remove_offset_from_mirror_map(map2,1e-2);
+# [map3,x_tilt,y_tilt,offset2]=FT_remove_piston_from_mirror_map(map2,w, display_style);
+# map3=FT_invert_mirror_map(map3, invert);
