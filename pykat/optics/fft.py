@@ -81,7 +81,7 @@ def FFT_scale_propagate(field, grid0, grid1, Lambda, distance, w0, w1, nr):
 	field = field * np.exp(-1j*k*distance) * np.exp(1j*plD*grid0.fft_ir_squared)
 	field = np.fft.ifft2(field)
 	# final scaling
-	field = field *w0/w1 * np.exp(1j* grid1.r_squared*(z0+L)/(2.0*z0*z0))
+	field = field *w0/w1 * np.exp(1j* grid1.r_squared*(z0+distance)/(2.0*z0*z0))
 	
 	return field
 
