@@ -428,12 +428,20 @@ class field(object):
 	def scalePropagate(self, distance, scale, newGrid):
 		# FFT propagation code with an adaptive grid size.
 		# Propagates to a scaled coordinate system, see Virgo Book of
-		# Physics pages 179-184, the scaling factor is given
-		# as w1/w0 with w0 the beam size at the start of propagation
-		# and w1 the expected beam size at the end of propatation.
+		# Physics pages 179-184.
+		# The scaling factor is given as w1 / w0 with w0 the beam size
+		# at the start of propagation and w1 the expected beam size at
+		# the end of propatation.
+		#
 		# NOT YET TESTED
 
-		# scale = w0 / w1
+		# For now, throw an error if distance == 0.
+		# If distance is zero, the function should return a simple
+		# scaled, unpropagated field.
+		# Currently, if distance == 0, a division by zero occurs due to
+		# the use of an inverse z0 function instead of simple z0 (which
+		# is itself used to avoid scale == 1 causing a division by zero).
+		assert(distance != 0)
 
 		if scale <= 0:
 			raise Exception('Specified scale factor must be > 0')
@@ -441,8 +449,10 @@ class field(object):
 		if newGrid.xpoints != self.grid.xpoints or newGrid.ypoints != self.grid.ypoints:
 			raise Exception('New grid must have same number of points as existing grid')
 
-		plD = np.pi * self.wavelength * distance * scale / self.ref_index
-		invz0 = (1.0 / scale - 1.0) / distance
+		plD = np.pi * self.wavelength * distance / (scale * self.ref_index)
+
+		# invz0 is used to avoid division by zero if scale == 1
+		invz0 = (scale - 1.0) / distance
 	
 		# initial scaling
 		field = self.amplitude * np.exp(-1j * self.k_prop * self.grid.r_squared * invz0 / 2.0)
@@ -451,7 +461,7 @@ class field(object):
 		field = field * np.exp(-1j * self.k_prop * distance) * np.exp(1j * plD * self.grid.fft_ir_squared)
 		field = np.fft.ifft2(field)
 		# final scaling
-		self.amplitude = field * scale * np.exp(1j * newGrid.r_squared * (invz0 + distance * invz0 * invz0) / 2.0)
+		self.amplitude = field * np.exp(1j * newGrid.r_squared * (invz0 + distance * invz0 * invz0) / (2.0 * scale))
 
 		# update grid
 		self.grid = newGrid
