@@ -233,7 +233,7 @@ class field(object):
 
 		self.grid = grid
 		
-		self.ref_index = 1 # reffractive index
+		self.ref_index = 1 # refractive index
 		self.wavelength = 1064E-9 # [m]
         
         # TODO does this need to include ref_index??
@@ -424,7 +424,37 @@ class field(object):
 		tmpfield = tmpfield * propMatrix
 		self.amplitude = np.fft.ifft2(tmpfield)
 		return self
-		
+
+	def scalePropagate(self, distance, scale, newGrid):
+		# FFT propagation code with an adaptive grid size.
+		# Propagates to a scaled coordinate system, see Virgo Book of
+		# Physics pages 179-184, the scaling factor is given
+		# as w1/w0 with w0 the beam size at the start of propagation
+		# and w1 the expected beam size at the end of propatation.
+		# NOT YET TESTED
+
+		# scale = w0 / w1
+
+		if scale <= 0:
+			raise Exception('Specified scale factor must be > 0')
+
+		if newGrid.xpoints != self.grid.xpoints or newGrid.ypoints != self.grid.ypoints:
+			raise Exception('New grid must have same number of points as existing grid')
+
+		plD = np.pi * self.wavelength * distance * scale / self.ref_index
+		invz0 = (1.0 / scale - 1.0) / distance
+	
+		# initial scaling
+		field = self.amplitude * np.exp(-1j * self.k_prop * self.grid.r_squared * invz0 / 2.0)
+		field = np.fft.fft2(field)
+		# scaled propagator
+		field = field * np.exp(-1j * self.k_prop * distance) * np.exp(1j * plD * self.grid.fft_ir_squared)
+		field = np.fft.ifft2(field)
+		# final scaling
+		self.amplitude = field * scale * np.exp(1j * newGrid.r_squared * (invz0 + distance * invz0 * invz0) / 2.0)
+
+		# update grid
+		self.grid = newGrid
 
 	def passAperture(self , diam = 0, shape = 'round'):
 		# Pass through a round aperture of a fixed diameter
