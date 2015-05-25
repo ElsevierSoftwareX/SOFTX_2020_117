@@ -327,8 +327,8 @@ class field(object):
 		                  
 		xaxis_min = self.grid.xaxis.min()
 		xaxis_max = self.grid.xaxis.max()
-		yaxis_min = self.grid.xaxis.min()
-		yaxis_max = self.grid.xaxis.max()
+		yaxis_min = self.grid.yaxis.min()
+		yaxis_max = self.grid.yaxis.max()
     
 		ax.set_xlim(xaxis_min,xaxis_max)
 		ax.set_ylim(yaxis_min,yaxis_max) 
