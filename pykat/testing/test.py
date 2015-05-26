@@ -363,55 +363,59 @@ class FinesseTestProcess(Thread):
                 self.cancelCheck()
                 self.running_kat = out
                 
-                ref_file = os.path.join(REF_DIR,out)
-                out_file = os.path.join(SUITE_PATH,out)
+                try:        
+                    ref_file = os.path.join(REF_DIR,out)
+                    out_file = os.path.join(SUITE_PATH,out)
                 
-                if not os.path.exists(ref_file):
-                    raise DiffException("Reference file doesn't exist for " + out, out)
+                    if not os.path.exists(ref_file):
+                        raise DiffException("Reference file doesn't exist for " + out, out)
                     
-                ref_arr = np.loadtxt(ref_file, dtype=np.float64)
-                out_arr = np.loadtxt(out_file, dtype=np.float64)
+                    ref_arr = np.loadtxt(ref_file, dtype=np.float64)
+                    out_arr = np.loadtxt(out_file, dtype=np.float64)
                 
-                if ref_arr.shape != out_arr.shape:
-                    raise DiffException("Reference and output are different shapes", out)
+                    if ref_arr.shape != out_arr.shape:
+                        raise DiffException("Reference and output are different shapes", out)
 
-                # for computing relative errors we need to make sure we
-                # have no zeros in the data
-                nzix = (ref_arr != 0)
+                    # for computing relative errors we need to make sure we
+                    # have no zeros in the data
+                    nzix = (ref_arr != 0)
                 
-                rel_diff = np.abs(out_arr-ref_arr)
-                # only compute rel diff for non zero values
-                rel_diff[nzix] = np.divide(rel_diff[nzix], np.abs(ref_arr[nzix]))
+                    rel_diff = np.abs(out_arr-ref_arr)
+                    # only compute rel diff for non zero values
+                    rel_diff[nzix] = np.divide(rel_diff[nzix], np.abs(ref_arr[nzix]))
                 
-                diff = np.any(rel_diff >= self.diff_rel_eps)
+                    diff = np.any(rel_diff >= self.diff_rel_eps)
                                 
-                if diff:
-                    self.diffFound = True
+                    if diff:
+                        self.diffFound = True
                     
-                    # store the rows which are different
-                    ix = np.where(rel_diff >= self.diff_rel_eps)[0][0]
+                        # store the rows which are different
+                        ix = np.where(rel_diff >= self.diff_rel_eps)[0][0]
                 
-                    self.output_differences[suite][out] = (True,
-                                                           ref_arr[ix],
-                                                           out_arr[ix],
-                                                           np.max(rel_diff))
-                else:
-                    max = np.max(rel_diff) 
+                        self.output_differences[suite][out] = (True,
+                                                               ref_arr[ix],
+                                                               out_arr[ix],
+                                                               np.max(rel_diff))
+                    else:
+                        max = np.max(rel_diff) 
                     
-                    self.output_differences[suite][out] = (False, max)
+                        self.output_differences[suite][out] = (False, max)
                 
                 
                         
-                # compress the data
-                f_in = open(out_file, 'rb')
-                f_out = gzip.open(out_file + ".gz", 'wb')
-                f_out.writelines(f_in)
-                f_out.close()
-                f_in.close()
+                    # compress the data
+                    f_in = open(out_file, 'rb')
+                    f_out = gzip.open(out_file + ".gz", 'wb')
+                    f_out.writelines(f_in)
+                    f_out.close()
+                    f_in.close()
                 
-                print "removing out file ", out_file
-                os.remove(out_file)
-                
+                    print "removing out file ", out_file
+                    os.remove(out_file)
+                    
+                except DiffException as ex:
+                    print(str(ex), "output =", out)
+                    
                 self.done_kats.value += 1
         
         print "Finished diffing..."
