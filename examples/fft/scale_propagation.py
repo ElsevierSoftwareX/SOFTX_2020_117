@@ -14,11 +14,13 @@ May 2015
 import pykat.oscar as oscar
 import pylab as pl
 import numpy as np
-#from mpl_toolkits.axes_grid1 import ImageGrid
 import matplotlib as mpl
 
 def main():
 	### parameters
+
+	# grid size
+	gridSize = (512, 512) # width, height
 
 	# power at laser [W]
 	power = 1
@@ -27,28 +29,31 @@ def main():
 	mode = 'HG 0 0'
 
 	# waist size of beam at start [m]
-	waist = 2e-3
+	waist = 1e-3
+
+	# radius of curvature [m]
+	roc = 8
 
 	# unscaled physical grid size [m]
-	w0 = 10e-3
+	initialPhysicalSize = (10e-3, 10e-3)
 
 	# scaled physical grid size [m]
-	w1 = 5e-3
+	scaledPhysicalSize = (3e-3, 3e-3)
 
 	# propagation distance [m]
-	distance = 10
+	distance = 2.5
 
 	# grid scale factor
-	scale = w1 / w0
+	scale = 0.3
 
 	### propagation
 
 	# create different grids to demonstrate scaled propagation
-	grid1 = oscar.grid(512, 512, w0, w0)
-	grid2 = oscar.grid(512, 512, w1, w1)
+	grid1 = oscar.grid(gridSize[0], gridSize[1], initialPhysicalSize[0], initialPhysicalSize[1])
+	grid2 = oscar.grid(gridSize[0], gridSize[1], scaledPhysicalSize[0], scaledPhysicalSize[1])
 
 	# create input field
-	laser = oscar.field(grid1, w=waist, power=power, mode=mode)
+	laser = oscar.field(grid1, w=waist, Rc=roc, power=power, mode=mode)
 
 	# create three identical fields
 	field0 = laser.copy()
