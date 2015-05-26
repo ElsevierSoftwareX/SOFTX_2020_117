@@ -27,7 +27,7 @@ def main():
 	mode = 'HG 0 0'
 
 	# waist size of beam at start [m]
-	waist = 1e-3
+	waist = 2e-3
 
 	# unscaled physical grid size [m]
 	w0 = 10e-3
@@ -36,10 +36,10 @@ def main():
 	w1 = 5e-3
 
 	# propagation distance [m]
-	distance = 5
+	distance = 10
 
 	# grid scale factor
-	scale = 2
+	scale = w1 / w0
 
 	### propagation
 
