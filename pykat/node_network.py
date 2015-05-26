@@ -9,6 +9,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import pykat
 from pykat import USE_GUI, NoGUIException
 
 if USE_GUI:
@@ -465,17 +466,17 @@ class NodeNetwork(object):
             
         if to_node == from_node:
             return []
-        
-        if from_node not in self.__nodes:
+    
+        if from_node.name not in self.__nodes:
             raise pkex.BasePyKatException("Node {0} cannot be found in this kat object".format(from_node))
 
-        if to_node not in self.__nodes:
+        if to_node.name not in self.__nodes:
             raise pkex.BasePyKatException("Node {0} cannot be found in this kat object".format(to_node))
         
         branches = []
         
-        fn = self.__nodes[from_node]
-        tn = self.__nodes[to_node]
+        fn = self.__nodes[from_node.name]
+        tn = self.__nodes[to_node.name]
         
         branches.append([False, False, fn, fn.components[1], []])
         branches.append([False, False, fn, fn.components[0], []])

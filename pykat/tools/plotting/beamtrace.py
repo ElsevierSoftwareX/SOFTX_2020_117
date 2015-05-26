@@ -32,13 +32,11 @@ def plot_beam_trace(_kat, from_node, to_node):
     v = [c for c in zip(components, nodes) if isinstance(c[0], pykat.components.space)]
     spaces = [d[0] for d in v]
     nodes2  = [d[1] for d in v]
-
-    print [n.name for n in spaces   ]
-
+    
     pylab.figure()
     
     if len(spaces) > 0:
-        print "Plotting beam along spaces", ", ".join([s.name for s in spaces])
+        print("Plotting beam along spaces", ", ".join([s.name for s in spaces]))
     
         for d in kat.detectors.values():
             d.remove()
@@ -105,7 +103,7 @@ def plot_beam_trace(_kat, from_node, to_node):
         pylab.ylabel("Phase accumulation [deg]")
         pylab.xlabel("Distance [m]")
         pylab.xlim(min(L), max(L))
-        pylab.legend(['x','y'], 0)
+        pylab.legend(['x','y'], loc=0)
         pylab.tight_layout()
         pylab.show()
         
