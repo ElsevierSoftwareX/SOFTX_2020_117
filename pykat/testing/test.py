@@ -413,7 +413,7 @@ class FinesseTestProcess(Thread):
                     print "removing out file ", out_file
                     os.remove(out_file)
                     
-                except DiffException as ex:
+                except ex:
                     print(str(ex), "output =", out)
                     
                 self.done_kats.value += 1
