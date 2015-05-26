@@ -310,7 +310,7 @@ class field(object):
 		
 	def normalise(self, power = 1):
 		if power == 0:
-			self.amplitude = self.amplitde * 0
+			self.amplitude = self.amplitude * 0
 		else:
 			current_power = self.power()
 			if power != 0:
@@ -461,7 +461,7 @@ class field(object):
 		field = field * np.exp(-1j * self.k_prop * distance) * np.exp(1j * plD * self.grid.fft_ir_squared)
 		field = np.fft.ifft2(field)
 		# final scaling
-		self.amplitude = field * np.exp(1j * newGrid.r_squared * (invz0 + distance * invz0 * invz0) / (2.0 * scale))
+		self.amplitude = field * np.exp(1j * self.k_prop * newGrid.r_squared * invz0 * (1 + distance * invz0) / 2) / scale
 
 		# update grid
 		self.grid = newGrid
