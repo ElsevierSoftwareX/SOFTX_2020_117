@@ -413,9 +413,11 @@ class FinesseTestProcess(Thread):
                     print "removing out file ", out_file
                     os.remove(out_file)
                     
-                except ex:
+                except DiffException as ex:
                     print(str(ex), "output =", out)
-                    
+                except:
+                    print("Error processing output = ", out)
+                
                 self.done_kats.value += 1
         
         print "Finished diffing..."
