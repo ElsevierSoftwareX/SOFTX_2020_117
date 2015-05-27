@@ -111,7 +111,25 @@ class surfacemap(object):
     def ROMWeights(self):
         return self._rom_weights
     
-    def z_xy(self, x=None, y=None, wavelength=1064e-9, direction="reflection", nr1=1.0, nr2=1.0):
+    def z_xy(self, x=None, y=None, wavelength=1064e-9, direction="11", nr1=1.0, nr2=1.0):
+        """
+        For this given map the field perturbation is computed. This data
+        is used in computing the coupling coefficient. It returns a grid
+        of complex values representing the change in amplitude or phase
+        of the field.
+        
+            x, y      : Points to interpolate at, 'None' for no interpolation.
+            wavelength: Wavelength of light in vacuum [m]
+            direction : 11 (reflection front)
+                        12 (transmission front to back)
+                        21 (transmission back to front)
+                        22 (reflection back)
+            nr1       : refractive index on front side
+            nr2       : refractive index on back side
+        """
+        
+        assert(nr1 >= 1)
+        assert(nr2 >= 1)
         
         if x is None and y is None:
             data = self.scaling * self.data
@@ -121,28 +139,42 @@ class surfacemap(object):
                 
             data = self.__interp(x, y)
             
-        if direction == "reflection":
+        if direction == "11" or direction == "22":
             if "phase" in self.type:
-                k = math.pi * 2 / wavelength
-                return np.exp(2j * k * data)
+                k = math.pi * nr1 * 2 / wavelength
+                
+                if direction == "11":
+                    return np.exp(-2j * k * data)
+                else:
+                    return np.exp(2j * k * data[:, ::-1])
                 
             elif "absorption" in self.type:
-                return np.sqrt(1.0 - data)
+                if direction == "11":
+                    return np.sqrt(1.0 - data)
+                else:
+                    return np.sqrt(1.0 - data[:, ::-1])
             else:
                 raise BasePyKatException("Map type needs handling")
                 
-        elif direction == "transmission":
+        elif direction == "12" or direction == "21":
             if "phase" in self.type:
                 k = math.pi * 2 / wavelength
-                return np.exp((nr1-nr2)*k * data)
+                
+                if direction == "12":
+                    return np.exp((nr1-nr2)*k * data)
+                else:
+                    return np.exp((nr1-nr2)*k * data[:, ::-1])
                 
             elif "absorption" in self.type:
-                return np.sqrt(1.0 - data)
-                
+                if direction == "12":
+                    return np.sqrt(1.0 - data)
+                else:
+                    return np.sqrt(1.0 - data[:, ::-1])
             else:
                 raise BasePyKatException("Map type needs handling")
+                
         else:
-            raise BasePyKatException("Map type needs handling")
+            raise ValueError("Direction not valid")
         
 
     
@@ -466,6 +498,18 @@ class curvedmap(surfacemap):
         self.data = (self.Rc - math.copysign(1.0, self.Rc) * np.sqrt(self.Rc**2 - Rsq))/ self.scaling
 
 class tiltmap(surfacemap):
+    """
+    To create a tiltmap, plot it and write it to a file to use with Finesse:
+        
+        tilts = (1e-6, 1e-8) # tilt in (x, y) radians\
+        dx = 1e-4
+        L = 0.2
+        N = L/dx
+        
+        tmap = tiltmap("tilt", (N, N), (dx,dx), tilts)
+        tmap.plot()
+        tmap.write_map("mytilt.map")
+    """
     
     def __init__(self, name, size, step_size, tilt):
         surfacemap.__init__(self, name, "phase reflection", size, (np.array(size)+1)/2.0, step_size, 1e-9)
