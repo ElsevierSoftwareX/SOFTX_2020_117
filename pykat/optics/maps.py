@@ -13,14 +13,29 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from pykat.optics.romhom import makeReducedBasis, makeEmpiricalInterpolant, makeWeights, makeWeightsNew
+from pykat.optics.romhom import makeWeightsNew
 from scipy.interpolate import interp2d, interp1d
 from pykat.maths.zernike import *        
 
 import numpy as np
 import math
 import pickle
-		   
+
+class MirrorROQWeights:
+    
+    def __init__(self, rFront, rBack, tFront, tBack):
+        self.rFront = rFront
+        self.rBack = rBack
+        self.tFront = tFront
+        self.tBack = tBack
+    
+    def writeToFile(self, romfilename):
+        with open(romfilename + ".rom", "w+") as f:
+            if self.rFront is not None: self.rFront.writeToFile(f=f)
+            if self.rBack  is not None: self.rBack.writeToFile(f=f)
+            if self.tFront is not None: self.tFront.writeToFile(f=f)
+            if self.tBack  is not None: self.tBack.writeToFile(f=f)
+                    
 class surfacemap(object):
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
         
@@ -111,7 +126,7 @@ class surfacemap(object):
     def ROMWeights(self):
         return self._rom_weights
     
-    def z_xy(self, x=None, y=None, wavelength=1064e-9, direction="11", nr1=1.0, nr2=1.0):
+    def z_xy(self, x=None, y=None, wavelength=1064e-9, direction="reflection_front", nr1=1.0, nr2=1.0):
         """
         For this given map the field perturbation is computed. This data
         is used in computing the coupling coefficient. It returns a grid
@@ -119,13 +134,21 @@ class surfacemap(object):
         of the field.
         
             x, y      : Points to interpolate at, 'None' for no interpolation.
+            
             wavelength: Wavelength of light in vacuum [m]
-            direction : 11 (reflection front)
-                        12 (transmission front to back)
-                        21 (transmission back to front)
-                        22 (reflection back)
+            
+            direction : Sets which distortion to return, as beams travelling
+                        in different directions will see different distortions.
+                        Options are:
+                                "reflection_front"
+                                "transmission_front" (front to back)
+                                "transmission_back" (back to front)
+                                "reflection_back"
+                                
             nr1       : refractive index on front side
+            
             nr2       : refractive index on back side
+            
         """
         
         assert(nr1 >= 1)
@@ -138,35 +161,35 @@ class surfacemap(object):
                 self.__interp = interp2d(self.x, self.y, self.data * self.scaling)
                 
             data = self.__interp(x, y)
-            
-        if direction == "11" or direction == "22":
+        
+        if direction == "reflection_front" or direction == "reflection_back":
             if "phase" in self.type:
-                k = math.pi * nr1 * 2 / wavelength
+                k = math.pi * 2 / wavelength
                 
-                if direction == "11":
-                    return np.exp(-2j * k * data)
+                if direction == "reflection_front":
+                    return np.exp(-2j * nr1 * k * data)
                 else:
-                    return np.exp(2j * k * data[:, ::-1])
+                    return np.exp(2j * nr2 * k * data[:,::-1])
                 
             elif "absorption" in self.type:
-                if direction == "11":
+                if direction == "reflection_front":
                     return np.sqrt(1.0 - data)
                 else:
                     return np.sqrt(1.0 - data[:, ::-1])
             else:
                 raise BasePyKatException("Map type needs handling")
                 
-        elif direction == "12" or direction == "21":
+        elif direction == "transmission_front" or direction == "transmission_back":
             if "phase" in self.type:
                 k = math.pi * 2 / wavelength
                 
-                if direction == "12":
-                    return np.exp((nr1-nr2)*k * data)
+                if direction == "transmission_front":
+                    return np.exp((nr1-nr2) * k * data)
                 else:
-                    return np.exp((nr1-nr2)*k * data[:, ::-1])
+                    return np.exp((nr2-nr1) * k * data[:, ::-1])
                 
             elif "absorption" in self.type:
-                if direction == "12":
+                if direction == "transmission_front":
                     return np.sqrt(1.0 - data)
                 else:
                     return np.sqrt(1.0 - data[:, ::-1])
@@ -178,7 +201,8 @@ class surfacemap(object):
         
 
     
-    def generateROMWeights(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=8):
+    def generateROMWeights(self, EIxFilename, EIyFilename=None, nr1=1.0, nr2=1.0, verbose=False, interpolate=False, newtonCotesOrder=8):
+        
         if interpolate == True:
             # Use EI nodes to interpolate if we
             with open(EIxFilename, 'rb') as f:
@@ -200,9 +224,42 @@ class surfacemap(object):
             
             self.interpolate(nx, ny)
         
-        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder)
-        return self.ROMWeights
+        w_refl_front, w_refl_back, w_tran_front, w_tran_back = (None, None, None, None)
+        
+        if "reflection" in self.type or "both" in self.type:
+            w_refl_front = makeWeightsNew(self, EIxFilename, EIyFilename,
+                                      verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder,
+                                      direction="reflection_front")
+            
+            w_refl_front.nr1 = nr1
+            w_refl_front.nr2 = nr2
+            
+            w_refl_back = makeWeightsNew(self, EIxFilename, EIyFilename,
+                                      verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder,
+                                      direction="reflection_back")
+            
+            w_refl_back.nr1 = nr1
+            w_refl_back.nr2 = nr2
 
+        if "transmission" in self.type or "both" in self.type:                                      
+            w_tran_front = makeWeightsNew(self, EIxFilename, EIyFilename,
+                                      verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder,
+                                      direction="transmission_front")
+
+            w_refl_front.nr1 = nr1
+            w_refl_front.nr2 = nr2
+                                            
+            w_tran_back  = makeWeightsNew(self, EIxFilename, EIyFilename,
+                                      verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder,
+                                      direction="transmission_back")
+            
+            w_refl_back.nr1 = nr1
+            w_refl_back.nr2 = nr2
+            
+        self._rom_weights = MirrorROQWeights(w_refl_front, w_refl_back, w_tran_front, w_tran_back)
+        
+        return self._rom_weights
+            
     def interpolate(self, nx, ny, **kwargs):
         """
         Interpolates the map for some new x and y values.
@@ -308,6 +365,28 @@ class mergedmap:
         self.__interp = None
     
     @property
+    def type(self):
+        hasR = False
+        hasT = False
+        
+        _type = ""
+        
+        for m in self.__maps:
+            if "reflection" in m.type: hasR = True
+            
+            if "transmission" in m.type: hasT = True
+            
+            if "both" in m.type:
+                hasR = True
+                hasT = True
+        
+        if hasR and not hasT: _type += "reflection "
+        elif hasR and not hasT: _type += "transmission "
+        elif hasR and hasT: _type += "both "
+        
+        return _type
+        
+    @property
     def step_size(self):
         return self.__step_size
     
@@ -345,7 +424,7 @@ class mergedmap:
     def ROMWeights(self):
         return self._rom_weights
     
-    def z_xy(self, wavelength=1064e-9, direction="reflection", nr1=1.0, nr2=1.0):
+    def z_xy(self, wavelength=1064e-9, direction="reflection_front", nr1=1.0, nr2=1.0):
         
         z_xy = np.ones(self.size, dtype=np.complex128)
         
@@ -357,7 +436,7 @@ class mergedmap:
         else:
             return z_xy * self.weighting
         
-    def generateROMWeights(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=8):
+    def generateROMWeights(self, EIxFilename, EIyFilename=None, verbose=False, interpolate=False, newtonCotesOrder=8, nr1=1, nr2=1):
         if interpolate == True:
             # Use EI nodes to interpolate if we
             with open(EIxFilename, 'rb') as f:
@@ -379,9 +458,41 @@ class mergedmap:
             
             self.interpolate(nx, ny)
         
-        self._rom_weights = makeWeightsNew(self, EIxFilename, EIyFilename, verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder)
+        w_refl_front, w_refl_back, w_tran_front, w_tran_back = (None, None, None, None)
         
-        return self.ROMWeights
+        if "reflection" in self.type or "both" in self.type:
+            w_refl_front = makeWeightsNew(self, EIxFilename, EIyFilename,
+                                      verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder,
+                                      direction="reflection_front")
+            
+            w_refl_front.nr1 = nr1
+            w_refl_front.nr2 = nr2
+            
+            w_refl_back = makeWeightsNew(self, EIxFilename, EIyFilename,
+                                      verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder,
+                                      direction="reflection_back")
+            
+            w_refl_back.nr1 = nr1
+            w_refl_back.nr2 = nr2
+
+        if "transmission" in self.type or "both" in self.type:                                      
+            w_tran_front = makeWeightsNew(self, EIxFilename, EIyFilename,
+                                      verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder,
+                                      direction="transmission_front")
+
+            w_refl_front.nr1 = nr1
+            w_refl_front.nr2 = nr2
+                                            
+            w_tran_back  = makeWeightsNew(self, EIxFilename, EIyFilename,
+                                      verbose=verbose, newtonCotesOrderMapWeight=newtonCotesOrder,
+                                      direction="transmission_back")
+            
+            w_refl_back.nr1 = nr1
+            w_refl_back.nr2 = nr2
+            
+        self._rom_weights = MirrorROQWeights(w_refl_front, w_refl_back, w_tran_front, w_tran_back)
+        
+        return self._rom_weights
 
     def interpolate(self, nx, ny, **kwargs):
         """

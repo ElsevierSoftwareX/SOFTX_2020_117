@@ -21,35 +21,52 @@ from pykat.maths import newton_weights
 from scipy.integrate import newton_cotes
 from multiprocessing import Process, Queue, Array, Value, Event
 
-
 EmpiricalInterpolant = collections.namedtuple('EmpiricalInterpolant', 'B nodes node_indices limits x worst_error')
 ReducedBasis = collections.namedtuple('ReducedBasis', 'RB limits x')
 ROMLimits = collections.namedtuple('ROMLimits', 'zmin zmax w0min w0max R mapSamples max_order')
                        
 class ROMWeights:
     
-    def __init__(self, w_ij_Q1, w_ij_Q2, w_ij_Q3, w_ij_Q4, EIx, EIy):
+    def __init__(self, w_ij_Q1, w_ij_Q2, w_ij_Q3, w_ij_Q4, EIx, EIy, nr1=1, nr2=1, direction="reflection_front"):
         self.w_ij_Q1 = w_ij_Q1
         self.w_ij_Q2 = w_ij_Q2
         self.w_ij_Q3 = w_ij_Q3
         self.w_ij_Q4 = w_ij_Q4
         
+        self.nr1 = nr1
+        self.nr2 = nr2
+        
+        self.direction = direction 
+        
         self.EIx = EIx
         self.EIy = EIy
         
-    def writeToFile(self, filename):
+    def writeToFile(self, filename=None, f=None):
         """
         Writes this map's ROM weights to a file
         that can be used with Finesse. The filename
         is appended with '.rom' internally.
-        """
-        f = open(filename + ".rom", 'w+')
         
+        Specify either a filename to write the data too, the existing file is overwritten.
+        Or provide an open file object to be written too.
+        """
+        
+        if filename is None and f is None:
+            raise ValueError("'filename' or open file object 'f' should be specified")
+        
+        if f is None:
+            f = open(filename + ".rom", 'w+')
+        
+        f.write("direction=%s\n" % self.direction)
         f.write("zmin=%16.16e\n" % self.EIx.limits.zmin)
         f.write("zmax=%16.16e\n" % self.EIx.limits.zmax)
         f.write("w0min=%16.16e\n" % self.EIx.limits.w0min)
         f.write("w0max=%16.16e\n" % self.EIx.limits.w0max)
         f.write("maxorder=%i\n" % self.EIx.limits.max_order)
+        f.write("R=%16.16e\n" % self.EIx.limits.R)
+        f.write("mapSamples=%i\n" % self.EIx.limits.mapSamples)
+        f.write("nr1=%16.16e\n" % self.nr1)
+        f.write("nr2=%16.16e\n" % self.nr2)
         
         f.write("xnodes=%i\n" % len(self.EIx.nodes))
         
@@ -80,47 +97,10 @@ class ROMWeights:
         
         for v in self.w_ij_Q4.flatten():
             f.write("%s\n" % repr(complex(v))[1:-1])
-            
-        f.close()
 
-class ROMWeightsFull:
-    
-    def __init__(self, w_ij, EI, limits):
-        self.w_ij = w_ij
-        
-        self.EI = EI
-        self.limits = limits
-        
-    def writeToFile(self, filename):
-        """
-        Writes this map's ROM weights to a file
-        that can be used with Finesse. The filename
-        is appended with '.rom' internally.
-        """
-        f = open(filename + ".rom", 'w+')
-        
-        f.write("zmin=%16.16e\n" % self.limits.zmin)
-        f.write("zmax=%16.16e\n" % self.limits.zmax)
-        f.write("w0min=%16.16e\n" % self.limits.w0min)
-        f.write("w0max=%16.16e\n" % self.limits.w0max)
-        f.write("maxorder=%i\n" % self.limits.max_order)
-        
-        f.write("xnodes=%i\n" % len(self.EI["x"].nodes))
-        
-        for v in self.EI["x"].nodes.flatten():
-            f.write("%s\n" % repr(float(v)))
-        
-        f.write("ynodes=%i\n" % len(self.EI["y"].nodes))
-        
-        for v in self.EI["y"].nodes.flatten():
-            f.write("%s\n" % repr(float(v)))
-            
-        f.write(repr(self.w_ij.shape) + "\n")
-        
-        for v in self.w_ij.flatten():
-            f.write("%s\n" % repr(complex(v))[1:-1])
-        
-        f.close()
+        if filename is not None:
+            f.close()
+
         
 def combs(a, r):
     """
@@ -174,305 +154,11 @@ def u_star_u(re_q1, re_q2, w0_1, w0_2, n1, n2, x, x2=None):
 def u_star_u_mm(z, w0, n1, n2, x):
     return u(z, w0, n1, x) * u(z, w0, n2, x).conjugate()
     
-################################################################################################
-################################################################################################
-################################################################################################
 
-def makeReducedBasis(x, isModeMatched=True, tolerance = 1e-12, sigma = 1, greedyfile=None):
-    
-    if greedyfile is not None:
-        greedypts = str(greedyfile)
-    else:
-        if isModeMatched:
-            greedypts = 'matched20.txt'
-        else:
-            greedypts = 'mismatched20.txt'
-    
-    greedyfile = os.path.join(pykat.__path__[0],'optics','greedypoints',greedypts)
-    
-    # Two potential different formats
-    try:
-        limits = np.loadtxt(greedyfile, usecols=(3,))[:5]
-    except IndexError:
-        limits = np.loadtxt(greedyfile, usecols=(1,))[:5]
-    
-    romlimits = ROMLimits(w0min=limits[0], w0max=limits[1], zmin=limits[2], zmax=limits[3], max_order=limits[4])
-    
-    w_min = limits[0]
-    w_max = limits[1]
-
-    re_q_min = limits[2]
-    re_q_max = limits[3]
-    
-    max_order = int(limits[4])
-    
-    indices = range(0, max_order+1)
-    nm_pairs = combs(indices, 2)
-    
-    dx = x[1] - x[0]
-    
-    params = np.loadtxt(greedyfile, skiprows=5)
-
-    TS_size = len(params) # training space of TS_size number of waveforms
-    
-    #### allocate memory for training space ####
-
-    TS = np.zeros(TS_size*len(x), dtype = complex).reshape(TS_size, len(x)) # store training space in TS_size X len(x) array
-
-    IDx = 0 #TS index 
-
-    for i in range(len(params)):
-        if isModeMatched:
-            q1 = beam_param(w0=float(params[i][0]), z=float(params[i][1]))
-            q2 = q1
-            n = int(params[i][2])
-            m = int(params[i][3])
-        else:
-            q1 = beam_param(w0=float(params[i][0]), z=float(params[i][2]))
-            q2 = beam_param(w0=float(params[i][1]), z=float(params[i][3]))            
-            n = int(params[i][4])
-            m = int(params[i][5])
-            
-        w0_1 = q1.w0
-        w0_2 = q2.w0
-        re_q1 = q1.z
-        re_q2 = q2.z
-            
-        TS[IDx] = u_star_u(re_q1, re_q2, w0_1, w0_2, n, m, x)
-        
-        # normalize
-        norm = np.sqrt(abs(np.vdot(dx * TS[IDx], TS[IDx])))
-    
-        if norm != 0:
-            TS[IDx] /= norm 
-            IDx += 1
-        else:
-            np.delete(TS, IDx)	
-
-    #### Begin greedy: see Field et al. arXiv:1308.3565v2 #### 
-
-    RB_matrix = [TS[0]] # seed greedy algorithm (arbitrary)
-
-    proj_coefficients = np.zeros(TS_size*TS_size, dtype = complex).reshape(TS_size, TS_size)
-    projections = np.zeros(TS_size*len(x), dtype = complex).reshape(TS_size, len(x))
-
-    iter = 0
-    
-    while sigma > tolerance:
-    #for k in range(TS_size-1):
-    	# go through training set and find worst projection error
-    	projections = project_onto_basis(dx, RB_matrix, TS, projections, proj_coefficients, iter)
-    	residual = TS - projections
-        
-    	projection_errors = [np.vdot(dx* residual[i], residual[i]) for i in range(len(residual))]
-    	sigma = abs(max(projection_errors))
-    	index = np.argmax(projection_errors) 
-        
-    	#Gram-Schmidt to get the next basis and normalize
-    	next_basis = TS[index] - projections[index]
-    	next_basis /= np.sqrt(abs(np.vdot(dx* next_basis, next_basis)))
-
-    	RB_matrix.append(next_basis)		
-        
-    	iter += 1
-        
-        
-    return ReducedBasis(RB=np.array(RB_matrix), limits=romlimits, x=x)
-    
-def makeEmpiricalInterpolant(RB, sort=False):
-
-    e_x = RB.RB
-    x = RB.x
-    
-    node_indices = []
-    x_nodes = []
-    V = np.zeros((len(e_x), len(e_x)), dtype = complex)
-    
-    # seed EIM algorithm
-    node_indices.append( int(np.argmax( np.abs(e_x[0]) ))) 
-    x_nodes.append(x[node_indices]) 
-    
-    for i in range(1, len(e_x)): 
-        #build empirical interpolant for e_iter
-        for j in range(len(node_indices)):  
-            for k in range(len(node_indices)):  
-                V[k][j] = e_x[j][node_indices[k]]  
-            
-        invV = inv(V[0:len(node_indices), 0:len(node_indices)])  
-        B = B_matrix(invV, e_x) 
-        
-        interpolant = emp_interp(B, e_x[i], node_indices) 
-        res = interpolant - e_x[i] 
-
-        index = int(np.argmax(np.abs(res))) 
-        node_indices.append(index) 
-        x_nodes.append( x[index] )
-    
-    # make B matrix with all the indices
-    for j in range(len(node_indices)):
-        for k in range(len(node_indices)):
-            V[k][j] = e_x[j][node_indices[k]]
-
-    invV = inv(V[0:len(node_indices), 0:len(node_indices)])
-    B = np.array(B_matrix(invV, e_x))
-    
-    node_indices = np.array(node_indices, dtype=np.int32)
-    nodes = np.array(x_nodes, dtype=np.float64)
-    
-    if sort:
-        print (sort)
-        ix = np.argsort(nodes)
-        nodes = nodes[ix]
-        node_indices = node_indices[ix]
-        B = B[ix, :]
-    
-    return EmpiricalInterpolant(B=B, nodes=nodes, node_indices=node_indices, limits=RB.limits, x=RB.x)
-    
-
-def makeWeights(smap, EI, verbose=True, useSymmetry=True, newtonCotesOrder=1):
-    
-    if useSymmetry:
-        # get full A_xy
-        A_xy = smap.z_xy()
-    
-        xm = smap.x[smap.x < 0]
-        xp = smap.x[smap.x > 0]
-    
-        ym = smap.y[smap.y < 0]
-        yp = smap.y[smap.y > 0]
-    
-        Q1xy = np.ix_(smap.x < 0, smap.y > 0)
-        Q2xy = np.ix_(smap.x > 0, smap.y > 0)
-        Q3xy = np.ix_(smap.x > 0, smap.y < 0)
-        Q4xy = np.ix_(smap.x < 0, smap.y < 0)
-    
-        # get A_xy in the four quadrants of the x-y plane
-        A_xy_Q1 = A_xy[Q1xy]
-        A_xy_Q2 = A_xy[Q2xy]
-        A_xy_Q3 = A_xy[Q3xy]
-        A_xy_Q4 = A_xy[Q4xy]
-    
-        # Not sure if there is a neater way to select the x=0,y=0 cross elements
-        A_xy_0  = np.hstack([A_xy[:,smap.x==0].flatten(), A_xy[smap.y==0,:].flatten()])
-    
-        full_x = smap.x
-        full_y = smap.y
-
-        dx = full_x[1] - full_x[0]
-        dy = full_y[1] - full_y[0]
-
-        if verbose:
-            count  = 4*len(EI["x"].B) * len(EI["y"].B)
-            p = ProgressBar(maxval=count, widgets=["Computing weights: ", Percentage(), Bar(), ETA()])
-    
-        n = 0
-    
-        # make integration weights
-        Bx = EI["x"].B
-        By = EI["y"].B[:,::-1]
-        w_ij_Q1 = np.zeros((len(Bx),len(By)), dtype = complex)
-
-        from pykat.optics.knm import newton_weights
-        
-        wx = newton_weights(xm, newtonCotesOrder)
-        wy = newton_weights(ym, newtonCotesOrder)
-        
-        for i in range(len(Bx)):
-            for j in range(len(By)):
-                B_ij_Q1 = np.outer(wx*Bx[i], wy*By[j])
-                w_ij_Q1[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q1, A_xy_Q1)	
-            
-                if verbose:
-                    p.update(n)
-                    n+=1
-
-        Bx = EI["x"].B[:,::-1]
-        By = EI["y"].B[:,::-1]
-        w_ij_Q2 = np.zeros((len(Bx),len(By)), dtype = complex)
-    
-        for i in range(len(Bx)):
-            for j in range(len(By)):
-                B_ij_Q2 = np.outer(wx*Bx[i], wy*By[j])
-                w_ij_Q2[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q2, A_xy_Q2)
-            
-                if verbose:
-                    p.update(n)
-                    n+=1
-
-        Bx = EI["x"].B[:,::-1]
-        By = EI["y"].B
-        w_ij_Q3 = np.zeros((len(Bx),len(By)), dtype = complex)
-    
-        for i in range(len(Bx)):
-            for j in range(len(By)):
-                B_ij_Q3 = np.outer(wx*Bx[i], wy*By[j])
-                w_ij_Q3[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q3, A_xy_Q3)
-
-                if verbose:
-                    p.update(n)
-                    n+=1
-
-        Bx = EI["x"].B
-        By = EI["y"].B
-        w_ij_Q4 = np.zeros((len(Bx),len(By)), dtype = complex)
-    
-        for i in range(len(Bx)):
-            for j in range(len(By)):
-                B_ij_Q4 = np.outer(wx*Bx[i], wy*By[j])
-                w_ij_Q4[i][j] = dx*dy*np.einsum('ij,ij', B_ij_Q4, A_xy_Q4)
-
-                if verbose:
-                    p.update(n)
-                    n+=1
-        if verbose:
-            p.finish()
-        
-        return ROMWeights(w_ij_Q1=w_ij_Q1, w_ij_Q2=w_ij_Q2, w_ij_Q3=w_ij_Q3, w_ij_Q4=w_ij_Q4, EI=EI, limits=EI["x"].limits)
-        
-    else:
-        # get full A_xy
-        A_xy = smap.z_xy()
-
-        full_x = smap.x
-        full_y = smap.y
-
-        dx = full_x[1] - full_x[0]
-        dy = full_y[1] - full_y[0]
-
-        if verbose:
-            count  = len(EI["x"].B) * len(EI["y"].B)
-            p = ProgressBar(maxval=count, widgets=["Computing weights: ", Percentage(), Bar(), ETA()])
-
-        n = 0
-
-        # make integration weights
-        Bx = EI["x"].B
-        By = EI["y"].B
-        
-        w_ij = np.zeros((len(Bx), len(By)), dtype = complex)
-
-        for i in range(len(Bx)):
-            for j in range(len(By)):
-                B_ij = np.outer(Bx[i], By[j])
-                w_ij[i][j] = dx*dy*np.einsum('ij,ij', B_ij, A_xy)	
-    
-                if verbose:
-                    p.update(n)
-                    n+=1
-                    
-        if verbose:
-            p.finish()
-
-        return ROMWeightsFull(w_ij=w_ij, EI=EI, limits=EI["x"].limits)
-
-
-###################################################################################################
-###################################################################################################
 ###################################################################################################
 # !!! New ROM code below that doesn't need supercomputer
 ###################################################################################################
-###################################################################################################
-###################################################################################################
+
 def _compute_TS(queue, oqueue, x, w):
     while True:
         msg = queue.get()
@@ -829,7 +515,8 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
     return EI
     
     
-def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCotesOrderMapWeight=8):
+def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCotesOrderMapWeight=8, direction="reflection_front"):
+    
     with open("%s" % EIxFilename, 'rb') as f:
         EIx = pickle.load(f)
         
@@ -839,8 +526,10 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
         with open("%s" % EIyFilename, 'rb') as f:
             EIy = pickle.load(f)
     
-    A_xy = smap.z_xy() * np.outer(newton_weights(smap.x, newtonCotesOrderMapWeight), 
-                                  newton_weights(smap.y, newtonCotesOrderMapWeight))
+    W_nc = np.outer(newton_weights(smap.x, newtonCotesOrderMapWeight), 
+                    newton_weights(smap.y, newtonCotesOrderMapWeight))
+                    
+    A_xy = smap.z_xy(direction=direction)[::-1, :].T.conj() * W_nc.T
     
     xm = smap.x[smap.x <= 0]
     xp = smap.x[smap.x >= 0]
@@ -939,4 +628,4 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
     if verbose:
         p.finish()
     
-    return ROMWeights(w_ij_Q1=w_ij_Q1, w_ij_Q2=w_ij_Q2, w_ij_Q3=w_ij_Q3, w_ij_Q4=w_ij_Q4, EIx=EIx, EIy=EIy)
+    return ROMWeights(w_ij_Q1=w_ij_Q1, w_ij_Q2=w_ij_Q2, w_ij_Q3=w_ij_Q3, w_ij_Q4=w_ij_Q4, EIx=EIx, EIy=EIy, direction=direction)
