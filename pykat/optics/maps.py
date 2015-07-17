@@ -292,43 +292,70 @@ class surfacemap(object):
         self.step_size = (nx[1]-nx[0], ny[1]-ny[0])
         self.data = data
 
+    # xlim and ylim given in centimeters
     def plot(self, show=True, clabel=None, xlim=None, ylim=None):
-        
         import pylab
         
         if xlim is not None:
+            # Sorts out the x-values within xlim
             _x = np.logical_and(self.x<=max(xlim)/100.0, self.x>=min(xlim)/100.0)
             xmin = np.min(np.where(_x == True))
             xmax = np.max(np.where(_x == True))
         else:
+            # Uses the whole available x-range
             xmin = 0
             xmax = len(self.x)-1
             xlim = [self.x.min()*100, self.x.max()*100]
     
         if ylim is not None:
+            # Sorts out the y-values within ylim
             _y = np.logical_and(self.y<=max(ylim)/100.0, self.y>=min(ylim)/100.0)
             ymin = np.min(np.where(_y == True))
             ymax = np.max(np.where(_y == True))
         else:
+            # Uses the whole available y-range
             ymin = 0
             ymax = len(self.y)-1
             ylim = [self.y.min()*100, self.y.max()*100]
+            
+        # ALSO (SEE LONG TEXT BELOW) ADDED BY DT TO FIX LIMITS
+        # ------------------------------------------------------
+        xlim,ylim = ylim,xlim
+        # ------------------------------------------------------
         
+        # min and max of z-values
         zmin = self.data[xmin:xmax,ymin:ymax].min()
         zmax = self.data[xmin:xmax,ymin:ymax].max()
 
         # 100 factor for scaling to cm
-        xrange = 100*self.x
-        yrange = 100*self.y
-
+        xRange = 100*self.x
+        yRange = 100*self.y
+        
+        # This line is added by DT to be able to plot
+        # rectangular matrices. Effectively, I swapped the
+        # x/y-axes. Preferrably, this should be corrected above
+        # instead, but since I'm not completely sure of how the
+        # coordinate system of these maps look I'll wait with
+        # that. Here, I assume that row 0 of the matrix should
+        # be plotted with y = Y[0], and that column 0 should be
+        # plotted with x = X[0]. To be fully correct, I should
+        # add one column and one row so that each matrix value
+        # is plotted within the correct rectangle. 
+        # ------------------------------------------------------
+        xRange, yRange = np.meshgrid(yRange,xRange)
+        # ------------------------------------------------------
+        
         fig = pylab.figure()
-        axes = pylab.pcolormesh(xrange, yrange, self.data*self.scaling, vmin=zmin, vmax=zmax)
+        
+        pcm = pylab.pcolormesh(xRange, yRange, self.data, vmin=zmin, vmax=zmax)
+        pcm.set_rasterized(True)
+        
         pylab.xlabel('x [cm]')
         pylab.ylabel('y [cm]')
 
         if xlim is not None: pylab.xlim(xlim)
         if ylim is not None: pylab.ylim(ylim)
-
+            
         pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
 
         cbar = fig.colorbar(axes)
@@ -680,24 +707,249 @@ class zernikemap(surfacemap):
 	
 			
 	
-def read_map(filename):
-    with open(filename, 'r') as f:
+def read_map(filename, mapFormat='finesse'):
+    # Function turning input x into float.
+    g = lambda x: float(x)
+    if mapFormat == 'finesse':
         
-        f.readline()
-        name = f.readline().split(':')[1].strip()
-        maptype = f.readline().split(':')[1].strip()
-        size = tuple(map(lambda x: float(x), f.readline().split(':')[1].strip().split()))
-        center = tuple(map(lambda x: float(x), f.readline().split(':')[1].strip().split()))
-        step = tuple(map(lambda x: float(x), f.readline().split(':')[1].strip().split()))
-        scaling = float(f.readline().split(':')[1].strip())
+        with open(filename, 'r') as f:
+        
+            f.readline()
+            name = f.readline().split(':')[1].strip()
+            maptype = f.readline().split(':')[1].strip()
+            size = tuple(map(g, f.readline().split(':')[1].strip().split()))
+            center = tuple(map(g, f.readline().split(':')[1].strip().split()))
+            step = tuple(map(g, f.readline().split(':')[1].strip().split()))
+            scaling = float(f.readline().split(':')[1].strip())
         
         
         
-    data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
+        data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
+
+
+    # Converts raw zygo and ligo mirror maps to the finesse
+    # format. Based on translation of the matlab scripts
+    # 'FT_read_zygo_map.m' and 'FT_read_ligo_map.m'
+    elif mapFormat == 'ligo' or mapFormat == 'zygo':
+        if mapFormat == 'ligo':
+            isLigo = True
+            # Remove '_asc.dat' for output name
+            name = filename.split('_')
+            name = '_'.join(name[:-1])
+        else:
+            isLigo = False
+            tmp = filename.split('.')
+            fileFormat = tmp[-1].strip()
+            name = '.'.join(tmp[:-1])
+            if fileFormat == 'asc':
+                isAscii = True
+            else:
+                isAscii = False
+                
+        # Unknowns (why are these values hard coded here?)
+        # ------------------------------------------------------
+        # Standard maps have type 'phase' (they store surface
+        # heights)
+        maptype = 0
+        # Both (reflected and transmitted) light fields are
+        # affected
+        field = 0
+        # Measurements in nanometers
+        scaling = 1.0e-9
+        # ------------------------------------------------------
+
+        # Reading header of LIGO-map (Zygo file? Says Zygo in
+        # header...)
+        # ------------------------------------------------------
+        with open(filename, 'r') as f:
+            # Skip first two lines
+            for k in range(2):
+                f.readline()
+            # If zygo-file, and ascii format, there is intensity
+            # data. Though, the Ligo files I have seen are also
+            # zygo-files, so maybe we should extract this data
+            # from these too?
+            line = f.readline()
+            if not isLigo and isAscii:
+                iCols = float(line.split()[2])
+                iRows = float(line.split()[3])
+                
+            line = f.readline().split()
+            # Unknown
+            # ----------------------------------------------
+            if isLigo:
+                y0 = float(line[0])
+                x0 = float(line[1])
+                rows = float(line[2])
+                cols = float(line[3])
+            else:
+                y0 = float(line[1])
+                x0 = float(line[0])
+                rows = float(line[3])
+                cols = float(line[2])
+            # ----------------------------------------------
+
+            # Skipping three lines
+            for k in range(3):
+                f.readline()
+            line = f.readline().split()
+
+            # Unknown (Scaling factors)
+            # ----------------------------------------------
+            # Interfeometric scaling factor (?)
+            S = float(line[1])
+            # wavelength (of what?)
+            lam = float(line[2])
+            # Obliquity factor (?)
+            O = float(line[4])
+            # ----------------------------------------------
+            # Physical step size in metres
+            if line[6] != 0:
+                xstep = float(line[6])
+                ystep = float(line[6])
+            else:
+                xstep = 1.0
+                ystep = 1.0
+                
+            # Skipping two lines
+            for k in range(2):
+                f.readline()
+            line = f.readline().split()
+
+            # Unknown
+            # Resolution of phase data points, 1 or 0.
+            phaseRes = float(line[0])
+            if phaseRes == 0:
+                R = 4096
+            elif phaseRes == 1:
+                R = 32768
+            else:
+                print('Error, invalid phaseRes')
+
+            if not isLigo and not isAscii:
+                # zygo .xyz files give phase data in microns.
+                hScale = 1.0e-6
+            else:
+                # zygo .asc and ligo-files give phase data in
+                # internal units. To convert to m use hScale
+                # factor.
+                hScale = S*O*lam/R
+                
+            if not isLigo and not isAscii:
+                print('Not implemented yet, need a .xyz-file ' +
+                      'to do this.')
+                return 0
+                
+            # Skipping four lines
+            for k in range(4):
+                f.readline()
+            if not isLigo and isAscii:
+                # Reading intensity data
+                iData = np.array([])
+                line = f.readline().split()
+                while line[0] != '#':
+                    iData = np.append(iData, map(g,line))
+                    line = f.readline().split()
+                # Reshaping intensity data
+                iData = iData.reshape(iRows, iCols).transpose()
+                iData = np.rot90(iData)
+            else:
+                # Skipping lines until '#' is found.
+                while f.readline()[0] != '#':
+                    pass
+                
+            # Reading phase data
+            # ----------------------------------------------
+            # Array with the data
+            data = np.array([])
+            # Reading data until next '#' is reached.
+            line = f.readline().split()
+            while line[0] != '#':
+                data = np.append(data, map(g,line))
+                line = f.readline().split()
+            # ----------------------------------------------
+
         
-    return surfacemap(name,maptype,size,center,step,scaling,data)
+        if isLigo:
+            # Setting all the points outside of the mirror
+            # surface to NaN. These are given a large number
+            # in the file. 
+            data[data == data[0]] = np.nan
+            
+            # Reshaping into rows and columns
+            data = data.reshape(cols,rows).transpose()
+            # Pretty sure that the lines below can be done
+            # more efficient, but it's quick as it is.
+            # ----------------------------------------------
+            # Flipping right and left
+            data = np.fliplr(data)
+            # Rotating 90 degrees clockwise 
+            data = np.rot90(data,-1)
+            # Flipping right and left
+            data = np.fliplr(data)
+            # ----------------------------------------------
+        else:
+            if isAscii:
+                # Setting all the points outside of the mirror
+                # surface to NaN. These are given a large number
+                # in the file. 
+                data[data >= 2147483640] = np.nan
+            # Reshaping into rows and columns.
+            data = data.reshape(rows,cols).transpose()
+            # Rotating to make (0,0) be in bottom left
+            # corner. 
+            data = np.rot90(data)
+            
+        # Scaling to nanometer (change this to a user
+        # defined value?) Still don't know where
+        # 'hScale' really comes from.
+        data = (hScale/scaling)*data
+        size = data.shape
+
+        if maptype == 0:
+            mType = 'phase'
+        else:
+            mType = 'Unknown'
+        if field == 0:
+            fType = 'both'
+        else:
+            fType = 'unknown'
+
+        maptype = ' '.join([mType, fType])
+
+        # Wrong! fix by creating recenter method.
+        center = tuple([x0,y0])
+        step = tuple([xstep,ystep])
+
+        # Simple re-centering of mirror, translated from
+        # 'FT_recenter_mirror_map.m'
+        # -------------------------------------------------
+        # Matrix with ones where data element is not NaN.
+        isNan = np.isnan(data)
+        notNan = isNan==False
+        # Row and column indices with non-NaN elements
+        rIndx, cIndx = notNan.nonzero()
+        # Finding centres
+        x0 = float(cIndx.sum())/len(cIndx)
+        y0 = float(rIndx.sum())/len(rIndx)
+        center = tuple([x0,y0])
+        # -------------------------------------------------
+        
+        # Changing NaN to zeros. Just to be able to plot the
+        # map with surfacemap.plot().
+        data[isNan] = 0 
     
+        
+    # TODO: Add options for reading .xyz-zygo and virgo maps.
+    # The intensity data is not used to anything here. Remove
+    # or add to pykat?
     
+
+    return surfacemap(name, maptype, size, center, step,
+                      scaling, data)
+    
+
+
 # TODO: Recreate functions from Simtools:, List taken from: ligo_maps/FT_convert_ligo_map_for_finesse.m
 # map=FT_recenter_mirror_map(map);
 # [map2,A2,Rc_out]=FT_remove_zernike_curvatures_from_map(map,Rc_in);
@@ -705,3 +957,6 @@ def read_map(filename):
 # [map2,offset]=FT_remove_offset_from_mirror_map(map2,1e-2);
 # [map3,x_tilt,y_tilt,offset2]=FT_remove_piston_from_mirror_map(map2,w, display_style);
 # map3=FT_invert_mirror_map(map3, invert);
+
+# Understand the internal coordinate system of the
+# maps/matrices.
