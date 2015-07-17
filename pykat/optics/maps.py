@@ -37,19 +37,25 @@ class MirrorROQWeights:
             if self.tBack  is not None: self.tBack.writeToFile(f=f)
                     
 class surfacemap(object):
-    def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
+    def __init__(self, name, maptype, size, center, step_size, scaling, notNan=None ,data=None):
         
         self.name = name
         self.type = maptype
         self.center = center
         self.step_size = step_size
         self.scaling = scaling
+        self.notNan = notNan
         self.__interp = None
         
         if data is None:
             self.data = np.zeros(size)
         else:
             self.data = data
+            
+        if notNan is None:
+            self.notNan = np.ones(size)
+        else:
+            self.notNan = notNan
 
         self._rom_weights = None
         
@@ -359,6 +365,24 @@ class surfacemap(object):
             pylab.show()
         
         return fig
+
+
+
+    def remove_curvature(self, Rc0, w=0, display='off'):
+        # Removes curvature from mirror map by fitting a sphere to
+        # mirror surface. Based on the file
+        # 'FT_remove_curvature_from_mirror_map.m'.
+        # Rc0     - Initial guess of the radius of curvature
+        # w       - Beam radius on mirror [m], used for weighting. w=0
+        #           switches off weighting.
+        # display - Display mode of the fitting routine. Can be 'off',
+        #           'iter', 'notify', or 'final'.
+    
+        zOffset = self.data[round(self.center[1]), round(self.center[0])]
+        params = Rc
+        print(zOffset)
+        return 0
+        
 
 class mergedmap:
     """
@@ -697,10 +721,13 @@ class zernikemap(surfacemap):
 		self.data = data
 	
 			
-	
+# Reads surface map files and return surfacemap-object.
+# supported mapFormat: 'finesse', 'ligo', 'zygo'.
+# All ascii formats. 
 def read_map(filename, mapFormat='finesse'):
     # Function turning input x into float.
     g = lambda x: float(x)
+    
     if mapFormat == 'finesse':
         
         with open(filename, 'r') as f:
@@ -716,7 +743,6 @@ def read_map(filename, mapFormat='finesse'):
         
         
         data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
-
 
     # Converts raw zygo and ligo mirror maps to the finesse
     # format. Based on translation of the matlab scripts
@@ -931,13 +957,13 @@ def read_map(filename, mapFormat='finesse'):
         data[isNan] = 0 
     
         
-    # TODO: Add options for reading .xyz-zygo and virgo maps.
+    # TODO: Add options for reading virgo maps, and .xyz zygo
+    # maps (need .xys file for this). Binary ligo-maps?
     # The intensity data is not used to anything here. Remove
     # or add to pykat?
-    
 
     return surfacemap(name, maptype, size, center, step,
-                      scaling, data)
+                      scaling, notNan, data)
     
 
 
