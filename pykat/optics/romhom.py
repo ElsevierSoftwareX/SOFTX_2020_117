@@ -481,6 +481,7 @@ def MakeROMFromHDF5(hdf5Filename, greedyFilename=None, EIFilename=None, tol=1e-1
                     V[m][l] = RB_matrix[l][EI_indices[m]] # Part of (5) of Algorithm 2: making V_{ij}
 
             invV = inv(V[0:len(EI_indices), 0:len(EI_indices)])
+            
             B = B_matrix(invV, np.array(RB_matrix))
             
             _TS = TS[str(next_RB_index)]
@@ -546,7 +547,7 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
     A_xy_Q2 = A_xy[Q2xy]
     A_xy_Q3 = A_xy[Q3xy]
     A_xy_Q4 = A_xy[Q4xy]
-
+    
     full_x = smap.x
     full_y = smap.y
     

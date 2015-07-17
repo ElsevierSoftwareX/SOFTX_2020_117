@@ -382,6 +382,7 @@ class Signals(object):
         
             return rtn
     
+    
     @property
     def name(self):
         # if we don't have any signals yet then use a dummy name
@@ -389,7 +390,7 @@ class Signals(object):
         # so need to get the name of at least one of them
         # as if you tune one you tune them all
         if len(self.targets) == 0:
-            return "fsignal"
+            return self._default_name
         else:
             return self.targets[0].name
             
@@ -408,6 +409,7 @@ class Signals(object):
     def f(self,value): self.__f.value = SIfloat(value)
     
     def __init__(self, kat):
+        self._default_name = "fsignal"
         self.targets = []
         self._params = []
         self.__f = Param("f", self, 1)
@@ -429,16 +431,21 @@ class Signals(object):
     def getFinesseText(self):
         rtn = []
         
-        for t in self.targets:
-            rtn.extend(t.getFinesseText())
+        if len(self.targets) == 0 and self.f != 0:
+            rtn.append("fsig {name} {frequency}"
+                            .format(name = self.name,
+                                    frequency=str(self.f)))
+        else:
+            for t in self.targets:
+                rtn.extend(t.getFinesseText())
             
-            rtn.append("fsig {name} {comp} {target} {frequency} {phase} {amplitude}"
-                            .format(name = t.name,
-                                    comp=t.owner,
-                                    target=t.target,
-                                    frequency=str(self.f),
-                                    phase=str(t.phase),
-                                    amplitude=str(t.amplitude if t.amplitude != None else "")))
+                rtn.append("fsig {name} {comp} {target} {frequency} {phase} {amplitude}"
+                                .format(name = t.name,
+                                        comp=t.owner,
+                                        target=t.target,
+                                        frequency=str(self.f),
+                                        phase=str(t.phase),
+                                        amplitude=str(t.amplitude if t.amplitude != None else "")))
 
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -1003,61 +1010,69 @@ class kat(object):
                 
                     name = str(v[1])
                 
-                    if v[2] not in self.__components:
-                        raise pkex.BasePyKatException("Could not find the component '{0}'. Line: '{1}'".format(v[2], line))
+                    if len(v) == 3:
+                        self.signals._default_name = name
+                        self.signals.f = SIfloat(v[2])
+                    else:
+                        if v[2] not in self.__components:
+                            raise pkex.BasePyKatException("Could not find the component '{0}'. Line: '{1}'".format(v[2], line))
                 
-                    comp = self.__components[v[2]]
+                        comp = self.__components[v[2]]
                 
-                    if comp._default_fsig() is None:
-                        raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
+                        if comp._default_fsig() is None:
+                            raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
                     
-                    param_name = None
-                    amp = None
+                        param_name = None
+                        amp = None
                     
-                    if len(v) == 5:
-                        #param is None
-                        freq = SIfloat(v[3])
-                        phase = SIfloat(v[4])
-                    elif len(v) == 6:
-                        
-                        try:
-                            SIfloat(v[3])
-                            isFloat = True
-                        except:
-                            isFloat = False
-                            
-                        if isFloat:
+                        if len(v) == 3:
+                            self.signals._default_name = name
+                            freq = SIfloat(v[3])
+                        elif len(v) == 5:
+                            #param is None
                             freq = SIfloat(v[3])
                             phase = SIfloat(v[4])
-                            amp = SIfloat(v[5])
-                        else:
+                        elif len(v) == 6:
+                        
+                            try:
+                                SIfloat(v[3])
+                                isFloat = True
+                            except:
+                                isFloat = False
+                            
+                            if isFloat:
+                                freq = SIfloat(v[3])
+                                phase = SIfloat(v[4])
+                                amp = SIfloat(v[5])
+                            else:
+                                param_name = v[3]
+                                freq = SIfloat(v[4])
+                                phase = SIfloat(v[5])
+                        
+                        elif len(v) == 7:
                             param_name = v[3]
                             freq = SIfloat(v[4])
                             phase = SIfloat(v[5])
-                        
-                    elif len(v) == 7:
-                        param_name = v[3]
-                        freq = SIfloat(v[4])
-                        phase = SIfloat(v[5])
-                        amp = SIfloat(v[6])
-                    else:
-                        raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
+                            amp = SIfloat(v[6])
+                        else:
+                            raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                     
-                    self.signals.f = freq
-                    param = None
+                        self.signals.f = freq
                     
-                    if param_name is None:
-                        param = comp._default_fsig()
-                    else:
-                        for p in comp._params:
-                            if p.canFsig and p.fsigName == param_name:
-                                param = p
-                                break
+                        param = None
+                
+                        if param_name is None:
+                            param = comp._default_fsig()
+                        else:
+                            for p in comp._params:
+                                if p.canFsig and p.fsigName == param_name:
+                                    param = p
+                                    break
+                    
+                            if param is None:
+                                raise pkex.BasePyKatException("Line: '{0}': {1} is not a valid fsig target for {2}".format(line, param_name, comp.name))
                         
-                        if param is None:
-                            raise pkex.BasePyKatException("Line: '{0}': {1} is not a valid fsig target for {2}".format(line, param_name, comp.name))
-                            
-                    self.signals.apply(param, amp, phase, name)
+                        self.signals.apply(param, amp, phase, name)
                 
                 else:
                     raise pkex.BasePyKatException("Haven't handled parsing of '{0}'".format(line))

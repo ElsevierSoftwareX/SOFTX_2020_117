@@ -321,6 +321,11 @@ class AbstractMirrorComponent(Component):
         self.__Frx = Param("Frx", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Frx")
         self.__Fry = Param("Fry", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fry")
         
+        self.__Fs0 = Param("Fs0", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fs0")
+        self.__Fs1 = Param("Fs1", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="Fs1")
+        self.__Fs0 = Param("s0", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="s0")
+        self.__Fs1 = Param("s1", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="s1")
+            
         self._default_fsig_param = self.__phi
         
     @property
