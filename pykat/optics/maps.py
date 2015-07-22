@@ -347,7 +347,7 @@ class surfacemap(object):
         
         fig = pylab.figure()
         
-        pcm = pylab.pcolormesh(xRange, yRange, self.data, vmin=zmin, vmax=zmax)
+        pcm = pylab.pcolormesh(xRange, yRange, self.data)
         pcm.set_rasterized(True)
         
         pylab.xlabel('x [cm]')
@@ -358,8 +358,8 @@ class surfacemap(object):
             
         pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
 
-        cbar = fig.colorbar(axes)
-        cbar.set_clim(zmin, zmax)
+        cbar = pylab.colorbar()
+        #cbar.set_clim(zmin, zmax)
         
         if clabel is not None:
             cbar.set_label(clabel)

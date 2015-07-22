@@ -527,6 +527,9 @@ class kat(object):
         if kat_file != None:
             self.loadKatFile(kat_file)
 
+    def deepcopy(self):
+        return copy.deepcopy(self)
+    
     def getAll(self, type):
         """
         Returns a collection of all objects of the type argument that are
@@ -725,12 +728,18 @@ class kat(object):
             pkex.PrintError("Error processing constants:", ex)
             sys.exit(1)
     
-    def removeBlock(self, name):
+    def getBlocks(self):
+        return self.__blocks.keys()
+    
+    def removeBlock(self, name, failOnBlockNotFound=True):
         
         if name not in self.__blocks:
-            pkex.PrintError("Error removing block:", pkex.BasePyKatException('Block "{0}" was not found'.format(name)))
-            sys.exit(1)
-    
+            if failOnBlockNotFound:
+                pkex.PrintError("Error removing block:", pkex.BasePyKatException('Block "{0}" was not found'.format(name)))
+                sys.exit(1)
+            else:
+                return
+                
         for o in self.__blocks[name].contents:
             self.remove(o)
         

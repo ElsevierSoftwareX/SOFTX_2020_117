@@ -64,7 +64,7 @@ def plot_beam_trace(_kat, from_node, to_node):
         for n in range(len(spaces)):
             s = spaces[n]
             Lmax = s.L
-            N = 100
+            N = 1000
             node = None
 
             cmds = """
