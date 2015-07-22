@@ -15,6 +15,7 @@ from __future__ import print_function
 
 from pykat.optics.romhom import makeWeightsNew
 from scipy.interpolate import interp2d, interp1d
+from scipy.optimize import minimize
 from pykat.maths.zernike import *        
 from pykat.exceptions import BasePyKatException
 
@@ -38,19 +39,28 @@ class MirrorROQWeights:
             if self.tBack  is not None: self.tBack.writeToFile(f=f)
                     
 class surfacemap(object):
-    def __init__(self, name, maptype, size, center, step_size, scaling, data=None):
+    def __init__(self, name, maptype, size, center, step_size, scaling, data=None,
+                 notNan=None, Rc=None, zOffset=None):
         
         self.name = name
         self.type = maptype
         self.center = center
         self.step_size = step_size
         self.scaling = scaling
+        self.notNan = notNan
+        self.Rc = Rc
+        self.zOffset = zOffset
         self.__interp = None
         
         if data is None:
             self.data = np.zeros(size)
         else:
             self.data = data
+            
+        if notNan is None:
+            self.notNan = np.ones(size)
+        else:
+            self.notNan = notNan
 
         self._rom_weights = None
         
@@ -368,6 +378,109 @@ class surfacemap(object):
             pylab.show()
         
         return fig
+
+
+
+    def remove_curvature(self, Rc0, w=0, display='off'):
+        # Removes curvature from mirror map by fitting a sphere to
+        # mirror surface. Based on the file
+        # 'FT_remove_curvature_from_mirror_map.m'.
+        # Rc0     - Initial guess of the radius of curvature
+        # w       - Beam radius on mirror [m], used for weighting. w=0
+        #           switches off weighting.
+        # display - Display mode of the fitting routine. Can be 'off',
+        #           'iter', 'notify', or 'final'.
+
+        # z-value at centre of the mirror.
+        zOffset = self.data[round(self.center[1]), round(self.center[0])]
+
+        X,Y,r2 = self.createGrid()
+        def costFunc(params):
+            n = len(params)
+            if n==2:
+                Rc = params[0]
+                zOffset = params[1]
+                x0 = 0
+                y0 = 0
+            else:
+                Rc = params[0]
+                zOffset = params[1]
+                x0 = params[2]
+                y0 = params[3]
+            Z = self.createSphere(Rc,X,Y,zOffset,x0,y0)
+            if  w==0:
+                res = math.sqrt( ((self.data[self.notNan] -
+                                   Z[self.notNan])**2).sum() )/self.notNan.sum()
+            else:
+                weight = 2/(math.pi*w**2)*np.exp(-2*r2/w**2)
+                res = math.sqrt( (weight[self.notNan]*((self.data[self.notNan] -
+                                   Z[self.notNan])**2)).sum() )/self.notNan.sum()
+            print(Rc,zOffset,res)
+            return res
+        
+        params = [Rc0,zOffset]
+        out = minimize(costFunc, params, method='Nelder-Mead',tol=1.0e-6)
+        Rc = out['x'][0]
+        zOffset = out['x'][1]
+        Z = self.createSphere(Rc,X,Y,zOffset)
+        self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
+ 
+        return self.data, self.Rc, self.zOffset
+
+    def createSphere(self,Rc,X,Y,zOffset=0,x0=0,y0=0,xTilt=0,yTilt=0,isPlot=False):
+        # Creating spherical surface. Based on 'FT_create_sphere_for_map.m'
+        
+        # Adjusting for tilts and offset
+        Z = zOffset + (X*np.tan(xTilt) + Y*np.tan(yTilt))/self.scaling
+        # Adjusting for spherical shape.
+        Z = Z + (Rc - np.sqrt(Rc**2 - (X-x0)**2 - (Y-y0)**2))/self.scaling
+
+        if isPlot:
+            import pylab
+            pylab.clf()
+            fig = pylab.figure()
+            axes = pylab.pcolormesh(X, Y, Z) #, vmin=zmin, vmax=zmax)
+            cbar = fig.colorbar(axes)
+            cbar.set_clim(Z.min(), Z.max())
+            pylab.title('Z_min = ' + str(Z.min()) + '      Z_max = ' + str(Z.max()))
+            pylab.show()
+        
+        return Z
+    
+    def createGrid(self):
+        # Creating grid for the map. Based on 'FT_create_grid_for_map.m'
+        # and 'FT_init_grid.m'.
+        # ----------------------------------------------------------------
+        yPoints, xPoints = self.data.shape
+        # Difference between the data point centre, and the centre of
+        # the mirror surface.
+        xOffset = (((xPoints-1)/2-self.center[0]) )*self.step_size[0]
+        yOffset = (((yPoints-1)/2-self.center[1]) )*self.step_size[1]
+
+        # Creating arrays with values from 0 up to (xyPoints-1).
+        x = np.array([n for n in range(xPoints)])
+        y = np.array([n for n in range(yPoints)])
+
+        # Shouldn't the real physical size be (points-1)*step_size?
+        xSize = xPoints*self.step_size[0]
+        ySize = yPoints*self.step_size[1]
+        # ...corrected here by subracting one step. Isn't this unnecessary
+        # complicated btw?
+        xAxis = x*self.step_size[0] + xOffset - (xSize-self.step_size[0])/2
+        yAxis = y*self.step_size[1] + yOffset - (ySize-self.step_size[1])/2
+
+        #print(xAxis[round(self.center[0])-1:round(self.center[0])+2])
+        #print(yAxis[round(self.center[1])-1:round(self.center[1])+2])
+        
+        X,Y = np.meshgrid(xAxis,yAxis)
+        r = np.sqrt(X**2 + Y**2)
+        r2 = X**2 + Y**2
+        phi = np.arctan2(Y,X)
+        print(X.min(),X.max(),Y.min(),Y.max())
+        return X,Y,r2
+        # ----------------------------------------------------------------
+
+        
 
 class mergedmap:
     """
@@ -706,10 +819,13 @@ class zernikemap(surfacemap):
 		self.data = data
 	
 			
-	
+# Reads surface map files and return surfacemap-object.
+# supported mapFormat: 'finesse', 'ligo', 'zygo'.
+# All ascii formats. 
 def read_map(filename, mapFormat='finesse'):
     # Function turning input x into float.
     g = lambda x: float(x)
+    
     if mapFormat == 'finesse':
         
         with open(filename, 'r') as f:
@@ -725,7 +841,6 @@ def read_map(filename, mapFormat='finesse'):
         
         
         data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
-
 
     # Converts raw zygo and ligo mirror maps to the finesse
     # format. Based on translation of the matlab scripts
@@ -940,13 +1055,13 @@ def read_map(filename, mapFormat='finesse'):
         data[isNan] = 0 
     
         
-    # TODO: Add options for reading .xyz-zygo and virgo maps.
+    # TODO: Add options for reading virgo maps, and .xyz zygo
+    # maps (need .xys file for this). Binary ligo-maps?
     # The intensity data is not used to anything here. Remove
     # or add to pykat?
-    
 
     return surfacemap(name, maptype, size, center, step,
-                      scaling, data)
+                      scaling, data, notNan)
     
 
 
