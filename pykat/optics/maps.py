@@ -17,6 +17,7 @@ from pykat.optics.romhom import makeWeightsNew
 from scipy.interpolate import interp2d, interp1d
 from scipy.optimize import minimize
 from pykat.maths.zernike import *        
+from pykat.exceptions import BasePyKatException
 
 import numpy as np
 import math
@@ -118,11 +119,11 @@ class surfacemap(object):
 
     @property
     def x(self):
-        return self.step_size[0] * (np.array(range(1, self.data.shape[0]+1)) - self.center[0])
+        return self.step_size[0] * (np.array(range(0, self.data.shape[0])) - self.center[0])
         
     @property
     def y(self):
-        return self.step_size[1] * (np.array(range(1, self.data.shape[1]+1))- self.center[1])
+        return self.step_size[1] * (np.array(range(0, self.data.shape[1]))- self.center[1])
 
     @property
     def size(self):
@@ -130,7 +131,7 @@ class surfacemap(object):
             
     @property
     def offset(self):
-        return np.array(self.step_size)*(np.array(self.center) - 1/2. - np.array(self.size)/2.0)
+        return np.array(self.step_size)*(np.array(self.center) - (np.array(self.size)-1)/2.0)
     
     @property
     def ROMWeights(self):
@@ -186,6 +187,11 @@ class surfacemap(object):
                     return np.sqrt(1.0 - data)
                 else:
                     return np.sqrt(1.0 - data[:, ::-1])
+            elif "surface_motion" in self.type:
+                if direction == "reflection_front":
+                    return data
+                else:
+                    return data[:, ::-1]
             else:
                 raise BasePyKatException("Map type needs handling")
                 
@@ -203,6 +209,9 @@ class surfacemap(object):
                     return np.sqrt(1.0 - data)
                 else:
                     return np.sqrt(1.0 - data[:, ::-1])
+                    
+            elif "surface_motion" in self.type:
+                return np.ones(data.shape)
             else:
                 raise BasePyKatException("Map type needs handling")
                 
@@ -284,10 +293,10 @@ class surfacemap(object):
 
         D = interp2d(self.x, self.y, self.data, **kwargs)
         
-        data = D(nx-self.offset[0], ny-self.offset[0])
+        data = D(nx-self.offset[0], ny-self.offset[1])
         
-        Dx = interp1d(nx, np.arange(1,len(nx)+1))
-        Dy = interp1d(ny, np.arange(1,len(ny)+1))
+        Dx = interp1d(nx, np.arange(0,len(nx)))
+        Dy = interp1d(ny, np.arange(0,len(ny)))
         
         self.center = (Dx(0), Dy(0))
         self.step_size = (nx[1]-nx[0], ny[1]-ny[0])
@@ -347,15 +356,15 @@ class surfacemap(object):
         # ------------------------------------------------------
         
         fig = pylab.figure()
-        axes = pylab.pcolormesh(xRange, yRange, self.data,
-                                vmin=zmin, vmax=zmax)
+        
+        pcm = pylab.pcolormesh(xRange, yRange, self.data, vmin=zmin, vmax=zmax)
+        pcm.set_rasterized(True)
         
         pylab.xlabel('x [cm]')
         pylab.ylabel('y [cm]')
 
         if xlim is not None: pylab.xlim(xlim)
         if ylim is not None: pylab.ylim(ylim)
-
             
         pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
 
@@ -546,11 +555,11 @@ class mergedmap:
     
     @property
     def x(self):
-        return self.step_size[0] * (np.array(range(1, self.size[0]+1)) - self.center[0])
+        return self.step_size[0] * (np.array(range(0, self.size[0])) - self.center[0])
         
     @property
     def y(self):
-        return self.step_size[1] * (np.array(range(1, self.size[1]+1))- self.center[1])
+        return self.step_size[1] * (np.array(range(0, self.size[1])) - self.center[1])
 
     @property
     def size(self):
@@ -558,7 +567,7 @@ class mergedmap:
             
     @property
     def offset(self):
-        return np.array(self.step_size)*(np.array(self.center) - 1/2. - np.array(self.size)/2.0)
+        return np.array(self.step_size)*(np.array(self.center) - (np.array(self.size)-1)/2.0)
     
     @property
     def ROMWeights(self):
