@@ -76,9 +76,7 @@ class parakat(object):
         self._results = []
         
     def run(self, kat):
-        print(kat)
         self._results.append(self._lview.apply_async(_run, "".join(kat.generateKatScript()), os.getcwd()))
-        print(self._results)
         
     def getResults(self):
         out = []
