@@ -912,6 +912,8 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9):
         
         data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
 
+        return surfacemap(name, maptype, size, center, step, scaling, data)
+        
     # Converts raw zygo and ligo mirror maps to the finesse
     # format. Based on the matlab scripts 'FT_read_zygo_map.m' and
     # 'FT_read_ligo_map.m'.
@@ -1124,15 +1126,15 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9):
         # Changing NaN to zeros. Just to be able to plot the
         # map with surfacemap.plot().
         data[isNan] = 0 
-    
+        
+        return surfacemap(name, maptype, size, center, step, scaling, data, notNan)
         
     # TODO: Add options for reading virgo maps, and .xyz zygo
     # maps (need .xys file for this). Binary ligo-maps?
     # The intensity data is not used to anything here. Remove
     # or add to pykat?
 
-    return surfacemap(name, maptype, size, center, step,
-                      scaling, data, notNan)
+    
     
 
 
