@@ -901,13 +901,14 @@ class grating(Component):
         return self._svgItem
 
 class isolator(Component):
-    def __init__(self, name, node1, node2, S = 0, node3="dump"):
+    def __init__(self, name, node1, node2, S = 0, node3="dump", option=0):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._requested_node_names.append(node3)
         self._svgItem = None
+        self._option = option
         
         self.__S = Param("S",self,SIfloat(S))
         
@@ -920,20 +921,30 @@ class isolator(Component):
     def parseFinesseText(text):
         values = text.split()
 
-        if values[0] != "isol":
+        if values[0] != "isol" and values[0] != "isol*":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse isolator command".format(text))
 
+        if values[0].endswith('*'):
+            option = 1
+        else:
+            option = 0
+            
         values.pop(0) # remove initial value
         
         if len(values) == 4:
-            return isolator(values[0], values[2], values[3], values[1])
+            return isolator(values[0], values[2], values[3], values[1], option=option)
         elif len(values) == 5:
-            return isolator(values[0], values[2], values[3], node3=values[4], S=values[1])
+            return isolator(values[0], values[2], values[3], node3=values[4], S=values[1], option=option)
         else:
             raise pkex.BasePyKatException("Isolator Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        rtn = ['isol {0} {1} {2} {3} {4}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name)]
+        if self._option == 0:
+            cmd = "isol"
+        elif self._option == 1:
+            cmd = "isol*"
+            
+        rtn = ['{cmd} {0} {1} {2} {3} {4}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, cmd=cmd)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())

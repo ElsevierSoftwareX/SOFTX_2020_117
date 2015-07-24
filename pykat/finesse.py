@@ -1500,11 +1500,11 @@ class kat(object):
         for c in self.components.values():
             for n in c.nodes:
                 if n.isDump:
-                    while hasattr(kat.nodes, node_name):
+                    while hasattr(self.nodes, node_name):
                         node_name = "%s_%i" % (str(undumped_name_prefix), i)
                         i += 1
                         
-                    self.nodes.replaceNode(c, n, self.nodes.createNode(node_name % i))
+                    self.nodes.replaceNode(c, n, self.nodes.createNode(node_name))
         
   
     def getMatrices(self):
