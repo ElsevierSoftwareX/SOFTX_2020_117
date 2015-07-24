@@ -328,7 +328,7 @@ class surfacemap(object):
             ymax = len(self.y)-1
             ylim = [self.y.min()*100, self.y.max()*100]
             
-        # ALSO (SEE LONG TEXT BELOW) ADDED BY DT TO FIX LIMITS
+        # ALSO ADDED (SEE LONG TEXT BELOW) BY DT TO FIX LIMITS
         # ------------------------------------------------------
         xlim,ylim = ylim,xlim
         # ------------------------------------------------------
@@ -381,54 +381,116 @@ class surfacemap(object):
 
 
 
-    def remove_curvature(self, Rc0, w=0, display='off'):
-        # Removes curvature from mirror map by fitting a sphere to
-        # mirror surface. Based on the file
-        # 'FT_remove_curvature_from_mirror_map.m'.
-        # Rc0     - Initial guess of the radius of curvature
-        # w       - Beam radius on mirror [m], used for weighting. w=0
-        #           switches off weighting.
-        # display - Display mode of the fitting routine. Can be 'off',
-        #           'iter', 'notify', or 'final'.
+    def remove_curvature(self, Rc0, w=None, zOffset=None, isCenter=[False,False],
+                         display='off'):
+        '''
+        Removes curvature from mirror map by fitting a sphere to
+        mirror surface. Based on the file 'FT_remove_curvature_from_mirror_map.m'.
+        Rc0      - Initial guess of the radius of curvature [m]
+        w        - Beam radius on mirror [m], used for weighting.
+        zOffset  - Initial guess of the z-offset [surfacemap.scaling]. Generally not needed.
+        isCenter - 2D-list with booleans. isCenter[0] Determines if the center of the
+                   sphere is fitted (True) or not (False, recommended). If the center is
+                   fitted, then isCenter[1] determines if the weights are centered around
+                   the fitted center (True) or centered around the center of the data-grid
+                   (False, highly recommended).
+        display  - Display mode of the fitting routine. Can be 'off',
+                   'iter', 'notify', or 'final'.
+        '''
+        # z-value at centre of the data-grid. Serves as initial guess for deviation
+        # from z=0, if no other first guess is given.
+        if zOffset is None:
+            zOffset = self.data[round(self.center[1]), round(self.center[0])]
+            
+        # If fitting center of the sphere, four variables are fitted. Initial guess
+        # of deviation from notNan-data-grid-center: (x0,y0) = (0,0).
+        if isCenter[0]:
+            params = [Rc0, zOffset, 0.0, 0.0]
+        # Otherwise two.
+        else:
+            params = [Rc0, zOffset]
 
-        # z-value at centre of the mirror.
-        zOffset = self.data[round(self.center[1]), round(self.center[0])]
-
+        # Grid with X,Y and r2 = (X^2+Y^2) values. X and Y crosses zero in the center
+        # of the xy-plane.
         X,Y,r2 = self.createGrid()
+        
+        # Cost-function to minimize.
         def costFunc(params):
-            n = len(params)
-            if n==2:
-                Rc = params[0]
-                zOffset = params[1]
-                x0 = 0
-                y0 = 0
-            else:
+            # If the center of the mirror is fitted, four variables are fitted.
+            if isCenter[0]:
                 Rc = params[0]
                 zOffset = params[1]
                 x0 = params[2]
                 y0 = params[3]
+            # Otherwise 2 variables.
+            else:
+                Rc = params[0]
+                zOffset = params[1]
+                x0 = 0
+                y0 = 0
+            
             Z = self.createSphere(Rc,X,Y,zOffset,x0,y0)
-            if  w==0:
+            
+            if w is None:
+                # Mean squared difference between map and the created sphere.
                 res = math.sqrt( ((self.data[self.notNan] -
                                    Z[self.notNan])**2).sum() )/self.notNan.sum()
             else:
-                weight = 2/(math.pi*w**2)*np.exp(-2*r2/w**2)
+                if isCenter[0] and isCenter[1]:
+                    # Weights centered around fitting spehere center. May give weird
+                    # results if the mirror deviates much from a sphere.
+                    weight = (2/(math.pi*w**2))*np.exp(-2*( (X-x0)**2 + (Y-y0)**2 )/w**2)
+                else:
+                    # Weights centered around the center of the mirror xy-plane.
+                    weight = (2/(math.pi*w**2))*np.exp(-2*r2/w**2)
+                # Weighted mean squared difference between map and the created sphere.
                 res = math.sqrt( (weight[self.notNan]*((self.data[self.notNan] -
-                                   Z[self.notNan])**2)).sum() )/self.notNan.sum()
-            print(Rc,zOffset,res)
+                                   Z[self.notNan])**2)).sum() )/weight[self.notNan].sum()
             return res
         
-        params = [Rc0,zOffset]
+        # Using the simplex Nelder-Mead method. This is the same or very
+        # similar to the method used in 'FT_remove_curvature_from_mirror_map.m',
+        # but there are probably better methods to use.
         out = minimize(costFunc, params, method='Nelder-Mead',tol=1.0e-6)
-        Rc = out['x'][0]
-        zOffset = out['x'][1]
-        Z = self.createSphere(Rc,X,Y,zOffset)
-        self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
- 
-        return self.data, self.Rc, self.zOffset
+
+        # Assigning values to the instance variables
+        self.Rc = out['x'][0]
+        self.zOffset = out['x'][1]
+
+        # If center was fitted, assign new values to instance variable center, and
+        # subtract the fitted sphere from the mirror map.
+        if isCenter[0]:
+            x0 = out['x'][2]
+            y0 = out['x'][3]
+            # Converts the deviation into a new absolut center in data points.
+            self.center = (self.center[0] + x0/self.step_size[0],
+                           self.center[1] + y0/self.step_size[1])
+            # Creating fitted sphere
+            Z = self.createSphere(self.Rc, X, Y, self.zOffset, x0, y0)
+            # Subtracting sphere from map
+            self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
+            return self.Rc, self.zOffset, x0, y0
+        # Subtracting fitted sphere from mirror map.
+        else:
+            # Creating fitted sphere
+            Z = self.createSphere(self.Rc,X,Y,self.zOffset)
+            # Subtracting sphere from map
+            self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
+            return self.Rc, self.zOffset
 
     def createSphere(self,Rc,X,Y,zOffset=0,x0=0,y0=0,xTilt=0,yTilt=0,isPlot=False):
-        # Creating spherical surface. Based on 'FT_create_sphere_for_map.m'
+        '''
+        Creating spherical surface. Based on 'FT_create_sphere_for_map.m'
+        Rc      - Radius of curvature, and center of sphere on z-axis in case zOffset=0 [m].
+        X, Y    - Matrices of x,y-values generated by 'X,Y = numpy.meshgrid(xVec,yVec)'.
+                  Preferrably created by method 'surfacemap.createGrid()' [m].
+        zOffset - Surface center offset from 0. Positive value gives the surface center
+                  positive z-coordinate. [self.scaling]
+        x0,y0   - The center of the sphere in the xy-plane.
+        x/yTilt - Tilt of x/y-axis [rad].
+        isPlot  - Plot or not [boolean]. Not recommended when used within optimization
+                  algorithm.
+        '''
         
         # Adjusting for tilts and offset
         Z = zOffset + (X*np.tan(xTilt) + Y*np.tan(yTilt))/self.scaling
@@ -442,15 +504,22 @@ class surfacemap(object):
             axes = pylab.pcolormesh(X, Y, Z) #, vmin=zmin, vmax=zmax)
             cbar = fig.colorbar(axes)
             cbar.set_clim(Z.min(), Z.max())
-            pylab.title('Z_min = ' + str(Z.min()) + '      Z_max = ' + str(Z.max()))
+            pylab.title('Z_min = ' + str(Z.min()) + '   Z_max = ' + str(Z.max()))
             pylab.show()
         
         return Z
     
     def createGrid(self):
-        # Creating grid for the map. Based on 'FT_create_grid_for_map.m'
-        # and 'FT_init_grid.m'.
-        # ----------------------------------------------------------------
+        '''
+        Creating grid for fitting spherical surface to the map. Based on
+        'FT_create_grid_for_map.m' and 'FT_init_grid.m'. (x,y) = (0,0) is
+        placed at the centre of the mirror surface defined by the instance
+        variable surfacemap.center.
+        
+        Returns X,Y,r2
+        , where X,Y = numpy.meshgrid(x,y), and r2 = X^2 + Y^2.
+        '''
+        
         yPoints, xPoints = self.data.shape
         # Difference between the data point centre, and the centre of
         # the mirror surface.
@@ -461,22 +530,18 @@ class surfacemap(object):
         x = np.array([n for n in range(xPoints)])
         y = np.array([n for n in range(yPoints)])
 
-        # Shouldn't the real physical size be (points-1)*step_size?
+        # Physical size. Shouldn't this be (points-1)*step_size?
         xSize = xPoints*self.step_size[0]
         ySize = yPoints*self.step_size[1]
         # ...corrected here by subracting one step. Isn't this unnecessary
         # complicated btw?
         xAxis = x*self.step_size[0] + xOffset - (xSize-self.step_size[0])/2
         yAxis = y*self.step_size[1] + yOffset - (ySize-self.step_size[1])/2
-
-        #print(xAxis[round(self.center[0])-1:round(self.center[0])+2])
-        #print(yAxis[round(self.center[1])-1:round(self.center[1])+2])
         
         X,Y = np.meshgrid(xAxis,yAxis)
-        r = np.sqrt(X**2 + Y**2)
         r2 = X**2 + Y**2
-        phi = np.arctan2(Y,X)
-        print(X.min(),X.max(),Y.min(),Y.max())
+        # r = np.sqrt(X**2 + Y**2)
+        # phi = np.arctan2(Y,X)
         return X,Y,r2
         # ----------------------------------------------------------------
 
@@ -819,13 +884,20 @@ class zernikemap(surfacemap):
 		self.data = data
 	
 			
-# Reads surface map files and return surfacemap-object.
-# supported mapFormat: 'finesse', 'ligo', 'zygo'.
-# All ascii formats. 
-def read_map(filename, mapFormat='finesse'):
-    # Function turning input x into float.
-    g = lambda x: float(x)
+
+def read_map(filename, mapFormat='finesse', scaling=1.0e-9):
+    '''
+    Reads surface map files and return a surfacemap-object xy-centered at the
+    center of the mirror surface.
+    filename  - name of surface map file.
+    mapFormat - 'finesse', 'ligo', 'zygo'. Currently only for ascii formats.
+    scaling   - scaling of surface height of the mirror map [m].
+    '''
     
+    # Function converting string number into float.
+    g = lambda x: float(x)
+
+    # Reads finesse mirror maps.
     if mapFormat == 'finesse':
         
         with open(filename, 'r') as f:
@@ -838,13 +910,11 @@ def read_map(filename, mapFormat='finesse'):
             step = tuple(map(g, f.readline().split(':')[1].strip().split()))
             scaling = float(f.readline().split(':')[1].strip())
         
-        
-        
         data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
 
     # Converts raw zygo and ligo mirror maps to the finesse
-    # format. Based on translation of the matlab scripts
-    # 'FT_read_zygo_map.m' and 'FT_read_ligo_map.m'
+    # format. Based on the matlab scripts 'FT_read_zygo_map.m' and
+    # 'FT_read_ligo_map.m'.
     elif mapFormat == 'ligo' or mapFormat == 'zygo':
         if mapFormat == 'ligo':
             isLigo = True
@@ -861,7 +931,8 @@ def read_map(filename, mapFormat='finesse'):
             else:
                 isAscii = False
                 
-        # Unknowns (why are these values hard coded here?)
+        # Unknowns (why are these values hard coded here?) Moving
+        # scaling to input. Fix the others later too.
         # ------------------------------------------------------
         # Standard maps have type 'phase' (they store surface
         # heights)
@@ -870,7 +941,7 @@ def read_map(filename, mapFormat='finesse'):
         # affected
         field = 0
         # Measurements in nanometers
-        scaling = 1.0e-9
+        # scaling = 1.0e-9
         # ------------------------------------------------------
 
         # Reading header of LIGO-map (Zygo file? Says Zygo in
@@ -890,7 +961,7 @@ def read_map(filename, mapFormat='finesse'):
                 iRows = float(line.split()[3])
                 
             line = f.readline().split()
-            # Unknown
+            # Unknown usage.
             # ----------------------------------------------
             if isLigo:
                 y0 = float(line[0])
