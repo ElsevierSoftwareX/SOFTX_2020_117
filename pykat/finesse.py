@@ -1107,7 +1107,7 @@ class kat(object):
         except pkex.BasePyKatException as ex:
             print (ex)
 
-    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False):
+    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False):
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
@@ -1124,6 +1124,8 @@ class kat(object):
         that Finesse performs, the keys are the node names and the values
         are the x and y beam parameters. If no tracing is done a None
         is returned.
+        
+        rethrowExceptions - if true exceptions will be thrown again rather than being excepted and calling sys.exit()
         """
         start = datetime.datetime.now()
         
@@ -1423,9 +1425,16 @@ class kat(object):
         except KeyboardInterrupt as ex:
             print("Keyboard interrupt caught, stopped simulation.")
         except pkex.FinesseRunError as ex:
-            pkex.PrintError("Error from Finesse:", ex)
+            if rethrowExceptions:
+                raise ex 
+            else:
+                pkex.PrintError("Error from Finesse:", ex)
+                
         except pkex.BasePyKatException as ex:
-            pkex.PrintError("Error from pykat:", ex)
+            if rethrowExceptions:
+                raise ex 
+            else:
+                pkex.PrintError("Error from pykat:", ex)
         finally:
             if self.verbose: print ("")
             if self.verbose: print ("Finished in " + str(datetime.datetime.now()-start))
