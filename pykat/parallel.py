@@ -28,7 +28,7 @@ from IPython.parallel import Client
 import sys
 import os
 
-def _run(commands, pwd):
+def _run(commands, pwd, **kwargs):
     import os
     os.chdir(pwd)
     
@@ -36,7 +36,7 @@ def _run(commands, pwd):
 
     kat = pykat.finesse.kat()
     kat.parseCommands(commands)
-    out = kat.run(rethrowExceptions=True)
+    out = kat.run(rethrowExceptions=True, **kwargs)
     
     return out
 
@@ -75,8 +75,8 @@ class parakat(object):
         self._lview.block = False
         self._results = []
         
-    def run(self, kat):
-        self._results.append(self._lview.apply_async(_run, "".join(kat.generateKatScript()), os.getcwd()))
+    def run(self, kat, **kwargs):
+        self._results.append(self._lview.apply_async(_run, "".join(kat.generateKatScript()), os.getcwd(), **kwargs))
         
     def getResults(self):
         out = []
