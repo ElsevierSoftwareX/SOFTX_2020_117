@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.misc import factorial as fac
+import math
 
 def zernike_R(m, n, rho):
 	
@@ -35,4 +36,46 @@ def zernike(m, n, rho, phi):
 		return zernike_R(-m, n, rho) * np.sin(-m * phi)
 	else:
 		return zernike_R(0, n, rho)
+
+
+def znm2Rc(A,R):
+    '''
+    Convertes amplitudes of Zernike polynomials of order n=2 into
+    spherical radius of curvature. In case the astigmatic modes
+    (m=-1,m=2) are included, the functon returns the maximum and
+    minimum curvature.
+    
+    Inputs: A, R
+    A - List of amplitudes for order 2 Zernike polynomials, ordered so that m
+        increases with list index. 1 <= len(A) <= 3. [m]
+    R - Radius of the mirror surface in the xy-plane. [m]
+
+    Returns: Rc
+    Rc - If astigmatic modes are used (len(A) == 2 or 3) a numpy.array of length
+         2 containing min and max curvatures is returned. If only the 'defocus'
+         mode is used Rc is a float number. [m]
+
+    Based on the Simtools function 'FT_Znm_to_Rc.m' by Charlotte Bond.
+    '''
+    
+    if isinstance(A,list):
+        if len(A)==3:
+            a20 = A[1]
+            a22 = math.sqrt(A[0]**2 + A[2]**2)
+            s = np.array([1.0, -1.0])
+        elif len(A)==2:
+            a20 = 0
+            a22 = math.sqrt(A[0]**2 + A[1]**2)
+            s = np.array([1.0, -1.0])
+        elif len(A)==1:
+            a20 = A[0]
+            a22 = 0
+            s = 0
+    elif isinstance(A,float) or isinstance(A,int):
+        a20 = A
+        a22 = 0
+        s = 0
+        
+    Rc = ((2*a20 + s*a22)**2 + R**2)/(2*(2*a20+s*a22))
+    return Rc
 
