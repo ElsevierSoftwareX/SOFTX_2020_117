@@ -53,7 +53,7 @@ class surfacemap(object):
         self.zOffset = zOffset
         self.__interp = None
         self._zernikesRemoved = {}
-		
+        self._betaRemoved = None
 		
         if data is None:
             self.data = np.zeros(size)
@@ -84,6 +84,14 @@ class surfacemap(object):
                     mapfile.write("%.15g " % self.data[i,j])
                 mapfile.write("\n")
 
+    @property
+    def betaRemoved(self):
+        return self._betaRemoved
+    
+    @betaRemoved.setter
+    def betaRemoved(self, v):
+        self._betaRemoved = v
+        
     @property
     def zernikesRemoved(self):
         return self._zernikesRemoved
@@ -391,12 +399,14 @@ class surfacemap(object):
 
     def find_radius(self, method = 'max', unit='points'):
         '''
-        Estimates the radius of the mirror in the xy-plane. Based on FT_find_map_radius.m
+        Estimates the radius of the mirror in the xy-plane. 
         method   - 'max' gives maximal distance from centre to the edge.
                    'xy' returns the distance from centre to edge along x- and y-directions.
                    'area' calculates the area and uses this to estimate the mean radius.
         unit     - 'points' gives radius in data points.
                    'meters' gives radius in meters.
+
+        Based on Simtools function 'FT_find_map_radius.m' by Charlotte Bond.
         '''
 
         # Row and column indices of non-NaN
@@ -425,7 +435,17 @@ class surfacemap(object):
                 r = step_size[0]*math.sqrt(len(cIndx)/math.pi)
             else:
                 r = math.sqrt(len(cIndx)/math.pi)
-                
+        elif method=='min':
+            # Arrays of row and column indices where data is NaN.
+            r,c = np.where(self.notNan == False)
+            # Sets the map center to index [0,0]
+            x = c-self.center[0]
+            y = r-self.center[1]
+            if unit == 'meters' or unit == 'metres' or unit=='Meters' or unit=='Metres':
+                x = x*self.step_size[0]
+                y = y*self.step_size[1]
+            # Minimum radius squared
+            r = math.sqrt((x**2+y**2).min())
         return r
 
 
@@ -452,9 +472,8 @@ class surfacemap(object):
         R = self.find_radius(unit='meters')
         
         # Grid for for Zernike-polynomials (same size as map).
-        X,Y,r2 = self.createGrid()
-        phi = np.arctan2(Y,X)
-        rho = np.sqrt(r2)/R
+        rho, phi = self.createPolarGrid()
+        rho = rho/R
         # Loops through all n-values up to n_max
         for n in range(0,n_max+1):
             # Loops through all possible m-values for each n.
@@ -541,10 +560,12 @@ class surfacemap(object):
         
         # Radius of mirror.
         R = self.find_radius(unit='meters')
-        X,Y,r2 = self.createGrid()
-        phi = np.arctan2(Y,X)
-        rho = np.sqrt(r2)/R
-        A_scaled = [a*self.scaling for a in A]
+        # Grid in polar coordinates
+        rho,phi = self.createPolarGrid()
+        rho = rho/R
+        
+        # Creates the choosen Zernike polynomials and removes them from the
+        # mirror map.
         if zModes=='all' or zModes=='All':
             for k in range(0,3):
                 m = (k-1)*2
@@ -571,129 +592,181 @@ class surfacemap(object):
         return self.Rc, self.zernikesRemoved
 
 
+    def rmSphericalSurf(self, Rc0, w=None, zOff=None, isCenter=[False,False]):
+        '''
+        Fits spherical surface to the mirror map and removes it.
 
-    # NOTE TO SELF: THINK THE INTERPOLATION PERFORMED IN THIS METHOD BELOW
-    #               IS UNNECESSARY, NOT USED BY BOND IN 'NEW'!!!! /DT
+        Inputs: Rc0, w, zOff, isCenter
+        Rc       - Initial guess of the Radius of curvature. [m]
+        w        - Gaussian weighting parameter. The distance from the center where the
+                   weigths have decreased by a factor of exp(-2) compared to the center.
+                   Should preferrably be equal to the beam radius at the mirror. [m]
+        zOff     - Initial guess of the z-offset. Generally unnecessary. [surfacemap.scaling]
+        isCenter - 2D-list with booleans. isCenter[0] Determines if the center of the
+                   sphere is to be fitted (True) or not (False, recommended). If the center is
+                   fitted, then isCenter[1] determines if the weights (in case w!=None) are
+                   centered around the fitted center (True) or centered around the center of
+                   the data-grid (False, highly recommended).
+                   
+        if isCenter[0] == False
+        Returns: Rc, zOff
+        Rc       - Radius of curvature of the sphere removed from the mirror map. [m]
+        zOff     - z-offset of the sphere removed. [surfacemap.scaling]
+        isCenter[0] == True
+        Returns Rc, zOff, center
+        center   - [x0, y0] giving the coordinates of the center of the fitted sphere.
+        
+        Based on the file 'FT_remove_curvature_from_mirror_map.m' by Charlotte Bond.
+        '''
+        
+        # z-value at centre of the data-grid. Serves as initial guess for deviation
+        # from z=0, if no other first guess is given.
+        if zOff is None:
+            zOff = self.data[round(self.center[1]), round(self.center[0])]
+
+        # If fitting center of the sphere, four variables are fitted. Initial guess
+        # of deviation from notNan-data-grid-center: (x0,y0) = (0,0).
+        if isCenter[0]:
+            p = [Rc0, zOff, 0.0, 0.0]
+        # Otherwise two.
+        else:
+            p = [Rc0, zOff]
+
+        # Grids with X,Y and r2 values. X and Y crosses zero in the center
+        # of the xy-plane.
+        X,Y = np.meshgrid(self.x, self.y)
+        r2 = X**2 + Y**2
+
+        # Cost-function to minimize.
+        def costFunc(p):
+            # If the center of the mirror is fitted, four variables are fitted.
+            if isCenter[0]:
+                Rc = p[0]
+                zOff = p[1]
+                x0 = p[2]
+                y0 = p[3]
+            # Otherwise 2 variables.
+            else:
+                Rc = p[0]
+                zOff = p[1]
+                x0 = 0
+                y0 = 0
+
+            Z = self.createSphere(Rc,X,Y,zOff,x0,y0)
+
+            if w is None:
+                # Mean squared difference between map and the created sphere.
+                res = math.sqrt( ((self.data[self.notNan] -
+                                   Z[self.notNan])**2).sum() )/self.notNan.sum()
+            else:
+                if isCenter[0] and isCenter[1]:
+                    # Weights centered around fitting spehere center. May give weird
+                    # results if the mirror deviates much from a sphere.
+                    weight = (2/(math.pi*w**2))*np.exp(-2*( (X-x0)**2 + (Y-y0)**2 )/w**2)
+                else:
+                    # Weights centered around the center of the mirror xy-plane.
+                    weight = (2/(math.pi*w**2))*np.exp(-2*r2/w**2)
+                # Weighted mean squared difference between map and the created sphere.
+                res = math.sqrt( ( weight[self.notNan]*
+                                  ( (self.data[self.notNan] - Z[self.notNan])**2 )
+                                  ).sum() ) \
+                                  /weight[self.notNan].sum()
+            return res
+
+        # Using the simplex Nelder-Mead method. This is the same or very
+        # similar to the method used in 'FT_remove_curvature_from_mirror_map.m',
+        # but there are probably better methods to use.
+        out = minimize(costFunc, p, method='Nelder-Mead',tol=1.0e-6)
+
+        # Assigning values to the instance variables
+        self.Rc = out['x'][0]
+        self.zOff = out['x'][1]
+
+        # If center was fitted, assign new values to instance variable center, and
+        # subtract the fitted sphere from the mirror map.
+        if isCenter[0]:
+            x0 = out['x'][2]
+            y0 = out['x'][3]
+            # Converts the deviation into a new absolut center in data points.
+            self.center = (self.center[0] + x0/self.step_size[0],
+                           self.center[1] + y0/self.step_size[1])
+            # Creating fitted sphere
+            Z = self.createSphere(self.Rc, X, Y, self.zOff, x0, y0)
+            # Subtracting sphere from map
+            self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
+            return self.Rc, self.zOff, self.center
+        # Subtracting fitted sphere from mirror map.
+        else:
+            # Creating fitted sphere
+            Z = self.createSphere(self.Rc,X,Y,self.zOff)
+            # Subtracting sphere from map
+            self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
+            return self.Rc, self.zOff
+
     def remove_curvature(self, method='zernike', w=None, zOff=None,
                          isCenter=[False,False], zModes = 'all'):
         '''
-        Removes curvature from mirror map by fitting a sphere to
-        mirror surface. Based on the file 'FT_remove_curvature_from_mirror_map.m'.
-        
-        w        - Beam radius on mirror [m], used for weighting.
-        method   - 'sphere' fits a sphere to the mirror map.
-                   'zernike' convolves second order Zernike polynomials with the map,
-                   and then removes the polynomial with the obtained amplitude from the
-                   surface map. Which of the three modes that are fitted is determined by
-                   zMods (see below).
+        Removes curvature from mirror map by fitting a sphere to the mirror map, or
+        by convolving with second order Zernike polynomials and then extracting
+        these polynomials with the obtained amplitudes. 
+
+        Inputs: method, w, zOff, isCenter, zModes
+        method   - 'zernike' (default) convolves second order Zernike polynomials with the
+                   map, and then removes the polynomial with the obtained amplitude from the
+                   surface map. Which of the three second order modes that are fitted is
+                   determined by zMods (see below).
+                 - 'sphere' fits a sphere to the mirror map. The fitting is Gaussian
+                   weighted if w (see below) is specifed. 
+        w        - Gaussian weighting parameter. The distance from the center where the
+                   weigths have decreased by a factor of exp(-2) compared to the center.
+                   Should preferrably be equal to the beam radius at the mirror. [m]
+        zOff     - Initial guess of the z-offset. Only used together with method='sphere'.
+                   Generally unnecessary. [surfacemap.scaling]
+        isCenter - 2D-list with booleans. isCenter[0] Determines if the center of the
+                   sphere is to be fitted (True) or not (False, recommended). If the center is
+                   fitted, then isCenter[1] determines if the weights (in case w!=None) are
+                   centered around the fitted center (True) or centered around the center of
+                   the data-grid (False, highly recommended).
         zModes   - 'defocus' uses only Zernike polynomial (n,m) = (2,0), which has a
                    parabolic shape.
                    'astigmatism' uses Zernike polynomials (n,m) = (2,-2) and (n,m) = (2,2).
-                   There are astigmatic.
-                   'all' uses both defocus and the astigmatic modes.
-        zOff     - Initial guess of the z-offset. Only used together with method='sphere'.
-                   Generally unnecessary [surfacemap.scaling].
-        isCenter - 2D-list with booleans. isCenter[0] Determines if the center of the
-                   sphere is to be fitted (True) or not (False, recommended). If the center is
-                   fitted, then isCenter[1] determines if the weights (w!=None) are centered
-                   around the fitted center (True) or centered around the center of the
-                   data-grid (False, highly recommended).
+                   'all' uses both the defocus and the astigmatic modes.
+
+        if method == 'zernike'
+        Returns: Rc, znm
+        Rc       - Approximate spherical radius of curvature removed.
+        znm      - Dictionary specifying which Zernike polynomials that have been removed
+                   as well as their amplitudes.
+        if method == 'sphere' and isCenter[0] == False
+        Returns: Rc, zOff
+        Rc       - Radius of curvature of the sphere removed from the mirror map. [m]
+        zOff     - z-offset of the sphere removed. [surfacemap.scaling]
+        if method == 'sphere' and isCenter[0] == True
+        Returns Rc, zOff, center
+        center   - [x0, y0] giving the coordinates of the center of the fitted sphere. 
         '''
         
         
         if method == 'zernike' or method == 'Zernike':
             Rc, znm = self.rmZernikeCurvs(zModes)
-            
+            return Rc, znm
         elif method == 'sphere' or method == 'Sphere':
             smap = deepcopy(self)
-            # Using Zernike polynomila to estimate radius of curvature.
+            # Using Zernike polynomial (m,n) = (0,2) to estimate radius of curvature.
             Rc0 = smap.rmZernikeCurvs('defocus')[0]
-            #print(Rc0,znm)
+            if isCenter[0]:
+                Rc, zOff, center = self.rmSphericalSurf(Rc0, w, zOff, isCenter)
+                return Rc, zOff, self.center
+            else:
+                Rc, zOff = self.rmSphericalSurf(Rc0, w, zOff, isCenter)
+                return Rc, zOff
+
             
-            # z-value at centre of the data-grid. Serves as initial guess for deviation
-            # from z=0, if no other first guess is given.
-            if zOff is None:
-                zOff = self.data[round(self.center[1]), round(self.center[0])]
-
-            # If fitting center of the sphere, four variables are fitted. Initial guess
-            # of deviation from notNan-data-grid-center: (x0,y0) = (0,0).
-            if isCenter[0]:
-                p = [Rc0, zOff, 0.0, 0.0]
-            # Otherwise two.
-            else:
-                p = [Rc0, zOff]
-
-            # Grid with X,Y and r2 = (X^2+Y^2) values. X and Y crosses zero in the center
-            # of the xy-plane.
-            X,Y,r2 = self.createGrid()
-
-            # Cost-function to minimize.
-            def costFunc(p):
-                # If the center of the mirror is fitted, four variables are fitted.
-                if isCenter[0]:
-                    Rc = p[0]
-                    zOff = p[1]
-                    x0 = p[2]
-                    y0 = p[3]
-                # Otherwise 2 variables.
-                else:
-                    Rc = p[0]
-                    zOff = p[1]
-                    x0 = 0
-                    y0 = 0
-
-                Z = self.createSphere(Rc,X,Y,zOff,x0,y0)
-
-                if w is None:
-                    # Mean squared difference between map and the created sphere.
-                    res = math.sqrt( ((self.data[self.notNan] -
-                                       Z[self.notNan])**2).sum() )/self.notNan.sum()
-                else:
-                    if isCenter[0] and isCenter[1]:
-                        # Weights centered around fitting spehere center. May give weird
-                        # results if the mirror deviates much from a sphere.
-                        weight = (2/(math.pi*w**2))*np.exp(-2*( (X-x0)**2 + (Y-y0)**2 )/w**2)
-                    else:
-                        # Weights centered around the center of the mirror xy-plane.
-                        weight = (2/(math.pi*w**2))*np.exp(-2*r2/w**2)
-                    # Weighted mean squared difference between map and the created sphere.
-                    res = math.sqrt( (weight[self.notNan]*((self.data[self.notNan] -
-                                       Z[self.notNan])**2)).sum() )/weight[self.notNan].sum()
-                return res
-
-            # Using the simplex Nelder-Mead method. This is the same or very
-            # similar to the method used in 'FT_remove_curvature_from_mirror_map.m',
-            # but there are probably better methods to use.
-            out = minimize(costFunc, p, method='Nelder-Mead',tol=1.0e-6)
-
-            # Assigning values to the instance variables
-            self.Rc = out['x'][0]
-            self.zOff = out['x'][1]
-
-            # If center was fitted, assign new values to instance variable center, and
-            # subtract the fitted sphere from the mirror map.
-            if isCenter[0]:
-                x0 = out['x'][2]
-                y0 = out['x'][3]
-                # Converts the deviation into a new absolut center in data points.
-                self.center = (self.center[0] + x0/self.step_size[0],
-                               self.center[1] + y0/self.step_size[1])
-                # Creating fitted sphere
-                Z = self.createSphere(self.Rc, X, Y, self.zOff, x0, y0)
-                # Subtracting sphere from map
-                self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
-                return self.Rc, self.zOff, x0, y0
-            # Subtracting fitted sphere from mirror map.
-            else:
-                # Creating fitted sphere
-                Z = self.createSphere(self.Rc,X,Y,self.zOff)
-                # Subtracting sphere from map
-                self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
-                return self.Rc, self.zOff
-
     def recenter(self):
         '''
-        Centering mirror map, based on 'FT_recenter_mirror_map.m'
+        Setting center of mirror to be in the middle of the notNan field. 
+        
+        Based on 'FT_recenter_mirror_map.m' by Charlotte Bond.
         '''
         # Row and column indices with non-NaN elements
         rIndx, cIndx = self.notNan.nonzero()
@@ -707,7 +780,9 @@ class surfacemap(object):
     def removePeriphery(self):
         '''
         Finds the NaN elements closest to the map center, and sets all
-        elements further out to NaN. Based on FT_remove_elements_outside_map.m
+        elements further out to NaN. Then cropping and recentering.
+        
+        Based on FT_remove_elements_outside_map.m by Charlotte Bond.
         '''
         # Arrays of row and column indices where data is NaN.
         r,c = np.where(self.notNan == False)
@@ -717,17 +792,16 @@ class surfacemap(object):
         # Minimum radius squared measured in data points.
         r2 = (x**2+y**2).min()
         # Grid with the same dimensions as the map.
-        X,Y = self.createGrid()[0:2]
-        # Grid containing radial distances squread from the center.
+        X,Y = np.meshgrid(self.x, self.y)
+        # Grid containing radial distances squared measured from the center.
         R2 = (X/self.step_size[0])**2 + (Y/self.step_size[1])**2
         # Matrix with True=='outside mirror surface'
         outs = R2>=r2
-        # Setting notNan to false outside the mirror... 
+        # Setting notNan-matrix to false outside the mirror.
         self.notNan[outs] = False
-        # ... and the data is set to 0.
+        # Setting data matrix to 0 outside the mirror.
         self.data[outs] = 0.0
 
-       
         # Removing unnecessary data points.
         # --------------------------------------
         # Radius inside data is kept. Don't know why R is set this way,
@@ -746,16 +820,22 @@ class surfacemap(object):
     
     def createSphere(self,Rc,X,Y,zOffset=0,x0=0,y0=0,xTilt=0,yTilt=0,isPlot=False):
         '''
-        Creating spherical surface. Based on 'FT_create_sphere_for_map.m'
-        Rc      - Radius of curvature, and center of sphere on z-axis in case zOffset=0 [m].
-        X, Y    - Matrices of x,y-values generated by 'X,Y = numpy.meshgrid(xVec,yVec)'.
-                  Preferrably created by method 'surfacemap.createGrid()' [m].
+        Creating spherical surface.
+        
+        Inputs: Rc, X, Y, zOffset=0, x0=0, y0=0, xTilt=0, yTilt=0, isPlot=False
+        Rc      - Radius of curvature, and center of sphere on z-axis in case zOffset=0. [m]
+        X, Y    - Matrices of x,y-values generated by 'X,Y = numpy.meshgrid(xVec,yVec)'. [m]
         zOffset - Surface center offset from 0. Positive value gives the surface center
                   positive z-coordinate. [self.scaling]
         x0,y0   - The center of the sphere in the xy-plane.
         x/yTilt - Tilt of x/y-axis [rad]. E.g. xTilt rotates around the y-axis.
         isPlot  - Plot or not [boolean]. Not recommended when used within optimization
                   algorithm.
+
+        Returns: Z
+        Z       - Matrix of surface height values. [self.scaling]
+        
+        Based on Simtools function 'FT_create_sphere_for_map.m' by Charlotte Bond.
         '''
         
         # Adjusting for tilts and offset
@@ -772,47 +852,127 @@ class surfacemap(object):
             cbar.set_clim(Z.min(), Z.max())
             pylab.title('Z_min = ' + str(Z.min()) + '   Z_max = ' + str(Z.max()))
             pylab.show()
-        
         return Z
     
-    def createGrid(self):
+    def createPolarGrid(self):
         '''
-        Creating grid for fitting spherical surface to the map. Based on
-        'FT_create_grid_for_map.m' and 'FT_init_grid.m'. (x,y) = (0,0) is
-        placed at the centre of the mirror surface defined by the instance
-        variable surfacemap.center.
-        
-        Returns X,Y,r2
-        , where X,Y = numpy.meshgrid(x,y), and r2 = X^2 + Y^2.
+        Creating polar grid from the rectangular x and y coordinates in
+        surfacemap. 
+
+        Returns: rho, phi
+        rho  - matrix with radial distances from centre of mirror map.
+        phi  - matrix with polar angles.
+        '''
+        X,Y = np.meshgrid(self.x,self.y)
+        phi = np.arctan2(Y,X)
+        rho = np.sqrt(X**2 + Y**2)
+        return rho,phi
+
+    def preparePhaseMap(self, xyOffset=None, w=None):
+        '''
+        Based on Simtools function 'FT_prepare_phase_map_for_finesse.m' by Charlotte Bond.
         '''
         
-        yPoints, xPoints = self.data.shape
-        # Difference between the data point centre, and the centre of
-        # the mirror surface.
-        xOffset = (((xPoints-1)/2-self.center[0]) )*self.step_size[0]
-        yOffset = (((yPoints-1)/2-self.center[1]) )*self.step_size[1]
-
-        # Creating arrays with values from 0 up to (xyPoints-1).
-        x = np.array([n for n in range(xPoints)])
-        y = np.array([n for n in range(yPoints)])
-
-        # Physical size. Shouldn't this be (points-1)*step_size?
-        xSize = xPoints*self.step_size[0]
-        ySize = yPoints*self.step_size[1]
-        # ...corrected here by subracting one step. Isn't this unnecessary
-        # complicated btw?
-        xAxis = x*self.step_size[0] + xOffset - (xSize-self.step_size[0])/2
-        yAxis = y*self.step_size[1] + yOffset - (ySize-self.step_size[1])/2
+        print('Preparing phase map for Finesse...')
+        # Factor that scales surface height to nm.
+        nm_scaling = self.scaling*1.0e9
         
-        X,Y = np.meshgrid(xAxis,yAxis)
-        r2 = X**2 + Y**2
-        # r = np.sqrt(X**2 + Y**2)
-        # phi = np.arctan2(Y,X)
-        return X,Y,r2
-        # ----------------------------------------------------------------
+        print(' Centering...')
+        self.recenter()
+        print('  New center (x0, y0) = ({:.2f}, {:.2f})'.
+              format(self.center[0],self.center[1]))
+
+        print(' Cropping map...')
+        before = self.size
+        self.removePeriphery()
+        print('  Size (rows, cols): ({:d}, {:d}) ---> ({:d}, {:d})'.
+              format(before[1], before[0], self.size[1], self.size[0]))
+        print('  New center (x0, y0) = ({:.2f}, {:.2f})'.
+              format(self.center[0],self.center[1]))
+        
+        # Radius of mirror in xy-plane.
+        R = self.find_radius(unit='meters')
+
+        print(' Removing curvatures...')
+        if w is None:
+            Rc, znm = self.remove_curvature(method='zernike', zModes = 'defocus')
+            print('  Removed Z20 with amplitude A20 = {:.2f} nm'.format(znm['02'][2]))
+            print('  Equivalent Rc = {:.2f} m'.format(Rc))
+        else:
+            w_max = self.find_radius(method='min', unit='metres')
+            if w >= w_max:
+                w = w_max-max(self.step_size)
+                print('  Weigthing radius too large, setting w = {0:.4f} m'.format(w))
+            Rc, zOff = self.remove_curvature(method='sphere', w=w)
+            # Equivalent Zernike (n=2,m=0) amplitude.
+            A20 = Rc2znm(Rc,R)/self.scaling
+            # Adding A20 to zOff because: Z(n=2,m=0) = A20*(r**2 - 1)
+            zOff = zOff+A20
+
+            print('  Removed Rc = {0:.2f} m'.format(Rc) )
+            print('  Equivalent Z(n=2,m=0) amplitude A20 = {0:.2f} nm'.format(A20))
+            
+        
+        print(' Removing offset...')
+        if w is None:
+            A00 = self.rmZernike(0,0)
+            print('  Removed Z00 with amplitude A00 = {:.2f} nm'.format(A00) )
+        else:
+            A0 = self.removeOffset(w)
+            zOff = zOff + A0
+            print('  Removed offset, A00 = {0:.4f} nm'.format(zOff))
+        
+        print(' Removing piston...')
+        if w is None:
+            A1 = self.zernikeConvol(1)[1]
+            rho,phi=self.createPolarGrid()
+            rho = rho/R
+            Z = []
+            Z.append(zernike(-1,1,rho,phi))
+            Z.append(zernike(1,1,rho,phi))
+            for k in range(2):
+                self.data[self.notNan] = self.data[self.notNan]-A1[k]*Z[k][self.notNan]
+                self.zernikesRemoved = (2*k-1,1,A1[k])
+                print('  Removed Z1{:d} with amplitude A1{:d} = {:.2f} nm'.
+                      format(2*k-1,2*k-1,A1[k]) )
+            ybeta = np.arctan(A1[0]*self.scaling/R)
+            xbeta = np.arctan(A1[1]*self.scaling/R)
+            self.betaRemoved = (xbeta,ybeta)
+            print('  Equivalent tilt in radians: ybeta = {:.2e} rad'.format(ybeta))
+            print('                              xbeta = {:.2e} rad'.format(xbeta))
+        else:
+            pass
+
 
         
+    def removeOffset(self, r):
+        '''
+        Based on Simtools function 'FT_remove_offset_from_mirror_map.m' by Charlotte Bond.
+        '''
+        rho = self.createPolarGrid()[0]
+        inside = rho<r
+        inside_notNan = np.zeros(inside.shape,dtype=bool)
+        inside_notNan[inside] = self.notNan[inside]
 
+        offset = self.data[inside_notNan].sum()/inside_notNan.sum()
+        self.data[self.notNan] = self.data[self.notNan]-offset
+        
+        return offset
+
+    def rmZernike(self, m, n):
+        '''
+        Currently only for (m,n) = (0,0). Extending soon.
+        '''
+        R = self.find_radius(unit='meters')
+        A0 = self.zernikeConvol(0)[0][0]
+        rho, phi= self.createPolarGrid()
+        rho = rho/R
+        Z00 = zernike(0, 0, rho, phi)
+        self.data[self.notNan] = self.data[self.notNan]-A0*Z00[self.notNan]
+        self.zernikesRemoved = (0, 0, A0)
+
+        return A0
+        
 class mergedmap:
     """
     A merged map combines multiple surfaces map to form one. Such a map can be used
@@ -1403,32 +1563,32 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9):
     
     
 
-def rnm(n,m,rho):
-    '''
-    Based on 'FT_Rnm.m'.
-    Calculates radial part of the Zernike polynomial for given n and m, and rho.
-    n   - Radial coordinate
-    m   - Azimuthal coordinate
-    rho - Matrix with normalised radial coordinates, i.e., rho[i,j] <= 1.
-    '''
+## def rnm(n,m,rho):
+##     '''
+##     Based on 'FT_Rnm.m'.
+##     Calculates radial part of the Zernike polynomial for given n and m, and rho.
+##     n   - Radial coordinate
+##     m   - Azimuthal coordinate
+##     rho - Matrix with normalised radial coordinates, i.e., rho[i,j] <= 1.
+##     '''
     
-    m = abs(m)
-    Rnm = 0
-    # If n<=25 we use original formula, otherwise recurrence formula as factorials lead
-    # to very large numbers.
-    if n<=25:
-        # Radial term
-        S = int((n-m)/2)
-        for k in range(S+1):
-            a = ((-1)**k)*math.factorial(n-k)/\
-                (math.factorial(k)*math.factorial((n+m)/2.0-k)*math.factorial((n-m)/2.0-k))
-            p = a*rho**(n-2*k)
-            Rnm = Rnm+p
-    else:
-        # Use recurrence formula
-        pass
+##     m = abs(m)
+##     Rnm = 0
+##     # If n<=25 we use original formula, otherwise recurrence formula as factorials lead
+##     # to very large numbers.
+##     if n<=25:
+##         # Radial term
+##         S = int((n-m)/2)
+##         for k in range(S+1):
+##             a = ((-1)**k)*math.factorial(n-k)/\
+##                 (math.factorial(k)*math.factorial((n+m)/2.0-k)*math.factorial((n-m)/2.0-k))
+##             p = a*rho**(n-2*k)
+##             Rnm = Rnm+p
+##     else:
+##         # Use recurrence formula
+##         pass
     
-    return Rnm
+##     return Rnm
 
 
     
