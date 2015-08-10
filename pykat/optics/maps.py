@@ -628,6 +628,50 @@ class surfacemap(object):
         return self.Rc, self.zernikeRemoved
 
 
+    def rmTiltedSurf(self, w=None, xbeta=None, ybeta=None, zOff=None):
+        
+        X,Y = np.meshgrid(self.x,self.y)
+        r2 = X**2 + Y**2
+
+        if w is not None:
+            weight = 2/(math.pi*w**2) * np.exp(-2*r2[self.notNan]/w**2)
+            
+        def f(p):
+            # This is used in simtools, why?
+            #p[0] = p[0]*1.0e-9
+            #p[1] = p[1]*1.0e-9
+            Z = self.createSurface(0,X,Y,p[2],0,0,p[0],p[1])
+            if w is None:
+                res = math.sqrt(((self.data[self.notNan]-Z[self.notNan])**2).sum())/self.notNan.sum()
+            else:
+                # weight = 2/(math.pi*w**2) * np.exp(-2*r2[self.notNan]/w**2)
+                res = math.sqrt((weight*(self.data[self.notNan]-Z[self.notNan])**2).sum())/weight.sum()
+
+            return res
+
+        if xbeta is None:
+            xbeta = 0
+        if ybeta is None:
+            ybeta = 0
+        if zOff is None:
+            zOff = 0
+            
+        params = [xbeta,ybeta,zOff]
+
+        opts = {'xtol': 1.0e-8, 'ftol': 1.0e-8, 'maxiter': 2000, 'disp': False}
+        out = minimize(f, params, method='Nelder-Mead', options=opts)
+
+        xbeta = out['x'][0]
+        ybeta = out['x'][1]
+        zOff = out['x'][2]
+
+        Z = self.createSurface(0,X,Y,zOff,0,0,xbeta,ybeta)
+        self.data[self.notNan] = self.data[self.notNan] - Z[self.notNan]
+        self.betaRemoved = (xbeta, ybeta)
+
+        return xbeta,ybeta,zOff
+        
+
     def rmSphericalSurf(self, Rc0, w=None, zOff=None, isCenter=[False,False]):
         '''
         Fits spherical surface to the mirror map and removes it.
@@ -995,49 +1039,19 @@ class surfacemap(object):
             print('  Equivalent tilt in radians: xbeta = {:.2e} rad'.format(xbeta))
             print('                              ybeta = {:.2e} rad'.format(ybeta))
         else:
-            X,Y = np.meshgrid(self.x,self.y)
-            r2 = X**2 + Y**2
-            
-            def f(p):
-                
-                # This is used in simtools, why?
-                #p[0] = p[0]*1.0e-9
-                #p[1] = p[1]*1.0e-9
-                
-                Z = self.createSurface(0,X,Y,p[2],0,0,p[0],p[1])
-                if w is None:
-                    res = math.sqrt(((self.data[self.notNan]-Z[self.notNan])**2).sum())/self.notNan.sum()
-                else:
-                    weight = 2/(math.pi*w**2) * np.exp(-2*r2[self.notNan]/w**2)
-                    res = math.sqrt((weight*(self.data[self.notNan]-Z[self.notNan])**2).sum())/weight.sum()
-                    
-                return res
 
-            xbeta = 0
-            ybeta = 0
-            offset = 0
-            params = [xbeta,ybeta,offset]
-
-            opts = {'xtol': 1.0e-8, 'ftol': 1.0e-8, 'maxiter': 2000, 'disp': False}
-            out = minimize(f, params, method='Nelder-Mead', options=opts)
+            xbeta,ybeta,zOff = self.rmTiltedSurf(w)
             
-            xbeta = out['x'][0]
-            ybeta = out['x'][1]
-            offset = out['x'][2]
-            
-            Z = self.createSurface(0,X,Y,offset,0,0,xbeta,ybeta)
-            self.data[self.notNan] = self.data[self.notNan] - Z[self.notNan]
-            self.betaRemoved = (xbeta, ybeta)
             # Equivalent Zernike amplitude
             A1 = R*np.tan(np.array([ybeta,xbeta]))/self.scaling
             self.zernikeRemoved = (-1,1,A1[0])
             self.zernikeRemoved = (1,1,A1[1])
-            A0 = A0 + offset
+            A0 = A0 + zOff
             self.zernikeRemoved = (0,0,A0)
             print('  Tilted surface removed:')
             print('   xbeta    = {:.2e} rad'.format(xbeta))
             print('   ybeta    = {:.2e} rad'.format(ybeta))
-            print('   z-offset = {:.2e} nm'.format(offset))
+            print('   z-offset = {:.2e} nm'.format(zOff))
             print('  Equivalent Zernike amplitudes:')
             print('   A(1,-1) = {:.2f} nm'.format(A1[0]))
             print('   A(1, 1) = {:.2f} nm'.format(A1[1]))
@@ -1062,10 +1076,16 @@ class surfacemap(object):
         print('  Phase map written to file {:s}'.format(filename))
         self.plot()
 
+        '''
         print(' Writing result information to file...')
+        # --------------------------------------------------------
         filename = self.name + '_finesse_info.txt'
         self.writeResults(filename)
         print('  Result written to file {:s}'.format(filename))
+        '''
+
+
+        
         # Add "create aperture map"
         
     
