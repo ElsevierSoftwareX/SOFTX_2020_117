@@ -41,7 +41,7 @@ class MirrorROQWeights:
                     
 class surfacemap(object):
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None,
-                 notNan=None, Rc=None, zOffset=None):
+                 notNan=None, Rc=None, zOffset=None, xyOffset=None):
         
         self.name = name
         self.type = maptype
@@ -54,6 +54,7 @@ class surfacemap(object):
         self.__interp = None
         self._zernikeRemoved = {}
         self._betaRemoved = None
+        self._xyOffset = xyOffset
 		
         if data is None:
             self.data = np.zeros(size)
@@ -485,23 +486,47 @@ class surfacemap(object):
         return r
 
 
-    def zernikeConvol(self,n_max):
+    def zernikeConvol(self,n,m=None):
         '''
-        Performs a convolution with the map surface and Zernike polynomials
-        up to order n_max, and returns the amplitude of each polynomial. 
+        Performs a convolution with the map surface and Zernike polynomials.
 
-        Input: n_max
-        n_max:  Maximum order of the Zernike-polynomials used.
-        
+        Input: n, m
+        n  -  If m (see below) is set to None, n is the maximum order of Zernike
+              polynomials that will be convolved with the map. If m is an integer
+              or a list, only the exact order n will be convolved.
+        m  -  = None. All Zernike polynomials up to and equal to order n will
+              be convolved.
+              = value [int]. The Zernike polynomial characterised by (n,m) will
+              be convolved witht the map.
+              = list of integers. The Zernike polynomials of order n with m-values
+              in m will be convolved with the map.
+             
         Returns: A
-        A: List with lists of amplitude coefficients. E.g. A[n] is a list of
-           amplitudes for the n:th order with m ranging from -n to n, i.e.,
-           A[n][0] is the amplitude of the Zernike polynomial Z(m,n) = Z(-n,n).
+        A  -  If m is None:
+                List with lists of amplitude coefficients. E.g. A[n] is a list of
+                amplitudes for the n:th order with m ranging from -n to n, i.e.,
+                A[n][0] is the amplitude of the Zernike polynomial Z(m,n) = Z(-n,n).
+              If m is list or int:
+                Returns list with with Zernike amplitudes ordered in the same way as
+                in the input list m. If m == integer, there is only one value in the
+                list A.
         
         Based on the simtool function 'FT_zernike_map_convolution.m' by Charlotte
         Bond.
         '''
-
+        
+        mVals = []
+        if m is None:
+            nVals = range(0,n+1)
+            for k in nVals:
+                mVals.append(range(-k,k+1,2))
+        elif isinstance(m,list):
+            nVals = range(n,n+1)
+            mVals.append(m)
+        elif isinstance(m,int):
+            nVals = range(n,n+1)
+            mVals.append(range(m,m+1))
+            
         # Amplitudes
         A = []
         # Radius
@@ -511,10 +536,11 @@ class surfacemap(object):
         rho, phi = self.createPolarGrid()
         rho = rho/R
         # Loops through all n-values up to n_max
-        for n in range(0,n_max+1):
+        for k in range(len(nVals)):
+            n = nVals[k]
             # Loops through all possible m-values for each n.
             tmp = []
-            for m in range(-n,n+1,2):
+            for m in mVals[k]:
                 # (n,m)-Zernike polynomial for this grid.
                 Z = zernike(m, n, rho, phi)
                 # Z = znm(n, m, rho, phi)
@@ -524,6 +550,11 @@ class surfacemap(object):
                 c = c/cNorm
                 tmp.append(c)
             A.append(tmp)
+        if len(A) == 1:
+            A = A[0]
+            if len(A)==1:
+                A = A[0]
+                
         return A
 
     def rmZernikeCurvs(self, zModes='all',interpol=False):
@@ -628,48 +659,64 @@ class surfacemap(object):
         return self.Rc, self.zernikeRemoved
 
 
-    def rmTiltedSurf(self, w=None, xbeta=None, ybeta=None, zOff=None):
+    def rmTilt(self, method='fitSurf', w=None, xbeta=None, ybeta=None, zOff=None):
         
-        X,Y = np.meshgrid(self.x,self.y)
-        r2 = X**2 + Y**2
+        R = self.find_radius(unit='meters')
+        
+        if method=='zernike' or method=='Zernike':
+            A1 = self.rmZernike(1, m = 'all')
+            # Calculating equivalent tilts in radians
+            xbeta = np.arctan(A1[1]*self.scaling/R)
+            ybeta = np.arctan(A1[0]*self.scaling/R)
+            self.betaRemoved = (xbeta,ybeta)
+            return A1, xbeta, ybeta
 
-        if w is not None:
-            weight = 2/(math.pi*w**2) * np.exp(-2*r2[self.notNan]/w**2)
+        else:
+            X,Y = np.meshgrid(self.x,self.y)
+            r2 = X**2 + Y**2
+
+            if w is not None:
+                weight = 2/(math.pi*w**2) * np.exp(-2*r2[self.notNan]/w**2)
+
+            def f(p):
+                # This is used in simtools, why?
+                #p[0] = p[0]*1.0e-9
+                #p[1] = p[1]*1.0e-9
+                Z = self.createSurface(0,X,Y,p[2],0,0,p[0],p[1])
+                if w is None:
+                    res = math.sqrt(((self.data[self.notNan]-Z[self.notNan])**2).sum())/self.notNan.sum()
+                else:
+                    # weight = 2/(math.pi*w**2) * np.exp(-2*r2[self.notNan]/w**2)
+                    res = math.sqrt((weight*(self.data[self.notNan]-Z[self.notNan])**2).sum())/weight.sum()
+
+                return res
+
+            if xbeta is None:
+                xbeta = 0
+            if ybeta is None:
+                ybeta = 0
+            if zOff is None:
+                zOff = 0
+
+            params = [xbeta,ybeta,zOff]
+
+            opts = {'xtol': 1.0e-8, 'ftol': 1.0e-8, 'maxiter': 2000, 'disp': False}
+            out = minimize(f, params, method='Nelder-Mead', options=opts)
+
+            xbeta = out['x'][0]
+            ybeta = out['x'][1]
+            zOff = out['x'][2]
+
+            Z = self.createSurface(0,X,Y,zOff,0,0,xbeta,ybeta)
+            self.data[self.notNan] = self.data[self.notNan] - Z[self.notNan]
+            self.betaRemoved = (xbeta, ybeta)
+
+            # Equivalent Zernike amplitude
+            A1 = R*np.tan(np.array([ybeta,xbeta]))/self.scaling
+            self.zernikeRemoved = (-1,1,A1[0])
+            self.zernikeRemoved = (1,1,A1[1])
             
-        def f(p):
-            # This is used in simtools, why?
-            #p[0] = p[0]*1.0e-9
-            #p[1] = p[1]*1.0e-9
-            Z = self.createSurface(0,X,Y,p[2],0,0,p[0],p[1])
-            if w is None:
-                res = math.sqrt(((self.data[self.notNan]-Z[self.notNan])**2).sum())/self.notNan.sum()
-            else:
-                # weight = 2/(math.pi*w**2) * np.exp(-2*r2[self.notNan]/w**2)
-                res = math.sqrt((weight*(self.data[self.notNan]-Z[self.notNan])**2).sum())/weight.sum()
-
-            return res
-
-        if xbeta is None:
-            xbeta = 0
-        if ybeta is None:
-            ybeta = 0
-        if zOff is None:
-            zOff = 0
-            
-        params = [xbeta,ybeta,zOff]
-
-        opts = {'xtol': 1.0e-8, 'ftol': 1.0e-8, 'maxiter': 2000, 'disp': False}
-        out = minimize(f, params, method='Nelder-Mead', options=opts)
-
-        xbeta = out['x'][0]
-        ybeta = out['x'][1]
-        zOff = out['x'][2]
-
-        Z = self.createSurface(0,X,Y,zOff,0,0,xbeta,ybeta)
-        self.data[self.notNan] = self.data[self.notNan] - Z[self.notNan]
-        self.betaRemoved = (xbeta, ybeta)
-
-        return xbeta,ybeta,zOff
+            return A1,xbeta,ybeta,zOff
         
 
     def rmSphericalSurf(self, Rc0, w=None, zOff=None, isCenter=[False,False]):
@@ -760,7 +807,14 @@ class surfacemap(object):
 
         # Assigning values to the instance variables
         self.Rc = out['x'][0]
-        self.zOff = out['x'][1]
+        if self.zOffset is None:
+            self.zOffset = 0
+        self.zOffset = self.zOffset + out['x'][1]
+
+        # Equivalent Zernike (n=2,m=0) amplitude.
+        R = self.find_radius(unit='meters')
+        A20 = Rc2znm(self.Rc,R)/self.scaling
+        self.zernikeRemoved = (0,2,A20)
 
         # If center was fitted, assign new values to instance variable center, and
         # subtract the fitted sphere from the mirror map.
@@ -771,17 +825,17 @@ class surfacemap(object):
             self.center = (self.center[0] + x0/self.step_size[0],
                            self.center[1] + y0/self.step_size[1])
             # Creating fitted sphere
-            Z = self.createSurface(self.Rc, X, Y, self.zOff, x0, y0)
+            Z = self.createSurface(self.Rc, X, Y, self.zOffset, x0, y0)
             # Subtracting sphere from map
             self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
-            return self.Rc, self.zOff, self.center
+            return self.Rc, self.zOffset, self.center, A20
         # Subtracting fitted sphere from mirror map.
         else:
             # Creating fitted sphere
-            Z = self.createSurface(self.Rc,X,Y,self.zOff)
+            Z = self.createSurface(self.Rc,X,Y,self.zOffset)
             # Subtracting sphere from map
             self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
-            return self.Rc, self.zOff
+            return self.Rc, self.zOffset, A20
 
     def remove_curvature(self, method='zernike', w=None, zOff=None,
                          isCenter=[False,False], zModes = 'all'):
@@ -835,11 +889,11 @@ class surfacemap(object):
             # Using Zernike polynomial (m,n) = (0,2) to estimate radius of curvature.
             Rc0 = smap.rmZernikeCurvs('defocus')[0]
             if isCenter[0]:
-                Rc, zOff, center = self.rmSphericalSurf(Rc0, w, zOff, isCenter)
-                return Rc, zOff, self.center
+                Rc, zOff, center, A20 = self.rmSphericalSurf(Rc0, w, zOff, isCenter)
+                return Rc, zOff, self.center, A20
             else:
-                Rc, zOff = self.rmSphericalSurf(Rc0, w, zOff, isCenter)
-                return Rc, zOff
+                Rc, zOff, A20 = self.rmSphericalSurf(Rc0, w, zOff, isCenter)
+                return Rc, zOff, A20
 
             
     def recenter(self):
@@ -949,143 +1003,167 @@ class surfacemap(object):
         rho = np.sqrt(X**2 + Y**2)
         return rho, phi
 
-    def preparePhaseMap(self, xyOffset=None, w=None):
+    def preparePhaseMap(self, xyOffset=None, w=None, verbose=False):
         '''
         Based on Simtools function 'FT_prepare_phase_map_for_finesse.m' by Charlotte Bond.
         '''
+        if verbose:
+            print('--------------------------------------------------')
+            print('Preparing phase map for Finesse...')
+            print('--------------------------------------------------')
+        w_max = self.find_radius(method='min', unit='meters')
+        if w is None:
+            if verbose:
+                print(' No weighting used')
+        elif w >= w_max:
+            if verbose:
+                print(' Weighting radius ({:.3f} cm) larger than mirror radius ({:.3f} cm).'.format(w*100, w_max*100))
+                print(' Thus, no weighting used.')
+            w = None
+        elif verbose:
+            print(' Gaussian weights used with radius: {:.2f} cm'.format(w*100.0))
+        if verbose:
+            print(' (rms, avg) = ({:.3e}, {:.3e}) nm'.format(self.rms(w),self.avg(w)))
+            print('--------------------------------------------------')
         
-        print('Preparing phase map for Finesse...')
-        
-        print(' rms = {:.3f} nm'.format(self.rms(w)))
-        print(' avg = {:.3f} nm'.format(self.avg(w)))
-        # Factor that scales surface height to nm.
-        nm_scaling = self.scaling*1.0e9
-        print(' Centering...')
+            print(' Centering...')
         self.recenter()
-        print('  New center (x0, y0) = ({:.2f}, {:.2f})'.
-              format(self.center[0],self.center[1]))
-
-        print(' Cropping map...')
+        if verbose:
+            print('  New center (x0, y0) = ({:.2f}, {:.2f})'.
+                  format(self.center[0],self.center[1]))
+        if verbose:
+            print(' Cropping map...')
         before = self.size
         self.removePeriphery()
-        print('  Size (rows, cols): ({:d}, {:d}) ---> ({:d}, {:d})'.
-              format(before[1], before[0], self.size[1], self.size[0]))
-        print('  New center (x0, y0) = ({:.2f}, {:.2f})'.
-              format(self.center[0],self.center[1]))
-        print('  rms = {:.3f} nm'.format(self.rms(w)))
-        print('  avg = {:.3f} nm'.format(self.avg(w)))
-        
-        
+        if verbose:
+            print('  Size (rows, cols): ({:d}, {:d}) ---> ({:d}, {:d})'.
+                  format(before[1], before[0], self.size[1], self.size[0]))
+            print('  New center (x0, y0) = ({:.2f}, {:.2f})'.
+                  format(self.center[0],self.center[1]))
+            print('  (rms, avg) = ({:.3e}, {:.3e}) nm'.
+                  format(self.rms(w),self.avg(w)))
+
         # Radius of mirror in xy-plane.
         R = self.find_radius(unit='meters')
-        self.plot()
-        print(' Removing curvatures...')
+        
+        if verbose:
+            print(' Removing curvatures...')
         # --------------------------------------------------------
         if w is None:
             Rc, znm = self.remove_curvature(method='zernike', zModes = 'defocus')
-            print('  Removed Z20 with amplitude A20 = {:.2f} nm'.format(znm['02'][2]))
-            print('  Equivalent Rc = {:.2f} m'.format(Rc))
+            if verbose:
+                print('  Removed Z20 with amplitude A20 = {:.2f} nm'.format(znm['02'][2]))
+                print('  Equivalent Rc = {:.2f} m'.format(Rc))
         else:
-            w_max = self.find_radius(method='min', unit='metres')
-            if w >= w_max:
-                w = w_max-max(self.step_size)
-                print('  Weigthing radius too large, setting w = {0:.4f} m'.format(w))
-            Rc, A0 = self.remove_curvature(method='sphere', w=w)
-            # Equivalent Zernike (n=2,m=0) amplitude.
-            A20 = Rc2znm(Rc,R)/self.scaling
-            self.zernikeRemoved = (0,2,A20)
-            # Adding A20 to zOff because: Z(n=2,m=0) = A20*(r**2 - 1)
-            A0 = A0+A20
-            print('  Removed Rc = {0:.2f} m'.format(Rc) )
-            print('  Equivalent Z(n=2,m=0) amplitude A20 = {0:.2f} nm'.format(A20))
-           
-        print('  rms = {:.3e} nm'.format(self.rms(w)))
-        print('  avg = {:.3e} nm'.format(self.avg(w)))
-        
-        self.plot()
-        
-        print(' Removing offset...')
-        # --------------------------------------------------------
-        if w is None:
-            A00 = self.rmZernike(0,0)
-            print('  Removed Z00 with amplitude A00 = {:.2f} nm'.format(A00) )
-        else:
-            zOff = self.removeOffset(w)
-            A0 = A0 + zOff
-            print('  Removed offset (A00) = {0:.4f} nm'.format(zOff))
-            
-        print('  rms = {:.3e} nm'.format(self.rms(w)))
-        print('  avg = {:.3e} nm'.format(self.avg(w)))
-        
-        self.plot()
-        
-        print(' Removing tilts...')
-        # --------------------------------------------------------
-        if w is None:
-            A1 = self.zernikeConvol(1)[1]
-            rho,phi=self.createPolarGrid()
-            rho = rho/R
-            Z = []
-            Z.append(zernike(-1,1,rho,phi))
-            Z.append(zernike(1,1,rho,phi))
-            for k in range(2):
-                self.data[self.notNan] = self.data[self.notNan]-A1[k]*Z[k][self.notNan]
-                self.zernikeRemoved = (2*k-1,1,A1[k])
-                print('  Removed Z1{:d} with amplitude A1{:d} = {:.2f} nm'.
-                      format(2*k-1,2*k-1,A1[k]) )
-            ybeta = np.arctan(A1[0]*self.scaling/R)
-            xbeta = np.arctan(A1[1]*self.scaling/R)
-            self.betaRemoved = (xbeta,ybeta)
-            print('  Equivalent tilt in radians: xbeta = {:.2e} rad'.format(xbeta))
-            print('                              ybeta = {:.2e} rad'.format(ybeta))
-        else:
+            Rc, zOff, A20 = self.remove_curvature(method='sphere', w=w)
+            # Adding A20 to zOff (calling it A0 now) because: Z(n=2,m=0) = A20*(r**2 - 1)
+            A0 = zOff+A20
+            if verbose:
+                print('  Removed Rc = {0:.2f} m'.format(Rc) )
+                print('  Equivalent Z(n=2,m=0) amplitude A20 = {0:.2f} nm'.format(A20))
 
-            xbeta,ybeta,zOff = self.rmTiltedSurf(w)
+        if verbose:
+            print('  (rms, avg) = ({:.3e}, {:.3e}) nm'.format(self.rms(w),self.avg(w)))
             
-            # Equivalent Zernike amplitude
-            A1 = R*np.tan(np.array([ybeta,xbeta]))/self.scaling
-            self.zernikeRemoved = (-1,1,A1[0])
-            self.zernikeRemoved = (1,1,A1[1])
+            print(' Removing offset...')
+        # --------------------------------------------------------
+
+        zOff = self.removeOffset(w)
+        if w is None:
+            if verbose:
+                print('  Removed Z00 with amplitude A00 = {:.2f} nm'.format(zOff) )
+        else:
             A0 = A0 + zOff
+            if verbose:
+                print('  Removed z-offset (A00) = {0:.3f} nm'.format(zOff))
+        if verbose:
+            print('  (rms, avg) = ({:.3e}, {:.3e}) nm'.format(self.rms(w),self.avg(w)))
+        
+            print(' Removing tilts...')
+        # --------------------------------------------------------
+        if w is None:
+            A1,xbeta,ybeta = self.rmTilt(method='zernike')
+            if verbose:
+                for k in range(len(A1)):
+                    print('  Removed Z1{:d} with amplitude A1{:d} = {:.2f} nm'.
+                          format(2*k-1,2*k-1,A1[k]) )
+                print('  Equivalent tilts in radians: ')
+                print('   xbeta = {:.2e} rad'.format(xbeta))
+                print('   ybeta = {:.2e} rad'.format(ybeta))
+        else:
+            A1,xbeta,ybeta,zOff = self.rmTilt(method='fitSurf', w=w)
+            A0 = A0 + zOff
+            if verbose:
+                print('  Tilted surface removed:')
+                print('   xbeta    = {:.2e} rad'.format(xbeta))
+                print('   ybeta    = {:.2e} rad'.format(ybeta))
+                print('   z-offset = {:.2e} nm'.format(zOff))
+                print('  Equivalent Zernike amplitudes:')
+                print('   A(1,-1) = {:.2f} nm'.format(A1[0]))
+                print('   A(1, 1) = {:.2f} nm'.format(A1[1]))
+        if verbose:
+            print('  (rms, avg) = ({:.3e}, {:.3e}) nm'.format(self.rms(w),self.avg(w)))
+
+        if w is not None:
+            # Adding the total offset removed to zernikeRemoved (just for the record)
             self.zernikeRemoved = (0,0,A0)
-            print('  Tilted surface removed:')
-            print('   xbeta    = {:.2e} rad'.format(xbeta))
-            print('   ybeta    = {:.2e} rad'.format(ybeta))
-            print('   z-offset = {:.2e} nm'.format(zOff))
-            print('  Equivalent Zernike amplitudes:')
-            print('   A(1,-1) = {:.2f} nm'.format(A1[0]))
-            print('   A(1, 1) = {:.2f} nm'.format(A1[1]))
-
-           
-        print('  rms = {:.3e} nm'.format(self.rms(w)))
-        print('  avg = {:.3e} nm'.format(self.avg(w)))
-
-        self.plot()
-
+            if verbose:
+                print(' Equivalent Z00 amplitude from accumulated z-offsets, A00 = {:.2f}'.format(A0))
+            
         if xyOffset is not None:
-            print(' Offsetting mirror center in the xy-plane...')
+            if verbose:
+                print(' Offsetting mirror center in the xy-plane...')
             # --------------------------------------------------------
             self.center = (self.center[0] + xyOffset[0]/self.step_size[0],
                            self.center[1] + xyOffset[1]/self.step_size[1])
-            print('  New mirror center (x0, y0) = ({:.2f}, {:.2f})'.format(self.center[0],self.center[1]))
+            self.xyOffset = xyOffset
+            if verbose:
+                print('  New mirror center (x0, y0) = ({:.2f}, {:.2f})'.format(self.center[0],self.center[1]))
+        else:
+            self.xyOffset = (0,0)
             
-        print(' Writing phase map to file...')
+        if verbose:
+            print(' Writing phase map to file...')
         # --------------------------------------------------------
         filename = self.name + '_finesse.txt'
         self.write_map(filename)
-        print('  Phase map written to file {:s}'.format(filename))
-        self.plot()
-
-        '''
+        if verbose:
+            print('  Phase map written to file {:s}'.format(filename))
+        
+        
         print(' Writing result information to file...')
         # --------------------------------------------------------
         filename = self.name + '_finesse_info.txt'
         self.writeResults(filename)
         print('  Result written to file {:s}'.format(filename))
-        '''
-
-
         
+
+        if verbose:
+            print('--------------------------------------------------')
+            
+        print('--------------------------------------------------')
+        print('Phase map prepared! :D' )
+        print('Name: {:s}'.format(self.name))
+        print('Type: {:s}'.format(self.type))
+        print('--------------------------------------------------')
+            
+        print('Radius:    R     = {:.2f} cm'.format(self.find_radius(unit='meters')*100))
+        print('Offset:    A00   = {:.2f} nm'.format(self.zernikeRemoved['00'][2]))
+        print('Tilt:      A1-1  = {:.2f} nm'.format(self.zernikeRemoved['-11'][2]))
+        print('           A11   = {:.2f} nm,  or'.format(self.zernikeRemoved['11'][2]))
+        print('           xbeta = {:.2e} rad'.format(self.betaRemoved[0]))
+        print('           ybeta = {:.2e} rad'.format(self.betaRemoved[1]))
+        print('Curvature: A20   = {:.2f} nm,  or'.format(self.zernikeRemoved['02'][2]))
+        print('           Rc    = {:.2f} m'.format(self.Rc))
+        print('xy-offset: x0    = {:.2f} mm'.format(self.xyOffset[0]*1000))
+        print('           y0    = {:.2f} mm'.format(self.xyOffset[1]*1000))
+        print('--------------------------------------------------')
+            
+        
+        
+        print()
+
+        # Todo:
         # Add "create aperture map"
         
     
@@ -1099,37 +1177,69 @@ class surfacemap(object):
             mapfile.write('Map:  {:s}\n'.format(self.name))
             mapfile.write('Date:  {:s}\n'.format(time.strftime("%d/%m/%Y  %H:%M:%S")))
             mapfile.write('---------------------------------------\n')
-            mapfile.write('Diameter:  {:.2f} cm\n'.format(self.find_radius(unit='meters')/100.0))
+            mapfile.write('Diameter:  {:.2f} cm\n'.format(self.find_radius(unit='meters')*200.0))
+            mapfile.write('Offset:    A00   = {:.2f} nm\n'.format(self.zernikeRemoved['00'][2]))
+            mapfile.write('Tilt:      A1-1  = {:.2f} nm\n'.format(self.zernikeRemoved['-11'][2]))
+            mapfile.write('           A11   = {:.2f} nm,  or\n'.format(self.zernikeRemoved['11'][2]))
+            mapfile.write('           xbeta = {:.2e} rad\n'.format(self.betaRemoved[0]))
+            mapfile.write('           ybeta = {:.2e} rad\n'.format(self.betaRemoved[1]))
+            mapfile.write('Curvature: A20   = {:.2f} nm,  or\n'.format(self.zernikeRemoved['02'][2]))
+            mapfile.write('           Rc    = {:.2f} m\n'.format(self.Rc))
+            mapfile.write('xy-offset: x0    = {:.2f} mm\n'.format(self.xyOffset[0]*1000))
+            mapfile.write('           y0    = {:.2f} mm\n'.format(self.xyOffset[1]*1000))
+            
             # mapfile.write('Offset (Z00):  {:.2f}'.format(self.zernikeRemoved['00'][2]))
           
         
-    def removeOffset(self, r):
+    def removeOffset(self, r=None):
         '''
         Based on Simtools function 'FT_remove_offset_from_mirror_map.m' by Charlotte Bond.
         '''
-        rho = self.createPolarGrid()[0]
-        inside = rho<r
-        inside_notNan = np.zeros(inside.shape,dtype=bool)
-        inside_notNan[inside] = self.notNan[inside]
+        if r is None:
+            offset = self.rmZernike(0,0)
+        else:
+            rho = self.createPolarGrid()[0]
+            inside = rho<r
+            inside_notNan = np.zeros(inside.shape,dtype=bool)
+            inside_notNan[inside] = self.notNan[inside]
 
-        offset = self.data[inside_notNan].sum()/inside_notNan.sum()
-        self.data[self.notNan] = self.data[self.notNan]-offset
+            offset = self.data[inside_notNan].sum()/inside_notNan.sum()
+            self.data[self.notNan] = self.data[self.notNan]-offset
         
         return offset
 
-    def rmZernike(self, m, n):
+    def rmZernike(self, n, m='all'):
         '''
-        Currently only for (m,n) = (0,0). Extending soon.
+        Removes Zernike polynomials from mirror map.
+
+        Input: n, m
+        n  - Radial degree of Zernike polynomial.
+        m  - Azimuthal degree of Zernike polynomial. If set to 'all', all polynomials
+             of radial degree n is removed. Can also be an integer, or a list of
+             specifying the Azimuthal degrees that will be removed. Must be consistent
+             with the chosen radial degree.
+
+        Returns: A
+        A  - List of amplitudes of the removed Zernike polynomials.
         '''
+        if m=='all':
+            m = range(-n,n+1,2)
+            
         R = self.find_radius(unit='meters')
-        A0 = self.zernikeConvol(0)[0][0]
+        A = self.zernikeConvol(n,m)
         rho, phi= self.createPolarGrid()
         rho = rho/R
-        Z00 = zernike(0, 0, rho, phi)
-        self.data[self.notNan] = self.data[self.notNan]-A0*Z00[self.notNan]
-        self.zernikeRemoved = (0, 0, A0)
 
-        return A0
+        if isinstance(m,list):
+            for k in range(len(m)):
+                Z = zernike(m[k], n, rho, phi)
+                self.data[self.notNan] = self.data[self.notNan]-A[k]*Z[self.notNan]
+                self.zernikeRemoved = (m[k], n, A[k])
+        else:
+            Z = zernike(m, n, rho, phi)
+            self.data[self.notNan] = self.data[self.notNan]-A*Z[self.notNan]
+            self.zernikeRemoved = (m, n, A)
+        return A
         
 class mergedmap:
     """
