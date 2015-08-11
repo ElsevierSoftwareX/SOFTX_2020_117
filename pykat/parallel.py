@@ -89,8 +89,8 @@ class parakat(object):
         return out
     
     def clear(self):
-        del(self._result)
-        self._result = []
+        del(self._results)
+        self._results = []
     
     def close(self):
         self._rc.close()
