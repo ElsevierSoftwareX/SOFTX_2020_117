@@ -399,6 +399,24 @@ class surfacemap(object):
         
         return fig
 
+    def rescaleData(self,scaling):
+        '''
+        Rescaling data. Assumes that the current map is scaled correctly, i.e.,
+        surfacemap.scaling*surfacemap.data would give the data in meters.
+
+        Input: scaling
+        scaling  - float number that representing the new scaling. E.g.,
+                   scaling = 1.0e-9 means that surfacemap.data is converted to
+                   being given in nano meters.
+        '''
+        if isinstance(scaling, float):
+            self.data[self.notNan] = self.data[self.notNan]*self.scaling/scaling
+            self.scaling = scaling
+        else:
+            print('Error: Scaling factor must be of type float, {:s} found'.
+                  format(type(scaling)))
+            
+
     def rms(self, w=None):
         if w is None:
             return math.sqrt((self.data[self.notNan]**2).sum())/self.notNan.sum()
@@ -1821,44 +1839,186 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9):
         # map with surfacemap.plot().
         data[isNan] = 0 
         
-        return surfacemap(name, maptype, size, center, step, scaling, data, notNan)
+        return surfacemap(name, maptype, (0,0), center, step, scaling, data, notNan)
+
+    if mapFormat == 'metroPro':
+        # Remove '.dat' for output name
+        name = filename.split('.')[0]
+        # Reading file
+        data,hData,x1,y1 = readMetroProData(filename)
+        # xy-stepsize in meters
+        stepSize = (hData['cameraRes'], hData['cameraRes'])
+        # Temporary center
+        center = ((len(data[0,:])-1)/2.0,(len(data[:,0])-1)/2.0)
+        # Keeping track of nan's
+        isNan = np.isnan(data)
+        notNan = isNan==False
+        data[isNan] = 0
+        # Change this:
+        mType = 'phase'
+        fType = 'both'
+        maptype = ' '.join([mType, fType])
+        # Unnecessary size, remove from class later
+        size = data.shape[::-1]
+        smap = surfacemap(name, maptype, size, center, stepSize, 1.0, data, notNan)
+        smap.rescaleData(scaling)
+        smap.recenter()
         
-    # TODO: Add options for reading virgo maps, and .xyz zygo
+        return smap
+    
+def readMetroProData(filename):
+    '''
+    Reading the metroPro binary data files.
+
+    Translated from 'LoadMetroProData.m' by Hiro Yamamoto.
+    '''
+    f = BinaryReader(filename)
+    # Read header
+    hData = readHeaderMP(f)
+    if hData['format'] < 0:
+        print('Error: Format unknown to readMetroProData()\nfilename: {:s}'.format(filename))
+        return 0
+    # Read phase map data
+    # Skipping header and intensity data
+    f.seek(hData['size']+hData['intNBytes'])
+    # Reading data
+    dat = f.read('int32',size=hData['Nx']*hData['Ny'])
+    # Marking unmeasured data as NaN
+    dat[dat >= hData['invalid']] = np.nan
+    # Scale data to meters
+    dat = dat*hData['convFactor']
+    # Reshaping into Nx * Ny matrix
+    dat = dat.reshape(hData['Ny'], hData['Nx'])
+    # Flipping up/down, i.e., change direction of y-axis.
+    dat = dat[::-1,:]
+    # Auxiliary data to return
+    dxy = hData['cameraRes']
+
+    print(dxy)
+    
+    x1 = dxy * np.arange( -(len(dat[0,:])-1)/2, (len(dat[0,:])-1)/2 + 1)
+    y1 = dxy * np.arange( -(len(dat[:,0])-1)/2, (len(dat[:,1])-1)/2 + 1)
+
+    return dat, hData, x1, y1
+
+
+def readHeaderMP(f):
+    '''
+    Reads header of the metroPro format files.
+    
+    Translated from the readerHeader() function within the
+    'LoadMetroProData.m' function written by Hiro Yamamoto.
+    '''
+    hData = {}
+    hData['magicNum'] = f.read('uint32')
+    hData['format'] = f.read('int16')
+    hData['size'] = f.read('int32')
+    # Check if the magic string and format are known ones.
+    if not (hData['format'] >= 1 and hData['format']<=3 and
+            hData['magicNum']-hData['format'] == int('881B036E',16)):
+        hData['format'] = -1
+    # Read necessary data
+    hData['invalid'] = int('7FFFFFF8',16)
+    f.seek(60)
+    # Intensity data, which we will skip over.
+    hData['intNBytes'] = f.read('int32')
+    # Top-left coordinates, which are useless.
+    hData['X0'] = f.read('int16')
+    hData['Y0'] = f.read('int16')
+    # Number of data points alng x and y
+    hData['Nx'] = f.read('int16')
+    hData['Ny'] = f.read('int16')
+    # Total data, 4*Nx*Ny
+    hData['phaNBytes'] = f.read('int32')
+    f.seek(218)
+    # Scale factor determined by phase resolution tag
+    phaseResTag = f.read('int16')
+    if phaseResTag == 0:
+        phaseResVal = 4096
+    elif phaseResTag == 1:
+        phaseResVal = 32768
+    elif phaseResTag == 2:
+        phaseResVal = 131072
+    else:
+        phaseResVal = 0
+    f.seek(164)
+    intf_scale_factor = f.read('float')
+    hData['waveLength'] = f.read('float')
+    f.seek(176)
+    obliquity_factor = f.read('float')
+    # Eq. in p12-6 in MetroPro Reference Guide
+    hData['convFactor'] = intf_scale_factor*obliquity_factor*\
+                          hData['waveLength']/phaseResVal
+    # Bin size of each measurement
+    f.seek(184)
+    hData['cameraRes'] = f.read('float')
+    
+    return hData
+
+
+import struct
+
+class BinaryReaderEOFException(Exception):
+    def __init__(self):
+        pass
+    def __str__(self):
+        return 'Not enough bytes in file to satisfy read request'
+
+class BinaryReader:
+    # Map well-known type names into struct format characters.
+    typeNames = {
+        'int8'   :'b',
+        'uint8'  :'B',
+        'int16'  :'h',
+        'uint16' :'H',
+        'int32'  :'i',
+        'uint32' :'I',
+        'int64'  :'q',
+        'uint64' :'Q',
+        'float'  :'f',
+        'double' :'d',
+        'char'   :'s'}
+
+    def __init__(self, fileName):
+        self.file = open(fileName, 'rb')
+        
+    def read(self, typeName, size=None):
+        typeFormat = BinaryReader.typeNames[typeName.lower()]
+        typeFormat = '>'+typeFormat
+        typeSize = struct.calcsize(typeFormat)
+        if size is None:
+            value = self.file.read(typeSize)
+            if typeSize != len(value):
+                raise BinaryReaderEOFException
+            unpacked = struct.unpack(typeFormat, value)[0]
+        else:
+            value = self.file.read(size*typeSize)
+            if size*typeSize != len(value):
+                raise BinaryReaderEOFException
+            unpacked = np.zeros(size)
+            for k in range(size):
+                i = k*typeSize
+                unpacked[k] = struct.unpack(typeFormat,value[i:i+typeSize])[0]
+        return unpacked
+
+    def seek(self, offset, refPos=0):
+        '''
+        offset in bytes and refPos gives reference position, where 0
+        means origin of the file, 1 uses current position and 2 uses
+        the end of the file.
+        '''
+        self.file.seek(offset, refPos)
+    
+    
+    def __del__(self):
+        self.file.close()
+
+        
+# TODO: Add options for reading virgo maps, and .xyz zygo
     # maps (need .xys file for this). Binary ligo-maps?
     # The intensity data is not used to anything here. Remove
     # or add to pykat?
-
     
-    
-
-## def rnm(n,m,rho):
-##     '''
-##     Based on 'FT_Rnm.m'.
-##     Calculates radial part of the Zernike polynomial for given n and m, and rho.
-##     n   - Radial coordinate
-##     m   - Azimuthal coordinate
-##     rho - Matrix with normalised radial coordinates, i.e., rho[i,j] <= 1.
-##     '''
-    
-##     m = abs(m)
-##     Rnm = 0
-##     # If n<=25 we use original formula, otherwise recurrence formula as factorials lead
-##     # to very large numbers.
-##     if n<=25:
-##         # Radial term
-##         S = int((n-m)/2)
-##         for k in range(S+1):
-##             a = ((-1)**k)*math.factorial(n-k)/\
-##                 (math.factorial(k)*math.factorial((n+m)/2.0-k)*math.factorial((n-m)/2.0-k))
-##             p = a*rho**(n-2*k)
-##             Rnm = Rnm+p
-##     else:
-##         # Use recurrence formula
-##         pass
-    
-##     return Rnm
-
-
     
     
     
@@ -1870,5 +2030,3 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9):
 # [map3,x_tilt,y_tilt,offset2]=FT_remove_piston_from_mirror_map(map2,w, display_style);
 # map3=FT_invert_mirror_map(map3, invert);
 
-# Understand the internal coordinate system of the
-# maps/matrices.
