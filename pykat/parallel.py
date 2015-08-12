@@ -87,3 +87,11 @@ class parakat(object):
             out.append(done.get())
             
         return out
+    
+    def clear(self):
+        del(self._results)
+        self._results = []
+    
+    def close(self):
+        self._rc.close()
+        
