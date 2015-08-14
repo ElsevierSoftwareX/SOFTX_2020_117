@@ -42,15 +42,17 @@ class MirrorROQWeights:
                     
 class surfacemap(object):
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None,
-                 notNan=None, Rc=None, zOffset=None, xyOffset=None):
+                 notNan=None, Rc=None, zOffset=None, xyOffset=(.0,.0)):
         
         self.name = name
         self.type = maptype
+        # Currently "beam center", i.e., mirror_center + xyOffset. 
         self.center = center
         self.step_size = step_size
         self.scaling = scaling
         self.notNan = notNan
         self.Rc = Rc
+        # Offset of fitted sphere. Proably unnecessary to have here.
         self.zOffset = zOffset
         self.__interp = None
         self._zernikeRemoved = {}
@@ -86,6 +88,33 @@ class surfacemap(object):
                     mapfile.write("%.15g " % self.data[i,j])
                 mapfile.write("\n")
 
+    @property
+    def xyOffset(self):
+        '''
+        The offset from the mirror center measured in meters.
+        '''
+        return self._xyOffset
+
+    @xyOffset.setter
+    def xyOffset(self,offset):
+        '''
+        Give 'offset' is in meters.
+        '''
+        
+        x0new = self.center[0] + (-self.xyOffset[0] + offset[0])/self.step_size[0]
+        y0new = self.center[1] + (-self.xyOffset[1] + offset[1])/self.step_size[1]
+
+        # Checking so new suggested "center" is within the the mirror surface
+        if (x0new>0 and x0new<self.size[0]-1 and y0new>0 and y0new<self.size[1]-1 and
+            self.notNan[round(x0new),round(y0new)]):
+            
+            self.center = (x0new, y0new)
+            self._xyOffset = (offset[0], offset[1])
+        
+        else:
+            print(('Error in xyOffset: ({:.2e}, {:.2e}) m --> pos = ({:.2f}, {:.2f}) '+
+                  'is outside mirror surface.').format(offset[0],offset[1],x0new,y0new))
+            
 
     @property
     def betaRemoved(self):
@@ -419,6 +448,12 @@ class surfacemap(object):
             
 
     def rms(self, w=None):
+        '''
+        Returns the root mean square value of the mirror map, expressed in the unit
+        given by self.scaling. If w [m] is specified, only the area inside the radius
+        is considered. The area is r<w is centered around the self.center, i.e., the
+        beam center (not mirror center).
+        '''
         if w is None:
             return math.sqrt((self.data[self.notNan]**2).sum())/self.notNan.sum()
         else:
@@ -433,6 +468,12 @@ class surfacemap(object):
                 return math.sqrt((self.data[inside]**2).sum())/inside.sum()
             
     def avg(self, w=None):
+        '''
+        Returns the average height of the mirror map, expressed in the unit
+        given by self.scaling. If w [m] is specified, only the area inside the radius
+        is considered. The area is r<w is centered around the self.center, i.e., the
+        beam center (not mirror center).
+        '''
         if w is None:
             tot = self.data[self.notNan].sum()
             sgn = np.sign(tot)
@@ -455,7 +496,10 @@ class surfacemap(object):
             
     def find_radius(self, method = 'max', unit='points'):
         '''
-        Estimates the radius of the mirror in the xy-plane. 
+        Estimates the radius of the mirror in the xy-plane. If xyOffset is different from
+        (0,0), then the radius will be the minimum distance from the beam center to the
+        nearest mirror edge.
+        
         method   - 'max' gives maximal distance from centre to the edge.
                    'xy' returns the distance from centre to edge along x- and y-directions.
                    'area' calculates the area and uses this to estimate the mean radius.
@@ -938,6 +982,7 @@ class surfacemap(object):
         x0 = float(cIndx.sum())/len(cIndx)
         y0 = float(rIndx.sum())/len(rIndx)
         self.center = tuple([x0,y0])
+        self.xyOffset = (.0,.0)
         return self.center
         # -------------------------------------------------
         
@@ -948,6 +993,9 @@ class surfacemap(object):
         
         Based on FT_remove_elements_outside_map.m by Charlotte Bond.
         '''
+        # Saves the xyOffset to restore it afterwards
+        xyOffset = self.xyOffset
+        self.recenter()
         # Arrays of row and column indices where data is NaN.
         r,c = np.where(self.notNan == False)
         # Sets the map center to index [0,0]
@@ -971,15 +1019,19 @@ class surfacemap(object):
         # Radius inside data is kept. Don't know why R is set this way,
         # but trusting Dr. Bond.
         R = round(math.ceil(2.0*math.sqrt(r2)+6.0)/2.0)
-        if 2*R<self.data.shape[0] and 2*R<self.data.shape[1]:
+        if (2*R<self.data.shape[0] and 2*R<self.data.shape[1] and
+            R<self.center[0] and R<self.center[1] and
+            R<(self.size[0]-self.center[0]) and R<(self.size[1]-self.center[1])):
+            
             x0 = round(self.center[0])
             y0 = round(self.center[1])
 
             self.data = self.data[y0-R:y0+R+1, x0-R:x0+R+1]
             self.notNan = self.notNan[y0-R:y0+R+1, x0-R:x0+R+1]
-        
+
+        # Centering the new cropped map and restoring offset
         self.recenter()
-        
+        self.xyOffset = xyOffset
         
     
     def createSurface(self,Rc,X,Y,zOffset=0,x0=0,y0=0,xTilt=0,yTilt=0,isPlot=False):
@@ -1164,13 +1216,13 @@ class surfacemap(object):
             print(' Writing result information to file...')
             # --------------------------------------------------------
         filename = self.name + '_finesse_info.txt'
-        self.writeMapPrepResults(filename)
+        self.writeMapPrepResults(filename,w)
         if verbose:
             print('  Result written to file {:s}'.format(filename))
         
         # Printing results to terminal
         print('--------------------------------------------------')
-        print('Phase map prepared! :D' )
+        print('Phase map prepared!' )
         print('Name: {:s}'.format(self.name))
         print('Type: {:s}'.format(self.type))
         print('--------------------------------------------------')
@@ -1192,16 +1244,14 @@ class surfacemap(object):
         print('Stats:     rms   = {:.3e} nm'.format(self.rms(w)))
         print('           avg   = {:.3e} nm'.format(self.avg(w)))
         print('--------------------------------------------------')
-            
-        
-        
         print()
 
+        
         # Todo:
         # Add "create aperture map"
         
     
-    def writeMapPrepResults(self, filename):
+    def writeMapPrepResults(self, filename,w):
         '''
         Writing results to file. Not yet finished.
         '''
@@ -1211,7 +1261,11 @@ class surfacemap(object):
             mapfile.write('Map:  {:s}\n'.format(self.name))
             mapfile.write('Date:  {:s}\n'.format(time.strftime("%d/%m/%Y  %H:%M:%S")))
             mapfile.write('---------------------------------------\n')
-            mapfile.write('Diameter:  {:.2f} cm\n'.format(self.find_radius(unit='meters')*200.0))
+            if w is None:
+                mapfile.write('Weights:   None')
+            else:
+                mapfile.write('Weights:   r     = {:.2f} cm'.format(w*100))
+            mapfile.write('Diameter:  D     = {:.2f} cm\n'.format(self.find_radius(unit='meters')*200.0))
             mapfile.write('Offset:    A00   = {:.2f} nm\n'.format(self.zernikeRemoved['00'][2]))
             mapfile.write('Tilt:      A1-1  = {:.2f} nm\n'.format(self.zernikeRemoved['-11'][2]))
             mapfile.write('           A11   = {:.2f} nm,  or\n'.format(self.zernikeRemoved['11'][2]))
@@ -1649,6 +1703,8 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9, mapType='phase', fie
         maptype = ' '.join([mapType, field])
         if mapFormat == 'ligo':
             isLigo = True
+            # Unused, but need to set it to call the function.
+            isAscii = False
             # Remove '_asc.dat' for output name
             name = filename.split('_')
             name = '_'.join(name[:-1])
@@ -1663,9 +1719,14 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9, mapType='phase', fie
                 isAscii = False
                 
         # Reading the zygo/ligo surface map file. Note that the intensity data
-        # iData is available here too, but at the moment it's not returned. 
-        hData, data, iData = readZygoLigoMaps(filename, isLigo=False, isAscii=True)
-
+        # iData is available here too when ascii zygo files are read, but at
+        # the moment it's not used. 
+        out = readZygoLigoMaps(filename, isLigo, isAscii)
+        if len(out) == 3:
+            hData, data, iData = out
+        else:
+            hData, data = out
+        
         # Matrix with True where data element is NaN.
         isNan = np.isnan(data)
         # Matrix with True where data element is not NaN.
@@ -1674,7 +1735,6 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9, mapType='phase', fie
         data[isNan] = 0
         # Scaling to the scaling chosesen as input.
         data[notNan] = (hData['hScale']/scaling)*data[notNan]
-        
         smap = surfacemap(name, maptype, hData['size'], hData['center'],
                           hData['stepSize'], scaling, data, notNan)
         smap.recenter()
@@ -1743,7 +1803,7 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
             x0 = float(line[0])
             rows = float(line[3])
             cols = float(line[2])
-        
+
         # Skipping three lines
         for k in range(3):
             f.readline()
@@ -1777,52 +1837,72 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
             R = 4096
         elif phaseRes == 1:
             R = 32768
-        else:
-            print('Error, invalid phase resolution')
-            return 0
 
         if not isLigo and not isAscii:
             # zygo .xyz files give phase data in microns.
             hData['hScale'] = 1.0e-6
+            
         else:
             # zygo .asc and ligo-files give phase data in
             # internal units. To convert to m use hScale
             # factor.
             hData['hScale'] = S*O*lam/R
 
-        if not isLigo and not isAscii:
-            print('Not implemented yet, need a .xyz-file ' +
-                  'to do this.')
-            return 0
-
-        # Skipping four lines
-        for k in range(4):
+        # Skipping three lines
+        for k in range(3):
             f.readline()
-        if not isLigo and isAscii:
-            # Reading intensity data
-            iData = np.array([])
-            line = f.readline().split()
-            while line[0] != '#':
-                iData = np.append(iData, map(g,line))
+            
+        if not isLigo:
+            if not isAscii:
+                # For the zygo .xyz-format.
+                k = 0
+                data = np.zeros(rows*cols)
+                totRuns = cols*rows
+            
+                # Read data
+                while k < cols*rows:
+                    line = f.readline().split()
+                    # Setting 'no data' to NaN
+                    if len(line)==4:
+                        data[k]=np.nan
+                    # Reading value
+                    elif len(line)==3:
+                        data[k] = float(line[2])
+                    # Otherwise stop reading
+                    else:
+                        k = cols*rows
+                    k+=1
+            else:
+                # Skipping one line
+                f.readline()
+        
+                # Reading intensity data
+                iData = np.array([])
                 line = f.readline().split()
-            # Reshaping intensity data
-            iData = iData.reshape(iRows, iCols).transpose()
-            iData = np.rot90(iData)
+                while line[0] != '#':
+                    iData = np.append(iData, map(g,line))
+                    line = f.readline().split()
+                # Reshaping intensity data
+                iData = iData.reshape(iRows, iCols).transpose()
+                iData = np.rot90(iData)
         else:
+            # Skipping one line
+            f.readline()
             # Skipping lines until '#' is found.
             while f.readline()[0] != '#':
                 pass
 
-        # Reading phase data
-        # ----------------------------------------------
-        # Array with the data
-        data = np.array([])
-        # Reading data until next '#' is reached.
-        line = f.readline().split()
-        while line[0] != '#':
-            data = np.append(data, map(g,line))
+        if isLigo or (not isLigo and isAscii):
+            # Reading phase data
+            # ----------------------------------------------
+            # Array with the data
+            data = np.array([])
+            # Reading data until next '#' is reached.
             line = f.readline().split()
-        # ----------------------------------------------
+            while line[0] != '#':
+                data = np.append(data, map(g,line))
+                line = f.readline().split()
+            # ----------------------------------------------
 
 
     if isLigo:
@@ -1862,7 +1942,10 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
     # xy-stepsize
     hData['stepSize'] = tuple([xstep,ystep])
 
-    return hData, data, iData
+    if not isLigo and isAscii:
+        return hData, data, iData
+    else:
+        return hData, data
 
 
 
