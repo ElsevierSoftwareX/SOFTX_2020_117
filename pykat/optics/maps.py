@@ -39,7 +39,7 @@ class MirrorROQWeights:
             if self.rBack  is not None: self.rBack.writeToFile(f=f)
             if self.tFront is not None: self.tFront.writeToFile(f=f)
             if self.tBack  is not None: self.tBack.writeToFile(f=f)
-                    
+            
 class surfacemap(object):
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None,
                  notNan=None, Rc=None, zOffset=None, xyOffset=(.0,.0)):
@@ -500,9 +500,11 @@ class surfacemap(object):
         (0,0), then the radius will be the minimum distance from the beam center to the
         nearest mirror edge.
         
-        method   - 'max' gives maximal distance from centre to the edge.
-                   'xy' returns the distance from centre to edge along x- and y-directions.
-                   'area' calculates the area and uses this to estimate the mean radius.
+        method   - 'max' gives maximal distance from beam centre to the edge.
+                 - 'xy' returns the distance from centre to edge along x- and y-directions.
+                   Doesn't make sense if the beam center is offset from the mirror center.
+                 - 'area' calculates the area and uses this to estimate the mean radius.
+                 - 'min' gives minimal distance from beam center to the edge
         unit     - 'points' gives radius in data points.
                    'meters' gives radius in meters.
 
@@ -643,7 +645,8 @@ class surfacemap(object):
         
         tmp = deepcopy(self)
         ny,nx = self.data.shape
-        # Interpolating for more precise convolution, in case size of map is small. 
+        # Interpolating for more precise convolution, in case size of map is small. Not sure
+        # this is necessary. It isn't used in the latest Simtools tutorials.
         if interpol and (nx<1500 or ny<1500):
             # Number of extra steps inserted between two adjacent data points.
             N = math.ceil(1500.0/min(nx,ny))
@@ -1303,7 +1306,7 @@ class surfacemap(object):
         Input: n, m
         n  - Radial degree of Zernike polynomial.
         m  - Azimuthal degree of Zernike polynomial. If set to 'all', all polynomials
-             of radial degree n is removed. Can also be an integer, or a list of
+             of radial degree n is removed. Can also be an integer, or a list
              specifying the Azimuthal degrees that will be removed. Must be consistent
              with the chosen radial degree.
 
