@@ -41,8 +41,13 @@ class MirrorROQWeights:
             if self.tBack  is not None: self.tBack.writeToFile(f=f)
             
 class surfacemap(object):
+    
     def __init__(self, name, maptype, size, center, step_size, scaling, data=None,
                  notNan=None, Rc=None, zOffset=None, xyOffset=(.0,.0)):
+        '''
+        size, center, step_size, xyOffset are all tuples of the form (x, y),
+        i.e., (col, row).
+        '''
         
         self.name = name
         self.type = maptype
@@ -60,12 +65,12 @@ class surfacemap(object):
         self._xyOffset = xyOffset
 		
         if data is None:
-            self.data = np.zeros(size)
+            self.data = np.zeros(size[::-1])
         else:
             self.data = data
-            
+
         if notNan is None:
-            self.notNan = np.ones(size)
+            self.notNan = np.ones(size[::-1], dtype=bool)
         else:
             self.notNan = notNan
 
@@ -1088,9 +1093,24 @@ class surfacemap(object):
         rho = np.sqrt(X**2 + Y**2)
         return rho, phi
 
-    def preparePhaseMap(self, xyOffset=None, w=None, verbose=False):
+    def preparePhaseMap(self, w=None, xyOffset=None, verbose=False):
         '''
-        Based on Simtools function 'FT_prepare_phase_map_for_finesse.m' by Charlotte Bond.
+        Prepares the phase mirror map for being used in Finesse. The map is cropped, and
+        the curvature, offset and tilt are removed, in that order.
+
+        Input: w, xyOffset, verbose
+        w        - radius of Gaussian weights [m]. If specified, surfaces are fitted
+                   to the mirror map when removing curvature and tilt. Otherise, the
+                   whole mirror map is treated the same, thus covolutions with Zernike
+                   polynomials are used instead.
+        xyOffset - Beam center offset compared to the mirror center.
+        verbose  - True makes a chatty method, while False only prints the end results.
+
+        Output: amap
+        amap     - Aperture map (absorption map), i.e. zeros within the map surface and
+                   ones outside it.
+                   
+        Based on Charlotte Bond's Simtools function 'FT_prepare_phase_map_for_finesse.m'.
         '''
         if verbose:
             print('--------------------------------------------------')
@@ -1194,7 +1214,15 @@ class surfacemap(object):
             self.zernikeRemoved = (0,0,A0)
             if verbose:
                 print(' Equivalent Z00 amplitude from accumulated z-offsets, A00 = {:.2f}'.format(A0))
-            
+                
+        if verbose:
+            print(' Creating aperture map...')
+            # --------------------------------------------------------
+        amap = aperturemap(self.name, self.size, self.step_size,
+                           self.find_radius(method='min',unit='meters'), self.center)
+        if verbose:
+            print('  Aperture map created.')
+                                       
         if xyOffset is not None:
             if verbose:
                 print(' Offsetting mirror center in the xy-plane...')
@@ -1208,13 +1236,16 @@ class surfacemap(object):
             self.xyOffset = (0,0)
             
         if verbose:
-            print(' Writing phase map to file...')
+            print(' Writing maps to file...')
         # --------------------------------------------------------
         filename = self.name + '_finesse.txt'
         self.write_map(filename)
         if verbose:
             print('  Phase map written to file {:s}'.format(filename))
-        
+        filename = amap.name + '_aperture.txt'
+        amap.write_map(filename)
+        if verbose:
+            print('  Aperture map written to file {:s}'.format(filename))
         if verbose:
             print(' Writing result information to file...')
             # --------------------------------------------------------
@@ -1222,7 +1253,8 @@ class surfacemap(object):
         self.writeMapPrepResults(filename,w)
         if verbose:
             print('  Result written to file {:s}'.format(filename))
-        
+            
+            
         # Printing results to terminal
         print('--------------------------------------------------')
         print('Phase map prepared!' )
@@ -1249,14 +1281,12 @@ class surfacemap(object):
         print('--------------------------------------------------')
         print()
 
-        
-        # Todo:
-        # Add "create aperture map"
-        
+        return amap
     
-    def writeMapPrepResults(self, filename,w):
+    def writeMapPrepResults(self, filename, w):
         '''
-        Writing results to file. Not yet finished.
+        Writing result information to file. The same info that is written to the
+        terminal.
         '''
         import time
         with open(filename,'w') as mapfile:
@@ -1568,8 +1598,10 @@ class mergedmap:
 
 class aperturemap(surfacemap):
     
-    def __init__(self, name, size, step_size, R):
-        surfacemap.__init__(self, name, "absorption both", size, (np.array(size)+1)/2.0, step_size, 1)
+    def __init__(self, name, size, step_size, R, center=None):
+        if center is None:
+            center = (np.array(size)+1)/2.0
+        surfacemap.__init__(self, name, "absorption both", size, center, step_size, 1)
         self.R = R
         
     @property
@@ -1584,7 +1616,7 @@ class aperturemap(surfacemap):
         
         radius = np.sqrt(xx**2 + yy**2)
         
-        self.data = np.zeros(self.size)
+        self.data = np.zeros(self.size[::-1])
         self.data[radius > self.R] = 1.0
         
         
