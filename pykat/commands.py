@@ -361,14 +361,14 @@ class xaxis(Command):
     def getFinesseText(self):
         if(self._kat.noxaxis):
             return '# noaxis is true, switching xaxis off'
-            
+        
         # store either the component name of the string provided
         comp_name = self.__comp.name if hasattr(self.__comp, "name") else self.__comp
         param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
         
         return '{axis_type} {0} {1} {2} {3:.16g} {4:.16g} {5}'.format(
                 comp_name, param_name, self.scale,
-                min(self.limits), max(self.limits), self.steps, axis_type=self._axis_type);
+                self.limits[0], self.limits[1], self.steps, axis_type=self._axis_type);
 
 class x2axis(xaxis):
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="x2axis"):
