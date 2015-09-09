@@ -420,11 +420,12 @@ class surfacemap(object):
 
         if xlim is not None: pylab.xlim(xlim)
         if ylim is not None: pylab.ylim(ylim)
-            
-        pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
 
+        pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
+        
         cbar = pylab.colorbar()
         #cbar.set_clim(zmin, zmax)
+        cbar.set_clim(-1.86, 1.04)
         
         if clabel is not None:
             cbar.set_label(clabel)
@@ -994,23 +995,34 @@ class surfacemap(object):
         return self.center
         # -------------------------------------------------
         
-    def removePeriphery(self):
+    def crop(self, radius=None):
         '''
-        Finds the NaN elements closest to the map center, and sets all
-        elements further out to NaN. Then cropping and recentering.
+        If no radius is given it finds the NaN elements closest to the map
+        center, and sets all elements further out to NaN. Then cropping
+        and recentering. If radius is given, it sets all elements outside
+        the radius value to NaN, cropping, and recentering.
+
+        Inputs: radius
+        radius - crops removes elements outside this value [m].
         
-        Based on FT_remove_elements_outside_map.m by Charlotte Bond.
+        Based on Charlotte Bond's simtools function
+        'FT_remove_elements_outside_map.m'.
         '''
         # Saves the xyOffset to restore it afterwards
         xyOffset = self.xyOffset
         self.recenter()
-        # Arrays of row and column indices where data is NaN.
-        r,c = np.where(self.notNan == False)
-        # Sets the map center to index [0,0]
-        x = c-self.center[0]
-        y = r-self.center[1]
-        # Minimum radius squared measured in data points.
-        r2 = (x**2+y**2).min()
+        if radius is None:
+            # Arrays of row and column indices where data is NaN.
+            r,c = np.where(self.notNan == False)
+            # Sets the map center to index [0,0]
+            x = c-self.center[0]
+            y = r-self.center[1]
+            # Minimum radius squared measured in data points.
+            r2 = (x**2+y**2).min()
+        else:
+            # Requires the same stepsize in x and y.
+            r2 = (radius/self.step_size[0])**2
+            
         # Grid with the same dimensions as the map.
         X,Y = np.meshgrid(self.x, self.y)
         # Grid containing radial distances squared measured from the center.
@@ -1096,7 +1108,7 @@ class surfacemap(object):
     def preparePhaseMap(self, w=None, xyOffset=None, verbose=False):
         '''
         Prepares the phase mirror map for being used in Finesse. The map is cropped, and
-        the curvature, offset and tilt are removed, in that order.
+        the curvature, offset, and tilts are removed, in that order.
 
         Input: w, xyOffset, verbose
         w        - radius of Gaussian weights [m]. If specified, surfaces are fitted
@@ -1139,7 +1151,7 @@ class surfacemap(object):
         if verbose:
             print(' Cropping map...')
         before = self.size
-        self.removePeriphery()
+        self.crop()
         if verbose:
             print('  Size (rows, cols): ({:d}, {:d}) ---> ({:d}, {:d})'.
                   format(before[1], before[0], self.size[1], self.size[0]))
@@ -1778,8 +1790,8 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9, mapType='phase', fie
 
         
     if mapFormat == 'metroPro':
-        # Remove '.dat' for output name
-        name = filename.split('.')[0]
+        # Remove directory part and '.dat' for name of map
+        name = filename.split('/')[-1].split('.')[0]
         # Reading file
         data, hData = readMetroProData(filename)
         # xy-stepsize in meters
@@ -1799,8 +1811,6 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9, mapType='phase', fie
         smap.rescaleData(scaling)
         smap.recenter()
         return smap
-
-
 
 
 def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
