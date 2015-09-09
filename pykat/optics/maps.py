@@ -2144,19 +2144,10 @@ class BinaryReader:
         self.file.close()
 
         
-# TODO: Add options for reading virgo maps, and .xyz zygo
-    # maps (need .xys file for this). Binary ligo-maps?
-    # The intensity data is not used to anything here. Remove
+# TODO:
+    # map3=FT_invert_mirror_map(map3, invert)
+    
+    # The intensity data is not used for anything. Remove
     # or add to pykat?
-    
-    
-    
-    
-# TODO: Recreate functions from Simtools:, List taken from: ligo_maps/FT_convert_ligo_map_for_finesse.m
-# map=FT_recenter_mirror_map(map);
-# [map2,A2,Rc_out]=FT_remove_zernike_curvatures_from_map(map,Rc_in);
-# [map2,Rc_out]=FT_remove_curvature_from_mirror_map(map,Rc_in,w, display_style);
-# [map2,offset]=FT_remove_offset_from_mirror_map(map2,1e-2);
-# [map3,x_tilt,y_tilt,offset2]=FT_remove_piston_from_mirror_map(map2,w, display_style);
-# map3=FT_invert_mirror_map(map3, invert);
 
+    
