@@ -412,7 +412,7 @@ class Signals(object):
         self._default_name = "fsignal"
         self.targets = []
         self._params = []
-        self.__f = Param("f", self, 1)
+        self.__f = Param("f", self, 0)
         self._kat = kat
         
     def _register_param(self, param):
@@ -431,7 +431,7 @@ class Signals(object):
     def getFinesseText(self):
         rtn = []
         
-        if len(self.targets) == 0 and self.f != 0:
+        if len(self.targets) == 0 and (self.f != 0 and self.f is not None):
             rtn.append("fsig {name} {frequency}"
                             .format(name = self.name,
                                     frequency=str(self.f)))
@@ -1316,30 +1316,37 @@ class kat(object):
                     
                     for file in traceFiles:
                         traceData.append({})
-                        ifile = fileinput.input(os.path.join(path, file))
+                        try:
+                            ifile = fileinput.input(os.path.join(path, file))
                     
-                        for line in ifile:
-                            line = line.strip()
+                            for line in ifile:
+                                line = line.strip()
                         
-                            if len(line) > 0:
-                                a = line.split(':', 1)
+                                if len(line) > 0:
+                                    a = line.split(':', 1)
                         
-                                if a[0].isdigit():
-                                    #print("Found %s" % a[0])
+                                    if a[0].isdigit():
+                                        #print("Found %s" % a[0])
                                 
-                                    values = a[1].split()
+                                        values = a[1].split()
                                 
-                                    node_name = values[1].split("(")[0]
+                                        node_name = values[1].split("(")[0]
                                 
-                                    line1x = ifile.readline()
-                                    line2x = ifile.readline()
-                                    line1y = ifile.readline()
-                                    line2y = ifile.readline()
-
-                                    qx = line2x.strip().split()[0].split("=")[1]
-                                    qy = line2y.strip().split()[0].split("=")[1]
-                                
-                                    traceData[-1][node_name] = (pykat.beam_param(q=complex(qx)), pykat.beam_param(q=complex(qy)))
+                                        line1x = ifile.readline().replace('(','').replace(')','')
+                                        line2x = ifile.readline().replace('(','').replace(')','')
+                                        line1y = ifile.readline().replace('(','').replace(')','')
+                                        line2y = ifile.readline().replace('(','').replace(')','')
+                                        
+                                        spqx = line2x.strip().split("gamma")
+                                        spqy = line2y.strip().split("gamma")
+                                        
+                                        qx = spqx[0].split("=")[1].replace('i','j').replace(' ','') 
+                                        qy = spqy[0].split("=")[1].replace('i','j').replace(' ','') 
+                                        
+                                        traceData[-1][node_name] = (pykat.beam_param(q=complex(qx)), pykat.beam_param(q=complex(qy)))
+                            
+                        finally:
+                            ifile.close()
 
             
             if save_output:        
