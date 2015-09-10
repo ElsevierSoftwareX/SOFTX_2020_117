@@ -106,9 +106,13 @@ class surfacemap(object):
         Give 'offset' is in meters.
         '''
         
-        x0new = self.center[0] + (-self.xyOffset[0] + offset[0])/self.step_size[0]
-        y0new = self.center[1] + (-self.xyOffset[1] + offset[1])/self.step_size[1]
-
+        # These two lines aren't compatible with recenter(). Changed.
+        # x0new = self.center[0] + (-self.xyOffset[0] + offset[0])/self.step_size[0]
+        # y0new = self.center[1] + (-self.xyOffset[1] + offset[1])/self.step_size[1]
+        
+        x0new = self.center[0] + offset[0]/self.step_size[0]
+        y0new = self.center[1] + offset[1]/self.step_size[1]
+        
         # Checking so new suggested "center" is within the the mirror surface
         if (x0new>0 and x0new<self.size[0]-1 and y0new>0 and y0new<self.size[1]-1 and
             self.notNan[round(x0new),round(y0new)]):
@@ -120,7 +124,6 @@ class surfacemap(object):
             print(('Error in xyOffset: ({:.2e}, {:.2e}) m --> pos = ({:.2f}, {:.2f}) '+
                   'is outside mirror surface.').format(offset[0],offset[1],x0new,y0new))
             
-
     @property
     def betaRemoved(self):
         return self._betaRemoved
@@ -424,8 +427,8 @@ class surfacemap(object):
         pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
         
         cbar = pylab.colorbar()
-        #cbar.set_clim(zmin, zmax)
-        cbar.set_clim(-1.86, 1.04)
+        cbar.set_clim(zmin, zmax)
+        # cbar.set_clim(-1.86, 1.04)
         
         if clabel is not None:
             cbar.set_label(clabel)
@@ -717,7 +720,7 @@ class surfacemap(object):
             for k in range(0,3,2):
                 m = (k-1)*2
                 Z = A[k]*zernike(m, 2, rho, phi)
-                smap.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
+                self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
                 self.zernikeRemoved = (m, 2, A[k])
             Rc = znm2Rc([a*self.scaling for a in A[::2]], R)
         elif zModes=='defocus' or zModes=='Defocus':
@@ -949,16 +952,18 @@ class surfacemap(object):
                    'astigmatism' uses Zernike polynomials (n,m) = (2,-2) and (n,m) = (2,2).
                    'all' uses both the defocus and the astigmatic modes.
 
-        if method == 'zernike'
+        if method == 'zernike':
         Returns: Rc, znm
         Rc       - Approximate spherical radius of curvature removed.
         znm      - Dictionary specifying which Zernike polynomials that have been removed
                    as well as their amplitudes.
-        if method == 'sphere' and isCenter[0] == False
+                   
+        if method == 'sphere' and isCenter[0] == False:
         Returns: Rc, zOff
         Rc       - Radius of curvature of the sphere removed from the mirror map. [m]
         zOff     - z-offset of the sphere removed. [surfacemap.scaling]
-        if method == 'sphere' and isCenter[0] == True
+        
+        if method == 'sphere' and isCenter[0] == True:
         Returns Rc, zOff, center
         center   - [x0, y0] giving the coordinates of the center of the fitted sphere. 
         '''
@@ -2143,11 +2148,27 @@ class BinaryReader:
     def __del__(self):
         self.file.close()
 
-        
-# TODO:
-    # map3=FT_invert_mirror_map(map3, invert)
-    
-    # The intensity data is not used for anything. Remove
-    # or add to pykat?
 
+'''
+TODO:
+
+- map3=FT_invert_mirror_map(map3, invert) (Needed?)
+    
+- The intensity data is read but not used. Remove or add?
+
+- When removing astigmatism and defocus separately, the process that is
+  performed last will overwrite smap.Rc. Change this so that it is
+  recognised that the other processes has been performed and calculate
+  the "correct" Rc and store it.
+
+- Similar to the above point, make zernikeRemoved additative so that
+  when processing by fitting surfaces, and translating to Zernike,
+  different processes can add to the same Zernike-polynomial amplitude.
+
+- Messy with different index order for Zernike-polynomials. Tried to
+  follow ddb's (m,n), but apparantly I have written (n,m) at a lot
+  of places anyway. Nothing is wrong in the code though, buy a bit
+  confusing when reading instructions and comments.
+
+'''
     
