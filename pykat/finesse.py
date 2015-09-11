@@ -1401,8 +1401,12 @@ class kat(object):
                     #if search > -1:
                         #print ("Trace 1: {0}".format(out[search:]))
 
-                # for now, just try to print the trace block in full
-                print (out[out.find(' ---') :])
+                # For now, just try to print the trace block in full.
+                # Converting to unicode so it works in python 3.
+                tmpOut = out.decode('unicode_escape')
+                print (tmpOut[tmpOut.find(' ---') :])
+                # print (out[out.find(' ---') :])
+                
 
             katfile.close()
             perfData = []
