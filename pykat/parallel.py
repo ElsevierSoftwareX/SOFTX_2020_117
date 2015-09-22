@@ -24,7 +24,9 @@ Contact at ddb@star.sr.bham.ac.uk
 @author: Daniel Brown
 """
 
-from IPython.parallel import Client
+# former syntax depreciated since ipython 4:
+#from IPython.parallel import Client
+from ipyparallel import Client
 import sys
 import os
 
@@ -44,10 +46,15 @@ class parakat(object):
     """
     Uses the ipython clustering for running kat objects in parallel.
     
-    To use this you must have started an ipython cluster on your computer.
+    To use this you must have installed ipyparallel, for example, with
+	pip install ipyparallel
+
+	Then yoy must start an ipython cluster on your computer.
     From a new terminal use the command:
         
         ipcluster start -n 4
+		or:
+		ipcluster start --n=4
         
     This will start a cluster with 4 workers.
     
