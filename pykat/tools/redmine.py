@@ -47,7 +47,7 @@ def processRedmineProductionLog(log, output):
                 if ext == "zip" or ext == "tar" or ext == "pdf":
                     ofile.write("%s %s %s\n" %(file, ip, date))
         
-                    print file, ip, date
+                    print(file, ip, date)
         
                 found = -1
                 

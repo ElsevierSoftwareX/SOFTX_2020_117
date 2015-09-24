@@ -24,11 +24,18 @@ Contact at ddb@star.sr.bham.ac.uk
 @author: Daniel Brown
 """
 
+import IPython
+
 # former syntax depreciated since ipython 4:
-#from IPython.parallel import Client
-from ipyparallel import Client
+if IPython.version_info[0] <= 3:
+    from IPython.parallel import Client
+else:
+    from ipyparallel import Client
+    
 import sys
 import os
+
+from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 
 def _run(commands, pwd, **kwargs):
     import os
@@ -46,8 +53,9 @@ class parakat(object):
     """
     Uses the ipython clustering for running kat objects in parallel.
     
-    To use this you must have installed ipyparallel, for example, with
-	pip install ipyparallel
+    To use this you must have installed ipyparallel, for example, with:
+	    
+        pip install ipyparallel
 
 	Then yoy must start an ipython cluster on your computer.
     From a new terminal use the command:
@@ -81,15 +89,20 @@ class parakat(object):
         self._lview = self._rc.load_balanced_view()
         self._lview.block = False
         self._results = []
+        self._run_count = 0
         
     def run(self, kat, **kwargs):
         self._results.append(self._lview.apply_async(_run, "".join(kat.generateKatScript()), os.getcwd(), **kwargs))
+        self._run_count += 1
         
     def getResults(self):
         out = []
         
-        self._lview.wait(self._results)
+        p = ProgressBar(maxval=self._run_count , widgets=["Parallel jobs: ", Percentage(), Bar()])
         
+        while not self._lview.wait(self._results, timeout=0.1):
+            p.update(self._run_count - self._lview.queue_status()['unassigned'])
+            
         for done in self._results:
             out.append(done.get())
             

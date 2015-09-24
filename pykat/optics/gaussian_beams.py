@@ -53,7 +53,7 @@ class gauss_param(object):
             elif "z" in kwargs and "zr" in kwargs:
                 q = SIfloat(kwargs["z"]) + 1j * SIfloat(kwargs["zr"]) 
             elif "rc" in kwargs and "w" in kwargs:
-                one_q = 1 / SIfloat(kwargs["rc"]) - 1j * self.__lamda / (math.pi * self.__nr * SIfloat(kwargs["w"])**2)
+                one_q = 1 / SIfloat(kwargs["rc"]) - 1j * SIfloat(wavelength) / (math.pi * SIfloat(nr) * SIfloat(kwargs["w"])**2)
                 q = 1/one_q
             else:
                 raise pkex.BasePyKatException("Must specify: z and w0 or z and zr or rc and w or q, to define the beam parameter")

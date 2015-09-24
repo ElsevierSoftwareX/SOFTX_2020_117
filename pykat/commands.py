@@ -101,13 +101,17 @@ class func(Command):
     @staticmethod
     def parseFinesseText(line, kat):
         v = line.split(None, 3)
+        v2 = line.split("=", 2)
         
         if "=" in v and len(v) == 4:
             v.remove("=")
+            return func(v[1], v[2]) 
+        if len(v2) == 2:
+            return func(v2[0].split()[1], v2[1]) 
         else:
             raise pkex.BasePyKatException("'{0}' not a valid Finesse func command".format(line))
         
-        return func(v[1], v[2]) 
+        
         
 
 
