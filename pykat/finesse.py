@@ -835,6 +835,8 @@ class kat(object):
                         obj = pykat.detectors.bp.parseFinesseText(line)
                     elif(first[0:4] == "gouy"):
                         obj = pykat.detectors.gouy.parseFinesseText(line)
+                    elif(first[0:4] == "beam"):
+                        obj = pykat.detectors.beam.parseFinesseText(line)
                     elif(first[0:2] == "pd" and first != "pdtype"):
                         obj = pykat.detectors.pd.parseFinesseText(line)
                     elif(first == "qshot" or first == "qshotS" or first == "qshotN"):

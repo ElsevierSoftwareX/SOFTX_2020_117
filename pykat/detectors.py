@@ -220,9 +220,56 @@ class Detector2(BaseDetector):
         self._set_node(value, 1)
                 
                 
-                
-                
+class beam(Detector1):
+    
+    def __init__(self, name, node_name, frequency=None, alternate_beam=False):
+        BaseDetector.__init__(self, name, node_name)
+        
+        self.alternate_beam = alternate_beam
+        self.__f = Param("f", self, frequency)        
+    
+    @property
+    def f(self): return self.__f
+    
+    @f.setter
+    def f(self, value):
+        self.__f.value = value
+        
+    @staticmethod
+    def parseFinesseText(text):
+        
+        values = text.split()
 
+        node=values[-1]
+        alt_beam = node[-1] == '*'
+        
+        if len(values) == 3:
+            return beam(values[1], node, alternate_beam=alt_beam)
+        elif len(values) == 4:
+            return beam(values[1], node, alternate_beam=alt_beam, frequency=pykat.SIfloat.SIfloat(values[2]))
+        else:
+            raise pkex.BasePyKatException('Beam detector code "{0}" is not a valid FINESSE command'.format(text))
+    
+    def getFinesseText(self) :
+        rtn = []
+        
+        if self.alternate_beam:
+            alt = '*'
+        else:
+            alt = ''
+        
+        if self.f.value is None:
+            rtn.append("beam {name} {node}{alt}".format(name=self.name, node=self.node.name, alt=alt))
+        else:
+            rtn.append("beam {name} {f} {node}{alt}".format(name=self.name, f=str(self.f.value), node=self.node.name, alt=alt))
+            
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+        
+        return rtn
+        
+        
+        
 class ad(Detector1):
     
     def __init__(self, name, frequency, node_name, mode=None, alternate_beam=False):
