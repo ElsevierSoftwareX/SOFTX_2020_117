@@ -246,7 +246,7 @@ class beam(Detector1):
         if len(values) == 3:
             return beam(values[1], node, alternate_beam=alt_beam)
         elif len(values) == 4:
-            return beam(values[1], node, alternate_beam=alt_beam, frequency=pykat.SIfloat.SIfloat(values[2]))
+            return beam(values[1], node, alternate_beam=alt_beam, frequency=SIfloat(values[2]))
         else:
             raise pkex.BasePyKatException('Beam detector code "{0}" is not a valid FINESSE command'.format(text))
     
