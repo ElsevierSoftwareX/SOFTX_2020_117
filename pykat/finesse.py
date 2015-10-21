@@ -1808,7 +1808,10 @@ class kat(object):
             
         if self.yaxis is not None:
             out.append("yaxis {0}\n".format(self.yaxis))
-         
+        
+        if self.deriv_h is not None:
+            out.append("deriv_h {0}\n".format(self.deriv_h))
+            
         if self.retrace is not None:
             out.append("retrace {0}\n".format(str(self.retrace)))
             
