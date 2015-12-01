@@ -2,9 +2,10 @@ import pykat
 import pykat.exceptions as pkex
 import copy
 import numpy as np
-import pylab
 
 def plot_beam_trace(_kat, from_node, to_node):
+    import pylab
+    
     if _kat == None:
         raise pkex.BasePyKatException('kat object in None')
 

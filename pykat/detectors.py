@@ -65,6 +65,7 @@ class BaseDetector(object) :
         self._mask = {}
         self.__scale = []
         self.__removed = False
+        self.noplot = False
         
         self._alternate_beam = []
         self._nodes = []

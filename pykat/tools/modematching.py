@@ -1,4 +1,4 @@
-import pylab as pl
+#import pylab as pl # removed by DDB 1/12/2015
 import scipy.optimize as opt
 from pykat import finesse
 from pykat.detectors import *
@@ -7,7 +7,7 @@ from pykat.commands import *
 from pykat.structs import *
 from numpy import *
 # from modematch import modematch
-import pykat.utilities.optics.ABCD as abcd
+import pykat.optics.ABCD as abcd
 import time
 
 

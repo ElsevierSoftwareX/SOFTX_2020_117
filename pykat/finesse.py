@@ -240,13 +240,74 @@ class katRun(object):
         self.katVersion = None
         self.yaxis = None
         
-    def plot(self, logy=False):
-        import pylab
+    def plot(self, filename=None, show=True):
+        import matplotlib.pyplot as pyplot
+        import pykat.plotting as plt
+
+        kat = pykat.finesse.kat()
+        kat.verbose = False
+        kat.parseCommands(self.katScript)
+
+        plot_cmd = None
+
+        if "log" in kat.yaxis:
+            if kat.xaxis.scale == "log":
+                plot_cmd = pyplot.loglog
+            else:
+                plot_cmd = pyplot.semilogy
+        else:
+            if kat.xaxis.scale == "log":
+                plot_cmd = pyplot.semilogx
+            else:
+                plot_cmd = pyplot.plot
+
+        dual_plot = False
+
+        if ":" in kat.yaxis:
+            fig = plt.figure(width="full", height=1)
+            dual_plot = True
+        else:
+            fig = plt.figure(width="full")
+
+        for lbl in self.ylabels:
+            lbl = lbl.split()[0]
+            if not dual_plot:
+                plot_cmd(self.x, np.abs(self[lbl]))
+            else:
+                pyplot.subplot(2,1,1)
+                plot_cmd(self.x, np.abs(self[lbl]))
         
-        pylab.plot(self.x, self.y)
-        pylab.legend(self.ylabels,0)
-        pylab.xlabel(self.xlabel)
-        pylab.show()
+                pyplot.subplot(2,1,2)
+                plot_cmd(self.x, np.angle(self[lbl]))
+
+        if dual_plot:
+            pyplot.subplot(2,1,1)
+            pyplot.xlabel(self.xlabel, fontsize=pyplot.rcParams["font.size"])
+            pyplot.xlim(self.x.min(), self.x.max())
+    
+            if "abs" in kat.yaxis: pyplot.ylabel("Absolute [au]", fontsize=pyplot.rcParams["font.size"])
+            if "re" in kat.yaxis: pyplot.ylabel("Real part [au]", fontsize=pyplot.rcParams["font.size"])
+    
+            pyplot.subplot(2,1,2)
+            pyplot.xlabel(self.xlabel, fontsize=pyplot.rcParams["font.size"])
+            pyplot.xlim(self.x.min(), self.x.max())
+    
+            if "deg" in kat.yaxis: pyplot.ylabel("Phase [deg]", fontsize=pyplot.rcParams["font.size"])
+            if "im" in kat.yaxis: pyplot.ylabel("Imaginary part [au]", fontsize=pyplot.rcParams["font.size"])
+        else:
+            pyplot.xlabel(self.xlabel, fontsize=pyplot.rcParams["font.size"])
+            pyplot.ylabel(" [au]")
+            pyplot.xlim(self.x.min(), self.x.max())
+    
+        fig.tight_layout()
+        
+        if filename is not None:
+            fig.savefig(filename)
+            
+        if show:
+            pyplot.show(fig)
+        
+        return fig
         
     def savekatRun(self, filename):
         with open(filename,'w') as outfile:
@@ -916,8 +977,7 @@ class kat(object):
                     elif(first == "fsig"):
                         after_process.append((line, self.__currentTag))
                     elif(first == "noplot"):
-                        obj = line
-                        #self.__blocks[self.__currentTag].contents.append(line) 
+                        after_process.append((line, self.__currentTag))
                     else:
                         if self.verbose:
                             print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
@@ -938,7 +998,7 @@ class kat(object):
             # components to exist first before they can be processed
             for item in after_process:
                 line = item[0]
-                first = line.split(" ",1)[0] 
+                first, rest = line.split(" ",1)
                 block = item[1]
                 
                 if first == "gauss" or first == "gauss*" or first == "gauss**":
@@ -955,6 +1015,11 @@ class kat(object):
                     
                 elif (first == "variable"):
                     self.add(pykat.commands.variable.parseFinesseText(line, self), block=block)
+                elif (first == "noplot"):
+                    if not hasattr(self, rest):
+                        raise pkex.BasePyKatException("noplot command `{0}` refers to non-existing detector".format(line))
+                        
+                    getattr(self, rest).noplot = True
                     
                 elif (first == "scale"):
                     v = line.split()
@@ -1264,7 +1329,7 @@ class kat(object):
                             err="".join((err,str(line, 'utf-8')))
 
             
-            [out,errpipe] = p.communicate()
+            [out, errpipe] = p.communicate()
 
             if six.PY2:
                 _out = str(out).split("\n")
@@ -1286,6 +1351,7 @@ class kat(object):
             # get the version number
             ix = out.find(b'build ') + 6
             ix2 = out.find(b')',ix)
+            
             r.katVersion = out[ix:ix2]
             
             r.runDateTime = datetime.datetime.now()

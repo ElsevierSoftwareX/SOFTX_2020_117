@@ -1063,7 +1063,7 @@ class modulator(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._svgItem = None
-        self.__f = Param("f", self, SIfloat(f))
+        self.__f = Param("f", self, SIfloat(f), canFsig=True, fsig_name="fre")
         self.__midx = Param("midx", self, SIfloat(midx))
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__order = int(order)
@@ -1171,7 +1171,7 @@ class laser(Component):
         self._requested_node_names.append(node)
         
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
-        self.__f_offset = Param("f", self, SIfloat(f), canFsig=True, fsig_name="f")
+        self.__f_offset = Param("f", self, SIfloat(f), canFsig=True, fsig_name="freq")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__noise = AttrParam("noise", self, None)
         self._svgItem = None

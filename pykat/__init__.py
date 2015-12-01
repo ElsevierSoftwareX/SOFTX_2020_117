@@ -8,7 +8,9 @@ __version__ = "0.8.1"
 # This flag is used to switch on the gui features in pkat at import time
 USE_GUI = False
 HAS_OPTIVIS = False
+
 import imp
+
 try:
 	imp.find_module('optivis')
 	HAS_OPTIVIS = True
@@ -26,6 +28,6 @@ import pykat.commands as commands
 
 from pykat.optics.gaussian_beams import beam_param
 
-
+from pykat.plotting import init_pykat_plotting
 
 
