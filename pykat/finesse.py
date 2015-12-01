@@ -262,23 +262,43 @@ class katRun(object):
                 plot_cmd = pyplot.plot
 
         dual_plot = False
+        _func1 = np.abs
+        _func2 = None
 
-        if ":" in kat.yaxis:
-            fig = plt.figure(width="full", height=1)
+        if "re:im" in kat.yaxis:
+            _func1 = np.real
+            _func2 = np.imag
             dual_plot = True
+        elif "abs:deg" in kat.yaxis:
+            _func1 = np.abs
+            _func2 = lambda x: np.rad2deg(np.angle(x))
+            dual_plot = True
+        elif "db:deg" in kat.yaxis:
+            _func1 = lambda x: 10*np.log10(x)
+            _func2 = lambda x: np.rad2deg(np.angle(x))
+            dual_plot = True
+        elif "abs" in kat.yaxis:
+            _func1 = np.abs
+        elif "db" in kat.yaxis:
+            _func1 = lambda x: 10*np.log10(x)
+        elif "deg" in kat.yaxis:
+            _func1 = lambda x: np.rad2deg(np.angle(x))
+            
+        if dual_plot:
+            fig = plt.figure(width="full", height=1)
         else:
-            fig = plt.figure(width="full")
+            fig = plt.figure(width="full")   
 
         for lbl in self.ylabels:
             lbl = lbl.split()[0]
             if not dual_plot:
-                plot_cmd(self.x, np.abs(self[lbl]))
+                plot_cmd(self.x, _func1(self[lbl]))
             else:
                 pyplot.subplot(2,1,1)
-                plot_cmd(self.x, np.abs(self[lbl]))
+                l, = plot_cmd(self.x, _func1(self[lbl]))
         
                 pyplot.subplot(2,1,2)
-                plot_cmd(self.x, np.angle(self[lbl]))
+                pyplot.plot(self.x, _func2(self[lbl]), color=l.get_color(), ls=l.get_linestyle())
 
         if dual_plot:
             pyplot.subplot(2,1,1)
@@ -328,14 +348,14 @@ class katRun(object):
             #out = self.y[:, idx]
             
             if len(idx) == 1:
-                if self.yaxis == "abs:deg":
+                if "abs:deg" in self.yaxis:
                     out = self.y[:, idx[0]]
-                elif self.yaxis == "re:im":
+                elif "re:im" in self.yaxis:
                     out = self.y[:, idx[0]]
             else: 
-                if self.yaxis == "abs:deg":
+                if "abs:deg" in self.yaxis:
                     out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
-                elif self.yaxis == "re:im":
+                elif "re:im" in self.yaxis :
                     out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
 
             if out is None:
@@ -643,15 +663,27 @@ class kat(object):
     def signals(self): return self.__signals
 
     yaxis_options = ["abs:deg","db:deg","re:im","abs","db","deg"]
+    
     @property
     def yaxis(self): return self.__yaxis
     @yaxis.setter
     def yaxis(self, value):
+        values = value.split()
         
-        if not str(value) in self.yaxis_options:
-            raise pkex.BasePyKatException("yaxis value '{0}' is not a value option. Valid options are: {1}".format(str(value), ",".join(self.yaxis_options) ))
+        if len(values) == 2:
+            scale = values[0]
+            mode = values[1]
+        else:
+            scale = "lin"
+            mode = value
+        
+        if not str(scale) in ["lin", "log"]:
+            raise pkex.BasePyKatException("yaxis value '{0}' is not a valid option. Valid options are: lin or log".format(str(mode)))
+                
+        if not str(mode) in self.yaxis_options:
+            raise pkex.BasePyKatException("yaxis value '{0}' is not a valid option. Valid options are: {1}".format(str(mode), ",".join(self.yaxis_options) ))
             
-        self.__yaxis = str(value)
+        self.__yaxis = str(scale + " " + mode).strip()
 
     @property
     def trace(self): return self.__trace
@@ -935,8 +967,7 @@ class kat(object):
                         v = line.split()
                         self.lambda0 = SIfloat(v[-1])
                     elif(first == "yaxis"):
-                        v = line.split()
-                
+                        v = line.split(" ", 1)
                         self.yaxis = v[-1]
                     elif(first == "phase"):
                         v = line.split()

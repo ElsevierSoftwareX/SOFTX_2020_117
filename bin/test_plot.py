@@ -12,15 +12,18 @@ import numpy as np
 code = """
 l l1 1 0 0 n1 
 s s1 10 1 n1 n2
-m m1 0.5 0.5 0 n2 n3
+m m1 0.9 0.1 0 n2 n3
 s s2 10 1 n3 n4
 m m2 0.5 0.5 0 n4 n5
 s s3 10 1 n5 n6
 
-yaxis re:im
+yaxis abs:deg
 
+ad refl 0 0 0 n2
 ad circ 0 0 0 n4
+ad tran 0 0 0 n5
 pd pd_cav n3
+
 
 
 cav c1 m1 n3 m2 n4
