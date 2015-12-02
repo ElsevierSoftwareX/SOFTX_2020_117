@@ -42,6 +42,7 @@ kat.m2.Rcy =  1000.0
 kat.maxtem = 0
 
 out = kat.run()
-fig = out.plot(yaxis="log abs:deg")
+#fig = out.plot(yaxis="log abs:deg")
 
 #fig.savefig("test_plot.pdf")
+out.info()

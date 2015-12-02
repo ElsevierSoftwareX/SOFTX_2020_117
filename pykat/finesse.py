@@ -240,6 +240,25 @@ class katRun(object):
         self.katVersion = None
         self.yaxis = None
         
+    def info(self):
+        
+        kat = pykat.finesse.kat()
+        kat.verbose = False
+        kat.parseCommands(self.katScript)
+        
+        detectors = list(set([lbl.split()[0] for lbl in self.ylabels]))
+        detectors.sort()
+        
+        print("--- Output info ---")
+        print("Run date and time: %s" % self.StartDateTime)
+        print("Detectors used: %s" % (", ".join(detectors)))
+        
+        if kat.noxaxis:
+            print("No xaxis used")
+        else:
+            print("One xaxis used: %s" % kat.xaxis.getFinesseText())
+        
+        
     def plot(self, detectors=None, filename=None, show=True, yaxis=None, legend=True, loc=0, title=None):
         """
         This will generate a plot for the output data of this particular pykat run.
