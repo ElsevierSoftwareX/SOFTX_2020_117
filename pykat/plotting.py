@@ -58,6 +58,8 @@ def init_pykat_plotting(mode="display", dpi=100):
     else:
         raise(BaseException("Plotting mode must be either 'display' or 'paper'."))
         
+    mpl.rcParams['axes.color_cycle'] = ['b', 'r', 'k', 'g', 'c', 'm', 'y']
+    mpl.rcParams['lines.linewidth'] = 1.2
     mpl.rcParams.update({"figure.figsize": (6, 3.708)})
     mpl.rcParams.update({'font.size': 11})
     mpl.rcParams.update({'figure.dpi': __DPI__})
@@ -67,7 +69,7 @@ def init_pykat_plotting(mode="display", dpi=100):
     mpl.rcParams.update({'axes.axisbelow': True})
     mpl.rcParams.update({'grid.linewidth': 0.25})
     mpl.rcParams.update({'grid.linestyle': ":"})
-    mpl.rcParams.update({'grid.color': (0.7,0.7,0.7,1)})
+    mpl.rcParams.update({'grid.color': (0.6,0.6,0.6,1)})
     mpl.rcParams.update({'savefig.bbox': "tight"})
     mpl.rcParams.update({'savefig.pad_inches': 0.05})
     mpl.rcParams.update({'xtick.labelsize': "small"})

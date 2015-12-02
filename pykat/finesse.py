@@ -315,7 +315,7 @@ class katRun(object):
             _func2 = lambda x: np.rad2deg(np.angle(x))
 
             plot_cmd1 = plot_cmd
-            plot_cmd2 = pyplot.plot
+            plot_cmd2 = pyplot.plot if kat.xaxis.scale == "lin" else pyplot.semilogx
             
             dual_plot = True
         elif "db:deg" in kat.yaxis:
@@ -323,7 +323,7 @@ class katRun(object):
             _func2 = lambda x: np.rad2deg(np.angle(x))
 
             plot_cmd1 = plot_cmd
-            plot_cmd2 = pyplot.plot
+            plot_cmd2 = pyplot.plot if kat.xaxis.scale == "lin" else pyplot.semilogx
             
             dual_plot = True
         elif "abs" in kat.yaxis:
@@ -352,14 +352,14 @@ class katRun(object):
                 if not dual_plot:
                     plot_cmd1(self.x, _func1(self[det]), label=det)
                 else:
-                    pyplot.subplot(2,1,1)
+                    ax = pyplot.subplot(2,1,1)
                     l, = plot_cmd1(self.x, _func1(self[det]), label=det)
         
                     pyplot.subplot(2,1,2)
                     plot_cmd2(self.x, _func2(self[det]), color=l.get_color(), ls=l.get_linestyle(), label=det)
 
         if dual_plot:
-            pyplot.subplot(2,1,1)
+            ax = pyplot.subplot(2,1,1)
             pyplot.xlabel(self.xlabel, fontsize=pyplot.rcParams["font.size"])
             pyplot.xlim(self.x.min(), self.x.max())
             if title is not None: pyplot.title(title, fontsize=pyplot.rcParams["font.size"]-1)

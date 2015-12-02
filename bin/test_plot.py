@@ -32,7 +32,7 @@ attr m1 Rc 1
 kat = finesse.kat()
 kat.parseCommands(code)
 
-kat.add(xaxis("lin", [0, 360], kat.m2.phi, 500))
+kat.add(xaxis("log", [1, 360], kat.m2.phi, 500))
 
 kat.m1.Rcx = -1000.0
 kat.m1.Rcy = -1000.0
@@ -42,7 +42,5 @@ kat.m2.Rcy =  1000.0
 kat.maxtem = 0
 
 out = kat.run()
-#fig = out.plot(yaxis="log abs:deg")
 
-#fig.savefig("test_plot.pdf")
-out.info()
+fig = out.plot()
