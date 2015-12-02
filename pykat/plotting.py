@@ -27,10 +27,13 @@ def init_pykat_plotting(mode="display", dpi=100):
     __DPI__ = int(dpi)
     
     if in_ipython():
-        from IPython.display import set_matplotlib_formats
-        set_matplotlib_formats('pdf', 'svg')
-        ipy = get_ipython()
-        ipy.magic("matplotlib inline")
+        try:
+            from IPython.display import set_matplotlib_formats
+            set_matplotlib_formats('pdf', 'svg')
+            ipy = get_ipython()
+            ipy.magic("matplotlib inline")
+        except:
+            pass
     
     if mode == "display":
         __mode__ = mode
@@ -90,6 +93,7 @@ def figure(width="full", height=0.618, textwidth=6, **kwargs):
     fig = plt.figure(figsize=fig_size, dpi=__DPI__)
     
     return fig
+    
     
     
     
