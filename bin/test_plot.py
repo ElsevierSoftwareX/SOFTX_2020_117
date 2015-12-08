@@ -1,5 +1,5 @@
 import pykat
-pykat.init_pykat_plotting()
+#pykat.init_pykat_plotting()
 
 from pykat import finesse
 from pykat.detectors import *
@@ -32,7 +32,7 @@ attr m1 Rc 1
 kat = finesse.kat()
 kat.parseCommands(code)
 
-kat.add(xaxis("log", [1, 360], kat.m2.phi, 500))
+kat.add(xaxis("lin", [1, 360], kat.m2.phi, 500))
 
 kat.m1.Rcx = -1000.0
 kat.m1.Rcy = -1000.0
@@ -43,4 +43,4 @@ kat.maxtem = 0
 
 out = kat.run()
 
-fig = out.plot()
+fig = out.plot(styles={'circ':'c:'}, yaxis="log abs:deg")

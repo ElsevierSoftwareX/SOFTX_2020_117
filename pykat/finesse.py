@@ -259,7 +259,7 @@ class katRun(object):
             print("One xaxis used: %s" % kat.xaxis.getFinesseText())
         
         
-    def plot(self, detectors=None, filename=None, show=True, yaxis=None, legend=True, loc=0, title=None):
+    def plot(self, detectors=None, filename=None, show=True, yaxis=None, legend=True, loc=0, title=None, styles=None):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
@@ -275,6 +275,7 @@ class katRun(object):
             legend: True | False - whether to include a legend
             loc: Location value for the legend, the usual matplotlib one.
             title: Provide a title for the plot if required.
+            styles: A dictionary which keys being the detector names and the value being a colour and linestyle of the sort 'k:'
         """
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
@@ -349,12 +350,15 @@ class katRun(object):
         
         for det in detectors:
             if not getattr(kat, det).noplot:
-                if not dual_plot:
-                    plot_cmd1(self.x, _func1(self[det]), label=det)
-                else:
+                if dual_plot:
                     ax = pyplot.subplot(2,1,1)
+                    
+                if styles is not None and det in styles:
+                    l, = plot_cmd1(self.x, _func1(self[det]), styles[det], label=det)
+                else:
                     l, = plot_cmd1(self.x, _func1(self[det]), label=det)
-        
+                
+                if dual_plot: 
                     pyplot.subplot(2,1,2)
                     plot_cmd2(self.x, _func2(self[det]), color=l.get_color(), ls=l.get_linestyle(), label=det)
 
