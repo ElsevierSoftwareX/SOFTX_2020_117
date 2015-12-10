@@ -46,19 +46,22 @@ def init_pykat_plotting(mode="display", dpi=100):
         pgf_with_pdflatex = {
             "pgf.texsystem": "pdflatex",
             "pgf.preamble": [
-                 r"\usepackage{amsmath, amssymb}",
-                 r"\usepackage{mathtools, siunitx}" ,
-                 r"\usepackage{amsmath}",
-                 r"\usepackage[utf8x]{inputenc}",
-                 r"\usepackage[T1]{fontenc}"
+                 r"\\usepackage{amsmath, amssymb}",
+                 r"\\usepackage{mathtools, siunitx}" ,
+                 r"\\usepackage{amsmath}",
+                 r"\\usepackage[utf8x]{inputenc}",
+                 r"\\usepackage[T1]{fontenc}"
                  ]
         }
 
         mpl.rcParams.update(pgf_with_pdflatex)
     else:
         raise(BaseException("Plotting mode must be either 'display' or 'paper'."))
-        
-    mpl.rcParams['axes.color_cycle'] = ['b', 'r', 'k', 'g', 'c', 'm', 'y']
+
+    if (mpl.__version__ < '1.5'):
+        mpl.rcParams['axes.color_cycle'] = ['b', 'r', 'k', 'g', 'c', 'm', 'y']
+    else:
+        mpl.rcParams['axes.prop_cycle']=mpl.cycler('color', ['b', 'r', 'k', 'g', 'c', 'm', 'y'])
     mpl.rcParams['lines.linewidth'] = 1.2
     mpl.rcParams.update({"figure.figsize": (6, 3.708)})
     mpl.rcParams.update({'font.size': 11})
