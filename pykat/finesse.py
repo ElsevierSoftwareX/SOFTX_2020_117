@@ -259,7 +259,9 @@ class katRun(object):
             print("One xaxis used: %s" % kat.xaxis.getFinesseText())
         
         
-    def plot(self, detectors=None, filename=None, show=True, yaxis=None, legend=True, loc=0, title=None, styles=None):
+    def plot(self, detectors=None, filename=None, show=True,
+                   yaxis=None, legend=True, loc=0, title=None, styles=None,
+                   ylabel=None, y2label=None, xlabel=None, x2label=None):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
@@ -268,14 +270,19 @@ class katRun(object):
         
         There are some additional keyword options to customise the plot output slightly:
         
-            detectors: a list of detectors that you want to plot
-            filename: providing a filename here will save the plot to a file. The format is given by the extension provided.
-            show: True | False - whether to display the plot or not
-            yaxis: Set the Finesse yaxis command to base the plot on. By default the original one will be used.
-            legend: True | False - whether to include a legend
-            loc: Location value for the legend, the usual matplotlib one.
-            title: Provide a title for the plot if required.
-            styles: A dictionary which keys being the detector names and the value being a colour and linestyle of the sort 'k:'
+            detectors:          a list of detectors that you want to plot
+            filename:           providing a filename here will save the plot to a file.
+                                The format is given by the extension provided.
+            show:               True | False - whether to display the plot or not
+            yaxis:              Set the Finesse yaxis command to base the plot on. By
+                                default the original one will be used.
+            legend:             True | False - whether to include a legend
+            loc:                Location value for the legend, the usual matplotlib one.
+            title:              Provide a title for the plot if required.
+            styles:             A dictionary which keys being the detector names and the
+                                value being a colour and linestyle of the sort 'k:'
+            ylabel, xlabel:     Text for the first plot x and y labels
+            y2label, x2label:   Text for the second plot x and y labels 
         """
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
@@ -363,30 +370,44 @@ class katRun(object):
                     plot_cmd2(self.x, _func2(self[det]), color=l.get_color(), ls=l.get_linestyle(), label=det)
 
         if dual_plot:
+            if ylabel is None:
+                if "abs" in kat.yaxis: ylabel = "Absolute [au]"
+                if "re" in kat.yaxis:  ylabel = "Real part [au]"
+                
+            if y2label is None:
+                if "deg" in kat.yaxis: y2label = "Phase [deg]"
+                if "im" in kat.yaxis:  y2label = "Imaginary part [au]"
+        else:
+            if ylabel is None:
+                ylabel = "[au]"
+        
+        font_label_size = pyplot.rcParams["font.size"]-1
+        
+        if dual_plot:
             ax = pyplot.subplot(2,1,1)
-            pyplot.xlabel(self.xlabel, fontsize=pyplot.rcParams["font.size"])
+            pyplot.xlabel(xlabel, fontsize=font_label_size)
             pyplot.xlim(self.x.min(), self.x.max())
-            if title is not None: pyplot.title(title, fontsize=pyplot.rcParams["font.size"]-1)
+            pyplot.ylabel(ylabel, fontsize=font_label_size)
             
-            if "abs" in kat.yaxis: pyplot.ylabel("Absolute [au]", fontsize=pyplot.rcParams["font.size"])
-            if "re" in kat.yaxis: pyplot.ylabel("Real part [au]", fontsize=pyplot.rcParams["font.size"])
+            if title is not None:
+                pyplot.title(title, fontsize=font_label_size)
     
             pyplot.subplot(2,1,2)
-            pyplot.xlabel(self.xlabel, fontsize=pyplot.rcParams["font.size"])
+            pyplot.xlabel(x2label, fontsize=font_label_size)
             pyplot.xlim(self.x.min(), self.x.max())
-    
-            if "deg" in kat.yaxis: pyplot.ylabel("Phase [deg]", fontsize=pyplot.rcParams["font.size"])
-            if "im" in kat.yaxis: pyplot.ylabel("Imaginary part [au]", fontsize=pyplot.rcParams["font.size"])
+            pyplot.ylabel(y2label, fontsize=font_label_size)
         else:
-            pyplot.xlabel(self.xlabel, fontsize=pyplot.rcParams["font.size"])
-            pyplot.ylabel(" [au]")
+            pyplot.xlabel(xlabel, fontsize=font_label_size)
+            pyplot.ylabel(ylabel)
             pyplot.xlim(self.x.min(), self.x.max())
-            if title is not None: pyplot.title(title, fontsize=pyplot.rcParams["font.size"]-1)
+            
+            if title is not None:
+                pyplot.title(title, fontsize=font_label_size)
     
         pyplot.tight_layout()
     
         if legend:
-            fig.axes[0].legend(loc=loc, fontsize=pyplot.rcParams["font.size"]-1)
+            fig.axes[0].legend(loc=loc, fontsize=font_label_size)
         
         if filename is not None:
             fig.savefig(filename)
