@@ -7,7 +7,59 @@ import cmath
 from scipy.special import hermite
 from pykat.SIfloat import SIfloat
 
+def fit_beam_size(z_data, w_data, w0guess, z0guess, lam=1064e-9, show_plot=True,
+                  plotpts=100, title='Beam scan fit', w2zero=True, filename=None):
+    """
+    Function to fit a beam size (w0 and z) to a 2D intensity array. Plotting can
+    be switched on or off.
+
+    Returns best fit of (w0, z)
     
+    Contributed by Paul Fulda on 15/01/16
+    """
+    
+    import scipy.optimize
+    
+    def zw0z02w(z, w0, z0, lam):
+        z_R = pl.pi*w0**2/lam
+        w = w0*pl.sqrt(1+((z-z0)/z_R)**2)
+        return w
+    
+    popt,pcov = scipy.optimize.curve_fit(lambda z_data, w0, z0: zw0z02w(z_data, w0, z0, lam), z_data, w_data, p0=[w0guess,z0guess])
+    w0out=popt[0]
+    z0out=popt[1]
+    
+    z_fit = pl.linspace(min(z_data),max(z_data),plotpts)
+    w_fit = zw0z02w(z_fit, w0out, z0out, lam)
+
+
+    if show_plot or filename is not None:
+        import pylab as pl
+        
+        um=1e6
+        
+        pl.figure()
+        pl.plot(z_data,w_data*um,'bo', label = 'Data')
+        pl.plot(z_fit,w_fit*um,'b', label = 'Fit')
+        pl.tight_layout
+        pl.grid()
+        pl.xlabel('Position [m]')
+        pl.ylabel('Beam size [$\mu$m]')
+        pl.xlim((min(z_data),max(z_data)))
+        
+        if w2zero:
+            pl.ylim((0,max(w_data)*um))
+            
+        pl.legend(loc=0)
+        pl.title(title)
+        
+        if filename is not None:
+            pl.savefig(filename)
+            
+    return w0out, z0out      
+    
+    
+
 class gauss_param(object):
     """
     Use beam_param instead, will be the future name of this object.
