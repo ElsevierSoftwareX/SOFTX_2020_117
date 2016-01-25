@@ -272,12 +272,60 @@ class gauss(object):
             kat.nodes[node].setGauss(kat.components[component], gpx, gpy)
             
 class tf(Command):
-    fQ = namedtuple('fQ', ['f', 'Q'])
     
-    def __init__(self, name, poles, zeros):
+    class fQ(object):
+        def __init__(self, f, Q):
+            self.f = f
+            self.Q = Q
+            
+    def __init__(self, name):
         Command.__init__(self, name, False)
-        pass
-      
+        self.zeros = []
+        self.poles = []
+        self.gain = 1
+        self.phase = 0
+    
+    def addPole(self,f, Q):
+        self.poles.append(tf.fQ(SIfloat(f), SIfloat(Q)))
+    
+    def addZero(self,f, Q):
+        self.zeros.append(tf.fQ(SIfloat(f), SIfloat(Q)))
+        
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split()
+        
+        if ((len(values)-4) % 3) != 0:
+            raise pkex.BasePyKatException("Transfer function Finesse code format incorrect '{0}'".format(text))
+
+        _tf = tf(values[1])
+        
+        _tf.gain = SIfloat(values[2])
+        _tf.phase = SIfloat(values[3])
+        
+        N = int((len(values)-4) / 3)
+        
+        for i in range(1,N+1):
+            if values[i*3+1] == 'p':
+                _tf.addPole(SIfloat(values[i*3+2]), SIfloat(values[i*3+3]))
+            elif values[i*3+1] == 'z':
+                _tf.addZero(SIfloat(values[i*3+2]), SIfloat(values[i*3+3]))
+            else:
+                raise pkex.BasePyKatException("Transfer function pole/zero Finesse code format incorrect '{0}'".format(text))
+    
+        return _tf
+        
+    def getFinesseText(self):
+        rtn = "tf {name} {gain} {phase} ".format(name=self.name,gain=self.gain,phase=self.phase)
+        
+        for p in self.poles:
+            rtn += "p {f} {Q} ".format(f=p.f, Q=p.Q)
+        
+        for z in self.zeros:
+            rtn += "p {f} {Q} ".format(f=z.f, Q=z.Q)
+        
+        return rtn
+        
 class xaxis(Command):
     """
     The xaxis object is a unique object to each pykat.finesse.kat instance. It provides

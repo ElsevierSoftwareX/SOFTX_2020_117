@@ -31,11 +31,13 @@ put up_refl f $x1
 put low_refl f $mx1
 
 yaxis log re:im
+
+fsig noise 1
 """
 
 kat = finesse.kat(kat_code=code)
 
-kat.signals.apply(kat.l1.power, 1, 0)
+kat.signals.apply(kat.l1.P, 1, 0)
 kat.signals.apply(kat.m1.phi, 1, 90)
 
 kat.add(xaxis('log', [1, 1000], kat.signals.f, 100))

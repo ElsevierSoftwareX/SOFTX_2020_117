@@ -191,7 +191,13 @@ class BaseDetector(object) :
                     rtn.append("scale {1} {0}".format(self.name, s))
             else:
                 raise pkex.BasePyKatException("Scale command should either be a list of scales or a single string.")
-                
+
+class Detector0(BaseDetector):
+    """
+    A detector that attaches to no nodes.
+    """
+    pass
+                        
 class Detector1(BaseDetector):
     """
     A detector that attaches to one node.
@@ -269,7 +275,32 @@ class beam(Detector1):
         
         return rtn
         
+class xd(Detector0):
+    
+    def __init__(self, name, component, motion):
+        BaseDetector.__init__(self, name, None)
         
+        self.component = component
+        self.motion = motion
+
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+        
+        if len(values) == 4:
+            return xd(values[1], values[2], values[3])
+        else:
+            raise pkex.BasePyKatException('Motion detector code "{0}" is not a valid FINESSE command'.format(text))
+            
+    def getFinesseText(self) :
+        rtn = []
+        
+        rtn.append("xd {name} {component} {motion}".format(name=self.name,
+                                                           component=self.component,
+                                                           motion=self.motion))
+        
+        return rtn
+              
         
 class ad(Detector1):
     
@@ -876,42 +907,6 @@ class qshot(pd):
                 senstype = ""
                 
             rtn.append("qshot{5} {0} {1} {2} {3}{4}".format(self.name, self.num_demods, fphi_str, self.node.name, alt_str,senstype))
-
-            self._getScaleCmds(rtn)
-                
-            for p in self._params:
-                rtn.extend(p.getFinesseText())
-            
-        return rtn
-        
-def xd(Detector1):
-
-    def __init__(self, name, node_name, component, motion):
-        BaseDetector.__init__(name, None)
-        
-        self.__motion = motion
-        self.__component = component
-        
-    @property
-    def motion(self): return self.__motion
-    
-    @property
-    def component(self): return self.__component
-    
-    @staticmethod
-    def parseFinesseText(text): 
-        values = text.split()
-
-        if len(values) != 4:
-            raise pkex.BasePyKatException("Motion detector command format incorrect '{0}' (2)".format(text))
-            
-        return xd(values[1], values[2], values[3])
-    
-    def getFinesseText(self) :
-        rtn = []
-        
-        if self.enabled:
-            rtn.append("xd {0} {1} {2}".format(self.name, self.component, self.motion))
 
             self._getScaleCmds(rtn)
                 

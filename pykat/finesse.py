@@ -356,7 +356,7 @@ class katRun(object):
         detectors.sort()
         
         for det in detectors:
-            if not getattr(kat, det).noplot:
+            if not hasattr(kat, det) or (hasattr(kat, det) and not getattr(kat, det).noplot):
                 if dual_plot:
                     ax = pyplot.subplot(2,1,1)
                     
@@ -381,6 +381,12 @@ class katRun(object):
             if ylabel is None:
                 ylabel = "[au]"
         
+        if xlabel is None:
+            xlabel = self.xlabel
+            
+        if x2label is None:
+            x2label = self.xlabel
+            
         font_label_size = pyplot.rcParams["font.size"]-1
         
         if dual_plot:
@@ -1012,6 +1018,10 @@ class kat(object):
                         obj = pykat.components.modulator.parseFinesseText(line)
                     elif(first[0:2] == "ad"):
                         obj = pykat.detectors.ad.parseFinesseText(line)
+                    elif(first[0:2] == "xd"):
+                        obj = pykat.detectors.xd.parseFinesseText(line)
+                    elif(first[0:2] == "tf"):
+                        obj = pykat.commands.tf.parseFinesseText(line)
                     elif(first[0:2] == "bp"):
                         obj = pykat.detectors.bp.parseFinesseText(line)
                     elif(first[0:4] == "gouy"):
@@ -1109,7 +1119,7 @@ class kat(object):
                         if self.hasNamedObject(obj.name):
                             getattr(self, obj.name).remove()
                             print ("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
-                    
+
                         self.add(obj, block=self.__currentTag)
                 
                 
