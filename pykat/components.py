@@ -1101,8 +1101,10 @@ class modulator(Component):
     def type(self): return self.__type
     @type.setter
     def type(self, value):
-        if value != "am" and value != "pm":
-            raise pkex.BasePyKatException("Modulator type must be am (amplitude modulation) or pm (phase modulation)")
+        accepted = ["am", "pm", "yaw", "pitch"]
+        
+        if value not in accepted:
+            raise pkex.BasePyKatException("Modulator type must be: " + ", ".join(accepted))
             
         self.__type = str(value)
     
