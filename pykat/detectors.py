@@ -508,11 +508,11 @@ class pd(Detector1):
         self.__f4 = Param("f4", self, None)
         self.__f5 = Param("f5", self, None)
         
-        self.__phi1 = Param("phi1", self, None)
-        self.__phi2 = Param("phi2", self, None)
-        self.__phi3 = Param("phi3", self, None)
-        self.__phi4 = Param("phi4", self, None)
-        self.__phi5 = Param("phi5", self, None)
+        self.__phi1 = Param("phase1", self, None)
+        self.__phi2 = Param("phase2", self, None)
+        self.__phi3 = Param("phase3", self, None)
+        self.__phi4 = Param("phase4", self, None)
+        self.__phi5 = Param("phase5", self, None)
         
         fs = [self.__f1, self.__f2, self.__f3, self.__f4, self.__f5]
         ps = [self.__phi1, self.__phi2, self.__phi3, self.__phi4, self.__phi5]
@@ -526,15 +526,15 @@ class pd(Detector1):
             else:
                 raise pkex.BasePyKatException("Missing demodulation frequency {0} (f{0})".format(i+1))    
         
-            p = 'phi{0}'.format(i+1)
+            p = 'phase{0}'.format(i+1)
             
             if p in kwargs:
                 if kwargs[p] is None and i<num_demods-1:
-                    raise pkex.BasePyKatException("Missing demodulation phase {0} (phi{0})".format(i+1))
+                    raise pkex.BasePyKatException("Missing demodulation phase {0} (phase{0})".format(i+1))
                     
                 ps[i].value = kwargs[p]
             elif i<num_demods-1:
-                raise pkex.BasePyKatException("Missing demodulation phase {0} (phi{0})".format(i+1))
+                raise pkex.BasePyKatException("Missing demodulation phase {0} (phase{0})".format(i+1))
         
    
         self.__set_demod_attrs()
@@ -584,7 +584,7 @@ class pd(Detector1):
         elif isinstance(value, six.string_types) and not isinstance(value,float) and value.lower() != "max":
             raise pkex.BasePyKatException("Demodulation phase can only be set to a 'max' or a number (or None if the last demodulation phase)")
           
-        p = getattr(self, '_pd__phi' + num)  
+        p = getattr(self, '_pd__phase' + num)  
         p.value = value
         
     def __set_demod_attrs(self):
@@ -607,14 +607,14 @@ class pd(Detector1):
                         
                         setattr(self.__class__, "f"+name, property(fget=fget, fset=fset))
                     
-                    if not hasattr(self, "phi"+name):
-                        setattr(self.__class__, "phi"+name, property(fget=lambda self, i=i: self.__get_fphi('phi'+str(i)), fset=lambda self, value, i=i: self.__set_phi(str(i), value)))
+                    if not hasattr(self, "phase"+name):
+                        setattr(self.__class__, "phase"+name, property(fget=lambda self, i=i: self.__get_fphi('phase'+str(i)), fset=lambda self, value, i=i: self.__set_phi(str(i), value)))
                 else:
                     if hasattr(self, "f"+name):
                         delattr(self.__class__, "f"+name)
                         
-                    if hasattr(self, "phi"+name):
-                        delattr(self.__class__, "phi"+name)
+                    if hasattr(self, "phase"+name):
+                        delattr(self.__class__, "phase"+name)
         else:
             return
     
@@ -652,9 +652,9 @@ class pd(Detector1):
             dict['f{0}'.format(i+1)] = SIfloat(f[i])
         for i in range(len(phs)):
             if phs[i] == "max":
-                dict['phi{0}'.format(i+1)] = "max"
+                dict['phase{0}'.format(i+1)] = "max"
             else:
-                dict['phi{0}'.format(i+1)] = SIfloat(phs[i])
+                dict['phase{0}'.format(i+1)] = SIfloat(phs[i])
             
         node = values[-1]
         alt_beam = node[-1] == '*'
@@ -683,7 +683,7 @@ class pd(Detector1):
                 else:
                     fphi_str += " {0:.16g}".format(float(_f))
                     
-                phi_val = self.__getattribute__("phi"+str(n))
+                phi_val = self.__getattribute__("phase"+str(n))
                 
                 if phi_val != None:
                     if type(phi_val) == float:
@@ -760,7 +760,7 @@ class qnoised(pd):
         for i in range(len(f)):
             dict['f{0}'.format(i+1)] = f[i]
         for i in range(len(phs)):
-            dict['phi{0}'.format(i+1)] = phs[i]
+            dict['phase{0}'.format(i+1)] = phs[i]
             
         node = values[-1]
         alt_beam = node[-1] == '*'
@@ -795,7 +795,7 @@ class qnoised(pd):
                 else:
                     fphi_str += " {0:.16g}".format(float(_f))
                     
-                phi_val = self.__getattribute__("phi"+str(n))
+                phi_val = self.__getattribute__("phase"+str(n))
                 
                 if phi_val != None:
                     if type(phi_val) == float:
@@ -858,7 +858,7 @@ class qshot(pd):
         for i in range(len(f)):
             dict['f{0}'.format(i+1)] = f[i]
         for i in range(len(phs)):
-            dict['phi{0}'.format(i+1)] = phs[i]
+            dict['phase{0}'.format(i+1)] = phs[i]
             
         node = values[-1]
         alt_beam = node[-1] == '*'
@@ -893,7 +893,7 @@ class qshot(pd):
                 else:
                     fphi_str += " {0:.16g}".format(float(_f))
                     
-                phi_val = self.__getattribute__("phi"+str(n))
+                phi_val = self.__getattribute__("phase"+str(n))
                 
                 if phi_val != None:
                     if type(phi_val) == float:
