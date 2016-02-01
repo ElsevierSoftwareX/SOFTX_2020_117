@@ -1088,13 +1088,21 @@ class modulator(Component):
     def phase(self, value): self.__phase.value = SIfloat(value)
     
     @property 
-    def order(self): return int(self.__order)
+    def order(self): return self.__order
     @order.setter
     def order(self, value):
-        if value != 's' or (isinstance(value, int) and  value <= 1 and value > 6):
-            raise pkex.BasePyKatException("modulator order must be between 1 and 6 or 's' for single sideband")
+        
+        try:
+            value = int(value)
+            print(value)
+            if value <= 1 and value > 6:
+                raise pkex.BasePyKatException("modulator order must be between 1 and 6 or 's' for single sideband")
+                
+        except ValueError:
+            if value != 's' or (isinstance(value, int) and  value <= 1 and value > 6):
+                raise pkex.BasePyKatException("modulator order must be between 1 and 6 or 's' for single sideband")
 
-        self.__midx.value = value
+        self.__order = value
         
     
     @property 
