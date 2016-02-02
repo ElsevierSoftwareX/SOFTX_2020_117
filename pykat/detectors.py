@@ -508,14 +508,14 @@ class pd(Detector1):
         self.__f4 = Param("f4", self, None)
         self.__f5 = Param("f5", self, None)
         
-        self.__phi1 = Param("phase1", self, None)
-        self.__phi2 = Param("phase2", self, None)
-        self.__phi3 = Param("phase3", self, None)
-        self.__phi4 = Param("phase4", self, None)
-        self.__phi5 = Param("phase5", self, None)
+        self.__phase1 = Param("phase1", self, None)
+        self.__phase2 = Param("phase2", self, None)
+        self.__phase3 = Param("phase3", self, None)
+        self.__phase4 = Param("phase4", self, None)
+        self.__phase5 = Param("phase5", self, None)
         
         fs = [self.__f1, self.__f2, self.__f3, self.__f4, self.__f5]
-        ps = [self.__phi1, self.__phi2, self.__phi3, self.__phi4, self.__phi5]
+        ps = [self.__phase1, self.__phase2, self.__phase3, self.__phase4, self.__phase5]
 
         for i in range(num_demods):
             f = 'f{0}'.format(i+1)
