@@ -931,7 +931,10 @@ class kat(object):
             self.remove(o)
         
         del self.__blocks[name]
-        
+    
+    def __str__(self):
+         return "".join(self.generateKatScript())
+         
     def parseCommands(self, commands, blocks=None, addToBlock=None):
         try:
             if addToBlock is not None and blocks is not None:
