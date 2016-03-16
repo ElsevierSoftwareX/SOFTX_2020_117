@@ -275,6 +275,61 @@ class beam(Detector1):
         
         return rtn
         
+class cp(Detector0):
+    
+    def __init__(self, name, cavity, direction, parameter):
+        BaseDetector.__init__(self, name, None)
+        
+        self.cavity = str(cavity)
+        self.direction = direction
+        self.parameter = parameter
+
+    @property
+    def direction(self): return self.__direction
+    @direction.setter
+    def direction(self, value):
+        if value.lower() not in ["x", "y"]:
+            raise pkex.BasePyKatException('Cavity parameter detector direction must be x or y.')
+    
+        self.__direction = value
+        
+        
+    @property
+    def parameter(self): return self.__param
+    @parameter.setter
+    def parameter(self, value):
+        
+        params = ["w0","w","zr","z","r","q","finesse","m","stability","loss","length","fsr","fwhm","pole","gouy","fsep","A","B","C","D"]
+
+        if value not in params:
+            raise pkex.BasePyKatException('Cavity parameter detector direction must be one of: ' + ", ".join(params))
+    
+        self.__param = value
+
+
+    @staticmethod
+    def parseFinesseText(text): 
+        values = text.split()
+        
+        if len(values) == 4:
+            # For FINESSE version < 2.1
+            # Old format the name of the detector is a combination of the arguments
+            return cp(values[1] + "_" + values[2] + "_" + values[3], values[1], values[2], values[3])
+        elif len(values) == 5:
+            return cp(values[1], values[2], values[3], values[4])
+        else:
+            raise pkex.BasePyKatException('Cavity parameter detector code "{0}" is not a valid FINESSE command'.format(text))
+            
+    def getFinesseText(self) :
+        rtn = []
+        
+        rtn.append("cp {name} {cavity} {direction} {parameter}".format(name=self.name,
+                                                                   cavity=str(self.cavity),
+                                                                   direction=self.direction,
+                                                                   parameter=self.parameter))
+        
+        return rtn
+        
 class xd(Detector0):
     
     def __init__(self, name, component, motion):

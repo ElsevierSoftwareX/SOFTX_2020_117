@@ -249,14 +249,28 @@ class katRun(object):
         detectors = list(set([lbl.split()[0] for lbl in self.ylabels]))
         detectors.sort()
         
+        print("")
         print("--- Output info ---")
+        print("")
         print("Run date and time: %s" % self.StartDateTime)
         print("Detectors used: %s" % (", ".join(detectors)))
-        
+        print("")
+
         if kat.noxaxis:
             print("No xaxis used")
         else:
             print("One xaxis used: %s" % kat.xaxis.getFinesseText())
+            
+        import numpy as np
+
+        maxs = np.max(self.y, 0)
+        mins = np.min(self.y, 0)
+        
+        maxlbl = max([len(lbl) for lbl in self.ylabels])    
+        
+        for i, lbl in enumerate(self.ylabels):
+            a = "{0:" + str(maxlbl) + "} : min = {1:.15e} max = {2:.15e}"
+            print(a.format(lbl, mins[i], maxs[i]))
         
         
     def plot(self, detectors=None, filename=None, show=True,
@@ -1025,6 +1039,8 @@ class kat(object):
                         obj = pykat.detectors.xd.parseFinesseText(line)
                     elif(first[0:2] == "tf"):
                         obj = pykat.commands.tf.parseFinesseText(line)
+                    elif(first[0:2] == "cp"):
+                        obj = pykat.detectors.cp.parseFinesseText(line)
                     elif(first[0:2] == "bp"):
                         obj = pykat.detectors.bp.parseFinesseText(line)
                     elif(first[0:4] == "gouy"):
