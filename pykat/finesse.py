@@ -301,6 +301,9 @@ class katRun(object):
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
 
+        if not show:
+            pyplot.ioff()
+
         kat = pykat.finesse.kat()
         kat.verbose = False
         kat.parseCommands(self.katScript)
@@ -434,6 +437,7 @@ class katRun(object):
             
         if show:
             pyplot.show(fig)
+            pyplot.ion()
         
         return fig
         
