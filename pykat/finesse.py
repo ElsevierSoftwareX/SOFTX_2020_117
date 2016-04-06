@@ -352,7 +352,8 @@ class katRun(object):
             
             dual_plot = True
         elif "abs" in kat.yaxis:
-            _func1 = np.abs
+            # _func1 = np.abs
+            _func1 = np.real
             plot_cmd1 = plot_cmd
         elif "db" in kat.yaxis:
             _func1 = lambda x: 10*np.log10(x)

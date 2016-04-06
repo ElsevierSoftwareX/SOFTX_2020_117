@@ -94,7 +94,8 @@ class func(Command):
         Command.__init__(self, name, False)
         
         self.value = value
-
+        self.noplot = False
+        
     def getFinesseText(self):
         return "func {name} = {value}".format(name=self.name, value=str(self.value))
 
