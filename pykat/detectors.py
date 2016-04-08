@@ -134,7 +134,12 @@ class BaseDetector(object) :
         
     def getFinesseText(self):
         """ Base class for individual finesse optical components """    
-        raise NotImplementedError("This function is not implemented")
+        #raise NotImplementedError("This function is not implemented")
+        
+        if self.noplot:
+            return ["noplot " + self.name]
+        else:
+            return []
         
     def getQGraphicsItem(self):    
         if not USE_GUI:
@@ -258,7 +263,7 @@ class beam(Detector1):
             raise pkex.BasePyKatException('Beam detector code "{0}" is not a valid FINESSE command'.format(text))
     
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         if self.alternate_beam:
             alt = '*'
@@ -269,7 +274,7 @@ class beam(Detector1):
             rtn.append("beam {name} {node}{alt}".format(name=self.name, node=self.node.name, alt=alt))
         else:
             rtn.append("beam {name} {f} {node}{alt}".format(name=self.name, f=str(self.f.value), node=self.node.name, alt=alt))
-            
+        
         for p in self._params:
             rtn.extend(p.getFinesseText())
         
@@ -321,7 +326,7 @@ class cp(Detector0):
             raise pkex.BasePyKatException('Cavity parameter detector code "{0}" is not a valid FINESSE command'.format(text))
             
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         rtn.append("cp {name} {cavity} {direction} {parameter}".format(name=self.name,
                                                                    cavity=str(self.cavity),
@@ -348,7 +353,7 @@ class xd(Detector0):
             raise pkex.BasePyKatException('Motion detector code "{0}" is not a valid FINESSE command'.format(text))
             
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         rtn.append("xd {name} {component} {motion}".format(name=self.name,
                                                            component=self.component,
@@ -394,7 +399,7 @@ class ad(Detector1):
             raise pkex.BasePyKatException('Amplitude detector code "{0}" is not a valid FINESSE command'.format(text))
             
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         if self.alternate_beam:
             alt = '*'
@@ -448,7 +453,7 @@ class gouy(Detector1):
             raise pkex.BasePyKatException('Gouy detector code "{0}" is not a valid FINESSE command'.format(text))
             
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
 
         rtn.append("gouy {name} {dir} {spaces}".format(name=self.name, dir=str(self.direction), spaces=" ".join(self.spaces)))
         
@@ -500,7 +505,7 @@ class bp(Detector1):
             raise pkex.BasePyKatException('Gouy detector code "{0}" is not a valid FINESSE command'.format(text))
             
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
 
         if self.alternate_beam:
             alt = "*"
@@ -721,7 +726,7 @@ class pd(Detector1):
 
         
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         if self.enabled:
             alt_str = ""
@@ -833,7 +838,7 @@ class qnoised(pd):
         return qnoised(values[1], demods, node, senstype=sens, alternate_beam=alt_beam, **dict)
     
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         if self.enabled:
             alt_str = ""
@@ -931,7 +936,7 @@ class qshot(pd):
         return qshot(values[1], demods, node, senstype=sens, alternate_beam=alt_beam, **dict)
     
     def getFinesseText(self) :
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         if self.enabled:
             alt_str = ""
@@ -993,7 +998,7 @@ class hd(Detector2):
         return hd(values[1], float(values[2]), str(values[3]), str(values[4]))
     
     def getFinesseText(self):
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         if self.enabled:   
             n1 = self.node1.name
@@ -1052,7 +1057,7 @@ class qhd(Detector2):
         return qhd(values[1], float(values[2]), str(values[3]), str(values[4]), sensitivity = sens)
     
     def getFinesseText(self):
-        rtn = []
+        rtn = BaseDetector.getFinesseText(self)
         
         if self.enabled:   
             n1 = self.node1.name

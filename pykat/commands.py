@@ -97,7 +97,14 @@ class func(Command):
         self.noplot = False
         
     def getFinesseText(self):
-        return "func {name} = {value}".format(name=self.name, value=str(self.value))
+        rtn = []
+
+        if self.noplot:
+            rtn.append("noplot " + self.name)
+        
+        rtn.append("func {name} = {value}".format(name=self.name, value=str(self.value)))
+
+        return rtn
 
     @staticmethod
     def parseFinesseText(line, kat):
