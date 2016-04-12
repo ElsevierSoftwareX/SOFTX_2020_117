@@ -28,6 +28,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import uuid
 import sys
 import os
 import subprocess
@@ -46,6 +47,8 @@ import ctypes.util
 import collections
 import re
 import copy
+
+from subprocess import Popen, PIPE
 
 try:
     # Python 2
@@ -73,6 +76,7 @@ from pykat.components import Component
 from pykat.commands import Command, xaxis
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
+from pykat.external import progressbar
 
 import pykat.external.six as six
 
@@ -206,7 +210,7 @@ class KatBatch(object):
         if "cmd_args" in kwargs:
             kw["cmd_args"] = kwargs["cmd_args"]
         
-        return kat.run(printerr=1, **kw)
+        return kat.run(**kw)
     
     def addKat(self, kat, **kwargs):
         import os
@@ -492,6 +496,8 @@ class katRun2D(object):
         self.zlabels = None
         self.katScript = None
         self.katVersion = None
+        self.stderr = None
+        self.stdout = None
         
     def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
@@ -1326,13 +1332,11 @@ class kat(object):
         except pkex.BasePyKatException as ex:
             print (ex)
 
-    def run(self, printout=0, printerr=0, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False):
+    def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False):
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
         data from the simulation run.
-        printout=1 prints the Finesse banner
-        printerr shows the Finesse progress (set kat.verbose=1 to see warnings and errors)
         plot (string) - Sets gnuterm for plotting
         save_output (bool) - if true does not delete out file
         save_kat (bool) - if true does not delete kat file
@@ -1404,13 +1408,12 @@ class kat(object):
                 katfile = open( filepath, 'w' ) 
                 
             katfile.writelines(r.katScript)
-            #katfile.writelines(bytes(r.katScript, 'UTF-8'))
+            
             katfile.flush()
 
-            if printout == 1 or plot != None:
-                cmd=[kat_exec]
-            else:
-                cmd=[kat_exec, '--perl1']
+            pipe_name = katfile.name + str(uuid.uuid4())
+            
+            cmd=[kat_exec, "--pykat=" + pipe_name]
             
             if self.__time_code:
                 cmd.append('--perf-timing')
@@ -1427,84 +1430,67 @@ class kat(object):
             cmd.append('-format=%.15g')
 
             cmd.append(katfile.name)
-                            
-            p=subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            err = ""
             
-            #if self.verbose: print "Finesse output:"            
-            for aline in iter(p.stderr.readline, b""):
-                if six.PY2:
-                    line = unicode(aline, "utf-8")
-                else:
-                    line = aline
-                    
-                if len(line) > 0:
-                    # remove any ANSI commands
-                    line = re.sub(br'\x1b[^m]*m',b'', line, re.UNICODE)
+            if sys.platform == "win32" or sys.platform == "cygwin":
+            	# Pipes in windows need to be prefixed with a hidden location.
+            	pipe_name = "\\\\.\\pipe\\" + pipe_name
 
-                    # warnings and errors start with an asterisk 
-                    # so if verbose show them
-                    if line.lstrip().startswith(b'*PROG*'):
-                        line = line[8:-1]
-                        vals = line.split(b"-",1)
-                        action = vals[0].strip()
-                        prc = vals[1].strip()[:]
+            p = Popen(cmd, stderr=PIPE, stdout=PIPE)
+
+            if self.verbose:
+                pb = progressbar.ProgressBar()
+
+            fifo = None
+
+            start = time.time()
+            duration = 5 # Duration for searching for open pipe
+
+            try:
+                while fifo is None:
+                    try:
+                    	if time.time() < start + duration:
+                    		time.sleep(0.1)
+                    		fifo = open(pipe_name, "r")
+                    	else:
+                    		raise Exception("Could not connect to pykat pipe in {0} seconds.".format(duration))
+                    except FileNotFoundError as ex:
+                    	if self.verbose:
+                            print("Looking for pipe...")
+
+                for line in fifo:
+                    v = line.split(":", 1)
                     
-                        if printerr == 1:
-                            if six.PY2:
-                                sys.stdout.write("\r{0} {1}".format(action, prc))
-                            else:
-                                sys.stdout.write("\r{0} {1}".format(str(action, 'utf-8'), str(prc, 'utf-8')))
-                                
-                    elif line.lstrip().startswith(b'*'):
-                        if self.verbose:
-                            if six.PY2:
-                                sys.stdout.write(line)        
-                            else:
-                                sys.stdout.write(str(line,'utf-8')) 
-                                
-                    elif line.rstrip().endswith(b'%'):
-                        vals = line.split(b'-')
-                        action = vals[0].strip()
-                        prc = vals[1].strip()[:]
+                    if len(v) != 2:
+                        continue    
                         
-                        if printerr == 1:
-                            if six.PY2:
-                                sys.stdout.write("\r{0} {1}".format(action, prc))
-                            else:
-                                sys.stdout.write("\r{0} {1}".format(str(action, 'utf-8'), str(prc, 'utf-8')))
-                            
-                    else:
-                        if six.PY2:
-                            err="".join((err,line))
-                        else:
-                            err="".join((err,str(line, 'utf-8')))
+                    (tag, line) = v
+                    
+                    if tag == "version":
+                        r.katVersion = line
+                    elif tag == "progress":
+                        var = line.split("\t")
 
-            
-            [out, errpipe] = p.communicate()
+                        if len(var) == 3 and self.verbose:
+                        	pb.currval = int(var[1])
+                        	pb.update()
+            finally:
+            	if fifo is not None:
+            		fifo.close()
+			
+            (stdout, stderr) = p.communicate()
 
-            if six.PY2:
-                _out = str(out).split("\n")
-            else:
-                _out = str(out).split("\\n")
+            r.stdout = stdout.decode('unicode_escape')
+            r.stderr = stderr.decode('unicode_escape')
+
+            if p.returncode != 0:
+                print(r.stderr)
             
-            for line in _out[::-1]:
+            for line in r.stdout[::-1]:
                 if line.lstrip().startswith('computation time:'):
                     try:
                         r.runtime = float(line.split(":")[1].replace("s",""))
                     except:
                         r.runtime = 0.0
-            
-            if printout == 1: 
-                print (out)
-            else:
-                if printerr == 1: print ("")
-
-            # get the version number
-            ix = out.find(b'build ') + 6
-            ix2 = out.find(b')',ix)
-            
-            r.katVersion = out[ix:ix2]
             
             r.runDateTime = datetime.datetime.now()
 
@@ -1614,20 +1600,6 @@ class kat(object):
                 
                 if self.verbose: print ("Kat file saved to '{0}'".format(newkatfile))
                 
-            if self.trace != None and self.trace > 0:
-                #print ("{0}".format(out))
-                #if self.trace & 1:
-                    #search = out.find(' --- highest order of TEM modes')
-                    #if search > -1:
-                        #print ("Trace 1: {0}".format(out[search:]))
-
-                # For now, just try to print the trace block in full.
-                # Converting to unicode so it works in python 3.
-                tmpOut = out.decode('unicode_escape')
-                print (tmpOut[tmpOut.find(' ---') :])
-                # print (out[out.find(' ---') :])
-                
-
             katfile.close()
             perfData = []
 
@@ -1667,8 +1639,9 @@ class kat(object):
             else:
                 pkex.PrintError("Error from pykat:", ex)
         finally:
-            if self.verbose: print ("")
-            if self.verbose: print ("Finished in " + str(datetime.datetime.now()-start))
+            if self.verbose:
+                print ("")
+                print ("Finished in " + str(time.time() + start))
             
     def remove(self, obj):
         try:
@@ -1758,7 +1731,7 @@ class kat(object):
         self.printmatrix = True
         print ("".join(self.generateKatScript()))
         self.verbose = True
-        self.run(printout=1)
+        self.run()
         self.printmatrix = None
         self.noxaxis = prev        
         

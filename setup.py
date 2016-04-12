@@ -14,7 +14,7 @@ setup(
     version=version,
     author='Daniel Brown',
     author_email='ddb@star.sr.bham.ac.uk',
-    packages=['pykat','pykat.testing','pykat.testing.web','pykat.maths','pykat.optics', 'pykat.external', 'pykat.tools'],
+    packages=[x[0].replace("/",".") for x in os.walk("pykat") if "__" not in x[0]],
     url='http://pypi.python.org/pypi/PyKat/',
     license='GPL v2',
     description='Python interface and tools for FINESSE',
