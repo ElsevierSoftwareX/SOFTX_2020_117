@@ -356,7 +356,8 @@ class katRun(object):
             
             dual_plot = True
         elif "abs" in kat.yaxis:
-            _func1 = np.abs
+            # _func1 = np.abs
+            _func1 = np.real
             plot_cmd1 = plot_cmd
         elif "db" in kat.yaxis:
             _func1 = lambda x: 10*np.log10(x)
@@ -378,6 +379,7 @@ class katRun(object):
         
         for det in detectors:
             if not hasattr(kat, det) or (hasattr(kat, det) and not getattr(kat, det).noplot):
+                
                 if dual_plot:
                     ax = pyplot.subplot(2,1,1)
                     
@@ -1151,7 +1153,13 @@ class kat(object):
 
                         self.add(obj, block=self.__currentTag)
                 
-                
+            
+            # Before processing the rest, all "noplot" commands are moved to the
+            # end of the list to make sure they are after all "func" commands.
+            for k in range(len(after_process)-1,-1,-1):
+                if after_process[k][0].split(" ", 1)[0] == "noplot":
+                    after_process.append(after_process.pop(k))
+
             # now process all the varous gauss/attr etc. commands which require
             # components to exist first before they can be processed
             for item in after_process:
@@ -1173,6 +1181,7 @@ class kat(object):
                     
                 elif (first == "variable"):
                     self.add(pykat.commands.variable.parseFinesseText(line, self), block=block)
+                    
                 elif (first == "noplot"):
                     if not hasattr(self, rest):
                         raise pkex.BasePyKatException("noplot command `{0}` refers to non-existing detector".format(line))
@@ -1936,6 +1945,7 @@ class kat(object):
                     writeBlock()
                     out.append("%%% FTend " + key + "\n")
 
+        
         # write the NO_BLOCK blocks
         for key in self.__blocks:
             objs = self.__blocks[key].contents
@@ -2011,7 +2021,7 @@ class kat(object):
             
         if self.lambda0 != 1064e-9:
             out.append("lambda {0}\n".format(self.lambda0))
-            
+
         # ensure we don't do any plotting. That should be handled
         # by user themselves
         #out.append("gnuterm no\n")
