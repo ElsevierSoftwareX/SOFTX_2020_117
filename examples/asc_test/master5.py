@@ -146,7 +146,7 @@ def get_qs(tmpkat):
 	def beam_size(tmpkat, f):
 		kat = copy.deepcopy(tmpkat)
 		# 1. run finesse with input laser mode matched to cavity (no thermal lens)
-		out = kat.run(printout=0,printerr=0)
+		out = kat.run()
 
 		# beam at laser when matched to cold cavity
 		# (note the sign flip of the real part to change direction of gauss param)
@@ -159,7 +159,7 @@ def get_qs(tmpkat):
 		kat.ITM_TL.f=f
 		if "ITM_TL_r" in kat._kat__components:
 			kat.ITM_TL_r.f=f
-		out = kat.run(printout=0,printerr=0)
+		out = kat.run()
 		
 		# computing beam size at ITM 
 		# and then we reflect of ITM, an set it as new startnode
@@ -176,7 +176,7 @@ def get_qs(tmpkat):
 		else:
 			kat.ITM.nITM1.node.setGauss(kat.ITM, beam1)
 			kat.parseKatCode("startnode nITM1")
-		out = kat.run(printout=0,printerr=0)
+		out = kat.run()
 
 		# computing beam size at WFS1 and WFS2
 		q2 = out['w2']
@@ -215,7 +215,7 @@ def asc_signal(tmpkat):
 	signal=np.zeros((2, 2))
 	kat.ITM.ybeta=1e-10
 	kat.ETM.ybeta=0.0
-	out = kat.run(printout=0,printerr=0)
+	out = kat.run()
 	WFS1_idx=out.ylabels.index("WFS1_I")
 	WFS2_idx=out.ylabels.index("WFS2_I")
 	signal[0,0] = out.y[WFS1_idx]
@@ -223,7 +223,7 @@ def asc_signal(tmpkat):
 
 	kat.ITM.ybeta=0.0
 	kat.ETM.ybeta=-1e-10
-	out = kat.run(printout=0,printerr=0)
+	out = kat.run()
 	signal[0,1] = out.y[WFS1_idx]
 	signal[1,1] = out.y[WFS2_idx]
 	signal = signal *1e10
@@ -247,7 +247,7 @@ def asc_phases(tmpkat):
 
 	def demod_phase1(x):
 		kat.WFS1_I.phi[0]=x
-		out = kat.run(printout=0,printerr=0)
+		out = kat.run()
 		WFS1_idx=out.ylabels.index("WFS1_I")
 		signal = out.y[WFS1_idx]
 		print('\r minimising: function value %g					   ' % signal, end=' ')
@@ -256,7 +256,7 @@ def asc_phases(tmpkat):
 
 	def demod_phase2(x):
 		kat.WFS2_I.phi[0]=x
-		out = kat.run(printout=0,printerr=0)
+		out = kat.run()
 		WFS2_idx=out.ylabels.index("WFS2_I")
 		signal = out.y[WFS2_idx]
 		print('\r minimising: function value %g					   ' % signal, end=' ')
@@ -283,7 +283,7 @@ def gravity_tilt(tmpkat):
 
 	def compute_gravity_tilt(tmpkat):
 		kat = copy.deepcopy(tmpkat)
-		out = kat.run(printout=0,printerr=0)
+		out = kat.run()
 
 		y1 = out["b1"]
 		y2 = out["b1_1k"]
@@ -364,7 +364,7 @@ def beam_size(tmpkat, beam2, beam3):
 
 	kat.po.nWFS1.node.setGauss(kat.po,beam2)
 
-	out = kat.run(printout=0,printerr=0)
+	out = kat.run()
 
 	WFS1_idx=out.ylabels.index("wWFS1")
 	WFS2_idx=out.ylabels.index("wWFS2")
@@ -380,7 +380,7 @@ def beam_size(tmpkat, beam2, beam3):
 	if "ITM_TL_r" in kat._kat__components:
 		kat.ITM_TL_r.f=5e3
 	kat.po.nWFS1.node.setGauss(kat.po,beam3)
-	out = kat.run(printout=0,printerr=0)
+	out = kat.run()
 	y1 = out.y[WFS1_idx]
 	y2 = out.y[WFS2_idx]
 	print("	 Beam size with thermal lens f={0}".format(kat.ITM_TL.f))

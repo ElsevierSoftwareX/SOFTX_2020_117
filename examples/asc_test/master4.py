@@ -190,7 +190,7 @@ def get_qs(tmpkat,f):
 		
         # add thermal lens and propagate input beam to ITM
         kat = set_thermal_lens(kat, f)
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
         
         # computing beam size at ITM 
         # and then we reflect of ITM, an set it as new startnode
@@ -207,7 +207,7 @@ def get_qs(tmpkat,f):
         else:
             kat.ITM.nITM1.node.setGauss(kat.ITM, beam1)
             kat.parseKatCode("startnode nITM1")
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
 
         # computing beam size at WFS1 and WFS2
         q2 = out['w2']
@@ -228,7 +228,7 @@ def get_qs(tmpkat,f):
         return [beam1, beam2, beam3, beam4]
     global out
     # run finesse with input laser mode matched to cavity (no thermal lens)
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
 
     # beam at laser when matched to cold cavity
     # (note the sign flip of the real part to change direction of gauss param)
@@ -256,13 +256,13 @@ def asc_signal(tmpkat):
     signal=np.zeros((2, 2))
     kat.ITM.ybeta=1e-10
     kat.ETM.ybeta=0.0
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
     signal[0,0] = out["WFS1_I"]
     signal[1,0] = out["WFS2_I"]
 
     kat.ITM.ybeta=0.0
     kat.ETM.ybeta=-1e-10
-    out = kat.run(printout=0,printerr=0)
+    out = kat.run()
     signal[0,1] = out["WFS1_I"]
     signal[1,1] = out["WFS2_I"]
     signal = signal *1e10
@@ -281,7 +281,7 @@ def gravity_tilt(tmpkat):
 
     def compute_gravity_tilt(tmpkat):
         kat = copy.deepcopy(tmpkat)
-        out = kat.run(printout=0,printerr=0)
+        out = kat.run()
 
         y1 = out["b1"]
         y2 = out["b1_1k"]

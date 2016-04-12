@@ -33,6 +33,7 @@ def main():
 	""")   
 	
 	# for debugging we might need to see the temporay file:
+	global kat
 	kat = finesse.kat(tempdir=".",tempname="test")
 	kat.verbose = False
 	kat.loadKatFile('asc_base.kat')
@@ -105,7 +106,7 @@ def pd_signal(tmpkat):
         """
     kat.parseKatCode(code1)
     kat.noxaxis = True
-    #global out
+    global out
     out = kat.run()
     print(" Cavity power: {0:.6f}W".format(out.y[0,2]))
     return (out.y[0,0], out.y[0,1])
@@ -123,8 +124,7 @@ def pd_phase(tmpkat):
 
 	# function for root finding
 	def PD_q_test(x):
-		kat.PDrefl_q.phi1=x
-
+		kat.PDrefl_q.phase1=x
 		out = kat.run()
 		print('\r root finding: function value %g					 ' % out.y, end=' ')
 		sys.stdout.flush()
@@ -132,6 +132,8 @@ def pd_phase(tmpkat):
 
 	# do root finding
 	xtol=1e-8
+
+	#print("Starting values for bisect are: %e and %e \n" % (PD_q_test(60.0),PD_q_test(100.0)))
     
 	(result, info)=scipy.optimize.bisect(PD_q_test,80.0,100.0, xtol=xtol, maxiter=500, full_output=True)
 
