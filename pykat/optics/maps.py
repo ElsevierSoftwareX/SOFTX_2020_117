@@ -801,7 +801,7 @@ class surfacemap(object):
             return A1,xbeta,ybeta,zOff
         
 
-    def rmSphericalSurf(self, Rc0, w=None, zOff=None, isCenter=[False,False]):
+    def rmSphericalSurf(self, Rc0, w=None, zOff=None, isCenter=[False,False], maxfev=2000):
         '''
         Fits spherical surface to the mirror map and removes it.
 
@@ -885,7 +885,7 @@ class surfacemap(object):
         # Using the simplex Nelder-Mead method. This is the same or very
         # similar to the method used in 'FT_remove_curvature_from_mirror_map.m',
         # but there are probably better methods to use.
-        opts = {'xtol': 1.0e-5, 'ftol': 1.0e-9, 'maxiter': 1000, 'maxfev': 1000, 'disp': False}
+        opts = {'xtol': 1.0e-5, 'ftol': 1.0e-9, 'maxiter': 10000, 'maxfev': maxfev, 'disp': False}
         out = minimize(costFunc, p, method='Nelder-Mead', options=opts)
         if not out['success']:
             msg = '  Warning: ' + out['message'].split('.')[0] + ' (nfev={:d}).'.format(out['nfev'])
@@ -1725,7 +1725,7 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9, mapType='phase', fie
     Reads surface map files and returns a surfacemap object.
     
     filename  - name of surface map file.
-    mapFormat - 'finesse', 'ligo', 'zygo'. Currently only for ascii formats.
+    mapFormat - 'finesse', 'ligo', 'zygo', 'metroPro' (binary).
     scaling   - scaling of surface height of the mirror map [m].
     '''
     
@@ -2086,9 +2086,6 @@ def readHeaderMP(f):
     hData['cameraRes'] = f.read('float')
     
     return hData
-
-
-
 
 
 class BinaryReaderEOFException(Exception):
