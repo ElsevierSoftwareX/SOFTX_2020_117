@@ -80,7 +80,11 @@ def manualProcess():
     # Doing this here just because the figure gains resolution. To
     # replicate the mirror maps in the official figure measurement
     # reports, use: smap.crop(0.0802)
-    smap.crop(0.155)
+    
+    # smap.crop(0.155)
+    # smap.crop(0.0802)
+    smap.crop(0.062)
+    
     smap.plot()
     # Recentering is useful. To show the effect of xyOffset first:
     smap.xyOffset = (0.02,0.05)
@@ -88,8 +92,7 @@ def manualProcess():
     smap.plot()
     # And now we recentering. The origo is again at the mirror centre.
     smap.recenter()
-    smap.plot()
-    # Splitting into two versions: One where we process by convolving the mirror surface
+    smap.plot()# Splitting into two versions: One where we process by convolving the mirror surface
     # with Zernike-polynomials, and one where we process by fitting surfaces to the
     # mirror. In the latter case Gaussian weighting is used to make the centre of the
     # mirror more important.
@@ -206,8 +209,8 @@ def manualProcess():
                        smap.find_radius(method='min',unit='meters'), smap.center)
     amap.plot()
     print('Aperture map created')
-    filename = self.name + '_finesse.txt'
-    self.write_map(filename)
+    filename = smap.name + '_finesse.txt'
+    smap.write_map(filename)
     print(' Phase map written to file {:s}'.format(filename))
     filename = amap.name + '_aperture.txt'
     amap.write_map(filename)
@@ -242,4 +245,5 @@ if isAutoProcessing:
 isManualProcessing = True
 if isManualProcessing:
     manualProcess()
-    
+
+
