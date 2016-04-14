@@ -371,7 +371,7 @@ class surfacemap(object):
         self.data = data
 
     # xlim and ylim given in centimeters
-    def plot(self, show=True, clabel=None, xlim=None, ylim=None):
+    def plot(self, show=True, clabel=None, xlim=None, ylim=None, isBlock=False):
         import pylab
         
         if xlim is not None:
@@ -434,7 +434,7 @@ class surfacemap(object):
             cbar.set_label(clabel)
     
         if show:
-            pylab.show()
+            pylab.show(block=isBlock)
         
         return fig
 
@@ -1555,7 +1555,7 @@ class mergedmap:
         for m in self.__maps:
             m.interpolate(nx, ny)
 
-    def plot(self, mode="absorption", show=True, clabel=None, xlim=None, ylim=None, wavelength=1064e-9):
+    def plot(self, mode="absorption", show=True, clabel=None, xlim=None, ylim=None, wavelength=1064e-9, isBlock=False):
         
         import pylab
         
@@ -1609,7 +1609,7 @@ class mergedmap:
             cbar.set_label(clabel)
     
         if show:
-            pylab.show()
+            pylab.show(block=isBlock)
         
         return fig
 
