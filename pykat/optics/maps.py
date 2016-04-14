@@ -594,7 +594,10 @@ class surfacemap(object):
             nVals = range(0,n+1)
             for k in nVals:
                 mVals.append(range(-k,k+1,2))
-        elif isinstance(m,list):
+        elif isinstance(m, list):
+            nVals = range(n,n+1)
+            mVals.append(m)
+        elif isinstance(m, range):
             nVals = range(n,n+1)
             mVals.append(m)
         elif isinstance(m,int):
@@ -1368,7 +1371,12 @@ class surfacemap(object):
         rho, phi= self.createPolarGrid()
         rho = rho/R
 
-        if isinstance(m,list):
+        if isinstance(m, list):
+            for k in range(len(m)):
+                Z = zernike(m[k], n, rho, phi)
+                self.data[self.notNan] = self.data[self.notNan]-A[k]*Z[self.notNan]
+                self.zernikeRemoved = (m[k], n, A[k])
+        elif isinstance(m, range):
             for k in range(len(m)):
                 Z = zernike(m[k], n, rho, phi)
                 self.data[self.notNan] = self.data[self.notNan]-A[k]*Z[self.notNan]
