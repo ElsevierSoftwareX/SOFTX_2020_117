@@ -1433,8 +1433,7 @@ class kat(object):
 
             pipe_name = katfile.name + str(uuid.uuid4())
             
-            #cmd=[kat_exec, "--pykat=" + pipe_name]
-            cmd=[kat_exec, "--perl1"]
+            cmd=[kat_exec, "--pykat=" + pipe_name]
             
             if self.__time_code:
                 cmd.append('--perf-timing')
