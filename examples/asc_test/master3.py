@@ -97,7 +97,7 @@ def asc_large(tmpkat, mir_name):
         done_maxtems.append(tem)
         print(" Calculating maxtem = %d " % tem)
         kat.maxtem = tem
-        out[str(tem)] = kat.run(printout=0,printerr=1)
+        out[str(tem)] = kat.run()
         import os.path
         if os.path.isfile(tmpfilename):
             shutil.copyfile(tmpfilename, backupname)

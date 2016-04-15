@@ -101,10 +101,10 @@ def main():
 	kat.parseKatCode(code_WFS2)
 	
 	(WFS1_phase, WFS2_phase) = asc_phases(kat)
-	kat.WFS1_I.phi1=WFS1_phase
-	kat.WFS1_Q.phi1=WFS1_phase+90.0
-	kat.WFS2_I.phi1=WFS2_phase
-	kat.WFS2_Q.phi1=WFS2_phase+90.0
+	kat.WFS1_I.phase1=WFS1_phase
+	kat.WFS1_Q.phase1=WFS1_phase+90.0
+	kat.WFS2_I.phase1=WFS2_phase
+	kat.WFS2_Q.phase1=WFS2_phase+90.0
 	result['WFS1_phase']=WFS1_phase
 	result['WFS2_phase']=WFS2_phase
 
@@ -183,7 +183,7 @@ def asc_phases(tmpkat):
 	kat.maxtem=1
 
 	def demod_phase1(x):
-		kat.WFS1_I.phi1=x[0]
+		kat.WFS1_I.phase1=x[0]
 		out = kat.run()
 		signal = out["WFS1_I"]
 		print('\r minimising: function value %g					   ' % signal, end=' ')
@@ -191,7 +191,7 @@ def asc_phases(tmpkat):
 		return -1*abs(signal)
 
 	def demod_phase2(x):
-		kat.WFS2_I.phi1=x[0]
+		kat.WFS2_I.phase1=x[0]
 		out = kat.run()
 		signal = out["WFS2_I"]
 		print('\r minimising: function value %g					   ' % signal, end=' ')
