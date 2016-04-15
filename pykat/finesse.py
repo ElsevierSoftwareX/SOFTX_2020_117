@@ -189,6 +189,7 @@ class KatBatch(object):
     """
     
     """
+
     
     def __init__(self):
         from IPython.parallel import Client
@@ -683,6 +684,8 @@ class kat(object):
         return object.__new__(cnew)
     
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
+
+        self.__looking = False
         self.scene = None # scene object for GUI
         self.verbose = True
         self.__blocks = OrderedDict() # dictionary of blocks that are used
@@ -1460,11 +1463,14 @@ class kat(object):
                     	if time.time() < start + duration:
                     		time.sleep(0.1)
                     		fifo = open(pipe_name, "r")
+                    		self.__looking = False
                     	else:
-                    		raise Exception("Could not connect to pykat pipe in {0} seconds.".format(duration))
+                    		raise Exception("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0.".format(duration))
                     except FileNotFoundError as ex:
                     	if self.verbose:
-                            print("Looking for pipe...")
+                            if not self.__looking:
+                                print("Looking for pykat pipe...")
+                                self.__looking = True
 
                 for line in fifo:
                     v = line.split(":", 1)
@@ -1650,7 +1656,7 @@ class kat(object):
         finally:
             if self.verbose:
                 print ("")
-                print ("Finished in " + str(time.time() + start))
+                print ("Finished in {0:g} seconds".format(float(time.time() - start)))
             
     def remove(self, obj):
         try:
