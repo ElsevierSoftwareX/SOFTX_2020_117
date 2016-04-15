@@ -1519,7 +1519,7 @@ class kat(object):
 
             # If Finesse returned an error, just print that and exit!
             if p.returncode != 0:
-                raise pkex.FinesseRunError(err, katfile.name)
+                raise pkex.FinesseRunError(r.stderr, katfile.name)
             
             self.__prevrunfilename = katfile.name
             
