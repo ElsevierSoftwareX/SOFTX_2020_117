@@ -6,6 +6,7 @@ Created on Sun Jan 27 09:43:16 2013
 """
 from pykat import __version__ as version
 from distutils.core import setup
+import os
 
 REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 

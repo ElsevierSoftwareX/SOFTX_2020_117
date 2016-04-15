@@ -56,6 +56,14 @@ try:
 except ImportError:
     # Python 3
     from itertools import zip_longest as izip_longest
+
+
+try:
+    # Add exception in Python 2
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+    
 """
 try:
     from future_builtins import zip_longest
@@ -1456,7 +1464,7 @@ class kat(object):
 
             start = time.time()
             duration = 5 # Duration for searching for open pipe
-
+            
             try:
                 while fifo is None:
                     try:
