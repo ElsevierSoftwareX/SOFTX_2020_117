@@ -1433,7 +1433,8 @@ class kat(object):
 
             pipe_name = katfile.name + str(uuid.uuid4())
             
-            cmd=[kat_exec, "--pykat=" + pipe_name]
+            #cmd=[kat_exec, "--pykat=" + pipe_name]
+            cmd=[kat_exec, "--perl1"]
             
             if self.__time_code:
                 cmd.append('--perf-timing')
@@ -1463,7 +1464,7 @@ class kat(object):
             fifo = None
 
             start = time.time()
-            duration = 5 # Duration for searching for open pipe
+            duration = 2 # Duration for searching for open pipe
             
             try:
                 while fifo is None:
@@ -1473,7 +1474,7 @@ class kat(object):
                     		fifo = open(pipe_name, "r")
                     		self.__looking = False
                     	else:
-                    		raise Exception("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0.".format(duration))
+                    		raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0.".format(duration))
                     except FileNotFoundError as ex:
                     	if self.verbose:
                             if not self.__looking:
