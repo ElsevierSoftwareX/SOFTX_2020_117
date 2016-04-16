@@ -1370,7 +1370,7 @@ class kat(object):
         
         rethrowExceptions - if true exceptions will be thrown again rather than being excepted and calling sys.exit()
         """
-        start = datetime.datetime.now()
+        start = time.time()
         
         try:        
             if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
@@ -1400,7 +1400,7 @@ class kat(object):
                 raise pkex.MissingFinesse()
                 
             if self.verbose: print ("--------------------------------------------------------------")
-            if self.verbose: print ("Running kat - Started at " + str(start))
+            if self.verbose: print ("Running kat - Started at " + str(datetime.datetime.fromtimestamp(start)))
             
             if hasattr(self, "x2axis") and self.noxaxis == False:
                 r = katRun2D()
@@ -1458,17 +1458,25 @@ class kat(object):
             p = Popen(cmd, stderr=PIPE, stdout=PIPE)
 
             if self.verbose:
-                pb = progressbar.ProgressBar()
+                if self.noxaxis:
+                    maxval = 1
+                else:
+                    maxval = 100
+                    
+                widgets = [progressbar.Percentage(), ' | ', progressbar.ETA(), ' | ', 'Status']
+                
+                pb = progressbar.ProgressBar(widgets=widgets, maxval = maxval)
 
             fifo = None
 
-            start = time.time()
+            _start_kat = time.time()
+            
             duration = 2 # Duration for searching for open pipe
             
             try:
                 while fifo is None:
                     try:
-                    	if time.time() < start + duration:
+                    	if time.time() < _start_kat + duration:
                     		time.sleep(0.1)
                     		fifo = open(pipe_name, "r")
                     		self.__looking = False
@@ -1481,7 +1489,11 @@ class kat(object):
                                 self.__looking = True
 
                 for line in fifo:
-                    v = line.split(":", 1)
+                    
+                    if (sys.version_info < (3, 0)):
+                        line = line.decode("utf8") # Make sure we're using unicode encoding
+                    
+                    v = line.split(u":", 1)
                     
                     if len(v) != 2:
                         continue    
@@ -1490,11 +1502,12 @@ class kat(object):
                     
                     if tag == "version":
                         r.katVersion = line
-                    elif tag == "progress":
+                    elif tag == "progress" and self.verbose:
                         var = line.split("\t")
-
-                        if len(var) == 3 and self.verbose:
+                        
+                        if len(var) == 3:
                         	pb.currval = int(var[1])
+                        	pb.widgets[-1] = var[0] + " " + var[2][:-1]
                         	pb.update()
             finally:
             	if fifo is not None:
@@ -1665,6 +1678,7 @@ class kat(object):
             if self.verbose:
                 print ("")
                 print ("Finished in {0:g} seconds".format(float(time.time() - start)))
+            
             
     def remove(self, obj):
         try:
