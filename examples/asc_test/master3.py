@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 from pykat import finesse
 from pykat.commands import *
 import numpy as np
-import shelve
+import pickle
 import copy
 import sys
 import shutil
@@ -48,9 +48,11 @@ def main():
     # loading data saved by master.py
     kat.loadKatFile('asc_base3.kat')
     try:
-        tmpfile = shelve.open(tmpresultfile)
-        result=tmpfile[str('result')]
-        tmpfile.close()
+        with open(tmpresultfile, 'rb') as handle:
+            result = pickle.load(handle)
+        #tmpfile = shelve.open(tmpresultfile)
+        #result=tmpfile[str('result')]
+        #tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
 
     kat.PDrefl_q.enabled = False
@@ -103,10 +105,13 @@ def asc_large(tmpkat, mir_name):
             shutil.copyfile(tmpfilename, backupname)
 
         print(" current results saved in: {0}".format(tmpfilename))
-        tmpfile = shelve.open(tmpfilename)
-        tmpfile[str('out')]=out
-        tmpfile[str('maxtems')]=done_maxtems
-        tmpfile.close()
+        with open(tmpfilename, 'wb') as handle:
+            pickle.dump({ "out": out, "maxtems": done_maxtems}, handle)
+
+        #tmpfile = shelve.open(tmpfilename)
+        #tmpfile[str('out')]=out
+        #tmpfile[str('maxtems')]=done_maxtems
+        #tmpfile.close()
     
     
 if __name__ == '__main__':

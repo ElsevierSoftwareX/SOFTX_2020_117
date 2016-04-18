@@ -6,7 +6,8 @@ from __future__ import unicode_literals
 from pykat import finesse
 from pykat.commands import *
 import copy
-import shelve
+#import shelve
+import pickle
 import sys
 import scipy.optimize
 
@@ -89,10 +90,12 @@ def main():
 	print(" current results saved in: {0}".format(tmpresultfile))
 	# first the current kat file
 	kat.saveScript(tmpkatfile)
-	# now the result variables:
-	tmpfile = shelve.open(tmpresultfile, flag="c")
-	tmpfile[str('result')]=result
-	tmpfile.close()
+	with open(tmpresultfile, 'wb') as handle:
+		pickle.dump(result, handle)
+	# now the result variables (former version usuing shelve):
+	#tmpfile = shelve.open(tmpresultfile, flag="c")
+	#tmpfile[str('result')]=result
+	#tmpfile.close()
 	
 #---------------------------------------------------------------------------
 

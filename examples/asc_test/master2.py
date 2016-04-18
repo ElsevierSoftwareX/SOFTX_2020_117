@@ -9,7 +9,8 @@ import pylab as pl
 import scipy
 from scipy.optimize import fmin
 import numpy as np
-import shelve
+import pickle
+#import shelve
 import copy
 import sys
 
@@ -51,9 +52,11 @@ def main():
 	# loading data saved by master.py
 	kat.loadKatFile('asc_base2.kat')
 	try:
-		tmpfile = shelve.open(tmpresultfile, flag="c")
-		result=tmpfile[str('result')]
-		tmpfile.close()
+		#tmpfile = shelve.open(tmpresultfile, flag="c")
+		#result=tmpfile[str('result')]
+		#tmpfile.close()
+		with open(tmpresultfile, 'rb') as handle:
+			result = pickle.load(handle)
 	except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
 		
 	# overwriting some variables
@@ -125,9 +128,11 @@ def main():
 	# first the current kat file
 	kat.saveScript(tmpkatfile)
 	# now the result variables:
-	tmpfile = shelve.open(tmpresultfile)
-	tmpfile[str('result')]=result
-	tmpfile.close()
+	#tmpfile = shelve.open(tmpresultfile)
+	#tmpfile[str('result')]=result
+	#tmpfile.close()
+	with open(tmpresultfile, 'wb') as handle:
+		pickle.dump(result, handle)
 
 
 #-----------------------------------------------------------------------------------
@@ -186,7 +191,7 @@ def asc_phases(tmpkat):
 		kat.WFS1_I.phase1=x[0]
 		out = kat.run()
 		signal = out["WFS1_I"]
-		print('\r minimising: function value %g					   ' % signal, end=' ')
+		print('\r minimising: function value {0:<16g}'.format(float(signal)), end='')
 		sys.stdout.flush()
 		return -1*abs(signal)
 
@@ -194,7 +199,7 @@ def asc_phases(tmpkat):
 		kat.WFS2_I.phase1=x[0]
 		out = kat.run()
 		signal = out["WFS2_I"]
-		print('\r minimising: function value %g					   ' % signal, end=' ')
+		print('\r minimising: function value {0:<16g}'.format(float(signal)), end='')
 		sys.stdout.flush()
 		return -1*abs(signal)
 
