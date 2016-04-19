@@ -31,7 +31,7 @@ def SIfloat(value):
     if value is None: 
         return value
     
-    if value in __exceptions:
+    if str(value) in __exceptions:
         return value
         
     value = np.array(value)
