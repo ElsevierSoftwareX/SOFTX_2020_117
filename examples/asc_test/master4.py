@@ -16,10 +16,10 @@ import copy
 import sys
 
 def set_thermal_lens(kat, f):
-	kat.ITM_TL.f=f
+	kat.ITM_TL.f=float(f)
 	# if a bs-based cavity is used, we need to set second lens
 	if "ITM_TL_r" in kat._kat__components:
-		kat.ITM_TL_r.f=f
+		kat.ITM_TL_r.f=float(f)
 	return (kat)
 
 def main():
@@ -91,26 +91,24 @@ def main():
 	x1=0.70
 	x2=0.30
 	if "ITM_TL_r" in kat._kat__components:
-		beam50 = beam_param(z=(x1*beam1[1].z+x2*beam2[1].z), w0=(x1*beam1[1].w0+x2*beam2[1].w0))
-		beam5  = beam_param(z=(x1*beam1[1].z+x2*beam3[1].z), w0=(x1*beam1[1].w0+x2*beam3[1].w0))
+		beam50 = beam_param(z=float(x1*beam1[1].z+x2*beam2[1].z), w0=float(x1*beam1[1].w0+x2*beam2[1].w0))
+		beam5  = beam_param(z=float(x1*beam1[1].z+x2*beam3[1].z), w0=float(x1*beam1[1].w0+x2*beam3[1].w0))
 		node_text = "at ITM->nITM1r"
 		t_comp=kat.ITM
 		t_node=kat.ITM.nITM1r
 	else:
-		beam50 = beam_param(z=(x1*beam1[4].z+x2*beam2[4].z), w0=(x1*beam1[4].w0+x2*beam2[4].w0))
-		beam5  = beam_param(z=(x1*beam1[4].z+x2*beam3[4].z), w0=(x1*beam1[4].w0+x2*beam3[4].w0))
+		beam50 = beam_param(z=float(x1*beam1[4].z+x2*beam2[4].z), w0=float(x1*beam1[4].w0+x2*beam2[4].w0))
+		beam5  = beam_param(z=float(x1*beam1[4].z+x2*beam3[4].z), w0=float(x1*beam1[4].w0+x2*beam3[4].w0))
 		node_text = "at s2->npo2"
 		t_comp=kat.s2
 		t_node=kat.s2.npo2
 	
-	kat = set_thermal_lens(kat,50e3)
+	kat = set_thermal_lens(kat,50.0e3)
 
-	#import sys
-	#sys.exit()
 	print("--------------------------------------------------------")
 	print(" 12. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f))
 
-	print(" Setting compromise beam parameter {0}: w0={1}, z={2}".format(node_text, beam50.w0, beam50.z))
+	print(" Setting compromise beam parameter {0}:\n w0={1}, z={2}".format(node_text, beam50.w0, beam50.z))
 	t_node.node.setGauss(t_comp, beam50)
 	kat.maxtem=8
 	print(" Calculating maxtem = %d " % kat.maxtem)
@@ -119,7 +117,7 @@ def main():
 	kat = set_thermal_lens(kat,5e3)
 	print("--------------------------------------------------------")
 	print(" 13. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f))
-	print(" Setting compromise beam parameter {0}: w0={1}, z={2}".format(node_text, beam5.w0, beam5.z))
+	print(" Setting compromise beam parameter {0}:\n w0={1}, z={2}".format(node_text, beam5.w0, beam5.z))
 	t_node.node.setGauss(t_comp, beam5)
 	#maxtems = [1, 3, 5, 9, 11, 13, 15, 19, 23, 25, 27, 29]
 	#maxtems = [1, 3, 5, 9, 11, 13, 15]
@@ -322,22 +320,22 @@ def gravity_tilt(tmpkat):
 	kat.parseKatCode(code_WFS1)
 	kat.parseKatCode(code_xaxis)
 	kat.spo1.L=1000.0
-	kat.ITM.ybeta=1e-10
+	kat.ITM.ybeta=1.0e-10
 	kat.ETM.ybeta=0.0
 	t1=compute_gravity_tilt(kat)
 	kat.ITM.ybeta=0.0
-	kat.ETM.ybeta=-1e-10
+	kat.ETM.ybeta=-1.0e-10
 	t2=compute_gravity_tilt(kat)
 
 	kat = copy.deepcopy(tmpkat)
 	kat.parseKatCode(code_WFS2)
 	kat.parseKatCode(code_xaxis)
 	kat.spo1.L=1.0e-9
-	kat.ITM.ybeta=1e-10
+	kat.ITM.ybeta=1.0e-10
 	kat.ETM.ybeta=0.0
 	t3=compute_gravity_tilt(kat)
 	kat.ITM.ybeta=0.0
-	kat.ETM.ybeta=-1e-10
+	kat.ETM.ybeta=-1.0e-10
 	t4=compute_gravity_tilt(kat)
 	print("	 WFS1 ITM {0:.4} nrad".format(t1*1e9))	  
 	print("	 WFS2 ITM {0:.4} nrad".format(t3*1e9))	  

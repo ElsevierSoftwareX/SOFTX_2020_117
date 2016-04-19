@@ -117,7 +117,7 @@ def pd_phase(tmpkat):
 
 	# function for root finding
 	def PD_q_test(x):
-		kat.PDrefl_q.phase1=x
+		kat.PDrefl_q.phase1=float(x)
 		out = kat.run()
 		print('\r root finding: function value {0:<16g}'.format(float(out.y)), end='')
 		sys.stdout.flush()
@@ -180,7 +180,7 @@ def resonance(tmpkat):
 	
 	# function for root finding
 	def carrier_resonance(x):
-		kat.ETM.phi=x
+		kat.ETM.phi=float(x)
 		out = kat.run()
 		phase = (out.y[0,0]-out.y[0,1]-90)%360-180.0
 		print('\r root finding: function value {0:<16g}'.format(float(phase)), end='')
