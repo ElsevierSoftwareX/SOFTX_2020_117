@@ -16,10 +16,10 @@ import copy
 import sys
 
 def set_thermal_lens(kat, f):
-	kat.ITM_TL.f=float(f)
+	kat.ITM_TL.f=f
 	# if a bs-based cavity is used, we need to set second lens
 	if "ITM_TL_r" in kat._kat__components:
-		kat.ITM_TL_r.f=float(f)
+		kat.ITM_TL_r.f=f
 	return (kat)
 
 def main():
@@ -91,14 +91,14 @@ def main():
 	x1=0.70
 	x2=0.30
 	if "ITM_TL_r" in kat._kat__components:
-		beam50 = beam_param(z=float(x1*beam1[1].z+x2*beam2[1].z), w0=float(x1*beam1[1].w0+x2*beam2[1].w0))
-		beam5  = beam_param(z=float(x1*beam1[1].z+x2*beam3[1].z), w0=float(x1*beam1[1].w0+x2*beam3[1].w0))
+		beam50 = beam_param(z=(x1*beam1[1].z+x2*beam2[1].z), w0=(x1*beam1[1].w0+x2*beam2[1].w0))
+		beam5  = beam_param(z=(x1*beam1[1].z+x2*beam3[1].z), w0=(x1*beam1[1].w0+x2*beam3[1].w0))
 		node_text = "at ITM->nITM1r"
 		t_comp=kat.ITM
 		t_node=kat.ITM.nITM1r
 	else:
-		beam50 = beam_param(z=float(x1*beam1[4].z+x2*beam2[4].z), w0=float(x1*beam1[4].w0+x2*beam2[4].w0))
-		beam5  = beam_param(z=float(x1*beam1[4].z+x2*beam3[4].z), w0=float(x1*beam1[4].w0+x2*beam3[4].w0))
+		beam50 = beam_param(z=(x1*beam1[4].z+x2*beam2[4].z), w0=(x1*beam1[4].w0+x2*beam2[4].w0))
+		beam5  = beam_param(z=(x1*beam1[4].z+x2*beam3[4].z), w0=(x1*beam1[4].w0+x2*beam3[4].w0))
 		node_text = "at s2->npo2"
 		t_comp=kat.s2
 		t_node=kat.s2.npo2
