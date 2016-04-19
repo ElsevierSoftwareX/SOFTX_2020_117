@@ -39,9 +39,7 @@ def main():
 	# close('all')
 	
 	# making these global during testing and debugging
-	#global kat
-	#global out
-	#global result
+	#global kat, out, result
 		
 	print("--------------------------------------------------------")
 	print(" Plotting ASC signals for large misalignments")
@@ -61,10 +59,6 @@ def asc_large(mir_name):
 	backupname = "datashelf_{0}.dat.bck".format(mir_name)
 
 	try:
-		#tmpfile = shelve.open(tmpfilename)
-		#out=tmpfile[str('out')]
-		#maxtems=tmpfile[str('maxtems')]
-		#tmpfile.close()
 		readpickle = pickle.load(open(tmpfilename, "rb"))
 		out=readpickle['out']
 		maxtems=readpickle['maxtems']

@@ -6,7 +6,6 @@ from __future__ import unicode_literals
 from pykat import finesse
 from pykat.commands import *
 import copy
-#import shelve
 import pickle
 import sys
 import scipy.optimize
@@ -41,11 +40,8 @@ def main():
 	kat.maxtem=3
 	Lambda=1064.0e-9
 	result = {}
-
 	# defining variables as global for debugging
-	#global kat
-	#global out
-	#global result
+	#global kat, out, result
 	
 	print("--------------------------------------------------------")
 	print(" 1. tunes ETM position to find resonance")
@@ -67,13 +63,13 @@ def main():
 	scale 2 PDrefl_q
 	"""
 	kat.parseKatCode(code_det)
-	kat.PDrefl_p.phi1=result['p_phase']
-	kat.PDrefl_q.phi1=result['q_phase']
+	kat.PDrefl_p.phase1=result['p_phase']
+	kat.PDrefl_q.phase1=result['q_phase']
 	
 	print("--------------------------------------------------------")
 	print(" 4. adding a 0.1nm offset to ETM and compute PDH signal")
 	result['phi_tuned']=float(kat.ETM.phi)
-	result['phi_detuned'] = result['phi_tuned'] + 0.1/1064.0*360
+	result['phi_detuned'] = result['phi_tuned'] + 0.1*360.0/1064.0
 	
 	kat.ETM.phi=result['phi_detuned']
 	print(" new ETM phi tuning = %g " % kat.ETM.phi)
@@ -92,17 +88,12 @@ def main():
 	kat.saveScript(tmpkatfile)
 	with open(tmpresultfile, 'wb') as handle:
 		pickle.dump(result, handle)
-	# now the result variables (former version usuing shelve):
-	#tmpfile = shelve.open(tmpresultfile, flag="c")
-	#tmpfile[str('result')]=result
-	#tmpfile.close()
 	
 #---------------------------------------------------------------------------
 
 def pd_signal(tmpkat):
 
     kat = copy.deepcopy(tmpkat)
-
     code1="""
         pd cav nITM2
         yaxis abs
@@ -111,13 +102,12 @@ def pd_signal(tmpkat):
     kat.noxaxis = True
     global out
     out = kat.run()
-    print(" Cavity power: {0:.6f}W".format(out.y[0,2]))
-    return (out.y[0,0], out.y[0,1])
+    print(" Cavity power: {0:.6f}W".format(float(out['cav'])))
+    return (float(out['PDrefl_p']), float(out['PDrefl_q']))
     
 def pd_phase(tmpkat):
 
 	kat = copy.deepcopy(tmpkat)
-	
 	code_det = """
 	pd1 PDrefl_q 9M 90 nWFS1
 	"""
@@ -129,15 +119,13 @@ def pd_phase(tmpkat):
 	def PD_q_test(x):
 		kat.PDrefl_q.phase1=x
 		out = kat.run()
-		print('\r root finding: function value %g					 ' % out.y, end=' ')
+		print('\r root finding: function value {0:<16g}'.format(float(out.y)), end='')
 		sys.stdout.flush()
-		return out.y
+		return float(out.y)
 
 	# do root finding
 	xtol=1e-8
 
-	#print("Starting values for bisect are: %e and %e \n" % (PD_q_test(60.0),PD_q_test(100.0)))
-    
 	(result, info)=scipy.optimize.bisect(PD_q_test,80.0,100.0, xtol=xtol, maxiter=500, full_output=True)
 
 	print("")
@@ -175,9 +163,7 @@ def powers(tmpkat):
 
 	global out
 	out = kat.run()
-
-	code1 = code1.split("\n")
-	for i in range(len(out.y)):
+	for i in range(len(out.y[0])):
 		print(" %8s: %.4e" % (out.ylabels[i], out.y[0,i]))
 
 
@@ -195,10 +181,9 @@ def resonance(tmpkat):
 	# function for root finding
 	def carrier_resonance(x):
 		kat.ETM.phi=x
-		global out
 		out = kat.run()
-		phase = (out.y[0,0]-out.y[0,1]-90)%360-180
-		print('\r root finding: function value %g					 ' % phase, end=' ')
+		phase = (out.y[0,0]-out.y[0,1]-90)%360-180.0
+		print('\r root finding: function value {0:<16g}'.format(float(phase)), end='')
 		sys.stdout.flush()
 		return phase
 	

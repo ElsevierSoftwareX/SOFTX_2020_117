@@ -10,7 +10,6 @@ import scipy
 from scipy.optimize import fmin
 import numpy as np
 import pickle
-#import shelve
 import copy
 import sys
 
@@ -41,8 +40,7 @@ def main():
 	# %reset -f
 
 	# making these global during testing and debugging
-	#global kat
-	#global out
+	#global kat, out
 	
 	kat = finesse.kat(tempdir=".",tempname="test")
 	kat.verbose = False
@@ -52,9 +50,6 @@ def main():
 	# loading data saved by master.py
 	kat.loadKatFile('asc_base2.kat')
 	try:
-		#tmpfile = shelve.open(tmpresultfile, flag="c")
-		#result=tmpfile[str('result')]
-		#tmpfile.close()
 		with open(tmpresultfile, 'rb') as handle:
 			result = pickle.load(handle)
 	except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
@@ -73,7 +68,7 @@ def main():
 	print("--------------------------------------------------------")
 	print(" 5. checking wavefronts for ITM/ETM tilt of 0.1nrad")
 	tilt(kat)
-
+	
 	print("--------------------------------------------------------")
 	print(" 6. compute beam tilt from beam propogation")
 	gravity_tilt(kat)
@@ -117,7 +112,7 @@ def main():
 	
 	print("--------------------------------------------------------")
 	print(" Saving results in temp. files to be read by master3.py")
-	# re-enable PDH photo diode for savinf
+	# re-enable PDH photo diode for saving of kat file for next script
 	kat.PDrefl_p.enabled = True
 	kat.PDrefl_q.enabled = True
 
@@ -125,12 +120,7 @@ def main():
 	tmpresultfile = "myshelf2.dat"
 	print(" kat object saved in: {0}".format(tmpkatfile))
 	print(" current results saved in: {0}".format(tmpresultfile))
-	# first the current kat file
 	kat.saveScript(tmpkatfile)
-	# now the result variables:
-	#tmpfile = shelve.open(tmpresultfile)
-	#tmpfile[str('result')]=result
-	#tmpfile.close()
 	with open(tmpresultfile, 'wb') as handle:
 		pickle.dump(result, handle)
 
@@ -222,11 +212,12 @@ def gravity_tilt(tmpkat):
 	kat = copy.deepcopy(tmpkat)
 
 	def compute_gravity_tilt(tmpkat):
+		#global out, y1, y2
 		kat = copy.deepcopy(tmpkat)
 		out = kat.run()
-
-		y1 = out["b1"]
-		y2 = out["b1_1k"]
+		
+		y1 = np.abs(out["b1"])
+		y2 = np.abs(out["b1_1k"])
 		# shift of beam center	on detector 1 (as m/w0y)
 		x1 = np.sum(out.x*y1)/np.sum(y1) 
 		# shift of beam center	on detector 2 (as m/w0y)
@@ -236,7 +227,7 @@ def gravity_tilt(tmpkat):
 		w0=out["w0y"][0]
 		detector_distance = 1000.0
 		tilt=w0*(x2-x1)/detector_distance
-		print(" Wavefront tilt : %g nrad" % tilt)
+		print(" Wavefront tilt : %g rad" % tilt)
 
 	code_WFS1 = """
 	beam b1 nWFS1
@@ -258,20 +249,20 @@ def gravity_tilt(tmpkat):
 	yaxis abs
 	"""
 	print(" WFS1:")
-	print(" ITM ybeta 0.1nm")
+	print(" ITM ybeta 0.1nrad")
 	kat.parseKatCode(code_WFS1)
 	kat.parseKatCode(code_xaxis)
 	kat.spo1.L=1000.0
 	kat.ITM.ybeta=1e-10
 	kat.ETM.ybeta=0.0
 	compute_gravity_tilt(kat)
-	print(" ETM ybeta -0.1nm")
+	print(" ETM ybeta -0.1nrad")
 	kat.ITM.ybeta=0.0
 	kat.ETM.ybeta=-1e-10
 	compute_gravity_tilt(kat)
 
 	print(" WFS2:")
-	print(" ITM ybeta 0.1nm")
+	print(" ITM ybeta 0.1nrad")
 	kat = copy.deepcopy(tmpkat)
 	kat.parseKatCode(code_WFS2)
 	kat.parseKatCode(code_xaxis)
@@ -279,7 +270,7 @@ def gravity_tilt(tmpkat):
 	kat.ITM.ybeta=1e-10
 	kat.ETM.ybeta=0.0
 	compute_gravity_tilt(kat)
-	print(" ETM ybeta -0.1nm")
+	print(" ETM ybeta -0.1nrad")
 	kat.ITM.ybeta=0.0
 	kat.ETM.ybeta=-1e-10
 	compute_gravity_tilt(kat)
@@ -289,11 +280,9 @@ def tilt(tmpkat):
 	kat = copy.deepcopy(tmpkat)
 	
 	def compute_tilt(tmpkat):
-		global kat
+		#global kat, out
 		kat = copy.deepcopy(tmpkat)
-		global out
 		out = kat.run()
-
 		# compute data x range in meters
 		beamsize = out["w0y"][0].real
 		xrange = beamsize*(out.x.max()-out.x.min())
@@ -301,8 +290,9 @@ def tilt(tmpkat):
 		print(" Beamsize %e m" % beamsize)
 		print(" Measurement range: %e m, stepszie: %e m" % (xrange, stepsize))
 		# compute difference in angle between wavefront of carrier and sidebands
-		diff_l = (out["PDrefl_low"].real-out["PDrefl_car"].real)/stepsize
-		diff_u = (out["PDrefl_up"].real-out["PDrefl_car"].real)/stepsize
+		#global diff_l, diff_u, tilt_l, tilt_u
+		diff_l = (np.angle(out["PDrefl_low"], deg=True) - np.angle(out["PDrefl_car"], deg=True))/stepsize
+		diff_u = (np.angle(out["PDrefl_up"], deg=True)  - np.angle(out["PDrefl_car"], deg=True))/stepsize
 		tilt_l = diff_l[1:-1]-diff_l[0:-2]
 		tilt_u = diff_u[1:-1]-diff_u[0:-2]
 		print(" Tilt (upper	 - car), mean: %e m/deg, stddev %e m/deg" % (np.mean(tilt_u), np.std(tilt_u)))
@@ -330,20 +320,20 @@ def tilt(tmpkat):
 	"""
 
 	print(" WFS1:")
-	print(" ITM ybeta 0.1nm")
+	print(" ITM ybeta 0.1nrad")
 	kat.parseKatCode(code_comm)
 	kat.parseKatCode(code_WFS1)
 	kat.ITM.ybeta=1e-10
 	kat.ETM.ybeta=0.0
 	(a1, a2) = compute_tilt(kat)
-
-	print(" ETM ybeta -0.1nm")
+	
+	print(" ETM ybeta -0.1nrad")
 	kat.ITM.ybeta=0.0
 	kat.ETM.ybeta=-1e-10
 	(a3, a4) = compute_tilt(kat)
 	
 	print(" WFS2:")
-	print(" ITM ybeta 0.1nm")
+	print(" ITM ybeta 0.1nrad")
 	kat = copy.deepcopy(tmpkat)
 	kat.parseKatCode(code_comm)
 	kat.parseKatCode(code_WFS2)
@@ -351,7 +341,7 @@ def tilt(tmpkat):
 	kat.ETM.ybeta=0.0
 	(a5, a6) = compute_tilt(kat)
 
-	print(" ETM ybeta -0.1nm")
+	print(" ETM ybeta -0.1nrad")
 	kat.ITM.ybeta=0.0
 	kat.ETM.ybeta=-1e-10
 	(a6, a7) = compute_tilt(kat)

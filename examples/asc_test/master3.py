@@ -37,8 +37,7 @@ def main():
     # %reset -f
 
     # making these global during testing and debugging
-    #global kat
-    #global out
+    #global kat, out
     
     kat = finesse.kat(tempdir=".",tempname="test")
     kat.verbose = False
@@ -50,14 +49,11 @@ def main():
     try:
         with open(tmpresultfile, 'rb') as handle:
             result = pickle.load(handle)
-        #tmpfile = shelve.open(tmpresultfile)
-        #result=tmpfile[str('result')]
-        #tmpfile.close()
     except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
 
     kat.PDrefl_q.enabled = False
-    kat.WFS1_Q.enables = False
-    kat.WFS2_Q.enables = False
+    kat.WFS1_Q.enabled = False
+    kat.WFS2_Q.enabled = False
 
     print("--------------------------------------------------------")
     print(" 9. ASC signals for large misalignments (ITM)")
@@ -89,7 +85,7 @@ def asc_large(tmpkat, mir_name):
     #kat.verbose=1
     xscale = 1e6
     yscale = 1e6
-    global out
+    #global out
     tmpfilename = "datashelf_{0}.dat".format(mir_name)
     backupname = "datashelf_{0}.dat.bck".format(mir_name)
     out={}
@@ -103,16 +99,9 @@ def asc_large(tmpkat, mir_name):
         import os.path
         if os.path.isfile(tmpfilename):
             shutil.copyfile(tmpfilename, backupname)
-
         print(" current results saved in: {0}".format(tmpfilename))
         with open(tmpfilename, 'wb') as handle:
-            pickle.dump({ "out": out, "maxtems": done_maxtems}, handle)
-
-        #tmpfile = shelve.open(tmpfilename)
-        #tmpfile[str('out')]=out
-        #tmpfile[str('maxtems')]=done_maxtems
-        #tmpfile.close()
-    
+            pickle.dump({ "out": out, "maxtems": done_maxtems}, handle)    
     
 if __name__ == '__main__':
     main()

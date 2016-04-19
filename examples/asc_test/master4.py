@@ -48,8 +48,7 @@ def main():
 	# %reset -f
 
 	# making these global during testing and debugging
-	#global kat
-	#global out
+	#global kat, out
 
 	kat = finesse.kat(tempdir=".",tempname="test")
 	kat.verbose = False
@@ -61,9 +60,6 @@ def main():
 	try:
 		with open(tmpresultfile, 'rb') as handle:
 			result = pickle.load(handle)
-		#tmpfile = shelve.open(tmpresultfile)
-		#result=tmpfile[str('result')]
-		#tmpfile.close()
 	except: raise Exception("Could not open temprary results file {0}".format(tmpresultfile))
 	
 	# this does not work yet due to the scale command
@@ -108,6 +104,9 @@ def main():
 		t_node=kat.s2.npo2
 	
 	kat = set_thermal_lens(kat,50e3)
+
+	#import sys
+	#sys.exit()
 	print("--------------------------------------------------------")
 	print(" 12. computing beam tilt with thermal lens (f={0})".format(kat.ITM_TL.f))
 
@@ -123,6 +122,7 @@ def main():
 	print(" Setting compromise beam parameter {0}: w0={1}, z={2}".format(node_text, beam5.w0, beam5.z))
 	t_node.node.setGauss(t_comp, beam5)
 	#maxtems = [1, 3, 5, 9, 11, 13, 15, 19, 23, 25, 27, 29]
+	#maxtems = [1, 3, 5, 9, 11, 13, 15]
 	maxtems = [1, 3, 5, 7]
 	converge_tilt(kat, maxtems)
    
@@ -135,6 +135,7 @@ def main():
 	print(" 12. computing alignment signal with thermal lens (f={0})".format(kat.ITM_TL.f))
 	t_node.node.setGauss(t_comp, beam50)
 	#maxtems = [1, 3, 5, 9, 11, 13, 15, 17, 19]
+	#maxtems = [1, 3, 5, 9, 11, 13, 15]
 	maxtems = [1, 3, 5, 7]
 	converge_asc(kat, maxtems, 'asc_signals_50.txt')
 
@@ -143,6 +144,7 @@ def main():
 	print(" 13. computing alignment signal with thermal lens (f={0})".format(kat.ITM_TL.f))
 	t_node.node.setGauss(t_comp, beam5)
 	#maxtems = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
+	#maxtems = [1, 3, 5, 9, 11, 13, 15]
 	maxtems = [1, 3, 5, 7]
 	converge_asc(kat, maxtems, 'asc_signals_5.txt')
 
@@ -174,6 +176,7 @@ def converge_tilt(tmpkat, maxtems):
 		np.savetxt(filename, savedata[0:idx+1,:], fmt=b'%.18e', delimiter=' ')	  
 
 def get_qs(tmpkat,f):
+	global kat, out	
 	kat = copy.deepcopy(tmpkat)
 
 	# measure beam parameter for the 'cold beam' i.e. the laser beam
@@ -185,7 +188,7 @@ def get_qs(tmpkat,f):
 	kat.parseKatCode('yaxis re:im')
 	kat.noxaxis = True
 	kat.maxtem=0
-
+	
 	def beam_size(tmpkat, f, beam0):
 		kat = copy.deepcopy(tmpkat)
 		kat.psl.npsl.node.setGauss(kat.psl, beam0)
@@ -193,14 +196,13 @@ def get_qs(tmpkat,f):
 		# add thermal lens and propagate input beam to ITM
 		kat = set_thermal_lens(kat, f)
 		out = kat.run()
-		
 		# computing beam size at ITM 
 		# and then we reflect of ITM, an set it as new startnode
 		q_in = out['w1']
-		from pykat.optics.ABCD import apply, mirror_refl
-		abcd = mirror_refl(1,-2500)
-		q_out = apply(abcd,q_in,1,1)
-		beam1 = beam_param(q=q_out)	   
+		#import pykat.optics.ABCD as ABCD
+		#abcd = ABCD.mirror_refl(1,2500)
+		#q_out = ABCD.apply(abcd,q_in,1,1)
+		beam1 = beam_param(q=q_in)	   
 		kat.removeLine("startnode")
 		kat.psl.npsl.node.removeGauss()
 		if "ITM_TL_r" in kat._kat__components:
@@ -210,7 +212,6 @@ def get_qs(tmpkat,f):
 			kat.ITM.nITM1.node.setGauss(kat.ITM, beam1)
 			kat.parseKatCode("startnode nITM1")
 		out = kat.run()
-
 		# computing beam size at WFS1 and WFS2
 		q2 = out['w2']
 		beam2 = beam_param(q=q2)	
@@ -226,16 +227,15 @@ def get_qs(tmpkat,f):
 		print(" - WFS2 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam3.w,beam3.w0, beam3.z))
 		print(" - npo2 w={0:.6}cm  (w0={1}, z={2})".format(100.0*beam4.w,beam4.w0, beam4.z))
 		#raw_input("Press enter to continue")
-		
 		return [beam1, beam2, beam3, beam4]
-	global out
+
+	#global out
 	# run finesse with input laser mode matched to cavity (no thermal lens)
 	out = kat.run()
-
 	# beam at laser when matched to cold cavity
 	# (note the sign flip of the real part to change direction of gauss param)
 	q0 = -1.0*out['w0'].conjugate()
-	beam0 = beam_param(q=q0)   
+	beam0 = beam_param(q=q0)
 	# compute beam sizes when tracing this beam back through the system
 	(beam1,beam2,beam3, beam4)=beam_size(kat,f,beam0)
 	
@@ -285,8 +285,9 @@ def gravity_tilt(tmpkat):
 		kat = copy.deepcopy(tmpkat)
 		out = kat.run()
 
-		y1 = out["b1"]
-		y2 = out["b1_1k"]
+		y1 = np.abs(out["b1"])
+		y2 = np.abs(out["b1_1k"])
+
 		# shift of beam center	on detector 1 (as m/w0y)
 		x1 = np.sum(out.x*y1)/np.sum(y1) 
 		# shift of beam center	on detector 2 (as m/w0y)
