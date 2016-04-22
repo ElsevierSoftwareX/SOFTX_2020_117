@@ -178,7 +178,7 @@ def asc_phases(tmpkat):
 	kat.maxtem=1
 
 	def demod_phase1(x):
-		kat.WFS1_I.phase1=float(x[0])
+		kat.WFS1_I.phase1=x[0]
 		out = kat.run()
 		signal = out["WFS1_I"]
 		print('\r minimising: function value {0:<16g}'.format(float(signal)), end='')
@@ -186,7 +186,7 @@ def asc_phases(tmpkat):
 		return -1*abs(signal)
 
 	def demod_phase2(x):
-		kat.WFS2_I.phase1=float(x[0])
+		kat.WFS2_I.phase1=x[0]
 		out = kat.run()
 		signal = out["WFS2_I"]
 		print('\r minimising: function value {0:<16g}'.format(float(signal)), end='')
@@ -196,14 +196,14 @@ def asc_phases(tmpkat):
 	kat.ITM.ybeta=1e-10
 	kat.ETM.ybeta=0.0
 	res = fmin(demod_phase1, [0.0], xtol=1e-8, disp=False)
-	WFS1_phase = float(res[0])
+	WFS1_phase = res[0]
 	print("")
 	print(" WFS1 demod phase : %.10g deg" % WFS1_phase)
 	 
 	kat.ITM.ybeta=0.0
 	kat.ETM.ybeta=-1e-10
 	res = fmin(demod_phase2, [0.0], xtol=1e-8, disp=False)
-	WFS2_phase = float(res[0])
+	WFS2_phase = res[0]
 	print("")
 	print(" WFS2 demod phase : %.10g deg" % WFS2_phase)
 	return(WFS1_phase, WFS2_phase)	  
