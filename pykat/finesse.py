@@ -310,7 +310,12 @@ class katRun(object):
             styles:             A dictionary which keys being the detector names and the
                                 value being a colour and linestyle of the sort 'k:'
             ylabel, xlabel:     Text for the first plot x and y labels
-            y2label, x2label:   Text for the second plot x and y labels 
+            y2label, x2label:   Text for the second plot x and y labels
+
+            xlim, ylim:         Limits of x- and y-axes of the first plot. List or tuple
+                                of length 2.
+            x2lim, y2lim:       Limits of x- and y-axes of the second plot. List or tuple
+                                of length 2.
         """
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
