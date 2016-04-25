@@ -288,7 +288,8 @@ class katRun(object):
         
     def plot(self, detectors=None, filename=None, show=True,
                    yaxis=None, legend=True, loc=0, title=None, styles=None,
-                   ylabel=None, y2label=None, xlabel=None, x2label=None):
+                   ylabel=None, y2label=None, xlabel=None, x2label=None,
+                   xlim=None, x2lim=None, ylim=None, y2lim=None):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
@@ -405,13 +406,24 @@ class katRun(object):
             if ylabel is None:
                 if "abs" in kat.yaxis: ylabel = "Absolute [au]"
                 if "re" in kat.yaxis:  ylabel = "Real part [au]"
-                
+                    
             if y2label is None:
                 if "deg" in kat.yaxis: y2label = "Phase [deg]"
                 if "im" in kat.yaxis:  y2label = "Imaginary part [au]"
+                    
+            if xlim is None:
+                xlim = (self.x.min(), self.x.max())
+                
+            if x2lim is None:
+                 x2lim = (self.x.min(), self.x.max())
+                 
         else:
             if ylabel is None:
                 ylabel = "[au]"
+                
+            if xlim is None:
+                xlim = (self.x.min(), self.x.max())
+            
         
         if xlabel is None:
             xlabel = self.xlabel
@@ -424,16 +436,22 @@ class katRun(object):
         if dual_plot:
             ax = pyplot.subplot(2,1,1)
             pyplot.xlabel(xlabel, fontsize=font_label_size)
-            pyplot.xlim(self.x.min(), self.x.max())
             pyplot.ylabel(ylabel, fontsize=font_label_size)
-            
+            pyplot.xlim(xlim[0], xlim[1])
+            if ylim is not None:
+                pyplot.ylim(ylim[0],ylim[1])
+
             if title is not None:
                 pyplot.title(title, fontsize=font_label_size)
     
             pyplot.subplot(2,1,2)
             pyplot.xlabel(x2label, fontsize=font_label_size)
-            pyplot.xlim(self.x.min(), self.x.max())
             pyplot.ylabel(y2label, fontsize=font_label_size)
+        
+            pyplot.xlim(x2lim[0], x2lim[1])
+            if y2lim is not None:
+                pyplot.ylim(y2lim[0],y2lim[1])
+            
         else:
             pyplot.xlabel(xlabel, fontsize=font_label_size)
             pyplot.ylabel(ylabel)
@@ -441,6 +459,8 @@ class katRun(object):
             
             if title is not None:
                 pyplot.title(title, fontsize=font_label_size)
+            if ylim is not None:
+                pyplot.ylim(ylim[0],ylim[1])
     
         pyplot.tight_layout()
     
