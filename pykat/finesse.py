@@ -1542,9 +1542,6 @@ class kat(object):
 
             r.stdout = stdout.decode('unicode_escape')
             r.stderr = stderr.decode('unicode_escape')
-
-            if p.returncode != 0:
-                print(r.stderr)
             
             for line in r.stdout[::-1]:
                 if line.lstrip().startswith('computation time:'):
