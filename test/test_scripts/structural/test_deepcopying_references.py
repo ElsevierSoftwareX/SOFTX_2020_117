@@ -30,10 +30,10 @@ assert(kat0.o1.f1 is not kat1.o1.f1)
 assert(kat0.o1.f1 == kat1.o1.f1)
 
 kat0.o1.f1 *= 2
-kat0.o1.phi1 *= 2
+kat0.o1.phase1 *= 2
 
 assert(isinstance(kat0.o1.f1, pykat.param.Param))
-assert(isinstance(kat0.o1.phi1, pykat.param.Param))
+assert(isinstance(kat0.o1.phase1, pykat.param.Param))
 assert(kat0.o1.f1 != kat1.o1.f1)
 
 kat1.o1.num_demods = 2
