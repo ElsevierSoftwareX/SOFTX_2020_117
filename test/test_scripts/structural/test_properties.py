@@ -15,8 +15,8 @@ assert(kat.pdr.f1 == 100)
 assert(type(kat.pdr.f1) is pykat.param.Param)
 
 kat.pdr.phi1 = "10u" 
-assert(kat.pdr.phi1 == 1e-5)
-assert(type(kat.pdr.phi1) is pykat.param.Param)
+assert(kat.pdr.phase1 == 1e-5)
+assert(type(kat.pdr.phase1) is pykat.param.Param)
 
 kat.m1.R = "10000u"
 assert(kat.m1.R == 0.01)
@@ -27,7 +27,7 @@ kat = deepcopy(kat)
 kat.m1.R = 0.9
 assert(kat.m1.R == 0.9)
 
-kat.pdr.phi1 = 20
-assert(kat.pdr.phi1 == 20)
+kat.pdr.phase1 = 20
+assert(kat.pdr.phase1 == 20)
 
-print "PASSED"
+print("PASSED")
