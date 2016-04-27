@@ -22,6 +22,10 @@ to print a warning message when "extra lines" are generated
 Daniel Brown 17/12/14
 --------------------------------------------------------------
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import pykat
 from pykat.components import *
@@ -34,13 +38,13 @@ s s1 1 n2 n3
 m m2 0.9 0.1 0 n3 n4
 """)
 
-print "Before..."
-print "".join(kat.generateKatScript())
+print ("Before...")
+print ("".join(kat.generateKatScript()))
 
 kat.s1.remove()
 
-print "After remove..."
-print "".join(kat.generateKatScript())
+print ("After remove...")
+print ("".join(kat.generateKatScript()))
 
 # Adding in with commands
 kat.parseCommands("""
@@ -49,8 +53,8 @@ m m3 0.9 0.1 0 n2a n3a
 s s3 1 n3a n3
 """)
 
-print "After add with commands..."
-print "".join(kat.generateKatScript())
+print ("After add with commands...")
+print ("".join(kat.generateKatScript()))
 
 kat.s2.remove()
 kat.s3.remove()
@@ -61,5 +65,5 @@ kat.add(space("s2", "n2", "n2a", L=1))
 kat.add(space("s3", "n3", "n3a", L=1))
 kat.add(mirror("m3", "n2a", "n3a", R=0.9, T=0.1, phi=0))
 
-print "After add with objects..."
-print "".join(kat.generateKatScript())
+print ("After add with objects...")
+print ("".join(kat.generateKatScript()))
