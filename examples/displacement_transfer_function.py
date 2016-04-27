@@ -66,6 +66,7 @@ cav cavity M_ITM_HR n_ITM_OUT M_ETM_HR n_ETM_IN
 ##############################
 
 # set up a mirror rotation signal
+kat.signals.f = 1
 kat.signals.apply(kat.M_ETM_HR.phi, 1, 180) # amplitude = 1, phase = 180 degrees
 
 # manually add yaxis command, as this is not implemented yet as of PyKat 0.3.1
