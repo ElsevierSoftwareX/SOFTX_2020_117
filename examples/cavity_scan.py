@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 """
 Fabry-Perot cavity scan example.
 
@@ -314,14 +318,14 @@ r = kat.run()
 
 # output the raw FINESSE file that PyKat has generated
 scriptList = kat.generateKatScript()
-print ''.join(scriptList)
+print (''.join(scriptList))
 
 # calculate and print cavity finesse
 r1r2 = np.sqrt(parameters['cavity']['itm']['reflectivity']['inner']) * np.sqrt(parameters['cavity']['etm']['reflectivity']['inner'])
 
 finesse = np.pi / (2 * np.arcsin((1 - r1r2) / (2 * np.sqrt(r1r2))))
 
-print "Cavity finesse: {0:.0f}".format(finesse)
+print ("Cavity finesse: {0:.0f}".format(finesse))
 
 # create plot
 pl.plot(r.x, r.y)
