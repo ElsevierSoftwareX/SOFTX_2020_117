@@ -10,6 +10,11 @@ https://code.google.com/p/ctypesgen/. The command I use to generate the wrapper 
 You then also need to build libkat.so shared library from the python_shared branch of Finesse.
 Once the above is done the following script may or may not work...
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 
 import ctypes
 import pylibkat
@@ -29,7 +34,7 @@ def callback(lkat, maxphi):
         lkat - The handle to the finesse instance
         maxphi - a shared object between this and the main process, see multiprocessing.Value
     """
-    print "Entering callback..."
+    print ("Entering callback...")
     
     # first we need to get a handle on the internals of Finesse
     inter = pylibkat.interferometer.in_dll(lkat, "inter")
@@ -51,8 +56,8 @@ def callback(lkat, maxphi):
 
     maxphi.value = m1.phi
     
-    print "Process: Maximum power =", circ.re
-    print "Process: Mirror tuning =", m1.phi
+    print ("Process: Maximum power =", circ.re)
+    print ("Process: Mirror tuning =", m1.phi)
 
 cmd = """
 l l1 1 0 n1
@@ -80,4 +85,4 @@ p = kat.getProcess(callback, maxphi=maxphi)
 p.start()
 p.join()
 
-print "Host:    Received maximum phi =", maxphi.value
+print ("Host:    Received maximum phi =", maxphi.value)
