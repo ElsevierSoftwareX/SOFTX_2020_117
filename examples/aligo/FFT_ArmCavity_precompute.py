@@ -13,12 +13,11 @@ import pylab as pl
 import pykat
 from pykat.components import *
 
-from pykat.utilities.plotting.tools import printPDF
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar, Timer
 from pykat.optics.maps import *
 from pykat.optics.gaussian_beams import HG_beam, beam_param
 from pykat.optics.fft import *
-from pykat.utilities.plotting.tools import plot_field, plot_propagation
+#from pykat.tools.plotting.tools import plot_field, plot_propagation
 
 from aligo import *
 
@@ -67,8 +66,8 @@ def main():
 	LX=kat.LX.L.value
 	kat.maxtem=0
 	out = kat.run()
-	w0=out.y[0]
-	z0=-out.y[1]
+	w0=out.y[0][0]
+	z0=-out.y[0][1]
 		
 	# load and create mirror maps
 	global itm, etm
@@ -165,6 +164,37 @@ def precompute_roundtrips(shape, laser, kat):
 def FFT_apply_map(field, Map, Lambda):
 	k=2.0*np.pi/Lambda
 	return field*np.exp(-1j * 2.0 * k * Map.data*Map.scaling);
+
+def plot_field(field):
+	ax,fig=plot_setup()
+	im = ax.imshow(np.abs(field),origin='lower', aspect='auto')
+	cb = fig.colorbar(im, format="%.4g")
+	#cb.set_clim(-1.0*zlimit, zlimit)
+	ax.autoscale(False)#
+	plt.show(block=0)
+
+def plot_propagation(field, grid, Lambda, axis, normalise, Lrange, nr):
+	# axis = 0 for x and =1 for y crosssection
+	# if normalise = 1, each slice is normalises to peak intensity
+	[n,m]=field.shape
+	slices = np.zeros((n,np.size(Lrange)))
+	from pykat.optics.fft import FFT_propagate
+	for idx, L in enumerate(Lrange):
+		field2 = FFT_propagate(field,grid, Lambda, L, nr)
+		if axis==0:
+			slices[:,idx]=np.abs(field2[:,int(m/2)])**2
+		else:
+			slices[:,idx]=np.abs(field2[int(n/2),:])**2
+		if normalise==1:
+			peak_intensity= np.abs(field2[int(n/2),int(m/2)])**2
+			slices[:,idx]=slices[:,idx]/peak_intensity
+	ax,fig=plot_setup()
+	im = ax.imshow(slices, aspect='auto')
+	cb = fig.colorbar(im, format="%.4g")
+	#cb.set_clim(-1.0*zlimit, zlimit)
+	ax.autoscale(False)
+	plt.show(block=0)
+
 
 if __name__ == '__main__':
     main()
