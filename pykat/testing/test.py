@@ -217,7 +217,7 @@ class FinesseTestProcess(Thread):
                 shutil.rmtree(BUILD_PATH)
 
             print "Checking out finesse base..."
-            utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/finesse.git", BUILD_PATH])
+            utils.git(["clone","https://gitlab.aei.uni-hannover.de/finesse/finesse.git", BUILD_PATH])
 
             print "Checking out and building develop version of finesse " + self.git_commit
             
