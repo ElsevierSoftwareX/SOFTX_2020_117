@@ -1,6 +1,7 @@
 import pykat
 import traceback
 import os
+import sys
 
 class bcolors:
     HEADER = '\033[95m'
@@ -36,6 +37,8 @@ for path, folders, files in os.walk("./test_scripts"):
                     traceback.print_exc()
                     errors.append(filename)
                     print(bcolors.ENDC)
+                    sys.stdout.flush()
+                    sys.stderr.flush()
                 finally:
                     os.chdir(testdir)
                 print("----------------------------------------------------------------------------------------")
