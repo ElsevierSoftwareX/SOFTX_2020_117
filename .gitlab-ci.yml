@@ -1,5 +1,6 @@
 before_script:
     - export CWD=$(pwd)
+    - export PYTHONPATH=$PYTHONPATH:$CWD
     - source /etc/environment # Why this doesn't happen automatically I don't know...
     # - cd /finesse
     # - rm kat
