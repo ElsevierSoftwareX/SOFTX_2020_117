@@ -14,7 +14,7 @@ kat.pdr.f1 = "0.1k"
 assert(kat.pdr.f1 == 100)
 assert(type(kat.pdr.f1) is pykat.param.Param)
 
-kat.pdr.phi1 = "10u" 
+kat.pdr.phase1 = "10u" 
 assert(kat.pdr.phase1 == 1e-5)
 assert(type(kat.pdr.phase1) is pykat.param.Param)
 
