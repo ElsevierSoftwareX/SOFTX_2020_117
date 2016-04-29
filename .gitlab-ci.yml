@@ -1,14 +1,14 @@
 before_script:
     - export CWD=$(pwd)
     - source /etc/environment # Why this doesn't happen automatically I don't know...
-    - cd /finesse
-    - git reset --hard
-    - git checkout develop
-    - git pull
-    - rm kat
-    - echo "Building Finesse..."
-    - ./finesse.sh --build > /dev/null 2>&1
-    - echo "Sucessfuly built Finesse"
+    # - cd /finesse
+    # - rm kat
+    # - git reset --hard
+    # - git checkout develop
+    # - git pull
+    # - echo "Building Finesse..."
+    # - ./finesse.sh --build > /dev/null 2>&1
+    # - echo "Sucessfuly built Finesse"
     - cd $CWD
     
 python_3:
