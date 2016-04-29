@@ -33,8 +33,12 @@ for path, folders, files in os.walk("./test_scripts"):
                     exec(code)
                 except Exception as ex:
                     print(bcolors.FAIL)
-                    print("EXCEPTION: " + repr(ex))
-                    traceback.print_exc()
+                    (_type, value, tb) = sys.exc_info()
+                    
+                    print("EXCEPTION: "+ str(value))
+                    
+                    print(traceback.format_exc())
+                    
                     errors.append(filename)
                     print(bcolors.ENDC)
                     sys.stdout.flush()
