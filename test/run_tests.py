@@ -14,6 +14,8 @@ class bcolors:
     
 errors = []
 
+testdir = os.getcwd()
+
 print("----------------------------------------------------------------------------------------")
 
 for path, folders, files in os.walk("./test_scripts"):
@@ -25,6 +27,7 @@ for path, folders, files in os.walk("./test_scripts"):
             with open(filename) as f:
                 print("RUNNING: " + filename)
                 try:
+                    os.chdir(path)
                     code = compile(f.read(), filename, 'exec')
                     exec(code)
                 except Exception as ex:
@@ -33,7 +36,8 @@ for path, folders, files in os.walk("./test_scripts"):
                     traceback.print_exc()
                     errors.append(filename)
                     print(bcolors.ENDC)
-        
+                finally:
+                    os.chdir(testdir)
                 print("----------------------------------------------------------------------------------------")
     
 
