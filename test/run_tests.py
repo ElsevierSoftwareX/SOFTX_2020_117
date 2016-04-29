@@ -49,5 +49,8 @@ if len(errors) > 0:
     print("The following files failed: ")
     for e in errors:
         print(" - " + e)
+    
+    sys.exit(1)
 else:
     print("\nPASSED\n")
+    sys.exit(0)
