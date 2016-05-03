@@ -1515,8 +1515,9 @@ class kat(object):
 
                 for line in fifo:
                     
-                    if (sys.version_info < (3, 0)):
-                        line = line.decode("utf8") # Make sure we're using unicode encoding
+                    #if (sys.version_info < (3, 0)):
+                    
+                    line = line.decode("utf8") # Make sure we're using unicode encoding
                     
                     v = line.split(u":", 1)
                     
