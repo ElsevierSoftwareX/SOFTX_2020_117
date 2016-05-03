@@ -4,6 +4,7 @@ from pykat import finesse
 
 result = [] # prepare for the result
 kat = finesse.kat() # create a fresh cat object
+kat.verbose = False
 kat.loadKatFile("LHO_IFO_maxtem2.kat") # load the conf
 
 ##############################################
