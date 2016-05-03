@@ -1541,16 +1541,18 @@ class kat(object):
 			
             (stdout, stderr) = p.communicate()
 
-            r.stdout = stdout #.decode('unicode_escape')
-            r.stderr = stderr #.decode('unicode_escape')
+            r.stdout = stdout.decode('utf-8')
+            r.stderr = stderr.decode('utf-8')
             
-            for line in r.stdout[::-1]:
-                if line.lstrip().startswith('computation time:'):
-                    try:
-                        r.runtime = float(line.split(":")[1].replace("s",""))
-                    except:
-                        r.runtime = 0.0
+            k = r.stdout.rfind('computation time:')
             
+            if k > 0:
+                try:
+                    line = r.stdout[k:]
+                    r.runtime = float(line.split(":")[1].replace("s",""))
+                except:
+                    r.runtime = 0.0
+    
             r.runDateTime = datetime.datetime.now()
 
             # If Finesse returned an error, just print that and exit!
