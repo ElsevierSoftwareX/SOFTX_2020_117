@@ -14,6 +14,7 @@ before_script:
 python_3:
     script:
         - source /setup.sh
+        - echo $PYTHONIOENCODING
         - kat -v
         - which python3
         - python3 --version
@@ -23,6 +24,7 @@ python_3:
 python_2:
     script:
         - source /setup.sh
+        - echo $PYTHONIOENCODING
         - kat -v
         - which python2.7
         - python2.7 --version
