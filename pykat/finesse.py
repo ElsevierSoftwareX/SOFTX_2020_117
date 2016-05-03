@@ -1498,12 +1498,14 @@ class kat(object):
             
             duration = 2 # Duration for searching for open pipe
             
+            import codecs
+            
             try:
                 while fifo is None:
                     try:
                     	if time.time() < _start_kat + duration:
                     		time.sleep(0.1)
-                    		fifo = open(pipe_name, "r")
+                    		fifo = codecs.open(pipe_name, "r", "utf-8")
                     		self.__looking = False
                     	else:
                     		raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0.".format(duration))
@@ -1515,9 +1517,8 @@ class kat(object):
 
                 for line in fifo:
                     
-                    #if (sys.version_info < (3, 0)):
-                    
-                    line = line.decode("utf8") # Make sure we're using unicode encoding
+                    if (sys.version_info < (3, 0)):
+                        line = line.decode("utf8") # Make sure we're using unicode encoding
                     
                     v = line.split(u":", 1)
                     
