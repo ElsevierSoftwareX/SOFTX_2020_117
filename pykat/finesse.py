@@ -1541,8 +1541,8 @@ class kat(object):
 			
             (stdout, stderr) = p.communicate()
 
-            r.stdout = stdout.decode('unicode_escape')
-            r.stderr = stderr.decode('unicode_escape')
+            r.stdout = stdout #.decode('unicode_escape')
+            r.stderr = stderr #.decode('unicode_escape')
             
             for line in r.stdout[::-1]:
                 if line.lstrip().startswith('computation time:'):
