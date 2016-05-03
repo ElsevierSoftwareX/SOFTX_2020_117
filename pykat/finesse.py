@@ -28,6 +28,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import codecs
 import uuid
 import sys
 import os
@@ -1498,8 +1499,6 @@ class kat(object):
             
             duration = 2 # Duration for searching for open pipe
             
-            import codecs
-            
             try:
                 while fifo is None:
                     try:
@@ -1517,8 +1516,8 @@ class kat(object):
 
                 for line in fifo:
                     
-                    if (sys.version_info < (3, 0)):
-                        line = line.decode("utf8") # Make sure we're using unicode encoding
+                    #if (sys.version_info < (3, 0)):
+                    #    line = line.decode("utf8") # Make sure we're using unicode encoding
                     
                     v = line.split(u":", 1)
                     

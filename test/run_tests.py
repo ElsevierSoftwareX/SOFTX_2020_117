@@ -17,7 +17,7 @@ errors = []
 
 testdir = os.getcwd()
 
-print("----------------------------------------------------------------------------------------")
+
 
 for path, folders, files in os.walk("./test_scripts"):
     
@@ -26,6 +26,7 @@ for path, folders, files in os.walk("./test_scripts"):
             filename = os.path.join(path, filename)
             
             with open(filename) as f:
+                print("!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*")
                 print("RUNNING: " + filename)
                 try:
                     os.chdir(path)
@@ -45,7 +46,9 @@ for path, folders, files in os.walk("./test_scripts"):
                     sys.stderr.flush()
                 finally:
                     os.chdir(testdir)
-                print("----------------------------------------------------------------------------------------")
+                print("!------------------------------------------------------------------------------------------------")
+                print("")
+                print("")
     
 
 if len(errors) > 0:
