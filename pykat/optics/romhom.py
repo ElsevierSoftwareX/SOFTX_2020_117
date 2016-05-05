@@ -20,11 +20,34 @@ from pykat.maths.hermite import *
 from pykat.maths import newton_weights
 from scipy.integrate import newton_cotes
 from multiprocessing import Process, Queue, Array, Value, Event
+from pykat.exceptions import BasePyKatException
 
 EmpiricalInterpolant = collections.namedtuple('EmpiricalInterpolant', 'B nodes node_indices limits x worst_error')
 ReducedBasis = collections.namedtuple('ReducedBasis', 'RB limits x')
 ROMLimits = collections.namedtuple('ROMLimits', 'zmin zmax w0min w0max R mapSamples max_order')
-                       
+
+def read_EI(filename, verbose=True):
+    import pickle
+    
+    with open(filename, "rb") as file:
+        ei = pickle.load(file)
+    
+    if verbose:
+        print("Map data this ROM was made for in one dimension:")
+        print("    Map separation dx = " + str(ei.x[1]-ei.x[0]))
+        print("    x range = -{0}m to {0}m".format(max(abs(ei.x))))
+        print("    Data points = " + str(ei.x.size * 2))
+        print("")
+        print("Parameter limits:")
+        print("    w0 = {0}m to {1}m".format(ei.limits.w0min, ei.limits.w0max))
+        print("    z  = {0}m to {1}m".format(ei.limits.zmin, ei.limits.zmax))
+        print("    max order  = {0}".format(ei.limits.max_order))
+        print("")
+        print("ROM contains {0} basis modes".format(ei.nodes.shape[0]))
+        
+    return ei
+    
+                  
 class ROMWeights:
     
     def __init__(self, w_ij_Q1, w_ij_Q2, w_ij_Q3, w_ij_Q4, EIx, EIy, nr1=1, nr2=1, direction="reflection_front"):
@@ -565,6 +588,12 @@ def makeWeightsNew(smap, EIxFilename, EIyFilename=None, verbose=True, newtonCote
     wx[xm == 0] = 0.5
     wy[ym == 0] = 0.5
     W = np.outer(wx, wy)
+
+    if A_xy_Q1.shape != W.shape or \
+            A_xy_Q2.shape != W.shape or \
+            A_xy_Q3.shape != W.shape or \
+            A_xy_Q4.shape != W.shape:
+        raise BasePyKatException("Map data points do not overlap exactly with data points this EI was made for. Consider using the `intepolate=True` option.")
 
     # make integration weights
     Bx = EIx.B
