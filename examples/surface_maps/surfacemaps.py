@@ -234,7 +234,7 @@ if isReadAll:
 #    Set isAutoProcessing to True and see and play with code in the
 #    autoProcess function above.
 # --------------------------------------------------------------------------------
-isAutoProcessing = False
+isAutoProcessing = True
 if isAutoProcessing:
     autoProcess()
 # --------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ if isAutoProcessing:
 #    True, and see and play with code in the manualProcess function
 #    above.
 # --------------------------------------------------------------------------------
-isManualProcessing = True
+isManualProcessing = False
 if isManualProcessing:
     manualProcess()
 
