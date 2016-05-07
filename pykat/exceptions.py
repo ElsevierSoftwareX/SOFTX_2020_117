@@ -9,15 +9,22 @@ if six.PY2:
 import os, sys
 
 def PrintError(message, exception):
-    size = 60
+    size = 62
     
     print("\033[91m")
     
     try:
         from textwrap import wrap, fill
         print ("-" * size)
-        for a in wrap(message, size): print(a)
-        for a in wrap(str(exception.msg), size): print(a)
+        
+        for a in wrap(message, size):
+            print(a)
+            
+        for a in wrap(str(exception.msg), size):
+            a = a.replace("*** ", "\n")
+            a = a.replace("** ", "\n")
+            print(a)
+            
         print ("-" * size)
     finally:
         print ("\033[0m")

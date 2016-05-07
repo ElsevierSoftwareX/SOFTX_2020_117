@@ -1,0 +1,609 @@
+#--------------------------------------------------------------------------
+# LHO_IFO_maxtem2.kat
+#
+# FINESSE kat file for the mode-matched H1 dual recycled Michelson with FP arm cavities.
+#
+# Design 2 refers to the updates from the original design, such as 
+# including measured mirror parameters. Some lengths may have changed 
+# from the original design to account for the new mirror parameters.
+# Lengths are taken from E1200616 v7.
+# 
+# No IMC or PMMT, thin PRM and SRM
+#
+# Mirror specs taken from https://nebula.ligo.caltech.edu/optics/ as of 2015/09/08
+#
+# IMC, HAM2, HAM6, OMC path and OMC are based on the generic aLIGO design files found here:
+# https://dcc.ligo.org/L1300231-v10
+# with updates based on galaxy page where appropriate.
+#
+# Thermal lens in ITMs modelled as a thin lens in front of the AR surfaces
+# ITMs include non-thermal substrate lenses as calculated from measurements 
+# reported in the polisher's reports found on the nebula page. These are turned 
+# off by default here though.
+#
+# ** Updated non-thermal lens focal lengths (not used here though)**
+# ITMY lens focal length = -80.2km
+# ITMX lens focal length = 572km
+# Calculation is shown in LIGO T1300954
+#
+# - Updated with Galaxy page(https://galaxy.ligo.caltech.edu/optics/) values for installed SRM-w
+# - Includes locks for DARM (~10pm offset), PRCL, MICH, CARM and SRCL
+#
+# Charlotte Bond, Paul Fulda, Daniel Brown, Antonio Perreca, Andreas Freise 2015-09-08
+#--------------------------------------------------------------------------
+
+%%% FTblock laser
+###########################################################################
+l L0 125 0 n0
+s lmod1 1 n0 n1
+mod mod1 $f1 0.18 1 pm n1 n2
+s lmod2 1 n2 n3
+mod mod2 $f2 0.18 1 pm n3 n4
+s lmod3 1 n4 n5
+mod mod3 $f3 0.1 2 pm n5 n6
+s mod3toMC1 1 n6 nMC1AR1in
+###########################################################################
+%%% FTend laser
+
+%%% FTblock IMC
+#####################################################################################
+
+# MC1 IMCF-09
+bs2 MC1AR1 257u 6.8u 0 44.59 nMC1AR1in dump nMC1AR1trans dump
+s sMC1substrate1 0.0845 $nsilica nMC1AR1trans nMC1HRin
+bs1 MC1HR 6030u 0.6u 0 28.9661 nMC1HRin nMC1HRrefl nMC1HRtrans nMC1HRfromMC3HR 
+s sMC1substrate2 0.0845 $nsilica nMC1HRrefl nMC1AR2in
+bs2 MC1AR2 257u 6.8u 0 28.9661 nMC1AR2in dump nMCREFL dump
+s sMC1HRtoMC2 16.2405708 nMC1HRtrans nMC2in 
+
+# MC2 IMCC-02
+bs1 MC2 5.1u 9.3u 0 0.82 nMC2in nMC2refl nMC2trans dump
+s sMC2toMC3 16.2405708 nMC2refl nMC3HRin 
+attr MC2 Rc 27.275
+
+# MC3 IMCF-06 
+bs1 MC3HR 5845u 0.8u 0 44.59 nMC3HRin nMC3HRrefl nMC3HRtrans nMCreturn_refl
+s sMC3substrate 0.0845 $nsilica nMC3HRtrans nMC3ARin
+bs2 MC3AR 0 0 0 28.9661 nMC3ARin dump nMC3ARtrans dump
+s sMC3ARtoIM1 0.4282 nMC3ARtrans nIM1in
+
+s sMC3HRtoMC1HR 0.465 nMC3HRrefl nMC1HRfromMC3HR
+
+#####################################################################################
+%%% FTend IMC
+
+%%% FTblock HAM2
+#####################################################################################
+
+# IM1 a.k.a. SM1
+bs1 IM1 0 0 0 53 nIM1in nIM1refl nIM1HRtrans dump
+s sIM1sub 0.02995 $nsilica nIM1HRtrans nIM1ARin
+bs2 IM1AR 0 0 0 33.4 nIM1ARin dump nIM1ARtrans dump
+
+s IM1ARtonanoscan 3 nIM1ARtrans nIOT2Lnanoscan
+
+#AOE1
+s sIM1toAOE1 0.1955 nIM1refl nAOE1in
+lens AOE1 inf nAOE1in nAOE1trans
+
+# IM2 a.k.a. PMMT1 
+s sAOE1toIM2 1.0983 nAOE1trans nIM2in
+bs1 IM2 0 0 0 7 nIM2in nIM2refl dump dump
+attr IM2 Rc 12.8 
+
+s sIM2toIM3 1.1704 nIM2refl nIM3in
+
+# IM3 a.k.a PMMT2
+#s sIM2toIM3 1.1704 nIM2refl nIM3in
+bs1 IM3 0 0 0 7.1 nIM3in nIM3refl dump dump
+attr IM3 Rc -6.24
+
+#AOE2
+s sIM3toAOE2 1.041 nIM3refl nAOE2in
+lens AOE2 inf nAOE2in nAOE2trans
+
+# IM4 a.k.a. SM2
+s sAOE2toIM4 0.134 nAOE2trans nIM4in
+bs1 IM4 2400u 0 0 45 nIM4in nIM4refl nIM4trans nIM4rettrans
+
+# Distance from IM4 to PRMAR surface
+s sIM4toPRMAR 0.4135 nIM4refl nREFL
+
+#####################################################################################
+%%% FTend HAM2
+
+%%% FTblock PR
+#####################################################################################
+# PRM-04
+
+# AR surface
+m2 PRMAR 35u 4.5u $phi_PRM nREFL nPRMARb
+
+# Substrate
+s sPRMsub1 0.0737 $nsilica nPRMARb nPRMHRa
+
+# HR surface
+m1 PRMHR 0.0299 8.5u $phi_PRM nPRMHRa nPRMHRb
+attr PRMHR Rc 10.948  
+
+# Distance between PRM and PR2
+s lp1 16.6128 nPRMHRb nPR2a
+
+# PR2-04 optic
+bs1 PR2 229u 10.7u 0 -0.79 nPR2a nPR2b dump nPOP
+attr PR2 Rc -4.543
+
+# Distance from PR2 to PR3
+s lp2 16.1626 nPR2b nPR3a
+
+# PR3-01
+bs1 PR3 3.17u 16.95u 0 0.615 nPR3a nPR3b dump dump
+attr PR3 Rc 36.021
+
+# Distance from PR3 to BS
+s lp3 19.5381 nPR3b nPRBS
+
+###########################################################################
+%%% FTend PR
+
+%%% FTblock BS
+###########################################################################
+# BS beamsplitter BS-06
+##------------------------------------------------------------ 
+## BS 
+##                             ^ 
+##                  to ITMY    |      
+##                             |      ,'-.
+##                             |     +    `. 
+##                     nHRBS_Y |   ,'       :'
+##      nPR3b                  |  +i1      +
+##         ---------------->    ,:._  i2 ,'
+##    from the PRC    nHRBS_PR + \  `-. + nARBSX_X
+##                           ,' i3\   ,' --------------->
+##                          +      \ +     to ITMX
+##                        ,'     i4.'
+##                       `._      ..
+##                          `._ ,' |nARBSSR_SR
+##                             -   |
+## i1=nHRBS_X                      |to the SRC
+## i2=nARBSX_sub                   |
+## i3=nHRBS_SR                     v
+## i4=nARBSSR_sub
+##------------------------------------------------------------
+
+# BS BS-06
+bs1 BS 0.5 14.3u $phi_BS 45 nPRBS nYBS nBSi1 nBSi3
+s BSsub1 0.0685 $nsilica nBSi1 nBSi2
+s BSsub2 0.0684 $nsilica nBSi3 nBSi4
+bs2 BSAR1 50u 1.4u $phi_BS -29.1951 nBSi2 dump nXBS nPOX
+bs2 BSAR2 50u 1.4u $phi_BS 29.1951 nBSi4 dump nSRBS dump
+
+###########################################################################
+%%% FTend BS
+
+%%% FTblock Yarm
+###########################################################################
+
+s ly1 4.847 nYBS nCPYAR1a
+
+# Y arm compensation plate CP-05
+m2 CPYar1 27.2u 0.4u 0 nCPYAR1a nCPYAR1b
+s sCPY 0.10024 $nsilica nCPYAR1b nCPYAR2a
+m2 CPYar2 5u 0.4u 0 nCPYAR2a nCPYAR2b
+s sCPYtoITMYar 0.02 nCPYAR2b nITMYTLa
+
+# Y arm input mirror - ITM-11
+
+# Thermal lens
+lens ITMYTL $TL_f nITMYTLa nITMYTLb
+s ITMYTL_null 0 nITMYTLb nITMYconstLa
+
+# Constant ITMY substrate lens
+lens ITMYconstL inf nITMYconstLa nITMYconstLb
+s ITMYTL_null2 0 nITMYconstLb nITMY1
+
+
+m2 ITMYAR 294u 1u $phi_ITMY nITMY1 nITMYs1
+s lITMY 0.199904 $nsilica nITMYs1 nITMYs2
+
+m1 ITMYHR 0.0142 12.4u $phi_ITMY nITMYs2 nITMY2
+attr ITMYHR Rc -1939.39
+
+# Y-arm
+s sYARM 3994.485 nITMY2 nETMY1
+
+# ETMY - ETM-12
+m1 ETMYHR 3.6u  9.2u $phi_ETMY nETMY1 nETMYs1
+s ETMYsub 0.2 $nsilica nETMYs1 nETMYs2
+m2 ETMYAR 500u 0 $phi_ETMY nETMYs2 nPTY
+attr ETMYHR Rc 2238.9
+
+attr ITMYHR mass 39.636
+attr ETMYHR mass 39.597
+
+###########################################################################
+%%% FTend Yarm
+
+%%% FTblock Xarm
+###########################################################################
+
+s lx1 4.829 nXBS nCPXAR1a
+
+# X arm compensation plate CP-01
+m2 CPXar1 10.2u 0.5u 0 nCPXAR1a nCPXAR1b
+s sCPX 0.09982 $nsilica nCPXAR1b nCPXAR2a
+m2 CPXar2 43.7u 0.3u 0 nCPXAR2a nCPXAR2b
+s sCPXtoITMXar 0.02 nCPXAR2b nITMXTLa
+
+# X arm input mirror ITM-03
+# Thermal lens
+lens ITMXTL $TL_f nITMXTLa nITMXTLb
+s ITMXtl_null 0 nITMXTLb nITMXconstLa
+
+# Non-thermal ITM lens
+lens ITMXconstL inf nITMXconstLa nITMXconstLb
+
+s ITMXTL_null2 0 nITMXconstLb nITMX1
+m2 ITMXAR 264u 1.1u $phi_ITMX nITMX1 nITMXs1
+s ITMXsub 0.20027 $nsilica nITMXs1 nITMXs2
+
+m1 ITMXHR 0.0139 5.9u $phi_ITMX nITMXs2 nITMX2
+
+s sXARM 3994.485 nITMX2 nETMX1
+
+# X arm ETM - ETM-08
+m1 ETMXHR 3.6u 8.3u $phi_ETMX nETMX1 nETMXs1
+s ETMXsub 0.2 $nsilica nETMXs1 nETMXs2
+m2 ETMXAR 500u 0 0 nETMXs2 nPTX
+
+attr ITMXHR Rc -1939.3
+attr ETMXHR Rc 2241.54
+
+attr ITMXHR mass 39.589
+attr ETMXHR mass 39.603
+
+###########################################################################
+%%% FTend Xarm
+
+%%% FTblock SR
+###########################################################################
+
+# Distance from BS to SR3
+s ls3 19.3661 nSRBS nSR3b
+
+# SR3 SR3-02
+bs1 SR3 3.5u 21.3u 0 0.765 nSR3b nSR3a dump dump
+attr SR3 Rc 36.013
+
+# Distance from SR3 to SR2
+s ls2 15.4601 nSR3a nSR2b
+
+# SR2 SR2-03
+bs1 SR2 7.5u 12.7u 0 0.86 nSR2b nSR2a dump dump
+attr SR2 Rc -6.424
+
+# Distance from SR2 to SRMHR
+s ls1 15.740 nSR2a nSRMHRa
+
+# Signal recycling mirror SRMw-14
+m1 SRMHR 0.3696 20u $phi_SRM nSRMHRa nSRMHRb
+s SRMsub 0.0749 $nsilica nSRMHRb nSRMARa
+m2 SRMAR 50u 0 $phi_SRM nSRMARa nSRMARb
+attr SRMHR Rc -5.715
+
+###########################################################################
+%%% FTend SR
+
+%%% FTblock FI
+###########################################################################
+# The FI is on a platform delimited by the Input/Output Buffer Assy (I/OBA)
+# The physical distance IBA --> OBA = 0.5034 (D0901920-V13)
+# OFI design based on: D0900464, D1002598
+
+# Distance from SRM (AR surface) to the input buffle assy (IBA) in OFI sus
+s lIBAin 0.491516 nSRMARb nIBAin
+m1 IBA 1 0 0 nIBAin nIBAout
+
+# Distance from IBA to input of OFI (Prism in between not considered)
+s lOFIin 0.16 nIBAout nOFIin
+
+# Input Polirizer IP (Silica)
+bs1 IP 1 0 0 0 nOFIin dump nIPtrans dump
+s lIP 0.019 $nsilica nIPtrans nROTin
+
+# Rotator (TGG)
+m1 ROTin 1 0 0 nROTin nROTb
+s lROT 0.08285 $nTGG nROTb nROTouta
+m1 ROTout 1 0 0 nROTouta nOPa
+
+# Output polirizer OP (Silica)
+s lOP 0.019 $nsilica nOPa nOPb
+m1 OP 1 0 0 nOPb nOFIout
+
+# Waveplate thickness 
+s lWP 0.0127 $nCalcite nOFIout nWPa
+m1 WP 1 0 0 nWPa nWPb
+
+# Distance from Waveplate to OBA of OFI (Prism in between not considered)
+s lOBA 0.2098563 nWPb nOBAin
+m1 OBA 1 0 0 nOBAin nOBAout
+###########################################################################
+%%% FTend FI
+
+%%% FTblock OMCpath
+###########################################################################
+# (Loctions and angles based on the solid work file D1000342-v14 give ~5% 
+# mismatch. Thus lom1, lom3omc have been adjusted to get ~99.7% overlap at the OMC)
+# (lom1=2.6334,lom3omc=0.24.8 give 99% overlap at OMC)
+
+# Distance OBA --> OM1  
+s lom1 2.724 nOBAout nOM1a 
+
+#OM1
+bs1 OM1 800u $Mloss 0 2.251 nOM1a nOM1b dump dump # T is set for high power; Loss is a guess
+attr OM1 Rc 4.6
+
+# Distance OM1 --> OM2
+s lom2 1.395 nOM1b nOM2a 
+
+# OM2
+bs1 OM2 10u $Mloss 0 4.399 nOM2a nOM2b dump dump  # T is a guess
+attr OM2 Rc 1.7058
+
+# Distance OM2 --> OM3
+s lom3 0.631 nOM2b nOM3a 
+bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3trans dump # T is a guess
+
+# Distance OM3 --> OMC input coupler IC (AR side)
+s lom3omc 0.196 nOM3b nOMC_ARIC_in # By design should be ~0.31
+
+#  Distance in transmission to OM3 used for testing
+#s lomOM3trans 0.1 nOM3trans nOMC_ARIC2_in
+
+###########################################################################
+%%% FTend OMCpath 
+
+%%% FTblock OMC
+###########################################################################
+# OMC (as built parameters: D1300507-v1)
+
+# Input Coupler IC (flat mirror)
+bs1 OMC_ARIC 1 0 0 4.004 nOMC_ARIC_in dump nOMC_ARIC_trans dump 
+s subOMC_IC 0.01078 $nsilica nOMC_ARIC_trans nOMC_HRIC_in
+bs1 OMC_HRIC 0.0076 10u 0 2.7609 nOMC_HRIC_in dump nOMC_HRIC_trans nOMC_HRIC_ret
+# Distance from IC to OC 
+s OMC_ICOC 0.2815 1 nOMC_HRIC_trans nOMC_HROC_in
+
+# Output Coupler OC (flat mirror)
+bs1 OMC_HROC 0.0075 10u 0 4.004 nOMC_HROC_in nOMC_HROC_refl nOMC_HROC_trans nOMC_HROC_ret
+s subOMC_OC 0.01078 $nsilica nOMC_HROC_trans nOMC_AROC_in
+bs1 OMC_AROC 1 0 0 2.7609 nOMC_AROC_in dump nOMC_AROC_trans dump
+# Distance from OC to CM1
+s OMC_OCCM1 0.2842 1 nOMC_HROC_refl nOMC_CM1_in
+
+# Curved Mirror CM1
+bs1 OMC_CM1 36u 10u 0 4.004 nOMC_CM1_in nOMC_CM1_refl dump dump
+
+# Distance from CM1 to CM2 
+s OMC_CM1CM2 0.2815 1 nOMC_CM1_refl nOMC_CM2_in
+attr OMC_CM1 Rc 2.57321
+
+# Curved Mirror CM2
+bs1 OMC_CM2 35.9u 10u 0 4.004 nOMC_CM2_in nOMC_CM2_refl dump dump
+attr OMC_CM2 Rc 2.57369
+
+# Distance from CM2 to IC 
+s CM2OC 0.2842 1 nOMC_CM2_refl nOMC_HRIC_ret
+
+###########################################################################
+%%% FTend OMC
+
+%%% FTblock tunings 
+###########################################################################
+
+const phi_SRM 90.0239057373272
+const phi_PRM -0.00174644551308074
+const phi_ITMX -0.000831200861293824
+const phi_ITMY 0.000831200861293824
+const phi_ETMX 0.000178466623430732
+const phi_ETMY -0.000441627222940841
+const phi_BS 0
+
+###########################################################################
+%%% FTend tunings
+
+%%% FTblock constants
+###########################################################################
+
+const nsilica 1.44963098985906
+const nTGG 1.954
+const nCalcite 1.65846
+const Mloss 0.0000375
+const DARM_DC_offset 0.147303
+const TL_f 44.2k
+const f1 9099471
+const mf1 -9099471
+const f2 45497355
+const mf2 -45497355
+const f3 24000000
+const nf3 -24000000
+const fM 36397884
+const nfM -36397884
+
+# TL_f changed from 34.5k to 44.2k in order to bring all overlaps between Xarm and 
+# other cavities to above 99.9%. 34.5k matches SRC to arms well for the x-axis but 
+# the y-axis drops to 99.8%.
+
+###########################################################################
+%%% FTend constants
+
+%%% FTblock errsigs
+###########################################################################
+
+pd1 REFL_f1_I $f1 95 nREFL
+pd1 REFL_f1_Q $f1 185 nREFL
+pd1 REFL_f2_I $f2 0 nREFL
+pd1 REFL_f2_Q $f2 90 nREFL
+pd1 POP_f1_I $f1 90 nPOP
+pd1 POP_f1_Q $f1 0 nPOP
+pd1 POP_f2_I $f2 10 nPOP
+pd1 POP_f2_Q $f2 100 nPOP
+pd1 AS_f1_I $f1 0 nSRMARb
+pd1 AS_f1_Q $f1 90 nSRMARb
+pd1 AS_f2_I $f2 165 nSRMARb
+pd1 AS_f2_Q $f2 255 nSRMARb
+#pd1 OMClockpd $fdither -1.22 nAS
+
+###########################################################################
+%%% FTend errsigs
+
+%%% FTblock powers
+###########################################################################
+
+pd P_DC_AS  nSRMARb
+pd P_DC_OMC nOMC_HROC_trans
+pd PIMCtrans nREFL*
+pd Px nITMX2
+pd Py nITMY2
+pd Pprc nPRMHRb
+pd Psrc nSRMHRa*
+
+ad prc0 0 nPRMHRb
+ad prcf1 $f1 nPRMHRb
+ad prcf2 $f2 nPRMHRb
+ad aoc0 0 nOMC_HROC_trans
+ad asc0 0 nSRMARb
+ad asf1 $f1 nSRMARb
+ad asf2 $f2 nSRMARb
+ad src0 0 nSRMHRa*
+ad srcf1 $f1 nSRMHRa*
+ad srcf2 $f2 nSRMHRa*
+
+###########################################################################
+%%% FTend powers
+
+%%% FTblock HOMs
+###########################################################################
+
+cav cavIMC MC2 nMC2in MC2 nMC2refl 
+cav cavPRX PRMHR nPRMHRb ITMXHR nITMXs2
+cav cavPRY PRMHR nPRMHRb ITMYHR nITMYs2
+cav cavSRX SRMHR nSRMHRa ITMXHR nITMXs2
+cav cavSRY SRMHR nSRMHRa ITMYHR nITMYs2
+cav cavXARM ITMXHR nITMX2 ETMXHR nETMX1
+cav cavYARM ITMYHR nITMY2 ETMYHR nETMY1
+cav cavOMC OMC_HROC nOMC_HROC_refl OMC_HROC nOMC_HROC_in  
+
+maxtem 2
+
+###########################################################################
+%%% FTend HOMs
+
+%%% FTblock locks
+###########################################################################
+
+set PRCL_err POP_f1_I  re
+set MICH_err POP_f2_Q  re
+set CARM_err REFL_f1_I re
+set SRCL_err REFL_f2_I re
+#set AS_f2_I_re AS_f2_I re
+set OMC_DC P_DC_OMC re
+
+func DARM_err = $OMC_DC - $DARM_DC_offset
+
+lock PRCL_lock $PRCL_err -5.62973625258 10u
+lock MICH_lock $MICH_err 9.21280976328 10u
+lock CARM_lock $CARM_err 6.00392131762e-05 10u
+lock DARM_lock $DARM_err -0.00390550096246 1u
+lock SRCL_lock $SRCL_err -1.11459202397 10u
+
+
+func mMICH_lock = 0 - $MICH_lock
+func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock
+func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock
+
+put* PRMHR   phi     $PRCL_lock
+put* PRMAR   phi     $PRCL_lock
+
+put* ITMXHR  phi     $MICH_lock
+put* ITMXAR  phi     $MICH_lock
+put* ITMYHR  phi     $mMICH_lock
+put* ITMYAR  phi     $mMICH_lock
+
+put* ETMXHR  phi     $ETMX_lock
+put* ETMXAR  phi     $ETMX_lock
+
+put* ETMYHR  phi     $ETMY_lock
+put* ETMYAR  phi     $ETMY_lock
+
+put* SRMHR   phi     $SRCL_lock
+put* SRMAR   phi     $SRCL_lock
+
+noplot PRCL_lock
+noplot SRCL_lock
+noplot MICH_lock
+noplot DARM_lock
+noplot CARM_lock
+noplot mMICH_lock
+noplot ETMX_lock
+noplot ETMY_lock
+
+###########################################################################
+%%% FTend locks
+
+%%% FTblock ASWFSs
+###########################################################################
+s lOM3trans2ASWFSBS 0.66 nOM3trans nASWFSBSin 
+bs ASWFSBS 0.5 0.5 0 45 nASWFSBSin nASWFSBSrefl nASWFSBStrans dump
+
+s lASWFSBS2ASWFSA 0.1 nASWFSBSrefl nASWFSA
+attr lASWFSBS2ASWFSA gouy 70
+
+s lASWFSBS2ASWFSB 0.379 nASWFSBStrans nASWFSB
+attr lASWFSBS2ASWFSB gouy 160
+
+# AS WFS RF detectors
+pd1 ASWFSA_45I_P $f2 0 nASWFSA 
+pd1 ASWFSA_45Q_P $f2 90 nASWFSA 
+pd1 ASWFSA_36I_P $fM 15 nASWFSA 
+pd1 ASWFSA_36Q_P $fM 75 nASWFSA 
+pdtype ASWFSA_45I_P y-split
+pdtype ASWFSA_45Q_P y-split
+pdtype ASWFSA_36I_P y-split
+pdtype ASWFSA_36Q_P y-split
+
+pd1 ASWFSB_45I_P $f2 0 nASWFSB 
+pd1 ASWFSB_45Q_P $f2 90 nASWFSB 
+pd1 ASWFSB_36I_P $fM 65 nASWFSB 
+pd1 ASWFSB_36Q_P $fM 155 nASWFSB
+pdtype ASWFSB_45I_P y-split
+pdtype ASWFSB_45Q_P y-split
+pdtype ASWFSB_36I_P y-split
+pdtype ASWFSB_36Q_P y-split
+
+const f_sig 1 
+
+# AS WFS RF detectors double demodulated at signal frequency $f_sig
+pd2 ASWFSA_45I_audio_P $f2 0 $f_sig max nASWFSA 
+pd2 ASWFSA_45Q_audio_P $f2 90 $f_sig max nASWFSA 
+pd2 ASWFSA_36I_audio_P $fM 0 $f_sig max nASWFSA 
+pd2 ASWFSA_36Q_audio_P $fM 90 $f_sig max nASWFSA 
+pdtype ASWFSA_45I_audio_P y-split
+pdtype ASWFSA_45Q_audio_P y-split
+pdtype ASWFSA_36I_audio_P y-split
+pdtype ASWFSA_36Q_audio_P y-split
+
+pd2 ASWFSB_45I_audio_P $f2 0 $f_sig max nASWFSB 
+pd2 ASWFSB_45Q_audio_P $f2 90 $f_sig max nASWFSB 
+pd2 ASWFSB_36I_audio_P $fM 0 $f_sig max nASWFSB 
+pd2 ASWFSB_36Q_audio_P $fM 90 $f_sig max nASWFSB
+pdtype ASWFSB_45I_audio_P y-split
+pdtype ASWFSB_45Q_audio_P y-split
+pdtype ASWFSB_36I_audio_P y-split
+pdtype ASWFSB_36Q_audio_P y-split
+###########################################################################
+%%% FTend ASWFSs
+
+%%% FTblock commands
+%%% FTend commands
+

@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 import pykat
 import pylab
 import numpy
@@ -28,9 +32,9 @@ kat.parseCommands(cmd)
 
 info = kat.lkat_trace()
 
-print "n1 qx =", info["n1"].qx
+print ("n1 qx =", info["n1"].qx)
 
-print "Cavity info ", info["c1"]
+print ("Cavity info ", info["c1"])
 
 import numpy
 
@@ -66,7 +70,7 @@ try:
 		g_factors.append(cav.stability_x)
 
 except Exception as ex: 
-    print "Exception caught in python: ", ex.message
+    print ("Exception caught in python: ", ex.message)
 finally:
     # This should always be called no matter what
     lkat._pykat_finish(0)

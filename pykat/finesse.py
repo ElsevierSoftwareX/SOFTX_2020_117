@@ -28,6 +28,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import codecs
 import uuid
 import sys
 import os
@@ -1503,7 +1504,7 @@ class kat(object):
                     try:
                     	if time.time() < _start_kat + duration:
                     		time.sleep(0.1)
-                    		fifo = open(pipe_name, "r")
+                    		fifo = codecs.open(pipe_name, "r", "utf-8")
                     		self.__looking = False
                     	else:
                     		raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0.".format(duration))
@@ -1515,8 +1516,8 @@ class kat(object):
 
                 for line in fifo:
                     
-                    if (sys.version_info < (3, 0)):
-                        line = line.decode("utf8") # Make sure we're using unicode encoding
+                    #if (sys.version_info < (3, 0)):
+                    #    line = line.decode("utf8") # Make sure we're using unicode encoding
                     
                     v = line.split(u":", 1)
                     
@@ -1540,16 +1541,18 @@ class kat(object):
 			
             (stdout, stderr) = p.communicate()
 
-            r.stdout = stdout.decode('unicode_escape')
-            r.stderr = stderr.decode('unicode_escape')
+            r.stdout = stdout.decode('utf-8')
+            r.stderr = stderr.decode('utf-8')
             
-            for line in r.stdout[::-1]:
-                if line.lstrip().startswith('computation time:'):
-                    try:
-                        r.runtime = float(line.split(":")[1].replace("s",""))
-                    except:
-                        r.runtime = 0.0
+            k = r.stdout.rfind('computation time:')
             
+            if k > 0:
+                try:
+                    line = r.stdout[k:]
+                    r.runtime = float(line.split(":")[1].replace("s",""))
+                except:
+                    r.runtime = 0.0
+    
             r.runDateTime = datetime.datetime.now()
 
             # If Finesse returned an error, just print that and exit!
