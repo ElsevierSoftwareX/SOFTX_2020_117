@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import pykat.exceptions as pkex
 import numpy as np
 import math
@@ -6,59 +11,6 @@ import warnings
 import cmath
 from scipy.special import hermite
 from pykat.SIfloat import SIfloat
-
-def fit_beam_size(z_data, w_data, w0guess, z0guess, lam=1064e-9, show_plot=True,
-                  plotpts=100, title='Beam scan fit', w2zero=True, filename=None):
-    """
-    Function to fit a beam size (w0 and z) to a 2D intensity array. Plotting can
-    be switched on or off.
-
-    Returns best fit of (w0, z)
-    
-    Contributed by Paul Fulda on 15/01/16
-    """
-    
-    import scipy.optimize
-    
-    def zw0z02w(z, w0, z0, lam):
-        z_R = pl.pi*w0**2/lam
-        w = w0*pl.sqrt(1+((z-z0)/z_R)**2)
-        return w
-    
-    popt,pcov = scipy.optimize.curve_fit(lambda z_data, w0, z0: zw0z02w(z_data, w0, z0, lam), z_data, w_data, p0=[w0guess,z0guess])
-    w0out=popt[0]
-    z0out=popt[1]
-    
-    z_fit = pl.linspace(min(z_data),max(z_data),plotpts)
-    w_fit = zw0z02w(z_fit, w0out, z0out, lam)
-
-
-    if show_plot or filename is not None:
-        import pylab as pl
-        
-        um=1e6
-        
-        pl.figure()
-        pl.plot(z_data,w_data*um,'bo', label = 'Data')
-        pl.plot(z_fit,w_fit*um,'b', label = 'Fit')
-        pl.tight_layout
-        pl.grid()
-        pl.xlabel('Position [m]')
-        pl.ylabel('Beam size [$\mu$m]')
-        pl.xlim((min(z_data),max(z_data)))
-        
-        if w2zero:
-            pl.ylim((0,max(w_data)*um))
-            
-        pl.legend(loc=0)
-        pl.title(title)
-        
-        if filename is not None:
-            pl.savefig(filename)
-            
-    return w0out, z0out      
-    
-    
 
 class gauss_param(object):
     """
@@ -316,9 +268,15 @@ class gauss_param(object):
 
 class beam_param(gauss_param):
     pass
-    
+
+# Should be renamed to HG_mode?    
 class HG_beam(object):
-    
+    """ Hermite-Gauss beam profile. Example usage:
+    import pykat.optics.gaussian_beams as gb
+    qx=gb.beam_param(w0=1e-3,z=0)
+    beam=gb.HG_beam(qx,n=2,m=0)
+    beam.plot()
+    """    
     def __init__(self, qx, qy=None, n=0, m=0):
         self._qx = copy.deepcopy(qx)
         self._2pi_qrt = math.pow(2.0/math.pi, 0.25)
@@ -427,7 +385,9 @@ class HG_beam(object):
         return np.outer(_un, _um)
         
     def plot(self, ndx=100, ndy=100, xscale=4, yscale=4):
-        import pylab
+        """ Make a simple plot the HG_beam """
+        import pykat.plotting 
+        import matplotlib.pyplot as plt
         
         xrange = xscale * np.linspace(-self._qx.w, self._qx.w, ndx)
         yrange = yscale * np.linspace(-self._qy.w, self._qy.w, ndy)
@@ -437,11 +397,11 @@ class HG_beam(object):
 
         data = self.Unm(xrange,yrange)
 
-        fig = pylab.figure()
-        axes = pylab.imshow(np.abs(data), aspect=dx/dy, extent=[min(xrange),max(xrange),min(yrange),max(yrange)])
-        pylab.xlabel('x [m]')
-        pylab.ylabel('y [m]')
+        fig = pykat.plotting.figure()
+        axes = plt.imshow(np.abs(data.T), aspect=dx/dy, extent=[min(xrange),max(xrange),min(yrange),max(yrange)])
+        plt.xlabel('x [m]')
+        plt.ylabel('y [m]')
         cbar = fig.colorbar(axes)
-        pylab.show()
+        plt.show()
         
         
