@@ -9,7 +9,7 @@ m.write_map("test.map")
 
 from pykat.optics.maps import curvedmap
 
-itm = curvedmap('itm_Rc', 1, 1, 1)
+itm = curvedmap('itm_Rc', 10, 1, 100)
 
 
 

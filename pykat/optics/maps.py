@@ -42,8 +42,8 @@ class MirrorROQWeights:
             
 class surfacemap(object):
     
-    def __init__(self, name, maptype, size, center, step_size, scaling, data=None,
-                 notNan=None, Rc=None, zOffset=None, xyOffset=(.0,.0)):
+    def __init__(self, name, maptype, size=None, center=None, step_size=1.0, scaling=1.0e-9, data=None,
+                 notNan=None, RcRemoved=None, zOffset=None, xyOffset=(.0,.0)):
         '''
         size, center, step_size, xyOffset are all tuples of the form (x, y),
         i.e., (col, row).
@@ -51,28 +51,32 @@ class surfacemap(object):
         
         self.name = name
         self.type = maptype
+        if data is None:
+            if size is None:
+                raise BasePyKatException("One of the parameters data or size needs to be specified to create map")
+            elif isinstance(size, tuple) or isinstance(size, list):
+                if len(size) == 2:
+                    self.data = np.zeros(size[::-1])
+                else:
+                    raise BasePyKatException("Parameter size must have length 2")
+            elif isinstance(size, int):
+                self.data = np.zeros((size, size))
+        else:
+            self.data = data
+
+        self.notNan = notNan
+
         # Currently "beam center", i.e., mirror_center + xyOffset. 
         self.center = center
         self.step_size = step_size
         self.scaling = scaling
-        self.notNan = notNan
-        self.Rc = Rc
+        self.RcRemoved = RcRemoved
         # Offset of fitted sphere. Proably unnecessary to have here.
         self.zOffset = zOffset
         self.__interp = None
         self._zernikeRemoved = {}
         self._betaRemoved = None
         self._xyOffset = xyOffset
-		
-        if data is None:
-            self.data = np.zeros(size[::-1])
-        else:
-            self.data = data
-
-        if notNan is None:
-            self.notNan = np.ones(size[::-1], dtype=bool)
-        else:
-            self.notNan = notNan
 
         self._rom_weights = None
         
@@ -151,14 +155,42 @@ class surfacemap(object):
     def data(self, value):
         self.__data = value
         self.__interp = None
-    
+
+    @property
+    def notNan(self):
+        return self.__notNan
+
+    @notNan.setter
+    def notNan(self,value):
+        if value is None:
+            if not hasattr(self,'notNan'):
+                self.__notNan = np.ones(self.size[::-1], dtype=bool)
+        else:
+            self.__notNan = value
+            
     @property
     def center(self):
         return self.__center
     
     @center.setter
     def center(self, value):
-        self.__center = value
+        if value is None:
+            if not hasattr(self,'center'):
+                self.__center = self.recenter()
+        elif isinstance(value, tuple):
+            if len(value) == 2:
+                self.__center = value
+        elif isinstance(value, list):
+            if len(value) == 2:
+                self.__center = (value[0],value[1])
+        elif isinstance(value, np.ndarray):
+            if len(value) == 2:
+                self.__center = (value[0],value[1])
+        elif isinstance(value, float) or isinstance(value, int):
+            self.__center = (value, value)
+        else:
+            raise BasePyKatException("Invalid format of center, array of length 2 wanted.")
+            
         self.__interp = None
     
     @property
@@ -167,7 +199,12 @@ class surfacemap(object):
     
     @step_size.setter
     def step_size(self, value):
-        self.__step_size = value
+        if isinstance(value, tuple):
+            self.__step_size = value
+        elif isinstance(value, list):
+            self.__step_size = (value[0],value[1])
+        elif isinstance(value, float) or isinstance(value, int):
+            self.__step_size = (value,value)
         self.__interp = None
 
     @property
@@ -732,9 +769,9 @@ class surfacemap(object):
             self.zernikeRemoved = (0, 2, A[1])
             Rc = znm2Rc(A[1]*self.scaling, R)
         
-        self.Rc = Rc
+        self.RcRemoved = Rc
         
-        return self.Rc, self.zernikeRemoved
+        return self.RcRemoved, self.zernikeRemoved
 
 
     def rmTilt(self, method='fitSurf', w=None, xbeta=None, ybeta=None, zOff=None):
@@ -895,14 +932,14 @@ class surfacemap(object):
             print(msg)
             
         # Assigning values to the instance variables
-        self.Rc = out['x'][0]
+        self.RcRemoved = out['x'][0]
         if self.zOffset is None:
             self.zOffset = 0
         self.zOffset = self.zOffset + out['x'][1]
 
         # Equivalent Zernike (n=2,m=0) amplitude.
         R = self.find_radius(unit='meters')
-        A20 = Rc2znm(self.Rc,R)/self.scaling
+        A20 = Rc2znm(self.RcRemoved,R)/self.scaling
         self.zernikeRemoved = (0,2,A20)
 
         # If center was fitted, assign new values to instance variable center, and
@@ -914,17 +951,17 @@ class surfacemap(object):
             self.center = (self.center[0] + x0/self.step_size[0],
                            self.center[1] + y0/self.step_size[1])
             # Creating fitted sphere
-            Z = self.createSurface(self.Rc, X, Y, self.zOffset, x0, y0)
+            Z = self.createSurface(self.RcRemoved, X, Y, self.zOffset, x0, y0)
             # Subtracting sphere from map
             self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
-            return self.Rc, self.zOffset, self.center, A20
+            return self.RcRemoved, self.zOffset, self.center, A20
         # Subtracting fitted sphere from mirror map.
         else:
             # Creating fitted sphere
-            Z = self.createSurface(self.Rc,X,Y,self.zOffset)
+            Z = self.createSurface(self.RcRemoved,X,Y,self.zOffset)
             # Subtracting sphere from map
             self.data[self.notNan] = self.data[self.notNan]-Z[self.notNan]
-            return self.Rc, self.zOffset, A20
+            return self.RcRemoved, self.zOffset, A20
 
     def remove_curvature(self, method='zernike', w=None, zOff=None,
                          isCenter=[False,False], zModes = 'all'):
@@ -1293,7 +1330,7 @@ class surfacemap(object):
         print('           xbeta = {:.2e} rad'.format(self.betaRemoved[0]))
         print('           ybeta = {:.2e} rad'.format(self.betaRemoved[1]))
         print('Curvature: A20   = {:.2f} nm,  or'.format(self.zernikeRemoved['02'][2]))
-        print('           Rc    = {:.2f} m'.format(self.Rc))
+        print('           Rc    = {:.2f} m'.format(self.RcRemoved))
         print('xy-offset: x0    = {:.2f} mm'.format(self.xyOffset[0]*1000))
         print('           y0    = {:.2f} mm'.format(self.xyOffset[1]*1000))
         print('Stats:     rms   = {:.3e} nm'.format(self.rms(w)))
@@ -1325,7 +1362,7 @@ class surfacemap(object):
             mapfile.write('           xbeta = {:.2e} rad\n'.format(self.betaRemoved[0]))
             mapfile.write('           ybeta = {:.2e} rad\n'.format(self.betaRemoved[1]))
             mapfile.write('Curvature: A20   = {:.2f} nm,  or\n'.format(self.zernikeRemoved['02'][2]))
-            mapfile.write('           Rc    = {:.2f} m\n'.format(self.Rc))
+            mapfile.write('           Rc    = {:.2f} m\n'.format(self.RcRemoved))
             mapfile.write('xy-offset: x0    = {:.2f} mm\n'.format(self.xyOffset[0]*1000))
             mapfile.write('           y0    = {:.2f} mm\n'.format(self.xyOffset[1]*1000))
             
@@ -1649,6 +1686,7 @@ class curvedmap(surfacemap):
     
     def __init__(self, name, size, step_size, Rc):
         surfacemap.__init__(self, name, "phase reflection", size, (np.array(size)+1)/2.0, step_size, 1e-6)
+        
         self.Rc = Rc
         
     @property
@@ -1657,12 +1695,17 @@ class curvedmap(surfacemap):
     
     @Rc.setter
     def Rc(self, value):
-        self.__Rc = value
+        
+        self.__Rc = float(value)
     
         xx, yy = np.meshgrid(self.x, self.y)
         
         Rsq = xx**2 + yy**2
-        self.data = (self.Rc - math.copysign(1.0, self.Rc) * np.sqrt(self.Rc**2 - Rsq))/ self.scaling
+
+        if np.any(self.Rc**2-Rsq[self.notNan] < 0):
+            raise BasePyKatException("Invalid curvature Rc, must be bigger than radius of the mirror")
+        else:
+            self.data[self.notNan] = (self.Rc - math.copysign(1.0, self.Rc) * np.sqrt(self.Rc**2 - Rsq[self.notNan]))/ self.scaling
 
 class tiltmap(surfacemap):
     """
@@ -1848,7 +1891,7 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
         if not isLigo and isAscii:
             iCols = float(line.split()[2])
             iRows = float(line.split()[3])
-
+            
         line = f.readline().split()
         
         if isLigo:
@@ -1914,7 +1957,7 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
             if not isAscii:
                 # For the zygo .xyz-format.
                 k = 0
-                data = np.zeros(rows*cols)
+                data = np.zeros(int(rows*cols))
                 totRuns = cols*rows
             
                 # Read data
@@ -1932,16 +1975,15 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
                     k+=1
             else:
                 # Skipping one line
-                f.readline()
-        
+                line = f.readline()
                 # Reading intensity data
                 iData = np.array([])
                 line = f.readline().split()
                 while line[0] != '#':
-                    iData = np.append(iData, map(g,line))
+                    iData = np.append(iData, [x for x in map(g,line)])
                     line = f.readline().split()
                 # Reshaping intensity data
-                iData = iData.reshape(iRows, iCols).transpose()
+                iData = iData.reshape(int(iRows), int(iCols)).transpose()
                 iData = np.rot90(iData)
         else:
             # Skipping one line
@@ -1958,7 +2000,7 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
             # Reading data until next '#' is reached.
             line = f.readline().split()
             while line[0] != '#':
-                data = np.append(data, map(g,line))
+                data = np.append(data, [x for x in map(g,line)])
                 line = f.readline().split()
             # ----------------------------------------------
 
@@ -1970,7 +2012,7 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
         data[data == data[0]] = np.nan
 
         # Reshaping into rows and columns
-        data = data.reshape(cols,rows).transpose()
+        data = data.reshape(int(cols),int(rows)).transpose()
         # Pretty sure that the lines below can be done in
         # less operations, but it's quick as it is.
         # ----------------------------------------------
@@ -1988,7 +2030,7 @@ def readZygoLigoMaps(filename, isLigo=False, isAscii=True):
             # in the file. 
             data[data >= 2147483640] = np.nan
         # Reshaping into rows and columns.
-        data = data.reshape(rows,cols).transpose()
+        data = data.reshape(int(rows),int(cols)).transpose()
         # Rotating to make (0,0) be in bottom left
         # corner. 
         data = np.rot90(data)
