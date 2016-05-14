@@ -13,11 +13,11 @@ import itertools
 from copy import copy
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from itertools import combinations_with_replacement as combinations
-from pykat.optics.gaussian_beams import beam_param, HG_beam
+from pykat.optics.gaussian_beams import beam_param
 from scipy.linalg import inv
 from math import factorial
-from pykat.maths.hermite import *
-from pykat.maths import newton_weights
+from pykat.math.hermite import *
+from pykat.math import newton_weights
 from scipy.integrate import newton_cotes
 from multiprocessing import Process, Queue, Array, Value, Event
 from pykat.exceptions import BasePyKatException
