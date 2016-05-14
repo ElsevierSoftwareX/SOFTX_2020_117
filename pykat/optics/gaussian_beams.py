@@ -9,7 +9,8 @@ import math
 import copy
 import warnings
 import cmath
-from scipy.special import hermite
+from math import factorial
+from scipy.special import hermite, jacobi
 from pykat.SIfloat import SIfloat
 
 class gauss_param(object):
@@ -405,3 +406,48 @@ class HG_beam(object):
         plt.show()
         
         
+
+
+        
+
+def hg2lg(n,m):
+    """A function for Matlab which returns the coefficients and mode indices of
+    the LG modes required to create a particular HG mode.
+    Usage: coefficients,ps,ls = hg2lg(n,m)
+    
+    n,m:          Indces of the HG mode to re-create.
+    coeffcients:  Complex coefficients for each order=n+m LG mode required to
+                  re-create HG_n,m.
+    ps,ls:        LG mode indices corresponding to coefficients.
+    """
+    # Mode order
+    N = n+m;
+    
+    # Create empty vectors for LG coefficients/ indices
+    coefficients = np.linspace(0,0,N+1,dtype=np.complex_)
+    ps = np.linspace(0,0,N+1)
+    ls = np.linspace(0,0,N+1)
+    
+    # Calculate coefficients
+    for j in np.arange(0,N+1):
+        
+        # Indices for coefficients
+        l = 2*j-N
+        p = int((N-np.abs(l))/2)
+        
+        ps[j] = p
+        ls[j] = l
+        
+        signl = np.sign(l)
+        if (l==0):
+            signl = 1.0
+
+        # Coefficient
+        c = (signl*1j)**m * np.sqrt(factorial(N-m)*factorial(m)/(2**N * factorial(np.abs(l)+p)*factorial(p)))
+        c = c * (-1.0)**p * (-2.0)**m * scipy.special.eval_jacobi(m,np.abs(l)+p-m,p-m,0.0)
+
+        coefficients[j] = c
+        
+    return coefficients, ps, ls 
+        
+
