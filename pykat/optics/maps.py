@@ -16,7 +16,7 @@ from __future__ import print_function
 from pykat.optics.romhom import makeWeightsNew
 from scipy.interpolate import interp2d, interp1d
 from scipy.optimize import minimize
-from pykat.maths.zernike import *        
+from pykat.math.zernike import *        
 from pykat.exceptions import BasePyKatException
 from copy import deepcopy
 
