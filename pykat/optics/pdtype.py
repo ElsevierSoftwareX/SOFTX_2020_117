@@ -13,7 +13,6 @@ from math import factorial
 from scipy.integrate import quad
 from scipy.special import hermite
 from pykat.SIfloat import SIfloat
-#import scipy.special
 from pykat.optics.gaussian_beams import HG2LG
 from pykat.math.jacobi import jacobi
 from pykat.math.laguerre import laguerre
@@ -75,8 +74,13 @@ def HG_split_diode_coefficient_numerical(n1,n2):
     return A*c_n1n2[0]
     
 
-def LG_bullseye_coefficients_numerical(l1,p1, l2, p2, w, r):
-    """
+def LG_bullseye_coefficients_numerical(l1, p1, l2, p2, w, r):
+    """ Function to compute a beat coefficient for two LG modes on a
+    bullseye photo detector, used by finesse_bullseye_photodiode().
+    l1,p1 mode indices of first LG mode
+    l2,p2 mode indices of second LG mode
+    w: beam radius on diode [m]
+    r: radius of inner disk element [m]
     w = beam radisu [m]
     r = radius of inner element
     """
@@ -97,6 +101,14 @@ def LG_bullseye_coefficients_numerical(l1,p1, l2, p2, w, r):
     return A*(val2-val1)
 
 def HG_bullseye_coefficients_numerical(n1, m1, n2, m2, w, r):
+    """ Function to compute a beat coefficient for two HG modes on a
+    bullseye photo detector, used by finesse_bullseye_photodiode().
+    n1,m1 mode indices of first HG mode
+    n2,m2 mode indices of second HG mode
+    w: beam radius on diode [m]
+    r: radius of inner disk element [m]
+
+    """
     mparity=np.mod(m1+m2,2)
     nparity=np.mod(n1+n2,2)
                 
@@ -111,13 +123,20 @@ def HG_bullseye_coefficients_numerical(n1, m1, n2, m2, w, r):
                     k = k + a[idx1] * np.conj(b[idx2]) * c
     return float(np.real(k))
     
-def finesse_bullseye_photodiode(maxtem, w=1.0, r=0.5887050, name='bullseye'):
-    """Prints beat coefficients for HG modes on a split photo detector
+def finesse_bullseye_photodiode(maxtem, w=1.0, r=0.5887050112577, name='bullseye'):
+    """Prints beat coefficients for HG modes on a bullseye photo detector
     in the format for insertion into the kat.ini file of Finesse.
-    Example use:
-    finesse_split_photodiode(5, 0.01, 0.03, name="bull1:3")
+
     The default kat.ini numbers have been generated with:
-    ...
+    finesse_bullseye_photodiode(6)
+
+    maxtem: highest mode order (int)
+    w: beam radius on diode [m]
+    r: radius of inner disk element [m]
+    name: name of entry in kat.ini (string)
+
+    The standard parameter of w=1 and r=0.5887050112577 have been chosen to achieve
+    a small a HG00xHG00 coefficient of <1e-13.
     """
     assert (isinstance(maxtem, int) and maxtem >=0), "maxtem must be integer >=0" 
 
@@ -128,6 +147,6 @@ def finesse_bullseye_photodiode(maxtem, w=1.0, r=0.5887050, name='bullseye'):
             for n2 in np.arange(n1,maxtem+1):
                 for m2 in np.arange(m1,maxtem+1):
                     c = HG_bullseye_coefficients_numerical(n1,m1, n2, m2, w, r)
-                    if (np.abs(c)>10e-13 and not np.isnan(c)):
+                    if (np.abs(c)>1e-13 and not np.isnan(c)):
                         print("{:2d} {:2d} {:2d} {:2d} {:.15g}".format(n1,m1,n2,m2, c))
     print('END')
