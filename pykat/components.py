@@ -994,11 +994,30 @@ class lens(Component):
         self._requested_node_names.append(node2)
         self._svgItem = None
         self.__f = Param("f", self, SIfloat(f))
+        self.__p = Param("p", self, None)
         
     @property
-    def f(self): return self.__f
+    def f(self):
+        if self.__f is not None:
+            return self.__f
+        else:
+            return 1/self.__p
     @f.setter
-    def f(self, value): self.__f.value = SIfloat(value)
+    def f(self, value):
+        self.__f.value = SIfloat(value)
+        self.__p.value = None
+    
+    @property
+    def p(self):
+        if self.__p is not None:
+            return self.__p
+        else:
+            return 1/self.__f
+            
+    @f.setter
+    def p(self, value):
+        self.__p.value = SIfloat(value)
+        self.__f.value = None
     
     @staticmethod
     def parseFinesseText(text):
@@ -1015,7 +1034,10 @@ class lens(Component):
             raise pkex.BasePyKatException("Lens Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
+        if self.__p is None:
+            rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
+        else:
+            rtn = ['lens* {0} {1} {2} {3}'.format(self.name, self.p.value, self.nodes[0].name, self.nodes[1].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
