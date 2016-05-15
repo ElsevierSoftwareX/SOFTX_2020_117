@@ -1,5 +1,5 @@
 from itertools import combinations_with_replacement as combinations
-from pykat.optics.gaussian_beams import beam_param, HG_beam
+from pykat.optics.gaussian_beams import beam_param, HG_mode
 from pykat.exceptions import BasePyKatException
 from pykat.optics.romhom import u_star_u
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
@@ -7,10 +7,10 @@ from scipy.interpolate import interp2d
 from scipy.integrate import dblquad
 from pykat.optics.romhom import ROMWeights
 from math import factorial
-from pykat.maths.hermite import hermite
+from pykat.math.hermite import hermite
 from scipy.misc import comb
 from scipy.integrate import newton_cotes
-from pykat.maths import newton_weights
+from pykat.math import newton_weights
 
 import time
 import pykat.optics.maps
@@ -65,8 +65,8 @@ def adaptive_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, smap=None, delta
     if len(mode_in) != 2 or len(mode_out) != 2:
         raise BasePyKatException("Both mode in and out should be a container with modes [n m]")
     
-    Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
-    Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
+    Hg_in  = HG_mode(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
+    Hg_out = HG_mode(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
     
     Nfuncs = []
     Nfuncs.append(0)
@@ -168,8 +168,8 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
     dy = abs(y[1] - y[0])    
         
     if cache is None:
-        Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
-        Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
+        Hg_in  = HG_mode(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
+        Hg_out = HG_mode(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
         
         U1 = Hg_in.Unm(x+delta[0], y+delta[1])
         U2 = Hg_out.Unm(x,y).conjugate()
@@ -505,8 +505,8 @@ def square_aperture_HG_knm(mode_in, mode_out, q, R):
     m = mode_in[1]
     _m = mode_out[1]
     
-    hg1 = HG_beam(q, n=n, m=m)
-    hg2 = HG_beam(q, n=_n, m=_m)
+    hg1 = HG_mode(q, n=n, m=m)
+    hg2 = HG_mode(q, n=_n, m=_m)
         
     kx = hg1.constant_x * hg2.constant_x.conjugate()
     ky = hg1.constant_y * hg2.constant_y.conjugate()
