@@ -13,6 +13,10 @@ from math import factorial
 from scipy.integrate import quad
 from scipy.special import hermite
 from pykat.SIfloat import SIfloat
+#import scipy.special
+from pykat.optics.gaussian_beams import HG2LG
+from pykat.math.jacobi import jacobi
+from pykat.math.laguerre import laguerre
 
 
 def finesse_split_photodiode(maxtem, xy='x'):
@@ -70,3 +74,60 @@ def HG_split_diode_coefficient_numerical(n1,n2):
     c_n1n2= quad(f, 0.0, np.Inf, epsabs=1e-10, epsrel=1e-10, limit=200)
     return A*c_n1n2[0]
     
+
+def LG_bullseye_coefficients_numerical(l1,p1, l2, p2, w, r):
+    """
+    w = beam radisu [m]
+    r = radius of inner element
+    """
+    if (l1 != l2):
+        return 0.0
+        
+    l = np.abs(l1)
+    # computer pre-factor of integral
+    A = math.sqrt(factorial(p1)*factorial(p2)/(factorial(l+p1)*factorial(l+p2)))
+
+    # definng integrand
+    f = lambda x: x**l * laguerre(p1,l,x) * laguerre(p2,l,x) * math.exp(-x)
+    # defining integration limit
+    int_limit = 2.0 * r**2 / w**2
+    # perform numerical integrations
+    val1, res= quad(f, 0.0, int_limit, epsabs=1e-10, epsrel=1e-10, limit=500)
+    val2, res= quad(f, int_limit, np.Inf, epsabs=1e-10, epsrel=1e-10, limit=500)
+    return A*(val2-val1)
+
+def HG_bullseye_coefficients_numerical(n1, m1, n2, m2, w, r):
+    mparity=np.mod(m1+m2,2)
+    nparity=np.mod(n1+n2,2)
+                
+    k = 0.0 + 0.0*1j
+    if (mparity==0 and nparity==0):            
+        a,p1,l1 = HG2LG(n1,m1)
+        b,p2,l2 = HG2LG(n2,m2)
+        for idx1, aa in enumerate(l1):
+            for idx2, bb in enumerate(l2):
+                if l1[idx1]==l2[idx2]:
+                    c = LG_bullseye_coefficients_numerical(l1[idx1],p1[idx1], l2[idx2], p2[idx2], w, r)
+                    k = k + a[idx1] * np.conj(b[idx2]) * c
+    return float(np.real(k))
+    
+def finesse_bullseye_photodiode(maxtem, w=1.0, r=0.5887050, name='bullseye'):
+    """Prints beat coefficients for HG modes on a split photo detector
+    in the format for insertion into the kat.ini file of Finesse.
+    Example use:
+    finesse_split_photodiode(5, 0.01, 0.03, name="bull1:3")
+    The default kat.ini numbers have been generated with:
+    ...
+    """
+    assert (isinstance(maxtem, int) and maxtem >=0), "maxtem must be integer >=0" 
+
+    print('PDTYPE {0}'.format(name))
+
+    for n1 in np.arange(0,maxtem+1):
+        for m1 in np.arange(0,maxtem+1):
+            for n2 in np.arange(n1,maxtem+1):
+                for m2 in np.arange(m1,maxtem+1):
+                    c = HG_bullseye_coefficients_numerical(n1,m1, n2, m2, w, r)
+                    if (np.abs(c)>10e-13 and not np.isnan(c)):
+                        print("{:2d} {:2d} {:2d} {:2d} {:.15g}".format(n1,m1,n2,m2, c))
+    print('END')

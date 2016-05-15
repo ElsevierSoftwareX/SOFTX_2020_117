@@ -10,7 +10,7 @@ import copy
 import warnings
 import cmath
 from math import factorial
-from scipy.special import hermite, eval_jacobi
+from scipy.special import hermite
 from pykat.math.jacobi import jacobi
 from pykat.SIfloat import SIfloat
 
@@ -271,9 +271,8 @@ class gauss_param(object):
 class beam_param(gauss_param):
     pass
 
-# Should be renamed to HG_mode?    
 class HG_mode(object):
-    """ Hermite-Gauss beam profile. Example usage:
+    """ Hermite-Gauss mode profile. Example usage:
     import pykat.optics.gaussian_beams as gb
     qx=gb.beam_param(w0=1e-3,z=0)
     beam=gb.HG_mode(qx,n=2,m=0)
@@ -441,7 +440,7 @@ def HG2LG(n,m):
 
         # Coefficient
         c = (signl*1j)**m * np.sqrt(factorial(N-m)*factorial(m)/(2**N * factorial(np.abs(l)+p)*factorial(p)))
-        c = c * (-1.0)**p * (-2.0)**m * eval_jacobi(m,np.abs(l)+p-m,p-m,0.0)
+        c = c * (-1.0)**p * (-2.0)**m * jacobi(m,np.abs(l)+p-m,p-m,0.0)
 
         coefficients[j] = c
         
