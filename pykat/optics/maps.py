@@ -43,7 +43,7 @@ class MirrorROQWeights:
 class surfacemap(object):
     
     def __init__(self, name, maptype, size=None, center=None, step_size=1.0, scaling=1.0e-9, data=None,
-                 notNan=None, RcRemoved=None, zOffset=None, xyOffset=(.0,.0)):
+                 notNan=None, zOffset=None, xyOffset=(.0,.0)):
         '''
         size, center, step_size, xyOffset are all tuples of the form (x, y),
         i.e., (col, row).
@@ -70,7 +70,7 @@ class surfacemap(object):
         self.center = center
         self.step_size = step_size
         self.scaling = scaling
-        self.RcRemoved = RcRemoved
+        self._RcRemoved = None
         # Offset of fitted sphere. Proably unnecessary to have here.
         self.zOffset = zOffset
         self.__interp = None
@@ -1794,8 +1794,8 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9, mapType='phase', fie
             step = tuple(map(g, f.readline().split(':')[1].strip().split()))
             scaling = float(f.readline().split(':')[1].strip())
         
-        data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
-
+        data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')
+         
         return surfacemap(name, maptype, size, center, step, scaling, data)
         
     elif mapFormat.lower() == 'ligo' or mapFormat.lower() == 'zygo':
