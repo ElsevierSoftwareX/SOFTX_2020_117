@@ -642,13 +642,19 @@ class Signals(object):
     @property
     def f(self): return self.__f
     @f.setter
-    def f(self,value): self.__f.value = SIfloat(value)
+    def f(self,value):
+        v = SIfloat(value)
+        
+        if v <= 0:
+            raise pkex.BasePyKatException("Signal frequency must be greater than 0.")
+            
+        self.__f.value = SIfloat(value)
     
     def __init__(self, kat):
         self._default_name = "fsignal"
         self.targets = []
         self._params = []
-        self.__f = Param("f", self, 0)
+        self.__f = Param("f", self, None)
         self._kat = kat
         
     def _register_param(self, param):
@@ -667,21 +673,22 @@ class Signals(object):
     def getFinesseText(self):
         rtn = []
         
-        if len(self.targets) == 0 and (self.f != 0 and self.f is not None):
-            rtn.append("fsig {name} {frequency}"
-                            .format(name = self.name,
-                                    frequency=str(self.f)))
-        else:
-            for t in self.targets:
-                rtn.extend(t.getFinesseText())
+        if self.f.value is not None and self.f is not None:
+            if len(self.targets) == 0:
+                rtn.append("fsig {name} {frequency}"
+                                .format(name = self.name,
+                                        frequency=str(self.f.value)))
+            else:
+                for t in self.targets:
+                    rtn.extend(t.getFinesseText())
             
-                rtn.append("fsig {name} {comp} {target} {frequency} {phase} {amplitude}"
-                                .format(name = t.name,
-                                        comp=t.owner,
-                                        target=t.target,
-                                        frequency=str(self.f),
-                                        phase=str(t.phase),
-                                        amplitude=str(t.amplitude if t.amplitude != None else "")))
+                    rtn.append("fsig {name} {comp} {target} {frequency} {phase} {amplitude}"
+                                    .format(name = t.name,
+                                            comp=t.owner,
+                                            target=t.target,
+                                            frequency=str(self.f.value),
+                                            phase=str(t.phase),
+                                            amplitude=str(t.amplitude if t.amplitude != None else "")))
 
         for p in self._params:
             rtn.extend(p.getFinesseText())
