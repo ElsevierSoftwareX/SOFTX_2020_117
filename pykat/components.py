@@ -901,7 +901,7 @@ class grating(Component):
         return self._svgItem
 
 class isolator(Component):
-    def __init__(self, name, node1, node2, S = 0, node3="dump", option=0):
+    def __init__(self, name, node1, node2, S = 0, node3="dump", option = 0, L = 0):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -911,11 +911,18 @@ class isolator(Component):
         self._option = option
         
         self.__S = Param("S",self,SIfloat(S))
+        self.__L = Param("L",self,SIfloat(L))
+
         
     @property
     def S(self): return self.__S
     @S.setter
     def S(self, value): self.__S.value = SIfloat(value)
+
+    @property
+    def L(self): return self.__L
+    @L.setter
+    def L(self, value): self.__L.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -934,7 +941,15 @@ class isolator(Component):
         if len(values) == 4:
             return isolator(values[0], values[2], values[3], values[1], option=option)
         elif len(values) == 5:
-            return isolator(values[0], values[2], values[3], node3=values[4], S=values[1], option=option)
+            # Checking if loss is specified
+            if values[2].isnumeric():
+                return isolator(values[0], values[3], values[4], values[1],
+                                L=values[2], option=option)
+            else:
+                return isolator(values[0], values[2], values[3], node3=values[4],
+                                S=values[1], option=option)
+        elif len(values) == 6:
+             return isolator(values[0], values[3], values[4], values[1], values[5], option, values[2])
         else:
             raise pkex.BasePyKatException("Isolator Finesse code format incorrect '{0}'".format(text))
         
@@ -944,11 +959,12 @@ class isolator(Component):
         elif self._option == 1:
             cmd = "isol*"
             
-        rtn = ['{cmd} {0} {1} {2} {3} {4}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, cmd=cmd)]
+        rtn = ['{cmd} {0} {1} {2} {3} {4} {5}'.format(self.name, self.S.value, self.L.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, cmd=cmd)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
-            
+
+        print(rtn)
         return rtn
     
     def getOptivisComponent(self):
