@@ -902,6 +902,20 @@ class grating(Component):
 
 class isolator(Component):
     def __init__(self, name, node1, node2, S = 0, node3="dump", option = 0, L = 0):
+        """
+        Creates an isolator component. Ligth passes from node 1 to node 2, and from node
+        2 to node 3. 
+
+        S         Suppression factor for the reversed direction [power dB].
+        L         Loss, fraction of input power loss. Number between 0 and 1.
+        option    0: Light passes from node1 to node2, and from node2 to node3. Light
+                     is suppressed when going from node3 to node2, and from node2 to
+                     node1.
+                  1: Light passes from node2 to node1, and from node3 to node2. Light
+                     is suppressed when going from node1 to node2, and from node2 to
+                     node3. 
+        """
+        
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -941,10 +955,11 @@ class isolator(Component):
         if len(values) == 4:
             return isolator(values[0], values[2], values[3], values[1], option=option)
         elif len(values) == 5:
-            # Checking if loss is specified
+            # Checking if loss is specified, should be a number.
             if values[2].isnumeric():
                 return isolator(values[0], values[3], values[4], values[1],
                                 L=values[2], option=option)
+            # .. if not a number, it's a node name.
             else:
                 return isolator(values[0], values[2], values[3], node3=values[4],
                                 S=values[1], option=option)
@@ -964,7 +979,6 @@ class isolator(Component):
         for p in self._params:
             rtn.extend(p.getFinesseText())
 
-        print(rtn)
         return rtn
     
     def getOptivisComponent(self):
