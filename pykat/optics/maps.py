@@ -19,6 +19,8 @@ from scipy.optimize import minimize
 from pykat.math.zernike import *        
 from pykat.exceptions import BasePyKatException
 from copy import deepcopy
+import matplotlib
+import matplotlib.pyplot as plt
 
 import numpy as np
 import math
@@ -43,7 +45,7 @@ class MirrorROQWeights:
 class surfacemap(object):
     
     def __init__(self, name, maptype, size=None, center=None, step_size=1.0, scaling=1.0e-9, data=None,
-                 notNan=None, RcRemoved=None, zOffset=None, xyOffset=(.0,.0)):
+                 notNan=None, zOffset=None, xyOffset=(.0,.0)):
         '''
         size, center, step_size, xyOffset are all tuples of the form (x, y),
         i.e., (col, row).
@@ -70,7 +72,7 @@ class surfacemap(object):
         self.center = center
         self.step_size = step_size
         self.scaling = scaling
-        self.RcRemoved = RcRemoved
+        self._RcRemoved = None
         # Offset of fitted sphere. Proably unnecessary to have here.
         self.zOffset = zOffset
         self.__interp = None
@@ -119,15 +121,15 @@ class surfacemap(object):
         
         # Checking so new suggested "center" is within the the mirror surface
         if (x0new>0 and x0new<self.size[0]-1 and y0new>0 and y0new<self.size[1]-1 and
-            self.notNan[round(x0new),round(y0new)]):
+            self.notNan[round(y0new), round(x0new)]):
             
             self.center = (x0new, y0new)
             self._xyOffset = (offset[0], offset[1])
         
         else:
-            print(('Error in xyOffset: ({:.2e}, {:.2e}) m --> pos = ({:.2f}, {:.2f}) '+
+            raise BasePyKatException( ('Error in xyOffset: ({:.2e}, {:.2e}) m --> pos = ({:.2f}, {:.2f}) '+
                   'is outside mirror surface.').format(offset[0],offset[1],x0new,y0new))
-            
+                    
     @property
     def betaRemoved(self):
         return self._betaRemoved
@@ -409,7 +411,6 @@ class surfacemap(object):
 
     # xlim and ylim given in centimeters
     def plot(self, show=True, clabel=None, xlim=None, ylim=None, isBlock=False):
-        import pylab
         
         if xlim is not None:
             # Sorts out the x-values within xlim
@@ -448,22 +449,22 @@ class surfacemap(object):
         yRange = 100*self.y
         # xRange, yRange = np.meshgrid(xRange,yRange)
         
-        fig = pylab.figure()
+        fig = plt.figure()
 
         # Important to remember here is that xRange corresponds to column and
         # yRange to row indices of the matrix self.data.
-        pcm = pylab.pcolormesh(xRange, yRange, self.data)
+        pcm = plt.pcolormesh(xRange, yRange, self.data)
         pcm.set_rasterized(True)
         
-        pylab.xlabel('x [cm]')
-        pylab.ylabel('y [cm]')
+        plt.xlabel('x [cm]')
+        plt.ylabel('y [cm]')
 
-        if xlim is not None: pylab.xlim(xlim)
-        if ylim is not None: pylab.ylim(ylim)
+        if xlim is not None: plt.xlim(xlim)
+        if ylim is not None: plt.ylim(ylim)
 
-        pylab.title('Surface map {0}, type {1}'.format(self.name, self.type))
+        plt.title('Surface map {0}, type {1}'.format(self.name, self.type))
         
-        cbar = pylab.colorbar()
+        cbar = plt.colorbar()
         cbar.set_clim(zmin, zmax)
         # cbar.set_clim(-1.86, 1.04)
         
@@ -471,7 +472,7 @@ class surfacemap(object):
             cbar.set_label(clabel)
     
         if show:
-            pylab.show(block=isBlock)
+            plt.show(block=isBlock)
         
         return fig
 
@@ -580,7 +581,7 @@ class surfacemap(object):
         # x and y step sizes are different.
         elif method=='area' or method=='Area' or method=='AREA':
             if unit == 'meters' or unit == 'metres' or unit=='Meters' or unit=='Metres':
-                r = step_size[0]*math.sqrt(len(cIndx)/math.pi)
+                r = self.step_size[0]*math.sqrt(len(cIndx)/math.pi)
             else:
                 r = math.sqrt(len(cIndx)/math.pi)
         elif method=='min':
@@ -1794,8 +1795,8 @@ def read_map(filename, mapFormat='finesse', scaling=1.0e-9, mapType='phase', fie
             step = tuple(map(g, f.readline().split(':')[1].strip().split()))
             scaling = float(f.readline().split(':')[1].strip())
         
-        data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')    
-
+        data = np.loadtxt(filename, dtype=np.float64,ndmin=2,comments='%')
+         
         return surfacemap(name, maptype, size, center, step, scaling, data)
         
     elif mapFormat.lower() == 'ligo' or mapFormat.lower() == 'zygo':

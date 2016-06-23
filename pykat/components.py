@@ -901,7 +901,21 @@ class grating(Component):
         return self._svgItem
 
 class isolator(Component):
-    def __init__(self, name, node1, node2, S = 0, node3="dump", option=0):
+    def __init__(self, name, node1, node2, S = 0, node3="dump", option = 0, L = 0):
+        """
+        Creates an isolator component. Ligth passes from node 1 to node 2, and from node
+        2 to node 3. 
+
+        S         Suppression factor for the reversed direction [power dB].
+        L         Loss, fraction of input power loss. Number between 0 and 1.
+        option    0: Light passes from node1 to node2, and from node2 to node3. Light
+                     is suppressed when going from node3 to node2, and from node2 to
+                     node1.
+                  1: Light passes from node2 to node1, and from node3 to node2. Light
+                     is suppressed when going from node1 to node2, and from node2 to
+                     node3. 
+        """
+        
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -911,11 +925,18 @@ class isolator(Component):
         self._option = option
         
         self.__S = Param("S",self,SIfloat(S))
+        self.__L = Param("L",self,SIfloat(L))
+
         
     @property
     def S(self): return self.__S
     @S.setter
     def S(self, value): self.__S.value = SIfloat(value)
+
+    @property
+    def L(self): return self.__L
+    @L.setter
+    def L(self, value): self.__L.value = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(text):
@@ -934,7 +955,16 @@ class isolator(Component):
         if len(values) == 4:
             return isolator(values[0], values[2], values[3], values[1], option=option)
         elif len(values) == 5:
-            return isolator(values[0], values[2], values[3], node3=values[4], S=values[1], option=option)
+            # Checking if loss is specified, should be a number.
+            if values[2].isnumeric():
+                return isolator(values[0], values[3], values[4], values[1],
+                                L=values[2], option=option)
+            # .. if not a number, it's a node name.
+            else:
+                return isolator(values[0], values[2], values[3], node3=values[4],
+                                S=values[1], option=option)
+        elif len(values) == 6:
+             return isolator(values[0], values[3], values[4], values[1], values[5], option, values[2])
         else:
             raise pkex.BasePyKatException("Isolator Finesse code format incorrect '{0}'".format(text))
         
@@ -944,11 +974,11 @@ class isolator(Component):
         elif self._option == 1:
             cmd = "isol*"
             
-        rtn = ['{cmd} {0} {1} {2} {3} {4}'.format(self.name, self.S.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, cmd=cmd)]
+        rtn = ['{cmd} {0} {1} {2} {3} {4} {5}'.format(self.name, self.S.value, self.L.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, cmd=cmd)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
-            
+
         return rtn
     
     def getOptivisComponent(self):
@@ -987,35 +1017,58 @@ class isolator(Component):
         return self._svgItem
 
 class lens(Component):
-    def __init__(self, name, node1, node2, f=1):
+    def __init__(self, name, node1, node2, f=1, p=None):
         Component.__init__(self, name)
+        
+        if not ((f is None) ^ (p is None)):
+            raise pkex.BasePyKatException("Specify either a focal length or power, not both.")
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._svgItem = None
         self.__f = Param("f", self, SIfloat(f))
+        self.__p = Param("p", self, SIfloat(p))
         
     @property
     def f(self): return self.__f
+            
     @f.setter
-    def f(self, value): self.__f.value = SIfloat(value)
+    def f(self, value):
+        self.__f.value = SIfloat(value)
+        self.__p.value = None
+    
+    @property
+    def p(self): return self.__p
+            
+    @p.setter
+    def p(self, value):
+        self.__p.value = SIfloat(value)
+        self.__f.value = None
     
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
 
-        if values[0] != "lens":
+        if not values[0].startswith("lens"):
             raise pkex.BasePyKatException("'{0}' not a valid Finesse lens command".format(text))
 
+        alt = values[0].endswith("*")
+        
         values.pop(0) # remove initial value
         
         if len(values) == 4:
-            return lens(values[0], values[2], values[3], values[1])
+            if not alt:
+                return lens(values[0], values[2], values[3], f=values[1], p=None)
+            else:
+                return lens(values[0], values[2], values[3], f=None, p=values[1])
         else:
             raise pkex.BasePyKatException("Lens Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
+        if self.__p.value is None:
+            rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
+        else:
+            rtn = ['lens* {0} {1} {2} {3}'.format(self.name, self.p.value, self.nodes[0].name, self.nodes[1].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
