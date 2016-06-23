@@ -1003,35 +1003,58 @@ class isolator(Component):
         return self._svgItem
 
 class lens(Component):
-    def __init__(self, name, node1, node2, f=1):
+    def __init__(self, name, node1, node2, f=1, p=None):
         Component.__init__(self, name)
+        
+        if not ((f is None) ^ (p is None)):
+            raise pkex.BasePyKatException("Specify either a focal length or power, not both.")
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._svgItem = None
         self.__f = Param("f", self, SIfloat(f))
+        self.__p = Param("p", self, SIfloat(p))
         
     @property
     def f(self): return self.__f
+            
     @f.setter
-    def f(self, value): self.__f.value = SIfloat(value)
+    def f(self, value):
+        self.__f.value = SIfloat(value)
+        self.__p.value = None
+    
+    @property
+    def p(self): return self.__p
+            
+    @p.setter
+    def p(self, value):
+        self.__p.value = SIfloat(value)
+        self.__f.value = None
     
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
 
-        if values[0] != "lens":
+        if not values[0].startswith("lens"):
             raise pkex.BasePyKatException("'{0}' not a valid Finesse lens command".format(text))
 
+        alt = values[0].endswith("*")
+        
         values.pop(0) # remove initial value
         
         if len(values) == 4:
-            return lens(values[0], values[2], values[3], values[1])
+            if not alt:
+                return lens(values[0], values[2], values[3], f=values[1], p=None)
+            else:
+                return lens(values[0], values[2], values[3], f=None, p=values[1])
         else:
             raise pkex.BasePyKatException("Lens Finesse code format incorrect '{0}'".format(text))
         
     def getFinesseText(self):
-        rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
+        if self.__p.value is None:
+            rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
+        else:
+            rtn = ['lens* {0} {1} {2} {3}'.format(self.name, self.p.value, self.nodes[0].name, self.nodes[1].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
