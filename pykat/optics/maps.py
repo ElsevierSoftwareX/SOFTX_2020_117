@@ -19,8 +19,6 @@ from scipy.optimize import minimize
 from pykat.math.zernike import *        
 from pykat.exceptions import BasePyKatException
 from copy import deepcopy
-import matplotlib
-import matplotlib.pyplot as plt
 
 import numpy as np
 import math
@@ -411,6 +409,9 @@ class surfacemap(object):
 
     # xlim and ylim given in centimeters
     def plot(self, show=True, clabel=None, xlim=None, ylim=None, isBlock=False):
+
+        import matplotlib
+        import matplotlib.pyplot as plt
         
         if xlim is not None:
             # Sorts out the x-values within xlim
