@@ -19,8 +19,6 @@ from scipy.optimize import minimize
 from pykat.math.zernike import *        
 from pykat.exceptions import BasePyKatException
 from copy import deepcopy
-import matplotlib
-import matplotlib.pyplot as plt
 
 import numpy as np
 import math
@@ -411,6 +409,9 @@ class surfacemap(object):
 
     # xlim and ylim given in centimeters
     def plot(self, show=True, clabel=None, xlim=None, ylim=None, isBlock=False):
+
+        import matplotlib
+        import matplotlib.pyplot as plt
         
         if xlim is not None:
             # Sorts out the x-values within xlim
@@ -1603,7 +1604,8 @@ class mergedmap:
 
     def plot(self, mode="absorption", show=True, clabel=None, xlim=None, ylim=None, wavelength=1064e-9, isBlock=False):
         
-        import pylab
+        import matplotlib
+        import matplotlib.pyplot as plt
         
         if xlim is not None:
             _x = np.logical_and(self.x<=max(xlim)/100.0, self.x>=min(xlim)/100.0)
@@ -1638,15 +1640,15 @@ class mergedmap:
         xrange = 100*self.x
         yrange = 100*self.y
 
-        fig = pylab.figure()
-        axes = pylab.pcolormesh(xrange, yrange, data, vmin=zmin, vmax=zmax)
-        pylab.xlabel('x [cm]')
-        pylab.ylabel('y [cm]')
+        fig = plt.figure()
+        axes = plt.pcolormesh(xrange, yrange, data, vmin=zmin, vmax=zmax)
+        plt.xlabel('x [cm]')
+        plt.ylabel('y [cm]')
 
-        if xlim is not None: pylab.xlim(xlim)
-        if ylim is not None: pylab.ylim(ylim)
+        if xlim is not None: plt.xlim(xlim)
+        if ylim is not None: plt.ylim(ylim)
 
-        pylab.title('Merged map {0}, mode {1}'.format(self.name, mode))
+        plt.title('Merged map {0}, mode {1}'.format(self.name, mode))
 
         cbar = fig.colorbar(axes)
         cbar.set_clim(zmin, zmax)
@@ -1655,7 +1657,7 @@ class mergedmap:
             cbar.set_label(clabel)
     
         if show:
-            pylab.show(block=isBlock)
+            plt.show(block=isBlock)
         
         return fig
 
