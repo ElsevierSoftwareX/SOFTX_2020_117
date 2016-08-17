@@ -120,6 +120,9 @@ class BaseDetector(object) :
             if rn != None:
                 self._nodes.append(kat.nodes.createNode(rn))
     
+    def _on_kat_remove(self):
+        self.__removed = True
+        
     def remove(self):
         if self.__removed:
             raise pkex.BasePyKatException("{0} has already been marked as removed".format(self.name))

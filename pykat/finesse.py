@@ -997,8 +997,8 @@ class kat(object):
                 sys.exit(1)
             else:
                 return
-                
-        for o in self.__blocks[name].contents:
+        
+        for o in self.__blocks[name].contents.copy():
             self.remove(o)
         
         del self.__blocks[name]
@@ -1810,6 +1810,9 @@ class kat(object):
     
             del nodes
         
+            if hasattr(obj, "_on_kat_remove"):
+                obj._on_kat_remove()
+            
             #import gc
             #print (gc.get_referrers(obj))
             

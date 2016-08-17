@@ -53,12 +53,25 @@ class Command(object):
         for _ in self._putters_to_register:
             kat.registerVariable(_.name, _)
 
-    def remove(self):
-        self._kat.remove(self)
+    def _on_kat_remove(self):
         self.__removed = True
         
-        for _ in self._putters_to_register:
-            kat.unregisterVariable(_.name)
+        for i in range(len(self._putters_to_register)):
+            _ = self._putters_to_register[i]
+            
+            self._kat.unregisterVariable(_.name)
+            _.clearPuts()
+            
+            del self._putters_to_register[i]
+            
+        del self._putters_to_register[:]
+        
+        
+    def remove(self):
+        if self.__removed:
+            raise pkex.BasePyKatException("{0} has already been marked as removed".format(self.name))
+        else:
+            self._kat.remove(self)
     
     @property
     def name(self): return self.__name

@@ -162,7 +162,17 @@ class Component(object):
         self._kat = kat
         
         kat.nodes.registerComponentNodes(self, self._requested_node_names, self.__on_node_change)
+     
+    def _on_kat_remove(self):
+        # inform all parameters that we have removed its owner
+        # so that it can then warn about any puts/vars/xaxis
+        for p in self._params:
+            p._onOwnerRemoved()
         
+        del self._params[:]
+
+        self.__removed = True
+          
     def __on_node_change(self):
         # need to update the node gauss parameter setter members 
         self.__update_node_setters()
@@ -237,16 +247,10 @@ class Component(object):
     def __str__(self): return self.name
     
     def remove(self):
-        self._kat.remove(self)
-        
-        # inform all parameters that we have removed its owner
-        # so that it can then warn about any puts/vars/xaxis
-        for p in self._params:
-            p._onOwnerRemoved()
-        
-        del self._params[:]
-
-        self.__removed = True
+        if self.__removed:
+            raise pkex.BasePyKatException("{0} has already been marked as removed".format(self.name))
+        else:
+            self._kat.remove(self)
     
     def getOptivisParameterDict(self):
         if len(self._params) == 0:

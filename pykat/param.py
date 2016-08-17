@@ -27,29 +27,30 @@ class putable(object):
     @property
     def isPutable(self): return self._isPutable
     
-    def put(self, var, alt):
-        if not isinstance(var, putter):
+    def put(self, var, alt=False):
+        if var is not None and not isinstance(var, putter):
             raise pkex.BasePyKatException("`%s` was not something that can be `put` to a parameter" % str(var))
         
-        if self._putter is not None:
-            self._putter.put_count -= 1
-            self._putter.putees.remove(self)
-        
-        self._putter = var
-        self._alt = alt
+        # Remove existing puts
+        if self._putter is not None: self._putter().unregister(self)
         
         if var is not None:
-            self._putter.put_count += 1
-            self._putter.putees.append(self)
+            self._putter = weakref.ref(var)
+        else:
+            self._putter = None
+            
+        self._alt = alt
+        
+        if var is not None: self._putter().register(self)
         
     def _getPutFinesseText(self):
         rtn = []
         
-        if self._putter is not None:
+        if self._putter is not None and self._putter() is not None:
             putter_enabled = True
             
-            if hasattr(self._putter.owner, 'enabled'):
-                putter_enabled = self._putter.owner.enabled
+            if hasattr(self._putter().owner, 'enabled'):
+                putter_enabled = self._putter().owner.enabled
                                 
             if putter_enabled:
                 if self._alt:
@@ -58,7 +59,7 @@ class putable(object):
                     alt = ''
     
                 # if something is being put to this 
-                rtn.append("put{alt} {comp} {param} ${value}".format(alt=alt, comp=self._component_name, param=self._parameter_name, value=self._putter.put_name()))
+                rtn.append("put{alt} {comp} {param} ${value}".format(alt=alt, comp=self._component_name, param=self._parameter_name, value=self._putter().put_name()))
         
         return rtn
             
@@ -73,11 +74,23 @@ class putter(object):
         self.put_count = 0
         self._isPutter = isPutter
         self.putees = [] # list of params that this puts to
-        self.__owner = owner
+        self.__owner = weakref.ref(owner)
         assert(owner is not None)
     
+    def clearPuts(self):
+        for _ in self.putees:
+            _.put(None)
+    
+    def register(self, toput):
+        self.put_count += 1
+        self.putees.append(toput)
+    
+    def unregister(self, item):
+        self.put_count -= 1
+        self.putees.remove(item)
+        
     @property
-    def owner(self): return self.__owner
+    def owner(self): return self.__owner()
     
     @property
     def name(self): return self._put_name
@@ -114,7 +127,7 @@ class Param(putable, putter):
             if var_name is None:
                 var_name = "var_{0}_{1}".format(owner.name, name)
                 
-        putter.__init__(self, var_name, isPutter)
+        putter.__init__(self, var_name, owner, isPutter)
             
         putable.__init__(self, owner.name, name, isPutable)
 
