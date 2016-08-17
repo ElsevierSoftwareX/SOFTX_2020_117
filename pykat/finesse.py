@@ -745,6 +745,7 @@ class kat(object):
         self.vacuum = []
         self.__prevrunfilename = None
         self.printmatrix = None
+        self.__variables = {}
         
         # initialise default block
         self.__currentTag= NO_BLOCK
@@ -1005,6 +1006,31 @@ class kat(object):
     def __str__(self):
          return "".join(self.generateKatScript())
          
+    def getVariable(self, name):
+        if name not in self.__variables:
+            raise pkex.BasePyKatException("Finesse variable `$%s` does not exist." % name)
+            
+        return self.__variables[name]
+    
+    def registerVariable(self, name, putter):
+        if '$' in name:
+            raise pkex.BasePyKatException("Finesse variable name `%s` should not include the `$` symbol as it is added internally." % name)
+            
+        assert(putter is not None)
+        assert(name == putter.name)
+        
+        if name in self.__variables:
+            raise pkex.BasePyKatException("Finesse variable name `%s` already exists." % name)
+            
+        self.__variables[name] = putter
+        
+    def unregisterVariable(self, name):
+        del self.__variables[name]
+    
+    def printVariables(self):
+        for key in self.__variables:
+            print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
+    
     def parseCommands(self, commands, blocks=None, addToBlock=None):
         try:
             if addToBlock is not None and blocks is not None:
@@ -1182,6 +1208,8 @@ class kat(object):
                         after_process.append((line, self.__currentTag))
                     elif(first == "noplot"):
                         after_process.append((line, self.__currentTag))
+                    elif(first == "put" or first == "put*"):
+                        after_process.append((line, self.__currentTag))
                     else:
                         if self.verbose:
                             print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
@@ -1231,7 +1259,30 @@ class kat(object):
                         raise pkex.BasePyKatException("noplot command `{0}` refers to non-existing detector".format(line))
                         
                     getattr(self, rest).noplot = True
+                
+                elif (first == "put" or first =="put*"):
+                    alt = first == "put*"
                     
+                    values = line.split()
+                    obj = values[1]
+                    target = values[2]
+                    variable = values[3]
+                    
+                    if not hasattr(self, obj):
+                        raise pkex.BasePyKatException("put command `{0}` refers to non-existing component".format(line))
+                    
+                    obj = getattr(self, obj)
+                    
+                    if not hasattr(obj, target):
+                        raise pkex.BasePyKatException("put command component `{0}` does not have a parameter `{1}`".format(line, target))
+                        
+                    target = getattr(obj, target)
+                    
+                    if not target.isPutable:
+                        raise pkex.BasePyKatException("put command `{0}` parameter `{1}` cannot be put to".format(line, target))
+                        
+                    target.put(self.getVariable(variable.replace('$', '')), alt)
+                 
                 elif (first == "scale"):
                     v = line.split()
                     accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "deg", "rad", "1/deg", "1/rad",]
@@ -1641,14 +1692,14 @@ class kat(object):
             #if len(self.detectors.keys()) > 0: 
             
             if hasattr(self, "x2axis") and self.noxaxis == False:
-                [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
+                [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
             
                 r.xlabel = hdr[0]
                 r.ylabel = hdr[1]
                 r.zlabels = [s.strip() for s in hdr[2:]]
                 #r.zlabels = map(str.strip, hdr[2:])
             else:
-                [r.x,r.y,hdr] = self.readOutFile(outfile)
+                [r.x, r.y, hdr] = self.readOutFile(outfile)
                 
                 r.xlabel = hdr[0]
                 r.ylabels = [s.strip() for s in hdr[1:]]

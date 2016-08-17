@@ -34,6 +34,7 @@ class Command(object):
         self.tag = None
         self.__removed = False
         self.__name = name.strip("*")
+        self._putters_to_register = []
         
     def getFinesseText(self):
         """ Base class for individual finesse optical components """
@@ -48,10 +49,16 @@ class Command(object):
         Called when this component has been added to a kat object
         """
         self._kat = kat
+        
+        for _ in self._putters_to_register:
+            kat.registerVariable(_.name, _)
 
     def remove(self):
         self._kat.remove(self)
         self.__removed = True
+        
+        for _ in self._putters_to_register:
+            kat.unregisterVariable(_.name)
     
     @property
     def name(self): return self.__name
@@ -95,14 +102,19 @@ class func(Command):
         
         self.value = value
         self.noplot = False
+        self.enabled = True
+        
+        self.output = putter(name, self)
+        self._putters_to_register.append(self.output)
         
     def getFinesseText(self):
         rtn = []
 
-        if self.noplot:
-            rtn.append("noplot " + self.name)
+        if self.enabled:
+            if self.noplot:
+                rtn.append("noplot " + self.name)
         
-        rtn.append("func {name} = {value}".format(name=self.name, value=str(self.value)))
+            rtn.append("func {name} = {value}".format(name=self.name, value=str(self.value)))
 
         return rtn
 
@@ -118,10 +130,7 @@ class func(Command):
             return func(v2[0].split()[1], v2[1]) 
         else:
             raise pkex.BasePyKatException("'{0}' not a valid Finesse func command".format(line))
-        
-        
-        
-
+            
 
 class lock(Command):
     def __init__(self, name, variable, gain, accuracy, singleLock=False):
@@ -132,6 +141,10 @@ class lock(Command):
         self.__accuracy = accuracy
         self.singleLock = singleLock
         self.enabled = True
+        
+        
+        self.output = putter(name, self)
+        self._putters_to_register.append(self.output)
 
 
     @staticmethod
@@ -354,9 +367,12 @@ class xaxis(Command):
         
         self._axis_type = axis_type
 
-        self.x = putter("x1")
-        self.mx = putter("mx1")
+        self.x = putter("x1", self)
+        self.mx = putter("mx1", self)
 
+        self._putters_to_register.append(self.x)
+        self._putters_to_register.append(self.mx)
+        
         if scale == "lin":
             scale = Scale.linear
         elif scale == "log":
@@ -433,8 +449,11 @@ class xaxis(Command):
 class x2axis(xaxis):
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="x2axis"):
         xaxis.__init__(self, scale, limits, param, steps, comp=comp, axis_type=axis_type)
-        self.x = putter("x2")
-        self.mx = putter("mx2")
+        self.x = putter("x2", self)
+        self.mx = putter("mx2", self)
+
+        self._putters_to_register.append(self.x)
+        self._putters_to_register.append(self.mx)
 
     @staticmethod
     def parseFinesseText(text):
