@@ -84,7 +84,7 @@ class NodeGaussSetter(object):
     def qy(self, value):
         self.__node().setGauss(self.__comp(), self.qx, complex(value))
         
-id___ = 0
+id_____pykat_class = 0
   
 class Component(object):
     __metaclass__ = abc.ABCMeta
@@ -93,9 +93,9 @@ class Component(object):
         # This creates an instance specific class for the component
         # this enables us to add properties to instances rather than
         # all classes
-        global id___
-        id___ += 1
-        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id___))
+        global id_____pykat_class
+        id_____pykat_class += 1
+        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id_____pykat_class))
         
         cnew = type(cnew_name, (cls,), {})
         
@@ -129,6 +129,9 @@ class Component(object):
         # of this one, otherwise we're making a copy of a copy of a copy...
         result = self.__class__.__new__(self.__class__.__base__)
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
+        
+        for _ in result._params:
+            _._updateOwner(result)
         
         return result
         

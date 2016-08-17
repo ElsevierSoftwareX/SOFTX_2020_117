@@ -28,29 +28,31 @@ class putable(object):
     def isPutable(self): return self._isPutable
     
     def put(self, var, alt=False):
+        if not self._isPutable:
+            raise pkex.BasePyKatException("Can't put to this object")
+            
         if var is not None and not isinstance(var, putter):
             raise pkex.BasePyKatException("`%s` was not something that can be `put` to a parameter" % str(var))
         
         # Remove existing puts
-        if self._putter is not None: self._putter().unregister(self)
+        if self._putter is not None:
+            self._putter.unregister(self)
         
-        if var is not None:
-            self._putter = weakref.ref(var)
-        else:
-            self._putter = None
+        self._putter = var
             
         self._alt = alt
         
-        if var is not None: self._putter().register(self)
+        if var is not None:
+            self._putter.register(self)
         
     def _getPutFinesseText(self):
         rtn = []
-        
-        if self._putter is not None and self._putter() is not None:
+
+        if self._isPutable and self._putter is not None:
             putter_enabled = True
-            
-            if hasattr(self._putter().owner, 'enabled'):
-                putter_enabled = self._putter().owner.enabled
+                
+            if hasattr(self._putter.owner, 'enabled'):
+                putter_enabled = self._putter.owner.enabled
                                 
             if putter_enabled:
                 if self._alt:
@@ -59,10 +61,11 @@ class putable(object):
                     alt = ''
     
                 # if something is being put to this 
-                rtn.append("put{alt} {comp} {param} ${value}".format(alt=alt, comp=self._component_name, param=self._parameter_name, value=self._putter().put_name()))
+                rtn.append("put{alt} {comp} {param} ${value}".format(alt=alt, comp=self._component_name, param=self._parameter_name, value=self._putter.put_name()))
         
         return rtn
-            
+        
+        
 class putter(object):
     """
     If an object can be put to something that is putable it should inherit this
@@ -74,18 +77,29 @@ class putter(object):
         self.put_count = 0
         self._isPutter = isPutter
         self.putees = [] # list of params that this puts to
-        self.__owner = weakref.ref(owner)
+        
         assert(owner is not None)
+        self.__owner = weakref.ref(owner)
     
+    def _updateOwner(self, newOwner):
+        del self.__owner
+        self.__owner = weakref.ref(newOwner)
+        
     def clearPuts(self):
         for _ in self.putees:
             _.put(None)
     
     def register(self, toput):
+        if not self._isPutter:
+            raise pkex.BasePyKatException("This object can't put")
+            
         self.put_count += 1
         self.putees.append(toput)
     
     def unregister(self, item):
+        if not self._isPutter:
+            raise pkex.BasePyKatException("This object can't put")
+            
         self.put_count -= 1
         self.putees.remove(item)
         
@@ -106,21 +120,24 @@ class putter(object):
         
 class Param(putable, putter):
 
-    def __init__(self, name, owner, value, canFsig=False, fsig_name=None, isPutable=True, isPutter=True, isTunable=True, var_name=None):
+    def __init__(self, name, owner, value, canFsig=False, fsig_name=None, isPutable=True, isPutter=True, isTunable=True, var_name=None, register=True):
         self._name = name
+        self._registered = register
         self._owner = weakref.ref(owner)
         self._value = value
         self._isPutter = isPutter
         self._isTunable = isTunable
-        self._owner()._register_param(self)
         self._canFsig = False
+        
+        if self._registered:
+            self._owner()._register_param(self)
         
         if canFsig:
             self._canFsig = True
-
+            
             if fsig_name is None:
                 raise pkex.BasePyKatException("If parameter is a possible fsig target the fsig_name argument must be set")
-
+                
             self.__fsig_name = fsig_name
         
         if isPutter:
@@ -130,15 +147,6 @@ class Param(putable, putter):
         putter.__init__(self, var_name, owner, isPutter)
             
         putable.__init__(self, owner.name, name, isPutable)
-
-    def _updateOwner(self, newOwner):
-        """
-        This updates the internal weak reference to link a parameter to who owns it.
-        Should only be called by the __deepcopy__ component method to ensure things
-        are kept up to date.
-        """
-        del self._owner
-        self._owner = weakref.ref(newOwner)
         
     @property
     def canFsig(self): return self._canFsig
@@ -200,7 +208,16 @@ class Param(putable, putter):
             rtn.append("set {put_name} {comp} {param}".format(put_name=self.put_name(), comp=self._owner().name, param=self.name))
         
         return rtn
-    
+        
+    def _updateOwner(self, newOwner):
+        """
+        This updates the internal weak reference to link a parameter to who owns it.
+        Should only be called by the __deepcopy__ component method to ensure things
+        are kept up to date.
+        """
+        del self._owner
+        self._owner = weakref.ref(newOwner)
+        
     def _onOwnerRemoved(self):
         #if this param can be put somewhere we need to check if it is
         if self.isPutable:

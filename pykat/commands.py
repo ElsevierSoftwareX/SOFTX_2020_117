@@ -34,8 +34,23 @@ class Command(object):
         self.tag = None
         self.__removed = False
         self.__name = name.strip("*")
-        self._putters_to_register = []
+        self._putters = []
+    
+    def __deepcopy__(self, memo):
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties.
+        """
+
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
+        for _ in result._putters:
+            _._updateOwner(result)
+        
+        return result
+            
     def getFinesseText(self):
         """ Base class for individual finesse optical components """
         raise NotImplementedError("This function is not implemented")
@@ -50,21 +65,21 @@ class Command(object):
         """
         self._kat = kat
         
-        for _ in self._putters_to_register:
+        for _ in self._putters:
             kat.registerVariable(_.name, _)
 
     def _on_kat_remove(self):
         self.__removed = True
         
-        for i in range(len(self._putters_to_register)):
-            _ = self._putters_to_register[i]
+        for i in range(len(self._putters)):
+            _ = self._putters[i]
             
             self._kat.unregisterVariable(_.name)
             _.clearPuts()
             
-            del self._putters_to_register[i]
+            del self._putters[i]
             
-        del self._putters_to_register[:]
+        del self._putters[:]
         
         
     def remove(self):
@@ -118,7 +133,7 @@ class func(Command):
         self.enabled = True
         
         self.output = putter(name, self)
-        self._putters_to_register.append(self.output)
+        self._putters.append(self.output)
         
     def getFinesseText(self):
         rtn = []
@@ -157,7 +172,7 @@ class lock(Command):
         
         
         self.output = putter(name, self)
-        self._putters_to_register.append(self.output)
+        self._putters.append(self.output)
 
 
     @staticmethod
@@ -383,8 +398,8 @@ class xaxis(Command):
         self.x = putter("x1", self)
         self.mx = putter("mx1", self)
 
-        self._putters_to_register.append(self.x)
-        self._putters_to_register.append(self.mx)
+        self._putters.append(self.x)
+        self._putters.append(self.mx)
         
         if scale == "lin":
             scale = Scale.linear
@@ -465,8 +480,8 @@ class x2axis(xaxis):
         self.x = putter("x2", self)
         self.mx = putter("mx2", self)
 
-        self._putters_to_register.append(self.x)
-        self._putters_to_register.append(self.mx)
+        self._putters.append(self.x)
+        self._putters.append(self.mx)
 
     @staticmethod
     def parseFinesseText(text):
