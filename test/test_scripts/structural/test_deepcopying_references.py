@@ -25,6 +25,9 @@ assert(kat0.nodes.n0 != kat1.nodes.n0)
 assert(kat0.o1 != kat1.o1)
 assert(kat0.o1.__class__ != kat1.o1.__class__)
 
+assert(kat0.m1.phi.owner == kat0.m1)
+assert(kat1.m1.phi.owner == kat1.m1)
+
 # use is to compare if two params are the same object as equals is override to compare the value
 assert(kat0.o1.f1 is not kat1.o1.f1)
 assert(kat0.o1.f1 == kat1.o1.f1)
