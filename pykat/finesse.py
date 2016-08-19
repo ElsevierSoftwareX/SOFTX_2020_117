@@ -1268,20 +1268,31 @@ class kat(object):
                     target = values[2]
                     variable = values[3]
                     
-                    if not hasattr(self, obj):
-                        raise pkex.BasePyKatException("put command `{0}` refers to non-existing component".format(line))
+                    try:
+                        if not hasattr(self, obj):
+                            raise pkex.BasePyKatException("put command `{0}` refers to non-existing component".format(line))
                     
-                    obj = getattr(self, obj)
+                        obj = getattr(self, obj)
                     
-                    if not hasattr(obj, target):
-                        raise pkex.BasePyKatException("put command component `{0}` does not have a parameter `{1}`".format(line, target))
+                        if not hasattr(obj, target):
+                            raise pkex.BasePyKatException("put command component `{0}` does not have a parameter `{1}`".format(line, target))
                         
-                    target = getattr(obj, target)
+                        target = getattr(obj, target)
                     
-                    if not target.isPutable:
-                        raise pkex.BasePyKatException("put command `{0}` parameter `{1}` cannot be put to".format(line, target))
+                        if not target.isPutable:
+                            raise pkex.BasePyKatException("put command `{0}` parameter `{1}` cannot be put to".format(line, target))
                         
-                    target.put(self.getVariable(variable.replace('$', '')), alt)
+                        target.put(self.getVariable(variable.replace('$', '')), alt)
+                        
+                    except pkex.BasePyKatException as ex:
+                        if self.verbose:
+                            print("Warning: ", ex.msg)
+                            print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
+                    
+                        obj = line
+                        # manually add the line to the block contents
+                        self.__blocks[block].contents.append(line)
+                        
                  
                 elif (first == "scale"):
                     v = line.split()
@@ -1419,7 +1430,7 @@ class kat(object):
         
 
         except pkex.BasePyKatException as ex:
-            pkex.PrintError("Error parsing line: '%s':"%  line, ex)
+            pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
             sys.exit(1)
             
     def saveScript(self, filename=None):
