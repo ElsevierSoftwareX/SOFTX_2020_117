@@ -76,8 +76,9 @@ class Command(object):
             
             self._kat.unregisterVariable(_.name)
             _.clearPuts()
-            
-            del self._putters[i]
+        
+        for i in range(len(self._putters)):  
+            del self._putters[0]
             
         del self._putters[:]
         
