@@ -504,8 +504,8 @@ class mirror(AbstractMirrorComponent):
                 return mirror(values[0], values[4], values[5], T=None, R=values[1], L=values[2], phi=values[3])
 
     def getFinesseText(self):
-        if self.R+self.T+self.L > 1:
-            raise pkex.BasePyKatException("Mirror {0} has R+T+L > 1".format(self.name))        
+        if self.R+self.T+self.L != 1:
+            raise pkex.BasePyKatException("Mirror {0} has R+T+L != 1".format(self.name))        
         
         rtn = []
             
@@ -639,8 +639,8 @@ class beamSplitter(AbstractMirrorComponent):
                                 values[1], None, values[2], values[3], values[4])
         
     def getFinesseText(self):
-        if self.R+self.T+self.L > 1:
-            raise pkex.BasePyKatException("Beamsplitter {0} has R+T+L > 1".format(self.name))
+        if self.R+self.T+self.L != 1:
+            raise pkex.BasePyKatException("Beamsplitter {0} has R+T+L != 1".format(self.name))
 
         rtn = []
             
