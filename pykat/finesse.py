@@ -321,6 +321,9 @@ class katRun(object):
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
 
+        if self.noxaxis == True:
+            raise  pkex.BasePyKatException("This kat object has noxaxis=True, so there is nothing to plot.")
+            
         if not show:
             pyplot.ioff()
 
@@ -1662,12 +1665,11 @@ class kat(object):
                                     a = line.split(':', 1)
                         
                                     if a[0].isdigit():
-                                        #print("Found %s" % a[0])
-                                
                                         values = a[1].split()
-                                
+                                        
                                         node_name = values[1].split("(")[0]
-                                
+                                        component_name = values[2].split("(")[0]
+                                        
                                         line1x = ifile.readline().replace('(','').replace(')','')
                                         line2x = ifile.readline().replace('(','').replace(')','')
                                         line1y = ifile.readline().replace('(','').replace(')','')
@@ -1679,7 +1681,7 @@ class kat(object):
                                         qx = spqx[0].split("=")[1].replace('i','j').replace(' ','') 
                                         qy = spqy[0].split("=")[1].replace('i','j').replace(' ','') 
                                         
-                                        traceData[-1][node_name] = (pykat.beam_param(q=complex(qx)), pykat.beam_param(q=complex(qy)))
+                                        traceData[-1][node_name] = (pykat.beam_param(q=complex(qx)), pykat.beam_param(q=complex(qy)), component_name)
                             
                         finally:
                             ifile.close()
