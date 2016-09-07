@@ -320,9 +320,6 @@ class katRun(object):
         """
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
-
-        if self.noxaxis == True:
-            raise  pkex.BasePyKatException("This kat object has noxaxis=True, so there is nothing to plot.")
             
         if not show:
             pyplot.ioff()
@@ -330,6 +327,9 @@ class katRun(object):
         kat = pykat.finesse.kat()
         kat.verbose = False
         kat.parseCommands(self.katScript)
+
+        if kat.noxaxis == True:
+            raise  pkex.BasePyKatException("This kat object has noxaxis=True, so there is nothing to plot.")
 
         if yaxis is not None:
             kat.yaxis = yaxis

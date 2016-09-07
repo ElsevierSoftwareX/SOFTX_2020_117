@@ -468,7 +468,7 @@ class gouy(Detector1):
 
 
 class bp(Detector1):
-    acceptedParameters = ['w', 'w0', 'z', 'zr', 'g', 'r', 'q']
+    acceptedParameters = ['w', 'w0', 'z', 'zr', 'g', 'r', 'q', 'Rc']
     
     def __init__(self, name, direction, parameter, node, alternate_beam=False):
         BaseDetector.__init__(self, name, node)
