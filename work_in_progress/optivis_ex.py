@@ -22,6 +22,7 @@ attr m1 Rc -500
 attr m2 Rc 500
 cav c1 m1 n4b m2 n7a
 
+pd P n5b
 maxtem 0
 noxaxis
 """)

@@ -320,13 +320,16 @@ class katRun(object):
         """
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
-
+            
         if not show:
             pyplot.ioff()
 
         kat = pykat.finesse.kat()
         kat.verbose = False
         kat.parseCommands(self.katScript)
+
+        if kat.noxaxis == True:
+            raise  pkex.BasePyKatException("This kat object has noxaxis=True, so there is nothing to plot.")
 
         if yaxis is not None:
             kat.yaxis = yaxis
@@ -745,6 +748,7 @@ class kat(object):
         self.vacuum = []
         self.__prevrunfilename = None
         self.printmatrix = None
+        self.__variables = {}
         
         # initialise default block
         self.__currentTag= NO_BLOCK
@@ -996,8 +1000,8 @@ class kat(object):
                 sys.exit(1)
             else:
                 return
-                
-        for o in self.__blocks[name].contents:
+        
+        for o in self.__blocks[name].contents.copy():
             self.remove(o)
         
         del self.__blocks[name]
@@ -1005,6 +1009,31 @@ class kat(object):
     def __str__(self):
          return "".join(self.generateKatScript())
          
+    def getVariable(self, name):
+        if name not in self.__variables:
+            raise pkex.BasePyKatException("Finesse variable `$%s` does not exist." % name)
+            
+        return self.__variables[name]
+    
+    def registerVariable(self, name, putter):
+        if '$' in name:
+            raise pkex.BasePyKatException("Finesse variable name `%s` should not include the `$` symbol as it is added internally." % name)
+            
+        assert(putter is not None)
+        assert(name == putter.name)
+        
+        if name in self.__variables:
+            raise pkex.BasePyKatException("Finesse variable name `%s` already exists." % name)
+            
+        self.__variables[name] = putter
+        
+    def unregisterVariable(self, name):
+        del self.__variables[name]
+    
+    def printVariables(self):
+        for key in self.__variables:
+            print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
+    
     def parseCommands(self, commands, blocks=None, addToBlock=None):
         try:
             if addToBlock is not None and blocks is not None:
@@ -1077,7 +1106,7 @@ class kat(object):
                         obj = pykat.components.space.parseFinesseText(line)
                     elif(first == "l"):
                         obj = pykat.components.laser.parseFinesseText(line)
-                    elif(first == "sq"):
+                    elif(first[:2] == "sq"):
                         obj = pykat.components.squeezer.parseFinesseText(line)
                     elif(first[0:2] == "bs"):
                         obj = pykat.components.beamSplitter.parseFinesseText(line)
@@ -1182,6 +1211,8 @@ class kat(object):
                         after_process.append((line, self.__currentTag))
                     elif(first == "noplot"):
                         after_process.append((line, self.__currentTag))
+                    elif(first == "put" or first == "put*"):
+                        after_process.append((line, self.__currentTag))
                     else:
                         if self.verbose:
                             print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
@@ -1231,7 +1262,41 @@ class kat(object):
                         raise pkex.BasePyKatException("noplot command `{0}` refers to non-existing detector".format(line))
                         
                     getattr(self, rest).noplot = True
+                
+                elif (first == "put" or first =="put*"):
+                    alt = first == "put*"
                     
+                    values = line.split()
+                    obj = values[1]
+                    target = values[2]
+                    variable = values[3]
+                    
+                    try:
+                        if not hasattr(self, obj):
+                            raise pkex.BasePyKatException("put command `{0}` refers to non-existing component".format(line))
+                    
+                        obj = getattr(self, obj)
+                    
+                        if not hasattr(obj, target):
+                            raise pkex.BasePyKatException("put command component `{0}` does not have a parameter `{1}`".format(line, target))
+                        
+                        target = getattr(obj, target)
+                    
+                        if not target.isPutable:
+                            raise pkex.BasePyKatException("put command `{0}` parameter `{1}` cannot be put to".format(line, target))
+                        
+                        target.put(self.getVariable(variable.replace('$', '')), alt)
+                        
+                    except pkex.BasePyKatException as ex:
+                        if self.verbose:
+                            print("Warning: ", ex.msg)
+                            print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
+                    
+                        obj = line
+                        # manually add the line to the block contents
+                        self.__blocks[block].contents.append(line)
+                        
+                 
                 elif (first == "scale"):
                     v = line.split()
                     accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "deg", "rad", "1/deg", "1/rad",]
@@ -1368,7 +1433,7 @@ class kat(object):
         
 
         except pkex.BasePyKatException as ex:
-            pkex.PrintError("Error parsing line: '%s':"%  line, ex)
+            pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
             sys.exit(1)
             
     def saveScript(self, filename=None):
@@ -1600,12 +1665,11 @@ class kat(object):
                                     a = line.split(':', 1)
                         
                                     if a[0].isdigit():
-                                        #print("Found %s" % a[0])
-                                
                                         values = a[1].split()
-                                
+                                        
                                         node_name = values[1].split("(")[0]
-                                
+                                        component_name = values[2].split("(")[0]
+                                        
                                         line1x = ifile.readline().replace('(','').replace(')','')
                                         line2x = ifile.readline().replace('(','').replace(')','')
                                         line1y = ifile.readline().replace('(','').replace(')','')
@@ -1617,7 +1681,9 @@ class kat(object):
                                         qx = spqx[0].split("=")[1].replace('i','j').replace(' ','') 
                                         qy = spqy[0].split("=")[1].replace('i','j').replace(' ','') 
                                         
-                                        traceData[-1][node_name] = (pykat.beam_param(q=complex(qx)), pykat.beam_param(q=complex(qy)))
+                                        traceData[-1][node_name] = (pykat.beam_param(q=complex(qx), wavelength=self.lambda0),
+                                                                    pykat.beam_param(q=complex(qy), wavelength=self.lambda0),
+                                                                    component_name)
                             
                         finally:
                             ifile.close()
@@ -1641,14 +1707,14 @@ class kat(object):
             #if len(self.detectors.keys()) > 0: 
             
             if hasattr(self, "x2axis") and self.noxaxis == False:
-                [r.x,r.y,r.z,hdr] = self.readOutFile(outfile)
+                [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
             
                 r.xlabel = hdr[0]
                 r.ylabel = hdr[1]
                 r.zlabels = [s.strip() for s in hdr[2:]]
                 #r.zlabels = map(str.strip, hdr[2:])
             else:
-                [r.x,r.y,hdr] = self.readOutFile(outfile)
+                [r.x, r.y, hdr] = self.readOutFile(outfile)
                 
                 r.xlabel = hdr[0]
                 r.ylabels = [s.strip() for s in hdr[1:]]
@@ -1759,6 +1825,9 @@ class kat(object):
     
             del nodes
         
+            if hasattr(obj, "_on_kat_remove"):
+                obj._on_kat_remove()
+            
             #import gc
             #print (gc.get_referrers(obj))
             

@@ -34,7 +34,23 @@ class Command(object):
         self.tag = None
         self.__removed = False
         self.__name = name.strip("*")
+        self._putters = []
+    
+    def __deepcopy__(self, memo):
+        """
+        When deep copying a kat object we need to take into account
+        the instance specific properties.
+        """
+
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
+        for _ in result._putters:
+            _._updateOwner(result)
+        
+        return result
+            
     def getFinesseText(self):
         """ Base class for individual finesse optical components """
         raise NotImplementedError("This function is not implemented")
@@ -48,10 +64,30 @@ class Command(object):
         Called when this component has been added to a kat object
         """
         self._kat = kat
+        
+        for _ in self._putters:
+            kat.registerVariable(_.name, _)
 
-    def remove(self):
-        self._kat.remove(self)
+    def _on_kat_remove(self):
         self.__removed = True
+        
+        for i in range(len(self._putters)):
+            _ = self._putters[i]
+            
+            self._kat.unregisterVariable(_.name)
+            _.clearPuts()
+        
+        for i in range(len(self._putters)):  
+            del self._putters[0]
+            
+        del self._putters[:]
+        
+        
+    def remove(self):
+        if self.__removed:
+            raise pkex.BasePyKatException("{0} has already been marked as removed".format(self.name))
+        else:
+            self._kat.remove(self)
     
     @property
     def name(self): return self.__name
@@ -95,14 +131,19 @@ class func(Command):
         
         self.value = value
         self.noplot = False
+        self.enabled = True
+        
+        self.output = putter(name, self)
+        self._putters.append(self.output)
         
     def getFinesseText(self):
         rtn = []
 
-        if self.noplot:
-            rtn.append("noplot " + self.name)
+        if self.enabled:
+            if self.noplot:
+                rtn.append("noplot " + self.name)
         
-        rtn.append("func {name} = {value}".format(name=self.name, value=str(self.value)))
+            rtn.append("func {name} = {value}".format(name=self.name, value=str(self.value)))
 
         return rtn
 
@@ -118,10 +159,7 @@ class func(Command):
             return func(v2[0].split()[1], v2[1]) 
         else:
             raise pkex.BasePyKatException("'{0}' not a valid Finesse func command".format(line))
-        
-        
-        
-
+            
 
 class lock(Command):
     def __init__(self, name, variable, gain, accuracy, singleLock=False):
@@ -132,6 +170,10 @@ class lock(Command):
         self.__accuracy = accuracy
         self.singleLock = singleLock
         self.enabled = True
+        
+        
+        self.output = putter(name, self)
+        self._putters.append(self.output)
 
 
     @staticmethod
@@ -278,7 +320,78 @@ class gauss(object):
             kat.nodes[node].setGauss(kat.components[component], gp)
         else:
             kat.nodes[node].setGauss(kat.components[component], gpx, gpy)
-            
+ 
+# class tf(Command):
+#
+#     class fQ(object):
+#         def __init__(self, f, Q, tf):
+#             assert(tf is not None)
+#             self._tf = tf
+#             self.__f = Param("f", self, None, canFsig=False, isPutable=True, isPutter=False, isTunable=True)
+#             self.__Q = Param("Q", self, None, canFsig=False, isPutable=True, isPutter=False, isTunable=True)
+#
+#         def _register_param(self, param):
+#             self._tf._params.append(param)
+#
+#         @property
+#         def f(self): return self.__f
+#         @f.setter
+#         def f(self,value): self.__f.value = SIfloat(value)
+#
+#         @property
+#         def Q(self): return self.__Q
+#         @Q.setter
+#         def Q(self,value): self.__Q.value = SIfloat(value)
+#
+#     def __init__(self, name):
+#         Command.__init__(self, name, False)
+#         self.zeros = []
+#         self.poles = []
+#         self.gain = 1
+#         self.phase = 0
+#         self._params = []
+#
+#     def addPole(self,f, Q):
+#         self.poles.append(tf.fQ(SIfloat(f), SIfloat(Q), self))
+#
+#     def addZero(self,f, Q):
+#         self.zeros.append(tf.fQ(SIfloat(f), SIfloat(Q), self))
+#
+#     @staticmethod
+#     def parseFinesseText(text):
+#         values = text.split()
+#
+#         if ((len(values)-4) % 3) != 0:
+#             raise pkex.BasePyKatException("Transfer function Finesse code format incorrect '{0}'".format(text))
+#
+#         _tf = tf(values[1])
+#
+#         _tf.gain = SIfloat(values[2])
+#         _tf.phase = SIfloat(values[3])
+#
+#         N = int((len(values)-4) / 3)
+#
+#         for i in range(1,N+1):
+#             if values[i*3+1] == 'p':
+#                 _tf.addPole(SIfloat(values[i*3+2]), SIfloat(values[i*3+3]))
+#             elif values[i*3+1] == 'z':
+#                 _tf.addZero(SIfloat(values[i*3+2]), SIfloat(values[i*3+3]))
+#             else:
+#                 raise pkex.BasePyKatException("Transfer function pole/zero Finesse code format incorrect '{0}'".format(text))
+#
+#         return _tf
+#
+#     def getFinesseText(self):
+#         rtn = "tf {name} {gain} {phase} ".format(name=self.name,gain=self.gain,phase=self.phase)
+#
+#         for p in self.poles:
+#             rtn += "p {f} {Q} ".format(f=p.f, Q=p.Q)
+#
+#         for z in self.zeros:
+#             rtn += "p {f} {Q} ".format(f=z.f, Q=z.Q)
+#
+#         return rtn
+                   
 class tf(Command):
     
     class fQ(object):
@@ -298,7 +411,7 @@ class tf(Command):
     
     def addZero(self,f, Q):
         self.zeros.append(tf.fQ(SIfloat(f), SIfloat(Q)))
-        
+    
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
@@ -354,9 +467,12 @@ class xaxis(Command):
         
         self._axis_type = axis_type
 
-        self.x = putter("x1")
-        self.mx = putter("mx1")
+        self.x = putter("x1", self)
+        self.mx = putter("mx1", self)
 
+        self._putters.append(self.x)
+        self._putters.append(self.mx)
+        
         if scale == "lin":
             scale = Scale.linear
         elif scale == "log":
@@ -433,8 +549,11 @@ class xaxis(Command):
 class x2axis(xaxis):
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="x2axis"):
         xaxis.__init__(self, scale, limits, param, steps, comp=comp, axis_type=axis_type)
-        self.x = putter("x2")
-        self.mx = putter("mx2")
+        self.x = putter("x2", self)
+        self.mx = putter("mx2", self)
+
+        self._putters.append(self.x)
+        self._putters.append(self.mx)
 
     @staticmethod
     def parseFinesseText(text):

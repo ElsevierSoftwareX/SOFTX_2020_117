@@ -31,7 +31,7 @@ if USE_GUI:
     import pykat.gui.resources
     from pykat.gui.graphics import *
 
-id___ = 0
+id_____pykat_class = 0
 
 class BaseDetector(object) :
     """
@@ -45,9 +45,9 @@ class BaseDetector(object) :
         # This creates an instance specific class for the component
         # this enables us to add properties to instances rather than
         # all classes
-        global id___
-        id___ += 1
-        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id___))
+        global id_____pykat_class
+        id_____pykat_class += 1
+        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id_____pykat_class))
         
         cnew = type(cnew_name, (cls,), {})
         
@@ -120,6 +120,9 @@ class BaseDetector(object) :
             if rn != None:
                 self._nodes.append(kat.nodes.createNode(rn))
     
+    def _on_kat_remove(self):
+        self.__removed = True
+        
     def remove(self):
         if self.__removed:
             raise pkex.BasePyKatException("{0} has already been marked as removed".format(self.name))
@@ -465,7 +468,7 @@ class gouy(Detector1):
 
 
 class bp(Detector1):
-    acceptedParameters = ['w', 'w0', 'z', 'zr', 'g', 'r', 'q']
+    acceptedParameters = ['w', 'w0', 'z', 'zr', 'g', 'r', 'q', 'Rc']
     
     def __init__(self, name, direction, parameter, node, alternate_beam=False):
         BaseDetector.__init__(self, name, node)

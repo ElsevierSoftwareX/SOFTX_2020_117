@@ -84,7 +84,7 @@ class NodeGaussSetter(object):
     def qy(self, value):
         self.__node().setGauss(self.__comp(), self.qx, complex(value))
         
-id___ = 0
+id_____pykat_class = 0
   
 class Component(object):
     __metaclass__ = abc.ABCMeta
@@ -93,9 +93,9 @@ class Component(object):
         # This creates an instance specific class for the component
         # this enables us to add properties to instances rather than
         # all classes
-        global id___
-        id___ += 1
-        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id___))
+        global id_____pykat_class
+        id_____pykat_class += 1
+        cnew_name = str("%s.%s_%i" % (cls.__module__, cls.__name__, id_____pykat_class))
         
         cnew = type(cnew_name, (cls,), {})
         
@@ -130,6 +130,9 @@ class Component(object):
         result = self.__class__.__new__(self.__class__.__base__)
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
+        for _ in result._params:
+            _._updateOwner(result)
+        
         return result
         
     def _register_param(self, param):
@@ -162,7 +165,17 @@ class Component(object):
         self._kat = kat
         
         kat.nodes.registerComponentNodes(self, self._requested_node_names, self.__on_node_change)
+     
+    def _on_kat_remove(self):
+        # inform all parameters that we have removed its owner
+        # so that it can then warn about any puts/vars/xaxis
+        for p in self._params:
+            p._onOwnerRemoved()
         
+        del self._params[:]
+
+        self.__removed = True
+          
     def __on_node_change(self):
         # need to update the node gauss parameter setter members 
         self.__update_node_setters()
@@ -237,16 +250,10 @@ class Component(object):
     def __str__(self): return self.name
     
     def remove(self):
-        self._kat.remove(self)
-        
-        # inform all parameters that we have removed its owner
-        # so that it can then warn about any puts/vars/xaxis
-        for p in self._params:
-            p._onOwnerRemoved()
-        
-        del self._params[:]
-
-        self.__removed = True
+        if self.__removed:
+            raise pkex.BasePyKatException("{0} has already been marked as removed".format(self.name))
+        else:
+            self._kat.remove(self)
     
     def getOptivisParameterDict(self):
         if len(self._params) == 0:
@@ -497,8 +504,8 @@ class mirror(AbstractMirrorComponent):
                 return mirror(values[0], values[4], values[5], T=None, R=values[1], L=values[2], phi=values[3])
 
     def getFinesseText(self):
-        if self.R+self.T+self.L > 1:
-            raise pkex.BasePyKatException("Mirror {0} has R+T+L > 1".format(self.name))        
+        if abs(self.R + self.T + self.L - 1) > 1e-14:
+            raise pkex.BasePyKatException("Mirror {0} has R+T+L = {1}, must equal 1 +- 1e-14".format(self.name, self.R+self.T+self.L))
         
         rtn = []
             
@@ -632,8 +639,8 @@ class beamSplitter(AbstractMirrorComponent):
                                 values[1], None, values[2], values[3], values[4])
         
     def getFinesseText(self):
-        if self.R+self.T+self.L > 1:
-            raise pkex.BasePyKatException("Beamsplitter {0} has R+T+L > 1".format(self.name))
+        if abs(self.R + self.T + self.L - 1) > 1e-14:
+            raise pkex.BasePyKatException("Beamsplitter {0} has R+T+L = {1}, must equal 1 +- 1e-14".format(self.name, self.R+self.T+self.L))
 
         rtn = []
             
@@ -1320,7 +1327,7 @@ class laser(Component):
         return self._svgItem
 
 class squeezer(Component):
-    def __init__(self, name, node, f=0, db=0, angle=0, phase=0):
+    def __init__(self, name, node, f=0, db=0, angle=0, phase=0, entangled_carrier=False):
         Component.__init__(self,name)
         
         self._requested_node_names.append(node)
@@ -1330,6 +1337,7 @@ class squeezer(Component):
         self.__db = Param("db", self, SIfloat(db), canFsig=False, fsig_name="r")
         self.__angle = Param("angle", self, SIfloat(angle), canFsig=False, fsig_name="angle")
         self._svgItem = None
+        self.entangled_carrier = entangled_carrier
         
     @property
     def db(self): return self.__db
@@ -1357,19 +1365,26 @@ class squeezer(Component):
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
-
-        if values[0] != "sq":
+        
+        if values[0][:2] != "sq":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse squeezer command".format(text))
 
+        entangled_carrier = values[0].endswith("*")
+        
         values.pop(0) # remove initial value
         
         if len(values) == 5:
-            return squeezer(values[0], values[4], f=values[1], db=values[2], angle=values[3])
+            return squeezer(values[0], values[4], f=values[1],
+                            db=values[2], angle=values[3],
+                            entangled_carrier=entangled_carrier)
         else:
             raise exceptions.FinesseParse("Squeezer Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
-        rtn = ['sq {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
+        if self.entangled_carrier:
+            rtn = ['sq* {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
+        else:
+            rtn = ['sq {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
