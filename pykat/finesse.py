@@ -1106,7 +1106,7 @@ class kat(object):
                         obj = pykat.components.space.parseFinesseText(line)
                     elif(first == "l"):
                         obj = pykat.components.laser.parseFinesseText(line)
-                    elif(first == "sq"):
+                    elif(first[:2] == "sq"):
                         obj = pykat.components.squeezer.parseFinesseText(line)
                     elif(first[0:2] == "bs"):
                         obj = pykat.components.beamSplitter.parseFinesseText(line)
@@ -1681,7 +1681,9 @@ class kat(object):
                                         qx = spqx[0].split("=")[1].replace('i','j').replace(' ','') 
                                         qy = spqy[0].split("=")[1].replace('i','j').replace(' ','') 
                                         
-                                        traceData[-1][node_name] = (pykat.beam_param(q=complex(qx)), pykat.beam_param(q=complex(qy)), component_name)
+                                        traceData[-1][node_name] = (pykat.beam_param(q=complex(qx), wavelength=self.lambda0),
+                                                                    pykat.beam_param(q=complex(qy), wavelength=self.lambda0),
+                                                                    component_name)
                             
                         finally:
                             ifile.close()

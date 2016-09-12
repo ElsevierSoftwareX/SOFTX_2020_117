@@ -1327,7 +1327,7 @@ class laser(Component):
         return self._svgItem
 
 class squeezer(Component):
-    def __init__(self, name, node, f=0, db=0, angle=0, phase=0):
+    def __init__(self, name, node, f=0, db=0, angle=0, phase=0, entangled_carrier=False):
         Component.__init__(self,name)
         
         self._requested_node_names.append(node)
@@ -1337,6 +1337,7 @@ class squeezer(Component):
         self.__db = Param("db", self, SIfloat(db), canFsig=False, fsig_name="r")
         self.__angle = Param("angle", self, SIfloat(angle), canFsig=False, fsig_name="angle")
         self._svgItem = None
+        self.entangled_carrier = entangled_carrier
         
     @property
     def db(self): return self.__db
@@ -1364,19 +1365,26 @@ class squeezer(Component):
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
-
-        if values[0] != "sq":
+        
+        if values[0][:2] != "sq":
             raise pkex.BasePyKatException("'{0}' not a valid Finesse squeezer command".format(text))
 
+        entangled_carrier = values[0].endswith("*")
+        
         values.pop(0) # remove initial value
         
         if len(values) == 5:
-            return squeezer(values[0], values[4], f=values[1], db=values[2], angle=values[3])
+            return squeezer(values[0], values[4], f=values[1],
+                            db=values[2], angle=values[3],
+                            entangled_carrier=entangled_carrier)
         else:
             raise exceptions.FinesseParse("Squeezer Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
-        rtn = ['sq {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
+        if self.entangled_carrier:
+            rtn = ['sq* {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
+        else:
+            rtn = ['sq {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
