@@ -471,6 +471,7 @@ class katRun(object):
             if ylim is not None:
                 pyplot.ylim(ylim[0],ylim[1])
     
+        pyplot.margins(0, 0.05)
         pyplot.tight_layout()
     
         if legend:
@@ -1112,6 +1113,8 @@ class kat(object):
                         obj = pykat.components.beamSplitter.parseFinesseText(line)
                     elif(first[0:2] == "gr"):
                         obj = pykat.components.grating.parseFinesseText(line)
+                    elif(first[0:5] == "isol1"):
+                        obj = pykat.components.isolator1.parseFinesseText(line)
                     elif(first[0:4] == "isol"):
                         obj = pykat.components.isolator.parseFinesseText(line)
                     elif(first[0:4] == "lens"):

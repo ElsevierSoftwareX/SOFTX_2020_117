@@ -466,12 +466,8 @@ class xaxis(Command):
         Command.__init__(self, axis_type, True)
         
         self._axis_type = axis_type
-
-        self.x = putter("x1", self)
-        self.mx = putter("mx1", self)
-
-        self._putters.append(self.x)
-        self._putters.append(self.mx)
+        
+        self._set_variables()
         
         if scale == "lin":
             scale = Scale.linear
@@ -508,6 +504,13 @@ class xaxis(Command):
             self.__param = param
             self.__comp = param._owner()
 
+    def _set_variables(self):
+        self.x = putter("x1", self)
+        self.mx = putter("mx1", self)
+
+        self._putters.append(self.x)
+        self._putters.append(self.mx)
+        
     @property
     def param(self): return self.__param
     @param.setter
@@ -549,12 +552,14 @@ class xaxis(Command):
 class x2axis(xaxis):
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="x2axis"):
         xaxis.__init__(self, scale, limits, param, steps, comp=comp, axis_type=axis_type)
+
+    def _set_variables(self):
         self.x = putter("x2", self)
         self.mx = putter("mx2", self)
 
         self._putters.append(self.x)
         self._putters.append(self.mx)
-
+        
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
