@@ -1022,6 +1022,49 @@ class isolator(Component):
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/isolator.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1]), (14,24,self.nodes[2])])
         
         return self._svgItem
+        
+        
+        
+class isolator1(Component):
+    def __init__(self, name, node1, node2, node3, node4):
+        """
+        Creates a 4-port isolator component.
+        """
+        
+        Component.__init__(self, name)
+        
+        self._requested_node_names.append(node1)
+        self._requested_node_names.append(node2)
+        self._requested_node_names.append(node3)
+        self._requested_node_names.append(node4)
+        self._svgItem = None
+
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split()
+
+        if values[0] != "isol1":
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse isolator command".format(text))
+            
+        values.pop(0) # remove initial value
+        
+        if len(values) == 5:
+             return isolator1(values[0], values[1], values[2], values[3], values[4])
+        else:
+            raise pkex.BasePyKatException("Isolator1 Finesse code format incorrect '{0}'".format(text))
+        
+    def getFinesseText(self):
+        rtn = ['isol1 {0} {1} {2} {3} {4}'.format(self.name, self.nodes[0].name,
+                                              self.nodes[1].name, self.nodes[2].name,
+                                              self.nodes[3].name)]
+        
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+
+        return rtn
+        
+        
+        
 
 class lens(Component):
     def __init__(self, name, node1, node2, f=1, p=None):
