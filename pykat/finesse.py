@@ -924,7 +924,9 @@ class kat(object):
    `^-....____:   +.      {1}\n""".format(pykat.__version__, pykat_web))
     
     def loadKatFile(self, katfile, blocks=None):
-        commands=open(katfile).read()
+        with open(katfile) as f:
+            commands= f.read()
+            
         self.parseCommands(commands, blocks=blocks)
     
     def parseKatCode(self, code, blocks=None):
@@ -1444,11 +1446,10 @@ class kat(object):
         Saves the current kat object to a Finesse input file
         """
         try:
-            katScript = "".join(self.generateKatScript())       
-            katfile = open(filename,'w')
-            katfile.writelines(katScript)
-            katfile.flush()
-            katfile.close()
+            with open(filename,'w') as katfile:
+                katScript = "".join(self.generateKatScript())       
+                katfile.writelines(katScript)
+                katfile.flush()
 
         except pkex.BasePyKatException as ex:
             print (ex)
