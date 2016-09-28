@@ -86,7 +86,8 @@ class putter(object):
         self.__owner = weakref.ref(newOwner)
         
     def clearPuts(self):
-        for _ in self.putees.copy():
+        import copy
+        for _ in copy.copy(self.putees):
             _.put(None)
     
     def register(self, toput):

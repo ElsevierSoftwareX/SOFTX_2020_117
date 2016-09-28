@@ -1068,7 +1068,8 @@ class isolator1(Component):
 
         return rtn
         
-        
+    def getQGraphicsItem(self):
+        raise NotImplemented()    
         
 
 class lens(Component):
