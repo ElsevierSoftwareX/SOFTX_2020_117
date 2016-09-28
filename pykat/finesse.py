@@ -331,6 +331,8 @@ class katRun(object):
         if kat.noxaxis == True:
             raise  pkex.BasePyKatException("This kat object has noxaxis=True, so there is nothing to plot.")
 
+        original_yaxis = kat.yaxis
+
         if yaxis is not None:
             kat.yaxis = yaxis
 
@@ -367,7 +369,11 @@ class katRun(object):
             
             dual_plot = True
         elif "db:deg" in kat.yaxis:
-            _func1 = lambda x: 10*np.log10(x)
+            if "db" not in original_yaxis:
+                _func1 = lambda x: 10*np.log10(x)
+            else:
+                _func1 = lambda x: x
+                
             _func2 = lambda x: np.rad2deg(np.angle(x))
 
             plot_cmd1 = plot_cmd
@@ -379,7 +385,11 @@ class katRun(object):
             _func1 = np.real
             plot_cmd1 = plot_cmd
         elif "db" in kat.yaxis:
-            _func1 = lambda x: 10*np.log10(x)
+            if "db" not in original_yaxis:
+                _func1 = lambda x: 10*np.log10(x)
+            else:
+                _func1 = lambda x: x
+                
             plot_cmd1 = plot_cmd
         elif "deg" in kat.yaxis:
             _func1 = lambda x: np.rad2deg(np.angle(x))

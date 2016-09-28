@@ -334,7 +334,12 @@ class AbstractMirrorComponent(Component):
         self.__Fs1 = Param("s1", self, None, canFsig=True, isPutable=False, isPutter=False, isTunable=False, fsig_name="s1")
             
         self._default_fsig_param = self.__phi
-        
+    
+    def setRTL(self, R=None, T=None, L=None):
+        if R is not None: self.R.value = R
+        if T is not None: self.T.value = T
+        if L is not None: self.L.value = L
+    
     @property
     def z(self): return self.__z
     @property
