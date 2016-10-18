@@ -1290,7 +1290,7 @@ class laser(Component):
         self._requested_node_names.append(node)
         
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
-        self.__f_offset = Param("f", self, SIfloat(f), canFsig=True, fsig_name="freq")
+        self.__f_offset = Param("f", self, f, canFsig=True, fsig_name="freq")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__noise = AttrParam("noise", self, None)
         self._svgItem = None
@@ -1305,7 +1305,11 @@ class laser(Component):
     @property
     def f(self): return self.__f_offset
     @f.setter
-    def f(self,value): self.__f_offset.value = float(value)
+    def f(self,value):
+        try:
+            self.__f_offset.value = SIfloat(value)
+        except:
+            self.__f_offset.value = value
     
     @property
     def phase(self): return self.__phase
@@ -1381,7 +1385,9 @@ class squeezer(Component):
         
         self._requested_node_names.append(node)
         
-        self.__f = Param("f", self, SIfloat(f), canFsig=True, fsig_name="f")
+        self.__f = Param("f", self, 0, canFsig=True, fsig_name="f")
+        self.f = f
+        
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__db = Param("db", self, SIfloat(db), canFsig=False, fsig_name="r")
         self.__angle = Param("angle", self, SIfloat(angle), canFsig=False, fsig_name="angle")
@@ -1401,7 +1407,11 @@ class squeezer(Component):
     @property
     def f(self): return self.__f
     @f.setter
-    def f(self,value): self.__f.value = float(value)
+    def f(self,value):
+        try:
+            self.__f.value = SIfloat(value)
+        except:
+            self.__f.value = value
     
     @property
     def phase(self): return self.__phase
