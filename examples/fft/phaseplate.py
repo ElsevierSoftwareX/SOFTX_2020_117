@@ -15,26 +15,17 @@ def main():
     --------------------------------------------------------------
     Example file for using PyKat http://www.gwoptics.org/pykat
 
-    Simple spatial filter to measure the mode content in a
-    Hermite Gauss beam
+    Generate a HG11 mode from a HG00 mode with a simple
+    phase plate.
     
     Andreas Freise, 18.10.2016    
     --------------------------------------------------------------
     """)
     plt.close('all')
-
     # wavelength
     Lambda = 1064.0E-9 
     # distance to propagate/focal length of lens
-    D = 10
-    # mix coefficients
-    c1 = 0.7
-    c2 = 0.3
-    # mode indices 
-    n1 = 2
-    m1 = 3
-    n2 = 1
-    m2 = 0
+    D = 4
 
     ######## Generate Grid stucture required for FFT propagation ####
     xpoints = 512
@@ -46,69 +37,54 @@ def main():
     xoffset = -0.5*xsize/xpoints
     yoffset = -0.5*ysize/ypoints
 
-    global shape
     shape = grid(xpoints, ypoints, xsize, ysize, xoffset, yoffset)
     x = shape.xaxis
     y = shape.yaxis
 
-    ######## Generates a mixture of fields ################
+    ######## Generates input beam ################
     gx = beam_param(w0=2e-3, z=0)
     gy = beam_param(w0=2e-3, z=0)
-    beam = HG_mode(gx,gy,n1,m1)
-    field1 = beam.Unm(x,y) 
-    beam2 = HG_mode(gx,gy,n2,m2)
-    field2 = beam2.Unm(x,y) 
-    global field, laser1, laser2
-    field = np.sqrt(c1)*field1 + np.sqrt(c2)*field2
+    beam = HG_mode(gx,gy,0,0)
+    global field, laser
+    field = beam.Unm(x,y) 
  
     ####### Apply phase plate #######################################
 
-    laser1 = field*(np.conjugate(field1))
-    laser2 = field*(np.conjugate(field2))
+    plate = np.ones([xpoints, ypoints])
+    plate[0:xpoints//2, 0:ypoints//2]=-1.0
+    plate[xpoints//2:xpoints, ypoints//2:ypoints]=-1.0
+    
+    field2 = field*plate;
 
     ####### Propagates the field by FFT ##############################
-    laser1 = FFT_propagate(laser1,shape,Lambda,D,1) 
-    laser2 = FFT_propagate(laser2,shape,Lambda,D,1) 
+    field2 = FFT_propagate(field2,shape,Lambda,D,1) 
 
+
+    # maybe apply a thin lens
     f=D
-    #laser1 = apply_lens(laser1, shape, Lambda, f) 
-    #laser2 = apply_lens(laser2, shape, Lambda, f) 
-    laser1 = apply_thin_lens(laser1, shape, Lambda, f) 
-    laser2 = apply_thin_lens(laser2, shape, Lambda, f) 
-
-    laser1 = FFT_propagate(laser1,shape,Lambda,D,1) 
-    laser2 = FFT_propagate(laser2,shape,Lambda,D,1)
+    field2 = apply_thin_lens(field2, shape, Lambda, f) 
+    field2 = FFT_propagate(field2,shape,Lambda,D,1)
     
-    # midpoint computation for even number of points only!
     midx=(xpoints)//2
     midy=(ypoints)//2
-    coef1 = np.abs(laser1[midx,midy])  
-    coef2 = np.abs(laser2[midx,midy])
-
-    ratio = (coef1/coef2)**2
-    pc2 = 1/(1+ratio)
-    pc1 = pc2*ratio
-
-    print("c1 {0}, coef1 {1}, error {3} (raw output {2})".format(c1, pc1, coef1, np.abs(c1-pc1)))
-    print("c2 {0}, coef2 {1}, error {3} (raw output {2})".format(c2, pc2, coef2, np.abs(c2-pc2)))
+    off1=50
+    off2=50
 
     # plot hand tuned for certain ranges and sizes, not automtically scaled
     fig=plt.figure(110)
     fig.clear()
-    off1=xpoints/10
-    off2=xpoints/6
     plt.subplot(1, 3, 1)
     plt.imshow(abs(field))
     plt.xlim(midx-off1,midx+off1)
     plt.ylim(midy-off1,midy+off1)
     plt.draw()
     plt.subplot(1, 3, 2)
-    plt.imshow(abs(laser1))
-    plt.xlim(midx-off2,midx+off2)
-    plt.ylim(midy-off2,midy+off2)
+    plt.imshow(plate)
+    #pl.xlim(midx-off2,midx+off2)
+    #pl.ylim(midy-off2,midy+off2)
     plt.draw()
     plt.subplot(1, 3, 3)
-    plt.imshow(abs(laser2))
+    plt.imshow(abs(field2))
     plt.xlim(midx-off2,midx+off2)
     plt.ylim(midy-off2,midy+off2)
     plt.draw()
