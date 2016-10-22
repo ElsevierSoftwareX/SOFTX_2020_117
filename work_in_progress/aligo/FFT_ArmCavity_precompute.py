@@ -15,7 +15,7 @@ from pykat.components import *
 
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar, Timer
 from pykat.optics.maps import *
-from pykat.optics.gaussian_beams import HG_beam, beam_param
+from pykat.optics.gaussian_beams import HG_mode, beam_param
 from pykat.optics.fft import *
 #from pykat.tools.plotting.tools import plot_field, plot_propagation
 
@@ -95,7 +95,7 @@ def main():
 	# generate roughly mode-matched input beam
 	global laser
 	gx = beam_param(w0=w0, z=z0)
-	beam = HG_beam(gx,gx,0,0)
+	beam = HG_mode(gx,gx,0,0)
 	laser = beam.Unm(x,y) 
 
 	# some debugging plots
