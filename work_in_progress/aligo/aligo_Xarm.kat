@@ -1,0 +1,11 @@
+l laser 1 0 nin
+s s1 1n nin n1
+m1 itmX 0.014 0 0 n1 n2
+attr itmX Rc -1934
+s LX 3994.5 n2 n3
+m1 etmX 5u 0 0 n3 n4
+attr etmX Rc 2245
+cav cX itmX n2 etmX n3
+bp w0 x w0 n1
+bp z x z n1
+noxaxis
