@@ -1464,7 +1464,7 @@ class kat(object):
         except pkex.BasePyKatException as ex:
             print (ex)
 
-    def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False):
+    def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False, usePipe=True):
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a katRun or katRun2D object which is populated with the various
@@ -1480,6 +1480,9 @@ class kat(object):
         are the x and y beam parameters. If no tracing is done a None
         is returned.
         
+        usePipe           - Version of Finesse 2.1 allow piping between kat and pykat for transfer data an progress.
+                            Switching this off means some data and variables won't be populated, but it will work with
+                            older versions of Finesse.
         rethrowExceptions - if true exceptions will be thrown again rather than being excepted and calling sys.exit()
         """
         start = time.time()
@@ -1545,7 +1548,10 @@ class kat(object):
 
             pipe_name = katfile.name + str(uuid.uuid4())
             
-            cmd=[kat_exec, "--pykat=" + pipe_name]
+            if usePipe:
+                cmd=[kat_exec, "--pykat=" + pipe_name]
+            else:
+                cmd=[kat_exec, "--perl1"]
             
             if self.__time_code:
                 cmd.append('--perf-timing')
@@ -1586,41 +1592,43 @@ class kat(object):
             duration = 2 # Duration for searching for open pipe
             
             try:
-                while fifo is None:
-                    try:
-                    	if time.time() < _start_kat + duration:
-                    		time.sleep(0.1)
-                    		fifo = codecs.open(pipe_name, "r", "utf-8")
-                    		self.__looking = False
-                    	else:
-                    		raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0.".format(duration))
-                    except FileNotFoundError as ex:
-                    	if self.verbose:
-                            if not self.__looking:
-                                print("Looking for pykat pipe...")
-                                self.__looking = True
-
-                for line in fifo:
+                if usePipe == True:
+                    while fifo is None:
+                        try:
+                            if time.time() < _start_kat + duration:
+                                time.sleep(0.1)
+                                fifo = codecs.open(pipe_name, "r", "utf-8")
+                                self.__looking = False
+                            else:
+                                raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0. Or set usePipe=False when making kat object.".format(duration))
+                        except FileNotFoundError as ex:
+                            if self.verbose:
+                                if not self.__looking:
+                                    print("Looking for pykat pipe...")
+                                    self.__looking = True
+                
+                if fifo is not None:
+                    for line in fifo:
                     
-                    #if (sys.version_info < (3, 0)):
-                    #    line = line.decode("utf8") # Make sure we're using unicode encoding
+                        #if (sys.version_info < (3, 0)):
+                        #    line = line.decode("utf8") # Make sure we're using unicode encoding
                     
-                    v = line.split(u":", 1)
+                        v = line.split(u":", 1)
                     
-                    if len(v) != 2:
-                        continue    
+                        if len(v) != 2:
+                            continue    
                         
-                    (tag, line) = v
+                        (tag, line) = v
                     
-                    if tag == "version":
-                        r.katVersion = line
-                    elif tag == "progress" and self.verbose:
-                        var = line.split("\t")
+                        if tag == "version":
+                            r.katVersion = line
+                        elif tag == "progress" and self.verbose:
+                            var = line.split("\t")
                         
-                        if len(var) == 3:
-                        	pb.currval = int(var[1])
-                        	pb.widgets[-1] = var[0] + " " + var[2][:-1]
-                        	pb.update()
+                            if len(var) == 3:
+                            	pb.currval = int(var[1])
+                            	pb.widgets[-1] = var[0] + " " + var[2][:-1]
+                            	pb.update()
             finally:
             	if fifo is not None:
             		fifo.close()
