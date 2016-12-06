@@ -636,9 +636,6 @@ class surfacemap(object):
         elif isinstance(m, list):
             nVals = range(n,n+1)
             mVals.append(m)
-        elif isinstance(m, range):
-            nVals = range(n,n+1)
-            mVals.append(m)
         elif isinstance(m,int):
             nVals = range(n,n+1)
             mVals.append(range(m,m+1))
@@ -1415,11 +1412,11 @@ class surfacemap(object):
                 Z = zernike(m[k], n, rho, phi)
                 self.data[self.notNan] = self.data[self.notNan]-A[k]*Z[self.notNan]
                 self.zernikeRemoved = (m[k], n, A[k])
-        elif isinstance(m, range):
-            for k in range(len(m)):
-                Z = zernike(m[k], n, rho, phi)
-                self.data[self.notNan] = self.data[self.notNan]-A[k]*Z[self.notNan]
-                self.zernikeRemoved = (m[k], n, A[k])
+#        elif isinstance(m, range):
+#            for k in range(len(m)):
+#                Z = zernike(m[k], n, rho, phi)
+#                self.data[self.notNan] = self.data[self.notNan]-A[k]*Z[self.notNan]
+#                self.zernikeRemoved = (m[k], n, A[k])
         else:
             Z = zernike(m, n, rho, phi)
             self.data[self.notNan] = self.data[self.notNan]-A*Z[self.notNan]
