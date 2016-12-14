@@ -264,7 +264,7 @@ def BS_optical_path(thickness, n=nsilica, angle=45.0):
     
     return math.degrees(angle_subst), L
 
-def scan_optics(_kat, _optics, _factors, xlimits=[-100, 100], steps=200): 
+def scan_optics(_kat, _optics, _factors, xlimits=[-100, 100], steps=200,relative=False): 
     """
     Scans one or more optics (by changing its tuning).
     Parameters:
@@ -285,9 +285,14 @@ def scan_optics(_kat, _optics, _factors, xlimits=[-100, 100], steps=200):
     if factors[0]!=1.0:
         raise pkex.BasePyKatException("First element in `factors' must be 1.0")
 
-    kat.parseCommands("""
-    xaxis {0} phi lin {1} {2} {3}
-    """.format(optics[0], xlimits[0], xlimits[1], steps))
+    if relative == False:
+        kat.parseCommands("""
+        xaxis {0} phi lin {1} {2} {3}
+        """.format(optics[0], xlimits[0], xlimits[1], steps))
+    elif relative == True:
+        kat.parseCommands("""
+        xaxis* {0} phi lin {1} {2} {3}
+        """.format(optics[0], xlimits[0], xlimits[1], steps))
 
     idx=1
     for o in optics[1:]:
