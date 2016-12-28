@@ -101,8 +101,9 @@ class aLIGO(object):
         # pretune DOF
         self.preARMX =  DOF("ARMX", self.POW_X,   "", "ETMX", 1, 1.0)
         self.preARMY =  DOF("ARMY", self.POW_Y,   "", "ETMY", 1, 1.0)
-        self.preMICH =  DOF("AS"  , self.AS_DC,   "", "BS",   1, 6.0)
+        self.preMICH =  DOF("AS"  , self.AS_DC,   "", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 6.0)
         self.prePRCL =  DOF("PRCL", self.POW_BS,  "", "PRM",  1, 10.0)
+        self.preSRCL =  DOF("SRCL", self.AS_DC,   "", "SRM",  1, 10.0)
         
         # control scheme as in [1] Table C.1  
         self.PRCL =  DOF("PRCL", self.POP_f1,  "I", "PRM", 1, 100.0)
@@ -207,83 +208,82 @@ class aLIGO(object):
 
     def apply_lock_feedback(self, kat, out):
         tuning = self.get_tunings(kat)
-        tuning["ETMX"] += float(out["ETMX_lock"])
-        tuning["ETMY"] += float(out["ETMY_lock"])
-        tuning["ITMX"] += float(out["MICH_lock"])
-        tuning["ITMY"] += float(out["ITMY_lock"])
-        tuning["PRM"]  += float(out["PRCL_lock"])
-        tuning["SRM"]  += float(out["SRCL_lock"])
+        if "ETMX_lock" in out.keys():
+            tuning["ETMX"] += float(out["ETMX_lock"])
+        else:
+            print(" ** Warning: could not find ETMX lock")
+        if "ETMY_lock" in out.keys():
+            tuning["ETMY"] += float(out["ETMY_lock"])
+        else:
+            print(" ** Warning: could not find ETMY lock")
+        if "PRCL_lock" in out.keys():
+            tuning["PRM"]  += float(out["PRCL_lock"])
+        else:
+            print(" ** Warning: could not find PRCL lock")
+        if ("MICH_lock" in out.keys()) and ("ITMY_lock" in out.keys()):
+            tuning["ITMX"] += float(out["MICH_lock"])
+            tuning["ITMY"] += float(out["ITMY_lock"])
+        else:
+            print(" ** Warning: could not find MICH (ITMY) lock")
+        if "SRCL_lock" in out.keys():
+            tuning["SRM"]  += float(out["SRCL_lock"])
+        else:
+            print(" ** Warning: could not find SRCL lock")
         self.set_tunings(kat, tuning)
-    
+
+        
     def pretune(self, _kat, pretune_precision=1.0e-4):
         print("-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision, pretune_precision*_kat.lambda0/360.0))
         kat=_kat.deepcopy()
-        _kat.ITMX.phi=0.0
-        _kat.ITMY.phi=0.0
-        #print("  removing components, commands and blocks")
-        #remove_components(kat, ["mod1", "lmod2", "mod2", "lmod3"], component_in="lmod1");
-    
-        print("  scanning X arm")
+        #_kat.ITMX.phi=0.0
+        #_kat.ITMY.phi=0.0
+        print("  scanning X arm (maximising power)")
         kat1 = kat.deepcopy()
         make_transparent(kat1,["PRM","SRM"])
         make_transparent(kat1,["ITMY", "ETMY"])
         kat1.BS.setRTL(0.0,1.0,0.0) # set BS refl. for X arm
         phi, precision = self.scan_to_precision(kat1, self.preARMX, pretune_precision)
-        phi=round(phi*pretune_precision)/pretune_precision
+        phi=round(phi/pretune_precision)*pretune_precision
+        phi=round_to_n(phi,5)
         print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
-        _kat.ETMX.phi=kat.ETMX.phi=phi
+        self.preARMX.apply_tuning(_kat,phi)
     
-        print("  scanning Y arm")
-        kat1 = kat.deepcopy()
-        make_transparent(kat1,["PRM","SRM"])
-        make_transparent(kat1,["ITMX", "ETMX"])
-        kat1.BS.setRTL(1.0,0.0,0.0) # set BS refl. for Y arm
-        phi, precision = self.scan_to_precision(kat1, self.preARMY, pretune_precision)
-        phi=round(phi*pretune_precision)/pretune_precision
+        print("  scanning Y arm (maximising power)")
+        kat = _kat.deepcopy()
+        make_transparent(kat,["PRM","SRM"])
+        make_transparent(kat,["ITMX", "ETMX"])
+        kat.BS.setRTL(1.0,0.0,0.0) # set BS refl. for Y arm
+        phi, precision = self.scan_to_precision(kat, self.preARMY, pretune_precision)
+        phi=round(phi/pretune_precision)*pretune_precision
+        phi=round_to_n(phi,5)
         print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
-        _kat.ETMX.phi=kat.ETMX.phi=phi
+        self.preARMY.apply_tuning(_kat,phi)
     
-        print("  scanning MICH")
-        kat1=kat.deepcopy()
-        make_transparent(kat1,["PRM","SRM"])
-        phi, precision = self.scan_to_precision(kat1, self.preMICH, pretune_precision, minmax="min", precision=30.0)
-        phi=round(phi*pretune_precision)/pretune_precision
+        print("  scanning MICH (minimising power)")
+        kat = _kat.deepcopy()
+        make_transparent(kat,["PRM","SRM"])
+        phi, precision = self.scan_to_precision(kat, self.preMICH, pretune_precision, minmax="min", precision=30.0)
+        phi=round(phi/pretune_precision)*pretune_precision
+        phi=round_to_n(phi,5)
         print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
-        _kat.BS.phi=kat.BS.phi=phi
+        self.preMICH.apply_tuning(_kat,phi, add=True)
 
-        print("  scanning PRCL")
-        kat1=kat.deepcopy()
-        make_transparent(kat1,["SRM"])
-        phi, precision = self.scan_to_precision(kat1, self.prePRCL, pretune_precision, precision=30.0)
-        phi=round(phi*pretune_precision)/pretune_precision
+        print("  scanning PRCL (maximising power)")
+        kat = _kat.deepcopy()
+        make_transparent(kat,["SRM"])
+        phi, precision = self.scan_to_precision(kat, self.prePRCL, pretune_precision)
+        phi=round(phi/pretune_precision)*pretune_precision
+        phi=round_to_n(phi,5)
         print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
-        _kat.PRM.phi=kat.PRM.phi=phi
+        self.prePRCL.apply_tuning(_kat,phi)
 
-        print("  scanning SRCL")
-        kat1=kat.deepcopy()
-        """
-        phi = -90 # start near expected RSE point
-        kat1.ETMY.phi += 1e-6 # applying some random DC offset
-        kat1.ETMX.phi -= 1e-6
-        TFstr, name = self.DARM.transfer(kat1)
-        kat1.parseCommands(TFstr)
-        kat1.parseCommands(self.DARM.fsig("sig1"))
-        kat1.parseCommands("xaxis SRM phi lin 0 10 200")
-        precision = 60.0
-        while precision>pretune_precision:
-            kat1.xaxis.limits=[phi-1.5*precision, phi+1.5*precision]
-            out = kat1.run()
-            phi, precision = find_peak(out, self.DARM.signal_name(kat), minmax="max")
-        """
-        phi, precision = self.scan_to_precision(kat1, self.prePRCL, pretune_precision, precision=30.0, phi=0)
-        phi=round(phi*pretune_precision)/pretune_precision - 90.0
+        print("  scanning SRCL (maximising carrier power, then adding 90 deg)")
+        kat = _kat.deepcopy()
+        phi, precision = self.scan_to_precision(kat, self.preSRCL, pretune_precision, phi=0)
+        phi=round(phi/pretune_precision)*pretune_precision
+        phi=round_to_n(phi,4)-90.0
         print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
-        _kat.SRM.phi=kat.SRM.phi=phi
-        
-                
-        tuning = self.get_tunings(_kat)
-        return tuning
-        # done
+        self.preSRCL.apply_tuning(_kat,phi)
         
     def scan_to_precision(self, kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
         while precision>pretune_precision*DOF.scale:
@@ -292,6 +292,48 @@ class aLIGO(object):
             #print("** phi= {}".format(phi))
         return phi, precision
 
+    def pretune_status(self, _kat):
+        kat = _kat.deepcopy()
+        kat.verbose = False
+        kat.noxaxis = True
+        pretune_DOFs = [self.preARMX, self.preARMY, self.prePRCL, self.preMICH, self.preSRCL]
+        _detStr=""
+        for p in pretune_DOFs:
+            _sigStr = p.port.signal(kat)
+            _detStr = "\n".join([_detStr, _sigStr])
+        kat.parseCommands(_detStr)
+        out = kat.run()
+        Pin = float(kat.L0.P)
+    
+        tunings = self.get_tunings(kat)
+        print(" .------------------------------------------------------.")
+        print(" | pretuned for maxtem = {:4}          (-1 = 'off')     |".format(tunings["maxtem"]))
+        keys_t = list(tunings.keys())
+        keys_t.remove("maxtem")
+        print(" .------------------------------------------------------.")
+        print(" | port   power[W] pow. ratio | optics   tunings        |")
+        print(" +----------------------------|-------------------------+")
+        idx_p = 0
+        idx_t = 0
+        run_p = True
+        run_t = True
+        while (run_p or run_t):
+            if idx_p < len(pretune_DOFs):
+                p = pretune_DOFs[idx_p]
+                print(" | {:5}: {:8.3g} {:8.3g}   |".format(p.name, float(out[p.port.name]), float(out[p.port.name])/Pin),end="")
+                idx_p +=1
+            else:
+                print(" |                            |", end="")
+                run_p = False
+            if idx_t < len(keys_t):
+                t=keys_t[idx_t]
+                print(" {:5}: {:9.3g}        |".format(t, float(self.tunings[t])))
+                idx_t +=1
+            else:
+                print("                         |")
+                run_t = False
+        print(" `------------------------------------------------------'")
+                     
     def power_ratios(self, _kat):
         kat = _kat.deepcopy()
         kat.verbose = False
@@ -500,7 +542,10 @@ class aLIGO(object):
         """
         return "".join([code1, code2, code3])
 
-    
+# ---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
 class DOF(object):
     """
     Defining a degree of freedom for the interferometer, includes the
@@ -519,6 +564,13 @@ class DOF(object):
         # Thus DARM has a scale of 1, all other DOFs a scale >1
         self.scale = _scale
 
+    def apply_tuning(self, kat, phi, add=False):
+        for idx, o in enumerate(self.optics):
+            if add:
+                kat.components[o].phi += phi * self.factors[idx]
+            else:
+                kat.components[o].phi = phi * self.factors[idx]
+            
     def signal(self, kat):
         return self.port.signal(kat, self.quad, sigtype=self.sigtype)
     def signal_name(self, kat):
@@ -538,6 +590,9 @@ class DOF(object):
             _fsigStr = "\n".join([_fsigStr, "fsig {} {} {} {} ".format(_fsigName, o, fsig, phase)])
         return _fsigStr
 
+# ---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
 class port(object):
     """
     Defining an output port for the interferometer, can be either a
@@ -824,7 +879,7 @@ def find_peak(out, detector, minmax='max', debug=False):
         
     if debug==True:
         plt.plot(X_out,Y_out,'o')
-        plt.xlabel('{0} tuning [deg]'.format(optics[0]))
+        plt.xlabel('tuning [deg]')
         plt.ylabel('{0} output'.format(detector))
         plt.show()
     return X_out, stepsize
