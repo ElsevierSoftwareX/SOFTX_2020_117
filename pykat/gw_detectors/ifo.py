@@ -16,12 +16,27 @@ import matplotlib.pyplot as plt
 import pkg_resources
 from scipy.optimize import fmin
 
-nsilica=1.44963098985906
+global nsilica, clight
+nsilica = 1.44963098985906
+clight = 299792458.0
 
 class aLIGO(object):
     """
     Object storing the Finesse input file and some auxilliary information
     about Avanced LIGO interferometers.
+
+    References:
+    [1] C. Bond `How to stay in shape: Overcoming beam and mirror distortions
+        in advanced gravitational wave interferometers', PhD thesis, University
+        of Birmingham, 2014, http://etheses.bham.ac.uk/5223/2/Bond14PhD.pdf
+    [2] D. Martynov, `Lock Acquisition and Sensitivity Analysis of Advanced
+        LIGO Interferometers', PhD thesis, Caltech, 2015
+        http://thesis.library.caltech.edu/8899/1/DenisMartynovThesis.pdf
+    [3] A. Staley, `Locking the Advanced LIGO Gravitational Wave Detector:
+        with a focus on the Arm Length Stabilization Technique', PhD thesis,
+        Columbia University, 2015
+        https://academiccommons.columbia.edu/catalog/ac:189457
+        
     """
 
     def __init__(self, _name="default", katfile=None, debug=False):
@@ -40,13 +55,44 @@ class aLIGO(object):
             #print(data_path)
             self.kat.loadKatFile(_data_path+"aLIGO.kat")
 
-        set_lengths(self)
+        # ----------------------------------------------------------------------
+        # set variables to zero first
+        self.DCoffset = 0.0
+        self.DCoffsetW = 0.0
+
+        # ----------------------------------------------------------------------
+        # get and derive parameters from the kat file
+
+        # get main frequencies
+        if "f1" in self.kat.constants.keys():
+            self.f1 = float(self.kat.constants["f1"].value)
+        else:
+            self.f1 = 9099471.0
+        if "f2" in self.kat.constants.keys():
+            self.f2 = float(self.kat.constants["f2"].value)
+        else:
+            self.f2 = 5.0 * self.f1
+        if "f3" in self.kat.constants.keys():
+            self.f3 = float(self.kat.constants["f3"].value)
+        # TODO add else here!
+        
+        # defining a dicotionary for the main mirror positions (tunings)
+        self.tunings = {}
+        self.tunings = self.get_tunings(self.kat)
+        # compute lengths such as PRC lentgth from individual lengths 
+        self.compute_derived_lengths(self.kat)
+        # check modultion frequencies
+        if (5 * self.f1 != self.f2):
+            print(" ** Warning: modulation frequencies do not match: 5*f1!=f2")
             
+        # ----------------------------------------------------------------------
+        # define ports and signals 
+        
         # useful ports
-        self.POP_f1  = port("POP",   "nPOP",  "f1", phase=101)
-        self.POP_f2  = port("POP",   "nPOP",  "f2", phase=13)
-        self.REFL_f1 = port("REFL",  "nREFL", "f1", phase=101)
-        self.REFL_f2 = port("REFL",  "nREFL", "f2", phase=14)
+        self.POP_f1  = port("POP_f1",   "nPOP",  self.f1, phase=101)
+        self.POP_f2  = port("POP_f2",   "nPOP",  self.f2, phase=13)
+        self.REFL_f1 = port("REFL_f1",  "nREFL", self.f1, phase=101)
+        self.REFL_f2 = port("REFL_f2",  "nREFL", self.f2, phase=14)
         self.AS_DC   = port("AS_DC", "nSRM2")
         self.POW_BS  = port("PowBS", "nPRBS*")
         self.POW_X   = port("PowX",  "nITMX2")
@@ -58,22 +104,72 @@ class aLIGO(object):
         self.preMICH =  DOF("AS"  , self.AS_DC,   "", "BS",   1, 6.0)
         self.prePRCL =  DOF("PRCL", self.POW_BS,  "", "PRM",  1, 10.0)
         
-        # control scheme as in C. Bond Table C.1,  TODO complete citation
+        # control scheme as in [1] Table C.1  
         self.PRCL =  DOF("PRCL", self.POP_f1,  "I", "PRM", 1, 100.0)
-        self.MICH =  DOF("MICH", self.POP_f2,  "Q", "BS",  1, 100.0)
+        self.MICH =  DOF("MICH", self.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 100.0)
         self.CARM =  DOF("CARM", self.REFL_f1, "I", ["ETMX", "ETMY"], [1, 1], 1.5)
         self.DARM =  DOF("DARM", self.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0)
         self.SRCL =  DOF("SRCL", self.REFL_f2, "I", "SRM", 1, 1e2)
 
-        # Defining a dicotionary for the main mirror positions (tunings)
-        self.tunings = {}
-        self.tunings = self.get_tunings()
 
-    def set_lengths(self, kat, verbose=False):
+            
+    def adjust_PRC_length(self, kat):
+        """
+        Adjust PRC length so that it fulfils the requirement
+        lPRC = (N+1/2) * c/(2*f1), see [1] equation C.1
+        In the current design N=3
+        """
+        print("-- adjusting PRC length")
+        ltmp = 0.5 * clight / self.f1
+        delta_l = 3.5 * ltmp - self.lPRC
+        print("  adusting kat.lp1.L by {}m".format(delta_l))
+        kat.lp1.L += delta_l
+        self.compute_derived_lengths(kat)
+
+    def check_f1_PRC_resonance(self, _kat):
+        """
+        Plot the sideband amplitudes for mdulation frequecy
+        f1 (~ 9MHz) in the PRC, to check the resonance
+        condition.
+        """
+        kat = _kat.deepcopy()
+        fig = plt.figure()
+        ax = fig.add_subplot(1,1,1)
+        startf = self.f1-400.0
+        stopf  = self.f1+400.0
+        code = """
+        ad f1p {0} nPRM2
+        ad f1m -{0} nPRM2
+        xaxis mod1 f lin {1} {2} 200
+        put f1p f $x1 
+        put f1m f $mx1 
+        """.format(self.f1, startf, stopf)
+        kat.parseCommands(code)
+        out = kat.run()
+        ax.plot(out.x-self.f1,np.abs(out["f1p"]), label=" f1")
+        ax.plot(out.x-self.f1,np.abs(out["f1m"]), label="-f1")
+        ax.set_xlim([np.min(out.x-self.f1), np.max(out.x-self.f1)])
+        ax.set_xlabel("delta_f1 [Hz]")
+        ax.set_ylabel('sqrt(W) ')
+        ax.grid()
+        ax.legend()
+        plt.tight_layout()
+        plt.show(block=0)
+
+        
+    def compute_derived_lengths(self, kat, verbose=False):
+        """
+        Compute derived length from individual space components.
+        Design values are currently:
+        lPRC = 57.656, lSRC = 56.008, lSchnupp = 0.08
+        and the individual lengths:
+        PRC: Lp1 16.6107, Lp2 16.1647, Lp3 19.5381 
+        SRC: Ls1 15.7586, Ls2 15.4435, Ls3 19.3661
+        """
         # distances between HR surfaces:
         self.lpr = kat.lp1.L + kat.lp2.L + kat.lp3.L
-        self.lx = kat.lx.L + kat.BSsub1.L * kat.BSsub1.n + kat.ITMXsub.L * kat.ITMXsub.n
-        self.ly = kat.ly.L + kat.ITMYsub.L * kat.ITMYsub.n
+        self.lx = kat.lx1.L + kat.BSsub1.L * kat.BSsub1.n + kat.ITMXsub.L * kat.ITMXsub.n
+        self.ly = kat.ly1.L + kat.ITMYsub.L * kat.ITMYsub.n
         self.lsr = kat.ls1.L + kat.ls2.L + kat.ls3.L + kat.BSsub2.L * kat.BSsub2.n
         # resulting combined distances (single, not roundtrip)
         self.lMI =  0.5 * (self.lx + self.ly)
@@ -82,11 +178,11 @@ class aLIGO(object):
         self.lSchnupp = self.lx - self.ly
         if verbose:
             print("-- small MI lengths")
-            print(" lx = {}m, ly = {}m".format(self.lx, self.ly))
-            print(" lpr = {}m, lsr = {}m".format(self.lpr, self.lsr))
-            print(" lMI = {}m, lSchnupp = {}m".format(self.lMI, self.lSchnupp))
-            print(" lpr = {}m".format(self.lpr))
-            print(" lpr = {}m".format(self.lpr))
+            print(" lx = {}m, ly = {}m".format(np.round(self.lx, 4), np.round(self.ly, 4)))
+            #print(" lpr = {}m, lsr = {}m".format(np.round(self.lpr, 4),  np.round(self.lsr),4))
+            #print(" lMI = {}m, lSchnupp = {}m".format(np.round(self.lMI, 4) , self.lSchnupp))
+            print(" lSchnupp = {}m".format(np.round(self.lSchnupp,4)))
+            print(" lPRC = {}m, lSRC= {}m".format(self.lPRC, self.lSRC))
         
     def get_tunings(self, kat):
         self.tunings["maxtem"] = kat.maxtem
@@ -109,6 +205,16 @@ class aLIGO(object):
         kat.BS.phi   = tunings["BS"]  
         kat.SRM.phi  = tunings["SRM"]  
 
+    def apply_lock_feedback(self, kat, out):
+        tuning = self.get_tunings(kat)
+        tuning["ETMX"] += float(out["ETMX_lock"])
+        tuning["ETMY"] += float(out["ETMY_lock"])
+        tuning["ITMX"] += float(out["MICH_lock"])
+        tuning["ITMY"] += float(out["ITMY_lock"])
+        tuning["PRM"]  += float(out["PRCL_lock"])
+        tuning["SRM"]  += float(out["SRCL_lock"])
+        self.set_tunings(kat, tuning)
+    
     def pretune(self, _kat, pretune_precision=1.0e-4):
         print("-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision, pretune_precision*_kat.lambda0/360.0))
         kat=_kat.deepcopy()
@@ -159,7 +265,7 @@ class aLIGO(object):
         phi = -90 # start near expected RSE point
         kat1.ETMY.phi += 1e-6 # applying some random DC offset
         kat1.ETMX.phi -= 1e-6
-        TFstr, name = self.DARM.port.transfer(kat1)
+        TFstr, name = self.DARM.transfer(kat1)
         kat1.parseCommands(TFstr)
         kat1.parseCommands(self.DARM.fsig("sig1"))
         kat1.parseCommands("xaxis SRM phi lin 0 10 200")
@@ -167,7 +273,7 @@ class aLIGO(object):
         while precision>pretune_precision:
             kat1.xaxis.limits=[phi-1.5*precision, phi+1.5*precision]
             out = kat1.run()
-            phi, precision = find_peak(out, self.DARM.port.name, minmax="max")
+            phi, precision = find_peak(out, self.DARM.signal_name(kat), minmax="max")
         """
         phi, precision = self.scan_to_precision(kat1, self.prePRCL, pretune_precision, precision=30.0, phi=0)
         phi=round(phi*pretune_precision)/pretune_precision - 90.0
@@ -186,7 +292,6 @@ class aLIGO(object):
             #print("** phi= {}".format(phi))
         return phi, precision
 
-
     def power_ratios(self, _kat):
         kat = _kat.deepcopy()
         kat.verbose = False
@@ -195,7 +300,7 @@ class aLIGO(object):
         ports = [self.POW_X, self.POW_Y, self.AS_DC, self.POW_BS]
         _detStr = ""
         for p in ports:
-            _sigStr, name = p.signal(kat)
+            _sigStr = p.signal(kat)
             _detStr = "\n".join([_detStr, _sigStr])
         kat.parseCommands(_detStr)
         out = kat.run()
@@ -218,10 +323,10 @@ class aLIGO(object):
             ax = fig.add_subplot(2,2,idx)
             idx+=1
             out = scan_DOF(kat, d, xlimits = np.multiply(d.scale, xlimits), relative = True)
-            ax.semilogy(out.x,out[d.port.name])
+            ax.semilogy(out.x,out[d.signal_name(kat)])
             ax.set_xlim([np.min(out.x), np.max(out.x)])
             ax.set_xlabel("phi [deg] {}".format(d.optics[0]))
-            ax.set_ylabel('{} [W] '.format(d.port.name))
+            ax.set_ylabel('{} [W] '.format(d.signal_name(kat)))
             ax.grid()
         plt.tight_layout()
         plt.show(block=0)
@@ -230,14 +335,14 @@ class aLIGO(object):
         kat = _kat.deepcopy()
         kat.verbose = False
         kat.noxaxis = True
-        dofs = [self.CARM, self.DARM, self.PRCL, self.MICH]
+        dofs = [self.DARM, self.CARM, self.PRCL, self.SRCL,  self.MICH]
         idx=1
         fig = plt.figure()
         for d in dofs:
-            ax = fig.add_subplot(2,2,idx)
+            ax = fig.add_subplot(2,3,idx)
             idx+=1
             out = scan_DOF(kat, d, xlimits = np.multiply(d.scale,xlimits), relative = True)
-            ax.plot(out.x,out[d.port.name])
+            ax.plot(out.x,out[d.signal_name(kat)])
             ax.set_xlim([np.min(out.x), np.max(out.x)])
             ax.set_xlabel("{} [deg]".format(d.name))
             ax.set_ylabel('{} [W] '.format(d.port.name))
@@ -254,7 +359,7 @@ class aLIGO(object):
         kat = _kat.deepcopy()
         kat.verbose = False
         kat.noxaxis = True
-        _sigStr, name = self.AS_DC.signal(kat)
+        _sigStr = self.AS_DC.signal(kat)
         kat.parseCommands(_sigStr)
         Xphi = float(kat.ETMX.phi)
         Yphi = float(kat.ETMY.phi)
@@ -268,8 +373,171 @@ class aLIGO(object):
 
         out=fmin(powerDiff,0,xtol=precision,ftol=1e-3,args=(kat, Xphi, Yphi, AS_power))
         print("  DC offset for AS_DC={} W is: {}".format(AS_power, out[0]))
-        return round(out[0],6)
+        self.DCoffset = round(out[0],6)
+        self.DCoffsetW = AS_power
+        return self.DCoffset
+
+    def generate_errsig_block(self, kat, noplot=False):
+        sigDARM = self.DARM.signal(kat)
+        sigCARM = self.CARM.signal(kat)
+        sigPRCL = self.PRCL.signal(kat)
+        sigMICH = self.MICH.signal(kat)
+        sigSRCL = self.SRCL.signal(kat)
+        code1 = "\n".join([sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL])
+
+        if noplot:
+            nameDARM = self.DARM.signal_name(kat)
+            nameCARM = self.CARM.signal_name(kat)
+            namePRCL = self.PRCL.signal_name(kat)
+            nameMICH = self.MICH.signal_name(kat)
+            nameSRCL = self.SRCL.signal_name(kat)
+            code2 = """
+            noplot {}
+            noplot {}
+            noplot {}
+            noplot {}
+            noplot {}
+            """.format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
+            return "".join([code1, code2])
+        else:
+            return code1
             
+        
+    def generate_lock_block(self, _kat, _gains=None, _accuracies=None, verbose=False):
+        """
+        gains: optical gain is in W per rad
+        accuracies: error signal threshold in W
+        rms, estimated loop noise rms m
+
+        to compute accuracies from rms, we convert
+        rms to radians as rms_rad = rms * 2 pi/lambda
+        and then multiply by the optical gain.
+        """
+        kat = _kat.deepcopy()
+        if _gains == None:
+            ogDARM = optical_gain(kat, self.DARM, self.DARM)
+            ogCARM = optical_gain(kat, self.CARM, self.CARM)
+            ogPRCL = optical_gain(kat, self.PRCL, self.PRCL)
+            ogMICH = optical_gain(kat, self.MICH, self.MICH)
+            ogSRCL = optical_gain(kat, self.SRCL, self.SRCL)
+            if verbose:
+                print("-- optical gains:")
+                print("  DARM: {}".format(ogDARM))
+                print("  CARM: {}".format(ogCARM))
+                print("  PRCL: {}".format(ogPRCL))
+                print("  MICH: {}".format(ogMICH))
+                print("  SRCL: {}".format(ogSRCL))
+            gains = [ ogDARM, ogCARM, ogPRCL, ogMICH, ogSRCL]
+        else:
+            gains = _gains.copy()
+
+        rms = [1e-13, 1e-12, 1e-11, 1e-11, 1e-11]
+        factor = 2.0 * math.pi / kat.lambda0
+        if _accuracies == None:
+            accDARM = round_to_n(np.abs(factor * rms[0] * gains[0]),2) 
+            accCARM = round_to_n(np.abs(factor * rms[1] * gains[1]),2) * 0.1 # manually tuned
+            accPRCL = round_to_n(np.abs(factor * rms[2] * gains[2]),2) * 0.1 # manually tuned
+            accMICH = round_to_n(np.abs(factor * rms[3] * gains[3]),2)
+            accSRCL = round_to_n(np.abs(factor * rms[4] * gains[4]),2) * 50.0 # manually tuned
+            acc = [accDARM, accCARM, accPRCL, accMICH, accSRCL]
+        else:
+            acc = _accuracies.copy()
+
+        nameDARM = self.DARM.signal_name(kat)
+        nameCARM = self.CARM.signal_name(kat)
+        namePRCL = self.PRCL.signal_name(kat)
+        nameMICH = self.MICH.signal_name(kat)
+        nameSRCL = self.SRCL.signal_name(kat)
+        code1 = """
+        %%% FTblock locks
+        ###########################################################################
+        set AS_f2_I_re {} re
+        set CARM_err {} re
+        set PRCL_err {} re
+        set MICH_err {} re
+        set SRCL_err {} re
+        func DARM_err = $AS_f2_I_re - {}
+        """.format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL, self.DCoffsetW)
+
+        factor = 0.4 * -1.0 * 180 / math.pi # 0.2 because of multiple locks cross talk
+        gainDARM = round_to_n(factor / ogDARM, 2)
+        gainCARM = round_to_n(0.01 * factor / ogCARM, 2) # factor 0.01 for better gain hirarchy
+        gainPRCL = round_to_n(2.0  * factor / ogPRCL, 2) # manually tuned
+        gainMICH = round_to_n(1.0  * factor / ogMICH, 2) # manually tuned
+        gainSRCL = round_to_n(0.05 * factor / ogSRCL, 2) # gain hirrchy with MICH
+        
+        code2 = """
+        lock DARM_lock $DARM_err {} {}
+        lock CARM_lock $CARM_err {} {} 
+        lock PRCL_lock $PRCL_err {} {}
+        lock MICH_lock $MICH_err {} {} 
+        lock SRCL_lock $SRCL_err {} {} 
+        """.format(gainDARM, acc[0], gainCARM, acc[1], gainPRCL, acc[2], gainMICH, acc[3], gainSRCL, acc[4])
+        
+        code3 = """
+        noplot ITMY_lock
+        func ITMY_lock = (-1.0) * $MICH_lock 
+        func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock
+        func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock
+
+        put* PRM     phi     $PRCL_lock
+        put* ITMX    phi     $MICH_lock
+        put* ITMY    phi     $ITMY_lock
+        put* ETMX    phi     $ETMX_lock
+        put* ETMY    phi     $ETMY_lock
+        put* SRM     phi     $SRCL_lock
+
+        noplot PRCL_lock
+        noplot SRCL_lock
+        noplot MICH_lock
+        noplot DARM_lock
+        noplot CARM_lock
+        noplot ETMX_lock
+        noplot ETMY_lock
+
+        ###########################################################################
+        %%% FTend locks
+        """
+        return "".join([code1, code2, code3])
+
+    
+class DOF(object):
+    """
+    Defining a degree of freedom for the interferometer, includes the
+    objects and how to move them, and the default output port to read
+    out the DOF signal.
+    """
+    def __init__(self, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z"):
+        self.name = _DOFName
+        self.port = _port
+        self.quad = _quad
+        self.sigtype = sigtype
+        self.optics=make_list_copy(_optics)
+        self.factors=make_list_copy(_factors)
+        # scaling factor, to compensate for lower sensitivity compared
+        # to DARM (in tuning plots for example)
+        # Thus DARM has a scale of 1, all other DOFs a scale >1
+        self.scale = _scale
+
+    def signal(self, kat):
+        return self.port.signal(kat, self.quad, sigtype=self.sigtype)
+    def signal_name(self, kat):
+        return self.port.signal_name(kat, self.quad, sigtype=self.sigtype)
+
+    def transfer(self, kat, fsig, phase2=None):
+        return self.port.transfer(kat, self.quad, fsig=fsig, phase2=phase2, sigtype=self.sigtype)
+    def transfer_name(self, kat):
+        return self.port.transfer_name(kat, self.quad)
+
+    def fsig(self, _fsigName, fsig=1.0):
+        _fsigStr= ""
+        for idx, o in enumerate(self.optics):
+            phase = 0.0
+            if self.factors[idx] == -1:
+                phase = 180.0
+            _fsigStr = "\n".join([_fsigStr, "fsig {} {} {} {} ".format(_fsigName, o, fsig, phase)])
+        return _fsigStr
+
 class port(object):
     """
     Defining an output port for the interferometer, can be either a
@@ -278,12 +546,9 @@ class port(object):
     def __init__(self, _portName, _nodeNames, f=None, phase=None):
         self.portName = _portName
         self.nodeNames = make_list_copy(_nodeNames)
-        self.f=f            # demodulation frequency, string "f1", "f2" or "f3"
+        self.f=f            # demodulation frequency, float
         self.phase = phase  # demodulation frequency for I quadrature, float
-        if f!=None:
-            self.name = self.portName+"_"+str(self.f)
-        else:
-            self.name = self.portName            
+        self.name = self.portName            
     
     def check_nodeName(self, kat):
         self.nodeName = None
@@ -297,19 +562,36 @@ class port(object):
         if self.nodeName==None:
             raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name,self.nodeNames))
 
+    def amplitude_name(self, kat, f, n=None, m=None, sigtype="z"):
+        name = self.name + "_ad"
+        return name
+    
+    def amplitude(self, kat, f, n=None, m=None, sigtype="z"):
+        self.check_nodeName(kat)
+        name = self.amplitude_name(kat, f, n=n, m=m, sigtype=sigtype)
+        if n==None and m==None:
+            return "ad {} {} {}".format(name, f, self.nodeName)
+        else:
+            return "ad {} {} {} {} {}".format(name, f, n, m, self.nodeName)
+    
+    def signal_name(self, kat, quad="I", sigtype="z"):
+        name = self.name
+        if self.f!=None:
+            name = self.name+"_"+quad
+        return name
+    
     def signal(self, kat, quad="I", sigtype="z"):
         self.check_nodeName(kat)
-        name = self.name
+        name = self.signal_name(kat, quad=quad, sigtype=sigtype)
         if sigtype != "z":
                 raise pkex.BasePyKatException("alignment signals are not implemented yet")            
         if self.f==None:
-            return "pd {} {}".format(self.name, self.nodeName), name
+            return "pd {} {}".format(name, self.nodeName)
         else:
             if quad !="I" and quad != "Q":
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
-            name = self.name+"_"+quad
             phase = self.IQ_phase(quad, self.phase)
-            return "pd1 {} ${} {} {}".format(self.name, "f1", self.phase, self.nodeName), name
+            return "pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName)
         
     def IQ_phase(self, quad, phase):
         if quad== "Q":
@@ -317,63 +599,32 @@ class port(object):
             if phase >=360.0 :
                 phase -= 360.0
         return phase
-
-
-    def amplitude(self, kat, f, n=None, m=None, sigtype="z"):
-        self.check_nodeName(kat)
-        name = self.name + "_ad"
-        if n==None and m==None:
-            return "ad {} {} {}".format(self.name, f, self.nodeName), name
-        else:
-            return "ad {} {} {} {} {}".format(self.name, f, n, m, self.nodeName), name
+        
+    def transfer_name(self, kat, quad="I"):
+        name = self.name
+        if self.f!=None:
+            name = self.name+"_"+quad
+        return name
         
     def transfer(self, kat, quad="I", fsig=1.0, phase2=None, sigtype="z"):
-        name = self.name
         self.check_nodeName(kat)
+        name = self.transfer_name(kat, quad=quad)
         if sigtype!="z":
                 raise pkex.BasePyKatException("alignment signals are not implemented yet")            
         if self.f==None:
             if phase2 == None:
-                return "pd1 {} {} {}".format(name, fsig, self.nodeName), name
+                return "pd1 {} {} {}".format(name, fsig, self.nodeName)
             else:
-                return "pd1 {} {} {} {}".format(name, fsig, phase2, self.nodeName), name
-
+                return "pd1 {} {} {} {}".format(name, fsig, phase2, self.nodeName)
         else:
             if quad !="I" and quad != "Q":
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
-            name=self.name+"_"+quad
-            phase = IQ_phase(quad, self.phase)
+            phase = self.IQ_phase(quad, self.phase)
             if phase2 == None:
-                return "pd2 {} ${} {} {} {}".format(self.name, "f1", self.phase, fsig, self.nodeName), name
+                return "pd2 {} {} {} {} {}".format(name, self.f , phase, fsig, self.nodeName)
             else:
-                return "pd2 {} ${} {} {} {} {}".format(self.name, "f1", self.phase, fsig, phase2, self.nodeName), name
+                return "pd2 {} {} {} {} {} {}".format(name, self.f, phase, fsig, phase2, self.nodeName)
                                 
-class DOF(object):
-    """
-    Defining a degree of freedom for the interferometer, includes the
-    objects and how to move them, and the default output port to read
-    out the DOF signal.
-    """
-    def __init__(self, _DOFName, _port, _quad, _optics, _factors, _scale):
-        self.name = _DOFName
-        self.port = _port
-        self.quad = _quad
-        self.optics=make_list_copy(_optics)
-        self.factors=make_list_copy(_factors)
-        # scaling factor, to compensate for lower sensitivity compared
-        # to DARM (in tuning plots for example)
-        # Thus DARM has a scale of 1, all other DOFs a scale >1
-        self.scale = _scale
-        
-    def fsig(self, _fsigName):
-        _fsigStr= ""
-        for idx, o in enumerate(self.optics):
-            phase = 0.0
-            if self.factors[idx] == -1:
-                phase = 180.0
-            _fsigStr = "\n".join([_fsigStr, "fsig {} {} 1 {} ".format(_fsigName, o, phase)])
-        return _fsigStr
-
         
 def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
     optics=make_list_copy(_optics)
@@ -430,33 +681,6 @@ def make_transparent(kat, _components):
     if len(components) != 0:
         raise pkex.BasePyKatException("Cannot find component {}".format(components))
     return kat
-
-def magic_length(): # TODO: improve and reference this!
-    # Cavity lengths
-    #const Lprc 57.656
-    #const Lsrc 56.008
-    #const Lschnupp 0.08
-
-    # Individual lengths
-    # PRC
-    #const Lpr1 16.6107
-    #const Lpr2 16.1647
-    #const Lpr3 19.5381 
-
-    # SRC
-    #const Lsr1 15.7586
-    #const Lsr2 15.4435
-    #const Lsr3 19.3661
-
-    Laver = 57.656 - 16.6107 - 16.1647 - 19.5381
-    # x length between BS and ITM
-    Lmx = Laver + 0.5*0.08 - 0.06873 * 1.44963098985906 - 0.2*1.44963098985906
-    Lmy = Laver - 0.2*1.44963098985906 - 0.5*0.08
-    #func Lasrc = $Laver + $BSthickness * $nsilica
-    #func Lsr3 = $Lsrc - $Lsr1 - $Lsr2 - $Lasrc
-    #put ls3 L $Lsr3
-
-    return Lmx, Lmy
 
 def reconnect_nodes(kat, component1, idx1, node_name):
     c_string = component1.getFinesseText()
@@ -523,7 +747,7 @@ def scan_DOF(_kat, DOF, xlimits=[-100, 100], steps=200, relative=False):
     kat = _kat.deepcopy()
     scan_string = scan_optics_string(DOF.optics, DOF.factors, "scan", linlog="lin", xlimits=xlimits, steps=steps, axis=1,relative=relative)
     kat.parseCommands(scan_string)
-    sigStr, name = DOF.port.signal(kat)
+    sigStr = DOF.signal(kat)
     kat.parseCommands(sigStr)
     out = kat.run()
     return out
@@ -547,6 +771,18 @@ def scan_optics(_kat, _optics, _factors, xlimits=[-100, 100], steps=200,relative
     kat.parseCommands(scan_string)
     out = kat.run()
     return out
+
+def optical_gain(_kat, DOF_sig, DOF_det, f=10.0):
+    kat = _kat.deepcopy()
+    _fsigStr = DOF_sig.fsig("sig1", fsig=f)
+    _detStr = DOF_det.transfer(kat, fsig=f)
+    _detName = DOF_det.transfer_name(kat)
+    kat.parseCommands(_fsigStr)
+    kat.parseCommands(_detStr)
+    kat.noxaxis = True
+    kat.parseCommands("yaxis lin abs:deg")
+    out = kat.run()
+    return np.real(out[_detName])
 
 def find_peak(out, detector, minmax='max', debug=False): 
     """
@@ -603,3 +839,9 @@ def make_list_copy(_l):
     if not isinstance(_l, list):
         _l = [_l]
     return _l[:] # copy the list, just to be save
+
+def round_to_n(x, n):
+    if not x: return 0
+    power = -int(math.floor(math.log10(abs(x)))) + (n - 1)
+    factor = (10 ** power)
+    return round(x * factor) / factor

@@ -16,11 +16,18 @@
 
 %%% FTblock References
 ###########################################################################
-# Core documents used for aLIGO parameters
-# - R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
-# - Advanced LIGO, CQG, 2015 
-#   http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
-# - G. Billingsley. LIGO core optics reference page. https://galaxy.ligo.caltech.edu/optics/
+# References used for aLIGO parameters
+# [1] R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
+# [2] Advanced LIGO, CQG, 2015 
+#     http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
+# [3] G. Billingsley. LIGO core optics reference page. https://galaxy.ligo.caltech.edu/optics/
+# [4] D. Martynov, `Lock Acquisition and Sensitivity Analysis of Advanced
+#     LIGO Interferometers', PhD thesis, Caltech, 2015
+#     http://thesis.library.caltech.edu/8899/1/DenisMartynovThesis.pdf
+# [4] A. Staley, `Locking the Advanced LIGO Gravitational Wave Detector:
+#     with a focus on the Arm Length Stabilization Technique', PhD thesis,
+#     Columbia University, 2015
+#     https://academiccommons.columbia.edu/catalog/ac:189457
 #
 # Changes since 12/2016:
 # - 06.12.2016, initial corrections compared to previous files, Anna and Andreas
@@ -60,6 +67,7 @@
 # BS
 #
 # Arms
+#   - changed arm length to L=3994.4692, see [4], Table 10.2
 #
 # SRC
 #
@@ -166,7 +174,7 @@ m1 ITMY 0.014 $Mloss $phi_ITMY nITMYs2 nITMY2
 attr ITMY Rc -1934
 
 # Y arm length
-s LYarm 3994.5 nITMY2 nETMY1
+s LYarm $Larm nITMY2 nETMY1
 
 # Y arm end mirror
 m1 ETMY 5u $Mloss $phi_ETMY nETMY1 nETMYs1
@@ -200,7 +208,7 @@ m1 ITMX 0.014 $Mloss $phi_ITMX nITMXs2 nITMX2
 attr ITMX Rc -1934
 
 # X arm length
-s LXarm 3994.5 nITMX2 nETMX1
+s LXarm $Larm nITMX2 nETMX1
 
 # X arm end mirror
 m1 ETMX 5u $Mloss $phi_ETMX nETMX1 nETMXs1
@@ -259,6 +267,7 @@ const nsilica 1.44963098985906
 const nTGG 1.954
 const nCalcite 1.65846
 const Mloss 37.5u
+const Larm 3994.4692
 const fM 36.397884M
 const fP 54.596826M
 const th_f 34.5k
