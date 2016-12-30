@@ -75,15 +75,15 @@ class aLIGO(object):
         if "f3" in self.kat.constants.keys():
             self.f3 = float(self.kat.constants["f3"].value)
         # TODO add else here!
+        # check modultion frequencies
+        if (5 * self.f1 != self.f2):
+            print(" ** Warning: modulation frequencies do not match: 5*f1!=f2")
         
         # defining a dicotionary for the main mirror positions (tunings)
         self.tunings = {}
         self.tunings = self.get_tunings(self.kat)
-        # compute lengths such as PRC lentgth from individual lengths 
         self.compute_derived_lengths(self.kat)
-        # check modultion frequencies
-        if (5 * self.f1 != self.f2):
-            print(" ** Warning: modulation frequencies do not match: 5*f1!=f2")
+
             
         # ----------------------------------------------------------------------
         # define ports and signals 
@@ -114,16 +114,16 @@ class aLIGO(object):
 
 
             
-    def adjust_PRC_length(self, kat):
+    def adjust_PRC_length(self, kat, verbose=False):
         """
         Adjust PRC length so that it fulfils the requirement
         lPRC = (N+1/2) * c/(2*f1), see [1] equation C.1
         In the current design N=3
         """
-        print("-- adjusting PRC length")
+        vprint(verbose, "-- adjusting PRC length")
         ltmp = 0.5 * clight / self.f1
         delta_l = 3.5 * ltmp - self.lPRC
-        print("  adusting kat.lp1.L by {}m".format(delta_l))
+        vprint(verbose, "   adusting kat.lp1.L by {:.4g}m".format(delta_l))
         kat.lp1.L += delta_l
         self.compute_derived_lengths(kat)
 
@@ -136,15 +136,19 @@ class aLIGO(object):
         kat = _kat.deepcopy()
         fig = plt.figure()
         ax = fig.add_subplot(1,1,1)
-        startf = self.f1-400.0
-        stopf  = self.f1+400.0
+        startf = self.f1-4000.0
+        stopf  = self.f1+4000.0
+        if _kat.maxtem == "off":
+            nmStr = None
+        else:
+            nmStr = "0 0"
         code = """
-        ad f1p {0} nPRM2
-        ad f1m -{0} nPRM2
-        xaxis mod1 f lin {1} {2} 200
+        ad f1p {0} {1} nPRM2
+        ad f1m {0} -{1} nPRM2
+        xaxis mod1 f lin {2} {3} 200
         put f1p f $x1 
         put f1m f $mx1 
-        """.format(self.f1, startf, stopf)
+        """.format(nmStr, self.f1, startf, stopf)
         kat.parseCommands(code)
         out = kat.run()
         ax.plot(out.x-self.f1,np.abs(out["f1p"]), label=" f1")
@@ -177,13 +181,31 @@ class aLIGO(object):
         self.lPRC = self.lpr + self.lMI
         self.lSRC = self.lsr + self.lMI
         self.lSchnupp = self.lx - self.ly
-        if verbose:
-            print("-- small MI lengths")
-            print(" lx = {}m, ly = {}m".format(np.round(self.lx, 4), np.round(self.ly, 4)))
-            #print(" lpr = {}m, lsr = {}m".format(np.round(self.lpr, 4),  np.round(self.lsr),4))
-            #print(" lMI = {}m, lSchnupp = {}m".format(np.round(self.lMI, 4) , self.lSchnupp))
-            print(" lSchnupp = {}m".format(np.round(self.lSchnupp,4)))
-            print(" lPRC = {}m, lSRC= {}m".format(self.lPRC, self.lSRC))
+        self.compute_derived_resonances(kat)
+
+    def compute_derived_resonances(self, kat):
+        self.fsrX = 0.5 * clight / float(kat.LX.L)
+        self.fsrY = 0.5 * clight / float(kat.LY.L)
+        self.fsrPRC = 0.5 * clight / self.lPRC
+        self.fsrSRC = 0.5 * clight / self.lSRC
+        self.f1_PRC = 3.5 * self.fsrPRC
+        
+    def lengths_status(self, kat):
+        print(" .--------------------------------------------------.")
+        print("| - arm length:                                     |")
+        print("| Lx   = {:11.7}m, Ly   = {:11.7}m          |".format(float(kat.LX.L), float(kat.LY.L)))
+        print("| - small MI and recycling lengths:                 | ")
+        print("| lx   = {:11.7}m, ly   = {:11.7}m          |".format(self.lx, self.ly))
+        print("| lpr  = {:11.7}m, lsr  = {:11.7}m          |".format(self.lpr, self.lsr))
+        print("| lMI  = {:11.7}m, lSchnupp = {:11.5}m      |".format(self.lMI, self.lSchnupp))
+        print("| lPRC = {:11.7}m, lSRC = {:11.7}m          |".format(self.lPRC, self.lSRC))
+        print("+---------------------------------------------------+")
+        print("| - associated cavity frequencies [Hz]:             |")
+        print("| fsrx   = {:11.8}, fsry   = {:11.8}        |".format(self.fsrX, self.fsrY))
+        print("| fsrPRC = {:11.8}, fsrSRC = {:11.8}        |".format(self.fsrPRC, self.fsrSRC))
+        print("| f1_PRC = {:11.8}                              |".format(self.f1_PRC))
+        print("| f1     = {:11.8}, f2     = {:11.9}        |".format(self.f1, self.f2))
+        print(" `--------------------------------------------------'")
         
     def get_tunings(self, kat):
         self.tunings["maxtem"] = kat.maxtem
@@ -208,36 +230,36 @@ class aLIGO(object):
 
     def apply_lock_feedback(self, kat, out):
         tuning = self.get_tunings(kat)
-        if "ETMX_lock" in out.keys():
+        if "ETMX_lock" in out.ylabels:
             tuning["ETMX"] += float(out["ETMX_lock"])
         else:
             print(" ** Warning: could not find ETMX lock")
-        if "ETMY_lock" in out.keys():
+        if "ETMY_lock" in out.ylabels:
             tuning["ETMY"] += float(out["ETMY_lock"])
         else:
             print(" ** Warning: could not find ETMY lock")
-        if "PRCL_lock" in out.keys():
+        if "PRCL_lock" in out.ylabels:
             tuning["PRM"]  += float(out["PRCL_lock"])
         else:
             print(" ** Warning: could not find PRCL lock")
-        if ("MICH_lock" in out.keys()) and ("ITMY_lock" in out.keys()):
+        if ("MICH_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
             tuning["ITMX"] += float(out["MICH_lock"])
             tuning["ITMY"] += float(out["ITMY_lock"])
         else:
             print(" ** Warning: could not find MICH (ITMY) lock")
-        if "SRCL_lock" in out.keys():
+        if "SRCL_lock" in out.ylabels:
             tuning["SRM"]  += float(out["SRCL_lock"])
         else:
             print(" ** Warning: could not find SRCL lock")
         self.set_tunings(kat, tuning)
 
         
-    def pretune(self, _kat, pretune_precision=1.0e-4):
+    def pretune(self, _kat, pretune_precision=1.0e-4, verbose=False):
         print("-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision, pretune_precision*_kat.lambda0/360.0))
         kat=_kat.deepcopy()
         #_kat.ITMX.phi=0.0
         #_kat.ITMY.phi=0.0
-        print("  scanning X arm (maximising power)")
+        vprint(verbose, "   scanning X arm (maximising power)")
         kat1 = kat.deepcopy()
         make_transparent(kat1,["PRM","SRM"])
         make_transparent(kat1,["ITMY", "ETMY"])
@@ -245,10 +267,10 @@ class aLIGO(object):
         phi, precision = self.scan_to_precision(kat1, self.preARMX, pretune_precision)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,5)
-        print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
+        vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
         self.preARMX.apply_tuning(_kat,phi)
     
-        print("  scanning Y arm (maximising power)")
+        vprint(verbose, "   scanning Y arm (maximising power)")
         kat = _kat.deepcopy()
         make_transparent(kat,["PRM","SRM"])
         make_transparent(kat,["ITMX", "ETMX"])
@@ -256,34 +278,35 @@ class aLIGO(object):
         phi, precision = self.scan_to_precision(kat, self.preARMY, pretune_precision)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,5)
-        print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
+        vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
         self.preARMY.apply_tuning(_kat,phi)
     
-        print("  scanning MICH (minimising power)")
+        vprint(verbose, "   scanning MICH (minimising power)")
         kat = _kat.deepcopy()
         make_transparent(kat,["PRM","SRM"])
         phi, precision = self.scan_to_precision(kat, self.preMICH, pretune_precision, minmax="min", precision=30.0)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,5)
-        print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
+        vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
         self.preMICH.apply_tuning(_kat,phi, add=True)
 
-        print("  scanning PRCL (maximising power)")
+        vprint(verbose, "   scanning PRCL (maximising power)")
         kat = _kat.deepcopy()
         make_transparent(kat,["SRM"])
         phi, precision = self.scan_to_precision(kat, self.prePRCL, pretune_precision)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,5)
-        print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
+        vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
         self.prePRCL.apply_tuning(_kat,phi)
 
-        print("  scanning SRCL (maximising carrier power, then adding 90 deg)")
+        vprint(verbose, "   scanning SRCL (maximising carrier power, then adding 90 deg)")
         kat = _kat.deepcopy()
         phi, precision = self.scan_to_precision(kat, self.preSRCL, pretune_precision, phi=0)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,4)-90.0
-        print("  found max/min at: {} (precision = {:2g})".format(phi, precision))
+        vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
         self.preSRCL.apply_tuning(_kat,phi)
+        print("   ... done")
         
     def scan_to_precision(self, kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
         while precision>pretune_precision*DOF.scale:
@@ -306,34 +329,34 @@ class aLIGO(object):
         Pin = float(kat.L0.P)
     
         tunings = self.get_tunings(kat)
-        print(" .------------------------------------------------------.")
-        print(" | pretuned for maxtem = {:4}          (-1 = 'off')     |".format(tunings["maxtem"]))
+        _maxtemStr = "{:3}".format(tunings["maxtem"])
+        if tunings["maxtem"] == -1:
+            _maxtemStr="off"
+        print(" .--------------------------------------------------.")
+        print(" | pretuned for maxtem = {}, phase = {:2}            |".format(_maxtemStr, int(kat.phase)))
         keys_t = list(tunings.keys())
         keys_t.remove("maxtem")
-        print(" .------------------------------------------------------.")
-        print(" | port   power[W] pow. ratio | optics   tunings        |")
-        print(" +----------------------------|-------------------------+")
+        print(" .--------------------------------------------------.")
+        print(" | port   power[W] pow. ratio | optics   tunings    |")
+        print(" +----------------------------|---------------------+")
         idx_p = 0
         idx_t = 0
-        run_p = True
-        run_t = True
-        while (run_p or run_t):
+        while (idx_p < len(pretune_DOFs) or idx_t < len(keys_t)):
             if idx_p < len(pretune_DOFs):
                 p = pretune_DOFs[idx_p]
-                print(" | {:5}: {:8.3g} {:8.3g}   |".format(p.name, float(out[p.port.name]), float(out[p.port.name])/Pin),end="")
+                print(" | {:5}: {:9.4g} {:9.4g} |".format(p.name, float(out[p.port.name]), float(out[p.port.name])/Pin),end="")
                 idx_p +=1
             else:
                 print(" |                            |", end="")
-                run_p = False
             if idx_t < len(keys_t):
                 t=keys_t[idx_t]
-                print(" {:5}: {:9.3g}        |".format(t, float(self.tunings[t])))
+                print(" {:5}: {:9.3g}    |".format(t, float(self.tunings[t])))
                 idx_t +=1
             else:
-                print("                         |")
-                run_t = False
-        print(" `------------------------------------------------------'")
-                     
+                print("                     |")
+        print(" `--------------------------------------------------'")
+
+    # probably extra and can be removed
     def power_ratios(self, _kat):
         kat = _kat.deepcopy()
         kat.verbose = False
@@ -392,12 +415,49 @@ class aLIGO(object):
         plt.tight_layout()
         plt.show(block=0)
 
-    def find_DC_offset(self, _kat, AS_power, precision=1e-4):
+    def set_DC_offset(self, _kat, DCoffset=None, verbose=False):
+        if DCoffset:
+            self.DCoffset=DCoffset
+            print("-- applying user-defined DC offset:")
+            pretuning = self.get_tunings(_kat)
+            pretuning["ETMY"] += self.DCoffset
+            pretuning["ETMX"] -= self.DCoffset
+            self.set_tunings(_kat, pretuning)        
+            kat = _kat.deepcopy()
+            sigStr = self.AS_DC.signal(kat)
+            signame = self.AS_DC.signal_name(kat)
+            kat.parseCommands(sigStr)
+            kat.noxaxis=True
+            out = kat.run()
+            self.DCoffsetW=float(out[signame])
+        else:
+            # Finding light power in AS port (mostly due to RF sidebands now
+            kat = _kat.deepcopy()
+            sigStr = self.AS_DC.signal(kat)
+            signame = self.AS_DC.signal_name(kat)
+            kat.parseCommands(sigStr)
+            kat.noxaxis=True
+            out = kat.run()
+            print("-- adjusting DCoffset based on light in dark port:")
+            waste_light = round(float(out[signame]),1)
+            print("   waste light in AS port of {:2} W".format(waste_light))
+            kat_lock = _kat.deepcopy()
+            self.find_DC_offset(kat_lock, 2*waste_light)
+            pretuning = self.get_tunings(kat_lock)
+            pretuning["ETMY"] += self.DC_offset
+            pretuning["ETMX"] -= self.DC_offset
+            self.set_tunings(_kat, pretuning)
+        self.DCoffset_meter = self.DCoffset / 360.0 * _kat.lambda0 
+        vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset_meter))
+        vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
+    
+
+    def find_DC_offset(self, _kat, AS_power, precision=1e-4, verbose=False):
         """
         Returns the DC offset of DARM that corrponds to the
         specified power in the AS power.
         """
-        print("-- finding DC offset for AS power of {:3g} W".format(AS_power))
+        vprint(verbose, "   finding DC offset for AS power of {:3g} W".format(AS_power))
         kat = _kat.deepcopy()
         kat.verbose = False
         kat.noxaxis = True
@@ -413,8 +473,10 @@ class aLIGO(object):
             #print(out[self.AS_DC.name]-AS_power)
             return np.abs(out[self.AS_DC.name]-AS_power)
 
-        out=fmin(powerDiff,0,xtol=precision,ftol=1e-3,args=(kat, Xphi, Yphi, AS_power))
-        print("  DC offset for AS_DC={} W is: {}".format(AS_power, out[0]))
+        vprint(verbose, "   starting peak search...")
+        out=fmin(powerDiff,0,xtol=precision,ftol=1e-3,args=(kat, Xphi, Yphi, AS_power), disp=verbose)
+        vprint(verbose, "   ... done")
+        vprint(verbose, "   DC offset for AS_DC={} W is: {}".format(AS_power, out[0]))
         self.DCoffset = round(out[0],6)
         self.DCoffsetW = AS_power
         return self.DCoffset
@@ -445,42 +507,47 @@ class aLIGO(object):
             return code1
             
         
-    def generate_lock_block(self, _kat, _gains=None, _accuracies=None, verbose=False):
+    def generate_lock_block(self, _kat, _gains=None, _accuracies=None, verbose=True):
         """
-        gains: optical gain is in W per rad
+        gains: optical gain is in W per deg
         accuracies: error signal threshold in W
-        rms, estimated loop noise rms m
 
-        to compute accuracies from rms, we convert
-        rms to radians as rms_rad = rms * 2 pi/lambda
-        and then multiply by the optical gain.
         """
         kat = _kat.deepcopy()
-        if _gains == None:
-            ogDARM = optical_gain(kat, self.DARM, self.DARM)
-            ogCARM = optical_gain(kat, self.CARM, self.CARM)
-            ogPRCL = optical_gain(kat, self.PRCL, self.PRCL)
-            ogMICH = optical_gain(kat, self.MICH, self.MICH)
-            ogSRCL = optical_gain(kat, self.SRCL, self.SRCL)
-            if verbose:
-                print("-- optical gains:")
-                print("  DARM: {}".format(ogDARM))
-                print("  CARM: {}".format(ogCARM))
-                print("  PRCL: {}".format(ogPRCL))
-                print("  MICH: {}".format(ogMICH))
-                print("  SRCL: {}".format(ogSRCL))
-            gains = [ ogDARM, ogCARM, ogPRCL, ogMICH, ogSRCL]
+        # optical gains in W/rad
+        ogDARM = optical_gain(kat, self.DARM, self.DARM)
+        ogCARM = optical_gain(kat, self.CARM, self.CARM)
+        ogPRCL = optical_gain(kat, self.PRCL, self.PRCL)
+        ogMICH = optical_gain(kat, self.MICH, self.MICH)
+        ogSRCL = optical_gain(kat, self.SRCL, self.SRCL)
+
+        if _gains == None:            
+            # manually tuning relative gains
+            gainExtra = [0.5, 0.005, 1.0, 0.5, 0.025]
+            factor = -1.0 * 180 / math.pi # convert from rad/W to -1 * deg/W
+            gainDARM = round_to_n(gainExtra[0] * factor / ogDARM, 2) # manually tuned
+            gainCARM = round_to_n(gainExtra[1] * factor / ogCARM, 2) # factor 0.005 for better gain hirarchy with DARM
+            gainPRCL = round_to_n(gainExtra[2] * factor / ogPRCL, 2) # manually tuned
+            gainMICH = round_to_n(gainExtra[3] * factor / ogMICH, 2) # manually tuned
+            gainSRCL = round_to_n(gainExtra[4] * factor / ogSRCL, 2) # gain hirarchy with MICH
+            gains = [ gainDARM, gainCARM, gainPRCL, gainMICH, gainSRCL]
+
         else:
             gains = _gains.copy()
 
-        rms = [1e-13, 1e-12, 1e-11, 1e-11, 1e-11]
-        factor = 2.0 * math.pi / kat.lambda0
+        # rms: loop accuracies in meters (manually tuned for the loops to work
+        # with the default file)
+        # to compute accuracies from rms, we convert
+        # rms to radians as rms_rad = rms * 2 pi/lambda
+        # and then multiply by the optical gain.
+        rms = [1e-13, 1e-13, 1e-12, 1e-11, 50e-11] # default accuracies in meters
+        factor = 2.0 * math.pi / kat.lambda0 # convert from m to radians
         if _accuracies == None:
-            accDARM = round_to_n(np.abs(factor * rms[0] * gains[0]),2) 
-            accCARM = round_to_n(np.abs(factor * rms[1] * gains[1]),2) * 0.1 # manually tuned
-            accPRCL = round_to_n(np.abs(factor * rms[2] * gains[2]),2) * 0.1 # manually tuned
-            accMICH = round_to_n(np.abs(factor * rms[3] * gains[3]),2)
-            accSRCL = round_to_n(np.abs(factor * rms[4] * gains[4]),2) * 50.0 # manually tuned
+            accDARM = round_to_n(np.abs(factor * rms[0] * ogDARM),2) 
+            accCARM = round_to_n(np.abs(factor * rms[1] * ogCARM),2) 
+            accPRCL = round_to_n(np.abs(factor * rms[2] * ogPRCL),2) 
+            accMICH = round_to_n(np.abs(factor * rms[3] * ogMICH),2)
+            accSRCL = round_to_n(np.abs(factor * rms[4] * ogSRCL),2) 
             acc = [accDARM, accCARM, accPRCL, accMICH, accSRCL]
         else:
             acc = _accuracies.copy()
@@ -500,21 +567,12 @@ class aLIGO(object):
         set SRCL_err {} re
         func DARM_err = $AS_f2_I_re - {}
         """.format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL, self.DCoffsetW)
-
-        factor = 0.4 * -1.0 * 180 / math.pi # 0.2 because of multiple locks cross talk
-        gainDARM = round_to_n(factor / ogDARM, 2)
-        gainCARM = round_to_n(0.01 * factor / ogCARM, 2) # factor 0.01 for better gain hirarchy
-        gainPRCL = round_to_n(2.0  * factor / ogPRCL, 2) # manually tuned
-        gainMICH = round_to_n(1.0  * factor / ogMICH, 2) # manually tuned
-        gainSRCL = round_to_n(0.05 * factor / ogSRCL, 2) # gain hirrchy with MICH
         
-        code2 = """
-        lock DARM_lock $DARM_err {} {}
-        lock CARM_lock $CARM_err {} {} 
-        lock PRCL_lock $PRCL_err {} {}
-        lock MICH_lock $MICH_err {} {} 
-        lock SRCL_lock $SRCL_err {} {} 
-        """.format(gainDARM, acc[0], gainCARM, acc[1], gainPRCL, acc[2], gainMICH, acc[3], gainSRCL, acc[4])
+        code2 = """lock DARM_lock $DARM_err {:8.2} {:8.2}
+lock CARM_lock $CARM_err {:8.2g} {:8.2g} 
+lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}
+lock MICH_lock $MICH_err {:8.2g} {:8.2g} 
+lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}""".format(gains[0], acc[0], gains[1], acc[1], gains[2], acc[2], gains[3], acc[3], gains[4], acc[4])
         
         code3 = """
         noplot ITMY_lock
@@ -540,6 +598,41 @@ class aLIGO(object):
         ###########################################################################
         %%% FTend locks
         """
+        factor1 = 2.0 * math.pi / 360.0 
+        factor2 = 2.0 * math.pi / kat.lambda0 
+        factor3 = 360.0  / kat.lambda0
+        factor4 = -1.0 * 180 / math.pi 
+
+        if verbose:
+            print(" .--------------------------------------------------.")
+            print(" | Parameters for locks:                            |")
+            print(" +--------------------------------------------------+")
+            print(" | -- optical gains [W/rad], [W/deg] and [W/m]:     |")
+            print(" | DARM: {:12.5}, {:12.5}, {:12.5}   |".format(ogDARM, ogDARM*factor1, ogDARM*factor2))
+            print(" | CARM: {:12.5}, {:12.5}, {:12.5}   |".format(ogCARM, ogCARM*factor1, ogCARM*factor2))
+            print(" | PRCL: {:12.5}, {:12.5}, {:12.5}   |".format(ogPRCL, ogPRCL*factor1, ogPRCL*factor2))
+            print(" | MICH: {:12.5}, {:12.5}, {:12.5}   |".format(ogMICH, ogMICH*factor1, ogMICH*factor2))
+            print(" | SRCL: {:12.5}, {:12.5}, {:12.5}   |".format(ogSRCL, ogSRCL*factor1, ogSRCL*factor2))
+            print(" +--------------------------------------------------+")
+            print(" | -- defult loop accuracies [deg], [m] and [W]:    |")
+            print(" | DARM: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[0], rms[0], np.abs(rms[0]*ogDARM*factor2)))
+            print(" | CARM: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[1], rms[1], np.abs(rms[1]*ogCARM*factor2)))
+            print(" | PRCL: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[2], rms[2], np.abs(rms[2]*ogPRCL*factor2)))
+            print(" | MICH: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[3], rms[3], np.abs(rms[3]*ogMICH*factor2)))
+            print(" | SRCL: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[4], rms[4], np.abs(rms[4]*ogSRCL*factor2)))
+            print(" +--------------------------------------------------+")
+            print(" | -- extra gain factors (factor * 1/optical_gain): |")
+            print(" | DARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[0],factor4/ogDARM, gainExtra[0]*factor4/ogDARM))
+            print(" | CARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[1],factor4/ogCARM, gainExtra[1]*factor4/ogCARM))
+            print(" | PRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[2],factor4/ogPRCL, gainExtra[2]*factor4/ogPRCL))
+            print(" | MICH: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[3],factor4/ogMICH, gainExtra[3]*factor4/ogMICH))
+            print(" | SRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[4],factor4/ogSRCL, gainExtra[4]*factor4/ogSRCL))
+            print(" +--------------------------------------------------+")
+            print(" | -- lock commands used:                           |")
+            for l in code2.splitlines():
+                print (" | {:49}|".format(l))
+            print(" `--------------------------------------------------'")
+
         return "".join([code1, code2, code3])
 
 # ---------------------------------------------------------------------------------
@@ -737,7 +830,7 @@ def make_transparent(kat, _components):
         raise pkex.BasePyKatException("Cannot find component {}".format(components))
     return kat
 
-def reconnect_nodes(kat, component1, idx1, node_name):
+def reconnect_nodes(kat, component1, idx1, node_name, verbose=False):
     c_string = component1.getFinesseText()
     c = c_string[0].split()
     new_string = " ".join(c[:-2])
@@ -746,22 +839,22 @@ def reconnect_nodes(kat, component1, idx1, node_name):
     nodes[1] = c[-1]
     nodes[idx1]=node_name
     new_string = new_string + " " + nodes[0] + " " + nodes[1]
-    #print(" new string ='{}'".format(new_string))
+    vprint(verbose, "   new string ='{}'".format(new_string))
     kat.parseCommands(new_string)
 
-def remove_commands(kat, _commands):
+def remove_commands(kat, _commands, verbose=False):
     commands=make_list_copy(_commands)
     # removing commands
     for o in kat.commands.values():
         if o.name in commands:
             o.remove()
             commands = [c for c in commands if c != o.name]
-            #print('  {} removed'.format(o))
+            vprint(verbose, '   {} removed'.format(o))
     if len(commands) != 0:
         raise pkex.BasePyKatException("Cannot find command(s) {}".format(commands))
     return kat
     
-def remove_components(kat, _components, component_in=None, component_out=None):
+def remove_components(kat, _components, component_in=None, component_out=None, verbose=False):
     components=make_list_copy(_components)
     if  kat.components[components[-1]].nodes[1]:
         node_in  = kat.components[components[-1]].nodes[1].name
@@ -773,7 +866,7 @@ def remove_components(kat, _components, component_in=None, component_out=None):
         if o.name in components:
             o.remove()
             components = [c for c in components if c != o.name]
-            #print('  {} removed'.format(o))
+            vprint(verbose, '  {} removed'.format(o))
     if len(components) != 0:
         raise pkex.BasePyKatException("Cannot find component(s) {}".format(components))
     # reconnecting nodes if requested
@@ -837,7 +930,7 @@ def optical_gain(_kat, DOF_sig, DOF_det, f=10.0):
     kat.noxaxis = True
     kat.parseCommands("yaxis lin abs:deg")
     out = kat.run()
-    return np.real(out[_detName])
+    return float(np.real(out[_detName]))
 
 def find_peak(out, detector, minmax='max', debug=False): 
     """
@@ -852,11 +945,12 @@ def find_peak(out, detector, minmax='max', debug=False):
     find_peak(out, "pdout", minmax='min')
     """
     stepsize = out.x[1]-out.x[0]
-    print("  stepsize (precision) of scan: {0:g}".format(stepsize))
+    if debug:
+        print("  stepsize (precision) of scan: {0:g}".format(stepsize))
 
     _max, _min = peak.peakdetect( out[detector],out.x, 1)
     
-    if debug==True:
+    if debug:
         plt.figure()
         plt.plot(out.x,out[detector])
         print("max: ")
@@ -877,7 +971,7 @@ def find_peak(out, detector, minmax='max', debug=False):
     else:
         raise pkex.BasePyKatException("maxmin must be 'max' or 'min'")
         
-    if debug==True:
+    if debug:
         plt.plot(X_out,Y_out,'o')
         plt.xlabel('tuning [deg]')
         plt.ylabel('{0} output'.format(detector))
@@ -900,3 +994,8 @@ def round_to_n(x, n):
     power = -int(math.floor(math.log10(abs(x)))) + (n - 1)
     factor = (10 ** power)
     return round(x * factor) / factor
+
+
+def vprint(verbose, printstr):
+    if verbose:
+        print(printstr)

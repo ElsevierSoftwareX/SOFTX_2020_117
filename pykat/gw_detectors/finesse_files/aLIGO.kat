@@ -39,11 +39,13 @@
 #     should have losses but no reflectivity. Alternatively beamsplitter components
 #     with non-zero reflectivity can be used to detect the AR reflections
 #   - Same as above for PRM and SRM AR coatings
+#   - change order of `cav' commands, arm cavities need to come first
 #
 #   Change of parameter values
 #   - BS substrate length were assymetric and did not match substrate thickness,
 #     changed to symmetric 0.0687m, using pykat.GWdetectors.aLIGO.BSpath(0.06)
 #   - changed SRM transmission from 35% to 20%, matching the aLIGO 2015 paper
+#   - changed arm length to L=3994.4692, see [4], Table 10.2
 #
 #   Changes in file structure
 #   - removed length calculation fucntions for PRC and SRC sub-length
@@ -54,24 +56,8 @@
 #   - changed naming for thermal lens components
 #   - changed naming of PRMHR to PRM and node names in PRM substrate
 #   - changed naming of SRMHR to SRM and node names in SRM substrate
-#   - chnaged name of ITMHR to ITM and ETMHR to ETM
-#   - 
-# Laser
-#
-# Modulation
-#
-# IMC
-#
-# PRC
-#
-# BS
-#
-# Arms
-#   - changed arm length to L=3994.4692, see [4], Table 10.2
-#
-# SRC
-#
-# OMC
+#   - changed name of ITMHR to ITM and ETMHR to ETM
+#   - changed names of arm spaces from LXarm, LYarm to LX, LY
 #
 #
 
@@ -174,7 +160,7 @@ m1 ITMY 0.014 $Mloss $phi_ITMY nITMYs2 nITMY2
 attr ITMY Rc -1934
 
 # Y arm length
-s LYarm $Larm nITMY2 nETMY1
+s LY $Larm nITMY2 nETMY1
 
 # Y arm end mirror
 m1 ETMY 5u $Mloss $phi_ETMY nETMY1 nETMYs1
@@ -208,7 +194,7 @@ m1 ITMX 0.014 $Mloss $phi_ITMX nITMXs2 nITMX2
 attr ITMX Rc -1934
 
 # X arm length
-s LXarm $Larm nITMX2 nETMX1
+s LX $Larm nITMX2 nETMX1
 
 # X arm end mirror
 m1 ETMX 5u $Mloss $phi_ETMX nETMX1 nETMXs1
@@ -250,12 +236,12 @@ attr SRM Rc -5.6938
 ###########################################################################
 maxtem 4
 #cav cavIMC MC2 nMC2in MC2 nMC2refl 
+cav cavXARM ITMX nITMX2 ETMX nETMX1
+cav cavYARM ITMY nITMY2 ETMY nETMY1
 cav cavPRX PRM nPRM2 ITMX nITMXs2
 cav cavPRY PRM nPRM2 ITMY nITMYs2
 cav cavSRX SRM nSRM1 ITMX nITMXs2
 cav cavSRY SRM nSRM1 ITMY nITMYs2
-cav cavXARM ITMX nITMX2 ETMX nETMX1
-cav cavYARM ITMY nITMY2 ETMY nETMY1
 # removed OMC
 
 ###########################################################################
@@ -334,7 +320,6 @@ pd1 AS_f2_Q $f2 103 nSRM2
 
 %%% FTblock locks
 ###########################################################################
-
 set PRCL_err POP_f1_I  re
 set MICH_err POP_f2_Q  re
 set CARM_err REFL_f1_I re
