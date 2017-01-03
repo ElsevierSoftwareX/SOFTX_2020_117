@@ -39,13 +39,13 @@ class aLIGO(object):
         
     """
 
-    def __init__(self, _name="default", katfile=None, debug=False):
+    def __init__(self, _name="default", katfile=None, verbose = False, debug=False):
         names = ['default', 'LLO', 'LHO']
         if debug:
             self.kat = finesse.kat(tempdir=".",tempname="test")
         else:
             self.kat = finesse.kat()
-
+        self.kat.verbose=verbose
         if katfile:
             self.kat.loadKatFile(katfile)
         else:
@@ -507,11 +507,11 @@ class aLIGO(object):
             return code1
             
         
-    def generate_lock_block(self, _kat, _gains=None, _accuracies=None, verbose=True):
+    def generate_lock_block(self, _kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025], gains=None, accuracies=None, verbose=True):
         """
-        gains: optical gain is in W per deg
-        accuracies: error signal threshold in W
-
+        gainsAdjustment: factors to apply to loop gains computed from optical gains
+        gains: override loop gain [W per deg]
+        accuracies: overwrite error signal threshold [W]
         """
         kat = _kat.deepcopy()
         # optical gains in W/rad
@@ -521,19 +521,15 @@ class aLIGO(object):
         ogMICH = optical_gain(kat, self.MICH, self.MICH)
         ogSRCL = optical_gain(kat, self.SRCL, self.SRCL)
 
-        if _gains == None:            
+        if gains == None:            
             # manually tuning relative gains
-            gainExtra = [0.5, 0.005, 1.0, 0.5, 0.025]
             factor = -1.0 * 180 / math.pi # convert from rad/W to -1 * deg/W
-            gainDARM = round_to_n(gainExtra[0] * factor / ogDARM, 2) # manually tuned
-            gainCARM = round_to_n(gainExtra[1] * factor / ogCARM, 2) # factor 0.005 for better gain hirarchy with DARM
-            gainPRCL = round_to_n(gainExtra[2] * factor / ogPRCL, 2) # manually tuned
-            gainMICH = round_to_n(gainExtra[3] * factor / ogMICH, 2) # manually tuned
-            gainSRCL = round_to_n(gainExtra[4] * factor / ogSRCL, 2) # gain hirarchy with MICH
+            gainDARM = round_to_n(gainsAdjustment[0] * factor / ogDARM, 2) # manually tuned
+            gainCARM = round_to_n(gainsAdjustment[1] * factor / ogCARM, 2) # factor 0.005 for better gain hirarchy with DARM
+            gainPRCL = round_to_n(gainsAdjustment[2] * factor / ogPRCL, 2) # manually tuned
+            gainMICH = round_to_n(gainsAdjustment[3] * factor / ogMICH, 2) # manually tuned
+            gainSRCL = round_to_n(gainsAdjustment[4] * factor / ogSRCL, 2) # gain hirarchy with MICH
             gains = [ gainDARM, gainCARM, gainPRCL, gainMICH, gainSRCL]
-
-        else:
-            gains = _gains.copy()
 
         # rms: loop accuracies in meters (manually tuned for the loops to work
         # with the default file)
@@ -542,15 +538,13 @@ class aLIGO(object):
         # and then multiply by the optical gain.
         rms = [1e-13, 1e-13, 1e-12, 1e-11, 50e-11] # default accuracies in meters
         factor = 2.0 * math.pi / kat.lambda0 # convert from m to radians
-        if _accuracies == None:
+        if accuracies == None:
             accDARM = round_to_n(np.abs(factor * rms[0] * ogDARM),2) 
             accCARM = round_to_n(np.abs(factor * rms[1] * ogCARM),2) 
             accPRCL = round_to_n(np.abs(factor * rms[2] * ogPRCL),2) 
             accMICH = round_to_n(np.abs(factor * rms[3] * ogMICH),2)
             accSRCL = round_to_n(np.abs(factor * rms[4] * ogSRCL),2) 
-            acc = [accDARM, accCARM, accPRCL, accMICH, accSRCL]
-        else:
-            acc = _accuracies.copy()
+            accuracies = [accDARM, accCARM, accPRCL, accMICH, accSRCL]
 
         nameDARM = self.DARM.signal_name(kat)
         nameCARM = self.CARM.signal_name(kat)
@@ -572,7 +566,7 @@ class aLIGO(object):
 lock CARM_lock $CARM_err {:8.2g} {:8.2g} 
 lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}
 lock MICH_lock $MICH_err {:8.2g} {:8.2g} 
-lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}""".format(gains[0], acc[0], gains[1], acc[1], gains[2], acc[2], gains[3], acc[3], gains[4], acc[4])
+lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}""".format(gains[0], accuracies[0], gains[1], accuracies[1], gains[2], accuracies[2], gains[3], accuracies[3], gains[4], accuracies[4])
         
         code3 = """
         noplot ITMY_lock
@@ -622,11 +616,11 @@ lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}""".format(gains[0], acc[0], gains[1], a
             print(" | SRCL: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[4], rms[4], np.abs(rms[4]*ogSRCL*factor2)))
             print(" +--------------------------------------------------+")
             print(" | -- extra gain factors (factor * 1/optical_gain): |")
-            print(" | DARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[0],factor4/ogDARM, gainExtra[0]*factor4/ogDARM))
-            print(" | CARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[1],factor4/ogCARM, gainExtra[1]*factor4/ogCARM))
-            print(" | PRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[2],factor4/ogPRCL, gainExtra[2]*factor4/ogPRCL))
-            print(" | MICH: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[3],factor4/ogMICH, gainExtra[3]*factor4/ogMICH))
-            print(" | SRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainExtra[4],factor4/ogSRCL, gainExtra[4]*factor4/ogSRCL))
+            print(" | DARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[0],factor4/ogDARM, gainsAdjustment[0]*factor4/ogDARM))
+            print(" | CARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[1],factor4/ogCARM, gainsAdjustment[1]*factor4/ogCARM))
+            print(" | PRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[2],factor4/ogPRCL, gainsAdjustment[2]*factor4/ogPRCL))
+            print(" | MICH: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[3],factor4/ogMICH, gainsAdjustment[3]*factor4/ogMICH))
+            print(" | SRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[4],factor4/ogSRCL, gainsAdjustment[4]*factor4/ogSRCL))
             print(" +--------------------------------------------------+")
             print(" | -- lock commands used:                           |")
             for l in code2.splitlines():
