@@ -143,12 +143,12 @@ class aLIGO(object):
         else:
             nmStr = "0 0"
         code = """
-        ad f1p {0} {1} nPRM2
-        ad f1m {0} -{1} nPRM2
-        xaxis mod1 f lin {2} {3} 200
-        put f1p f $x1 
-        put f1m f $mx1 
-        """.format(nmStr, self.f1, startf, stopf)
+ad f1p {0} {1} nPRM2
+ad f1m {0} -{1} nPRM2
+xaxis mod1 f lin {2} {3} 200
+put f1p f $x1 
+put f1m f $mx1 
+""".format(nmStr, self.f1, startf, stopf)
         kat.parseCommands(code)
         out = kat.run()
         ax.plot(out.x-self.f1,np.abs(out["f1p"]), label=" f1")
@@ -481,33 +481,60 @@ class aLIGO(object):
         self.DCoffsetW = AS_power
         return self.DCoffset
 
+    def generate_tuning_block(self, kat):
+        code1 = """
+%%% FTblock tunings
+###########################################################################"""
+        code2 = """
+const phi_ITMX {:.8}
+const phi_ITMY {:.8}
+const phi_ETMX {:.8}
+const phi_ETMY {:.8}""".format(float(kat.ITMX.phi), float(kat.ITMY.phi), float(kat.ETMX.phi),float(kat.ETMY.phi))
+
+        code3 = """
+const phi_BS   {:.8}
+const phi_PRM  {:.8}
+const phi_SRM  {:.8}""".format(float(kat.BS.phi), float(kat.PRM.phi), float(kat.SRM.phi))
+
+        code4 = """
+###########################################################################
+%%% FTend tuning"""
+        return "".join([code1, code2, code3, code4])
+
     def generate_errsig_block(self, kat, noplot=False):
+        code1 = """
+%%% FTblock errsigs
+###########################################################################
+"""
         sigDARM = self.DARM.signal(kat)
         sigCARM = self.CARM.signal(kat)
         sigPRCL = self.PRCL.signal(kat)
         sigMICH = self.MICH.signal(kat)
         sigSRCL = self.SRCL.signal(kat)
-        code1 = "\n".join([sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL])
+        code2 = "\n".join([sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL])
 
+        code3= ""
         if noplot:
             nameDARM = self.DARM.signal_name(kat)
             nameCARM = self.CARM.signal_name(kat)
             namePRCL = self.PRCL.signal_name(kat)
             nameMICH = self.MICH.signal_name(kat)
             nameSRCL = self.SRCL.signal_name(kat)
-            code2 = """
-            noplot {}
-            noplot {}
-            noplot {}
-            noplot {}
-            noplot {}
-            """.format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
-            return "".join([code1, code2])
-        else:
-            return code1
+            code3 = """
+noplot {}
+noplot {}
+noplot {}
+noplot {}
+noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
+
+        code4 = """
+###########################################################################
+%%% FTend errsigs"""
+        return "".join([code1, code2, code3, code4])
+
             
         
-    def generate_lock_block(self, _kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025], gains=None, accuracies=None, verbose=True):
+    def generate_locks(self, _kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025], gains=None, accuracies=None, verbose=True):
         """
         gainsAdjustment: factors to apply to loop gains computed from optical gains
         gains: override loop gain [W per deg]
@@ -530,7 +557,8 @@ class aLIGO(object):
             gainMICH = round_to_n(gainsAdjustment[3] * factor / ogMICH, 2) # manually tuned
             gainSRCL = round_to_n(gainsAdjustment[4] * factor / ogSRCL, 2) # gain hirarchy with MICH
             gains = [ gainDARM, gainCARM, gainPRCL, gainMICH, gainSRCL]
-
+        self.lockGains = gains.copy()
+        
         # rms: loop accuracies in meters (manually tuned for the loops to work
         # with the default file)
         # to compute accuracies from rms, we convert
@@ -545,53 +573,15 @@ class aLIGO(object):
             accMICH = round_to_n(np.abs(factor * rms[3] * ogMICH),2)
             accSRCL = round_to_n(np.abs(factor * rms[4] * ogSRCL),2) 
             accuracies = [accDARM, accCARM, accPRCL, accMICH, accSRCL]
+        self.lockAccuracies = accuracies.copy()
+
 
         nameDARM = self.DARM.signal_name(kat)
         nameCARM = self.CARM.signal_name(kat)
         namePRCL = self.PRCL.signal_name(kat)
         nameMICH = self.MICH.signal_name(kat)
         nameSRCL = self.SRCL.signal_name(kat)
-        code1 = """
-        %%% FTblock locks
-        ###########################################################################
-        set AS_f2_I_re {} re
-        set CARM_err {} re
-        set PRCL_err {} re
-        set MICH_err {} re
-        set SRCL_err {} re
-        func DARM_err = $AS_f2_I_re - {}
-        """.format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL, self.DCoffsetW)
-        
-        code2 = """lock DARM_lock $DARM_err {:8.2} {:8.2}
-lock CARM_lock $CARM_err {:8.2g} {:8.2g} 
-lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}
-lock MICH_lock $MICH_err {:8.2g} {:8.2g} 
-lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}""".format(gains[0], accuracies[0], gains[1], accuracies[1], gains[2], accuracies[2], gains[3], accuracies[3], gains[4], accuracies[4])
-        
-        code3 = """
-        noplot ITMY_lock
-        func ITMY_lock = (-1.0) * $MICH_lock 
-        func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock
-        func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock
-
-        put* PRM     phi     $PRCL_lock
-        put* ITMX    phi     $MICH_lock
-        put* ITMY    phi     $ITMY_lock
-        put* ETMX    phi     $ETMX_lock
-        put* ETMY    phi     $ETMY_lock
-        put* SRM     phi     $SRCL_lock
-
-        noplot PRCL_lock
-        noplot SRCL_lock
-        noplot MICH_lock
-        noplot DARM_lock
-        noplot CARM_lock
-        noplot ETMX_lock
-        noplot ETMY_lock
-
-        ###########################################################################
-        %%% FTend locks
-        """
+        self.lockNames = [nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL]
         factor1 = 2.0 * math.pi / 360.0 
         factor2 = 2.0 * math.pi / kat.lambda0 
         factor3 = 360.0  / kat.lambda0
@@ -621,12 +611,60 @@ lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}""".format(gains[0], accuracies[0], gain
             print(" | PRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[2],factor4/ogPRCL, gainsAdjustment[2]*factor4/ogPRCL))
             print(" | MICH: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[3],factor4/ogMICH, gainsAdjustment[3]*factor4/ogMICH))
             print(" | SRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[4],factor4/ogSRCL, gainsAdjustment[4]*factor4/ogSRCL))
+            print(" `--------------------------------------------------'")
+
+
+        
+    def generate_lock_block(self, kat, verbose=False):
+        if self.lockNames == None or self.lockAccuracies == None or self.lockGains == None:
+            raise pkex.BasePyKatException("run gerate_locks before generate_lock_block")            
+        code1 = """
+%%% FTblock locks
+###########################################################################
+set AS_f2_I_re {} re
+set CARM_err {} re
+set PRCL_err {} re
+set MICH_err {} re
+set SRCL_err {} re
+func DARM_err = $AS_f2_I_re - {}
+""".format(self.lockNames[0], self.lockNames[1], self.lockNames[2], self.lockNames[3], self.lockNames[4], self.DCoffsetW)
+       
+        code2 = """
+lock DARM_lock $DARM_err {:8.2} {:8.2}
+lock CARM_lock $CARM_err {:8.2g} {:8.2g} 
+lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}
+lock MICH_lock $MICH_err {:8.2g} {:8.2g} 
+lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}""".format(self.lockGains[0], self.lockAccuracies[0], self.lockGains[1], self.lockAccuracies[1], self.lockGains[2], self.lockAccuracies[2], self.lockGains[3], self.lockAccuracies[3], self.lockGains[4], self.lockAccuracies[4])
+        
+        code3 = """
+noplot ITMY_lock
+func ITMY_lock = (-1.0) * $MICH_lock 
+func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock
+func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock
+
+put* PRM     phi     $PRCL_lock
+put* ITMX    phi     $MICH_lock
+put* ITMY    phi     $ITMY_lock
+put* ETMX    phi     $ETMX_lock
+put* ETMY    phi     $ETMY_lock
+put* SRM     phi     $SRCL_lock
+
+noplot PRCL_lock
+noplot SRCL_lock
+noplot MICH_lock
+noplot DARM_lock
+noplot CARM_lock
+noplot ETMX_lock
+noplot ETMY_lock
+###########################################################################
+%%% FTend locks"""
+        if verbose:
+            print(" .--------------------------------------------------.")
+            print(" | Lock commands used:                              |")
             print(" +--------------------------------------------------+")
-            print(" | -- lock commands used:                           |")
             for l in code2.splitlines():
                 print (" | {:49}|".format(l))
             print(" `--------------------------------------------------'")
-
         return "".join([code1, code2, code3])
 
 # ---------------------------------------------------------------------------------

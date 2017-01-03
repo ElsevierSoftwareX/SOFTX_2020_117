@@ -13,9 +13,7 @@
 # 
 # Anna Green, 28th November 2016
 #--------------------------------------------------------------------------
-
-%%% FTblock References
-###########################################################################
+#
 # References used for aLIGO parameters
 # [1] R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
 # [2] Advanced LIGO, CQG, 2015 
@@ -61,10 +59,8 @@
 #
 #
 
-###########################################################################
-%%% FTend References
 
-%%% FTblock Laser
+%%% FTblock laser
 ###########################################################################
 # Laser and input optics
 l L0 125 0 n0
@@ -80,7 +76,7 @@ s lmod2 1 n2 n3
 mod mod2 $f2 0.18 1 pm n3 n4
 s lmod3 1 n4 nREFL # TODO
 ###########################################################################
-%%% FTend Laser
+%%% FTend laser
 
 %%% FTblock PRC
 ###########################################################################
@@ -230,7 +226,7 @@ m2 SRMAR 0 50n 0 nSRMs2 nSRM2
 attr SRM Rc -5.6938
 
 ###########################################################################
-%%% FTend SR
+%%% FTend SRC
 
 %%% FTblock HOMs
 ###########################################################################
@@ -247,7 +243,7 @@ cav cavSRY SRM nSRM1 ITMY nITMYs2
 ###########################################################################
 %%% FTend HOMs
 
-%%% FTblock Constants
+%%% FTblock constants
 ###########################################################################
 const nsilica 1.44963098985906
 const nTGG 1.954
@@ -258,9 +254,9 @@ const fM 36.397884M
 const fP 54.596826M
 const th_f 34.5k
 ###########################################################################
-%%% FTend Constants
+%%% FTend constants
 
-%%% FTblock Tunings
+%%% FTblock tunings
 ###########################################################################
 const phi_SRM 90.0
 const phi_PRM 0.0
@@ -270,11 +266,11 @@ const phi_ETMX 0.0
 const phi_ETMY 0.0
 const phi_BS 0
 ###########################################################################
-%%% FTend Tunings
+%%% FTend tunings
 
 # reintroduced: errsigs, locks, powers (partial)
 
-%%% FTblock Powers
+%%% FTblock powers
 ###########################################################################
 pd P_DC_AS  nSRM2
 # pd P_DC_OMC nOMC_HROC_trans
@@ -295,7 +291,7 @@ ad src0 0 nSRM1*
 ad srcf1 $f1 nSRM1*
 ad srcf2 $f2 nSRM1*
 ###########################################################################
-%%% FTend Powers
+%%% FTend powers
 
 %%% FTblock errsigs
 ###########################################################################
@@ -320,6 +316,7 @@ pd1 AS_f2_Q $f2 103 nSRM2
 
 %%% FTblock locks
 ###########################################################################
+/*
 set PRCL_err POP_f1_I  re
 set MICH_err POP_f2_Q  re
 set CARM_err REFL_f1_I re
@@ -362,7 +359,7 @@ noplot CARM_lock
 noplot mMICH_lock
 noplot ETMX_lock
 noplot ETMY_lock
-
+*/
 ###########################################################################
 %%% FTend locks
 
