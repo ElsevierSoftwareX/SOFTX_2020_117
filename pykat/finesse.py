@@ -1239,7 +1239,8 @@ class kat(object):
                     if obj != None and not isinstance(obj, six.string_types):
                         if self.hasNamedObject(obj.name):
                             getattr(self, obj.name).remove()
-                            print ("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
+                            if self.verbose:
+                                print ("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
 
                         self.add(obj, block=self.__currentTag)
                 
