@@ -1014,7 +1014,7 @@ class kat(object):
             else:
                 return
         
-        for o in self.__blocks[name].contents.copy():
+        for o in self.__blocks[name].contents:
             self.remove(o)
         
         del self.__blocks[name]
