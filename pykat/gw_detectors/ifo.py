@@ -46,14 +46,15 @@ class aLIGO(object):
         else:
             self.kat = finesse.kat()
         self.kat.verbose=verbose
+        self._data_path=pkg_resources.resource_filename('pykat.gw_detectors','finesse_files/')
+
         if katfile:
             self.kat.loadKatFile(katfile)
         else:
             if _name not in names: # TODO different files not yet implemented
                 printf("aLIGO name `{}' not recognised, must be 'default', 'LLO' or 'LHO'",_name)
-            _data_path=pkg_resources.resource_filename('pykat.gw_detectors','finesse_files/')
             #print(data_path)
-            self.kat.loadKatFile(_data_path+"aLIGO.kat")
+            self.kat.loadKatFile(self._data_path+"aLIGO.kat")
 
         # ----------------------------------------------------------------------
         # set variables to zero first
@@ -111,8 +112,6 @@ class aLIGO(object):
         self.CARM =  DOF("CARM", self.REFL_f1, "I", ["ETMX", "ETMY"], [1, 1], 1.5)
         self.DARM =  DOF("DARM", self.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0)
         self.SRCL =  DOF("SRCL", self.REFL_f2, "I", "SRM", 1, 1e2)
-
-
             
     def adjust_PRC_length(self, kat, verbose=False):
         """
