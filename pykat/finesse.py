@@ -942,7 +942,7 @@ class kat(object):
     
     def parseKatCode(self, code, blocks=None):
         warnings.warn('parseKatCode depreciated, use parseCommands.', stacklevel=2)
-        self.parseCommands(code, block=blocks)
+        self.parseCommands(code, blocks=blocks)
 
     def processConstants(self, commands):
         """
