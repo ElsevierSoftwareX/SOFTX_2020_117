@@ -28,6 +28,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import warnings
 import codecs
 import uuid
 import sys
@@ -940,7 +941,8 @@ class kat(object):
         self.parseCommands(commands, blocks=blocks)
     
     def parseKatCode(self, code, blocks=None):
-        raise pkex.BasePyKatException("Removed. Use parseCommands instead.") 
+        warnings.warn('parseKatCode depreciated, use parseCommands.', stacklevel=2)
+        self.parseCommands(code, block=blocks)
 
     def processConstants(self, commands):
         """
