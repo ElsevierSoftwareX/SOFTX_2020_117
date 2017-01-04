@@ -940,8 +940,7 @@ class kat(object):
         self.parseCommands(commands, blocks=blocks)
     
     def parseKatCode(self, code, blocks=None):
-        #commands = code.split("\n")
-        self.parseCommands(code, blocks=blocks)
+        raise pkex.BasePyKatException("Removed. Use parseCommands instead.") 
 
     def processConstants(self, commands):
         """
@@ -1014,7 +1013,7 @@ class kat(object):
             else:
                 return
         
-        for o in self.__blocks[name].contents:
+        for o in list(self.__blocks[name].contents):
             self.remove(o)
         
         del self.__blocks[name]
