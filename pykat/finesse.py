@@ -196,47 +196,89 @@ def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
                                                  gouyy = space.gouy_y)
                                                  
 
-def readBlocks(katfile):
+
+class BlockedKatFile(object):
     """
-    For a given kat file, the blocks are parsed into dictionary as raw strings.
+    Allows manipulation of blocked kat file.
+    
+    Example:
+        bkf = BlockedKatFile()
+        
+        bkf.read(katfile)
+        bkf.add('tester', "blah\nblah", addAfter="Tunings")
+        bkf.remove("Laser")
+        bkf.write("mytest.kat")
     """
     
-    __blocks = {}
-    __currentBlock = NO_BLOCK
-    __blocks[__currentBlock] = ""
-
-    with open(katfile) as f:
-        commands = f.readlines()
-    
-    for line in commands:
-        line = line.strip()
-
-        # Looking for block start or end
-        values = line.split()
-    
-        if len(values) >= 3 and values[0] == "%%%":
-            if values[1] == "FTblock":
-                newTag = values[2]
-
-                if __currentBlock != None and __currentBlock != NO_BLOCK: 
-                    warnings.warn("found block {0} before block {1} ended".format(newTag, __currentBlock))    
-    
-                if newTag in __blocks:
-                    raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
-    
-                __blocks[newTag] = ""
-                __currentBlock = newTag
-         
-        if(len(line) > 0 and (__currentBlock is NO_BLOCK)):
-            continue
+    def __init__(self, NO_BLOCK="NO_BLOCK"):
+        self.__NO_BLOCK = NO_BLOCK
+        self.ordering = [self.__NO_BLOCK]
+        self.blocks = {self.__NO_BLOCK:""}
+        self.__currentBlock = self.__NO_BLOCK
         
-        __blocks[__currentBlock] += line + "\n"
+    def remove(self, block):
+        if block not in self.ordering or block not in self.blocks:
+            raise Exception("%s block not found")
         
-        if len(values) >= 3 and values[0] == "%%%":
-            if values[1] == "FTend":
-                __currentBlock = NO_BLOCK
+        self.ordering.remove(block)
+        self.blocks.pop(block)
+        
+    def add(self, block, contents, addAfter=None):
+
+        if block in self.ordering or block in self.blocks:
+            raise Exception("%s block already present")
+    
+        if addAfter is not None:
+            self.ordering.insert(self.ordering.index(addAfter)+1, block)
+        else:
+            self.ordering.append(block)
             
-    return __blocks
+        self.blocks[block] = contents + "\n"
+        
+    def write(self, katfile):
+        with open(katfile, "w") as f:
+            for block in self.ordering:
+                f.write("\n%%% FTblock " + block + "\n")
+                f.write(self.blocks[block])
+                f.write("%%% FTend " + block + "\n")
+    
+    def read(self, katfile):
+        """
+        For a given kat file, the blocks are parsed into dictionary as raw strings.
+        """
+    
+        with open(katfile, "r") as f:
+            commands = f.readlines()
+    
+        for line in commands:
+            line = line.strip()
+
+            # Looking for block start or end
+            values = line.split()
+    
+            if len(values) >= 3 and values[0] == "%%%":
+                if values[1] == "FTblock":
+                    newTag = values[2]
+
+                    if self.__currentBlock != None and self.__currentBlock != self.__NO_BLOCK: 
+                        warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentBlock))    
+    
+                    if newTag in self.blocks:
+                        raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+    
+                    self.blocks[newTag] = ""
+                    self.__currentBlock = newTag
+                    self.ordering.append(newTag)
+                
+                if values[1] == "FTend":
+                    self.__currentBlock = self.__NO_BLOCK
+        
+                continue
+                
+            if(len(line) == 0 and (self.__currentBlock == self.__NO_BLOCK)):
+                continue
+        
+            self.blocks[self.__currentBlock] += line + "\n"
     
     
 class KatBatch(object):
