@@ -194,12 +194,52 @@ def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
 
             trace_info[space.name] = space_trace(gouyx = space.gouy_x,
                                                  gouyy = space.gouy_y)
-                     
-class KatBatch(object):
+                                                 
+
+def readBlocks(katfile):
+    """
+    For a given kat file, the blocks are parsed into dictionary as raw strings.
     """
     
-    """
+    __blocks = {}
+    __currentBlock = NO_BLOCK
+    __blocks[__currentBlock] = ""
 
+    with open(katfile) as f:
+        commands = f.readlines()
+    
+    for line in commands:
+        line = line.strip()
+
+        # Looking for block start or end
+        values = line.split()
+    
+        if len(values) >= 3 and values[0] == "%%%":
+            if values[1] == "FTblock":
+                newTag = values[2]
+
+                if __currentBlock != None and __currentBlock != NO_BLOCK: 
+                    warnings.warn("found block {0} before block {1} ended".format(newTag, __currentBlock))    
+    
+                if newTag in __blocks:
+                    raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+    
+                __blocks[newTag] = ""
+                __currentBlock = newTag
+         
+        if(len(line) > 0 and (__currentBlock is NO_BLOCK)):
+            continue
+        
+        __blocks[__currentBlock] += line + "\n"
+        
+        if len(values) >= 3 and values[0] == "%%%":
+            if values[1] == "FTend":
+                __currentBlock = NO_BLOCK
+            
+    return __blocks
+    
+    
+class KatBatch(object):
     
     def __init__(self):
         from IPython.parallel import Client
@@ -1048,7 +1088,7 @@ class kat(object):
         for key in self.__variables:
             print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
     
-    def parseCommands(self, commands, blocks=None, addToBlock=None):
+    def parseCommands(self, commands, blocks=None, addToBlock=None, preserve=False):
         try:
             if addToBlock is not None and blocks is not None:
                 raise pkex.BasePyKatException("When parsing commands you cannot set both blocks and addToBlock arguments")
