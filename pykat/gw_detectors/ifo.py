@@ -9,6 +9,7 @@ import copy
 import warnings
 import cmath
 from pykat import finesse
+from pykat.finesse import BlockedKatFile
 import pykat.components
 import pykat.exceptions as pkex
 import pykat.external.peakdetect as peak
@@ -48,13 +49,16 @@ class aLIGO(object):
         self.kat.verbose=verbose
         self._data_path=pkg_resources.resource_filename('pykat.gw_detectors','finesse_files/')
 
+        self.rawBlocks = BlockedKatFile()
         if katfile:
             self.kat.loadKatFile(katfile)
+            self.rawBlocks.read(katfile)
         else:
             if _name not in names: # TODO different files not yet implemented
                 printf("aLIGO name `{}' not recognised, must be 'default', 'LLO' or 'LHO'",_name)
             #print(data_path)
             self.kat.loadKatFile(self._data_path+"aLIGO.kat")
+            self.rawBlocks.read(self._data_path+"aLIGO.kat")
 
         # ----------------------------------------------------------------------
         # set variables to zero first
@@ -481,30 +485,22 @@ put f1m f $mx1
         return self.DCoffset
 
     def generate_tuning_block(self, kat):
-        code1 = """
-%%% FTblock tunings
-###########################################################################"""
-        code2 = """
+        code1 = """###########################################################################
 const phi_ITMX {:.8}
 const phi_ITMY {:.8}
 const phi_ETMX {:.8}
 const phi_ETMY {:.8}""".format(float(kat.ITMX.phi), float(kat.ITMY.phi), float(kat.ETMX.phi),float(kat.ETMY.phi))
 
-        code3 = """
+        code2 = """
 const phi_BS   {:.8}
 const phi_PRM  {:.8}
-const phi_SRM  {:.8}""".format(float(kat.BS.phi), float(kat.PRM.phi), float(kat.SRM.phi))
+const phi_SRM  {:.8}
+###########################################################################""".format(float(kat.BS.phi), float(kat.PRM.phi), float(kat.SRM.phi))
 
-        code4 = """
-###########################################################################
-%%% FTend tuning"""
-        return "".join([code1, code2, code3, code4])
+        return "".join([code1, code2])
 
     def generate_errsig_block(self, kat, noplot=False):
-        code1 = """
-%%% FTblock errsigs
-###########################################################################
-"""
+        code1 = "###########################################################################\n" 
         sigDARM = self.DARM.signal(kat)
         sigCARM = self.CARM.signal(kat)
         sigPRCL = self.PRCL.signal(kat)
@@ -525,10 +521,7 @@ noplot {}
 noplot {}
 noplot {}
 noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
-
-        code4 = """
-###########################################################################
-%%% FTend errsigs"""
+        code4="\n###########################################################################"
         return "".join([code1, code2, code3, code4])
 
             
@@ -556,7 +549,7 @@ noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
             gainMICH = round_to_n(gainsAdjustment[3] * factor / ogMICH, 2) # manually tuned
             gainSRCL = round_to_n(gainsAdjustment[4] * factor / ogSRCL, 2) # gain hirarchy with MICH
             gains = [ gainDARM, gainCARM, gainPRCL, gainMICH, gainSRCL]
-        self.lockGains = gains.copy()
+        self.lockGains = copy.deepcopy(gains)
         
         # rms: loop accuracies in meters (manually tuned for the loops to work
         # with the default file)
@@ -572,7 +565,7 @@ noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
             accMICH = round_to_n(np.abs(factor * rms[3] * ogMICH),2)
             accSRCL = round_to_n(np.abs(factor * rms[4] * ogSRCL),2) 
             accuracies = [accDARM, accCARM, accPRCL, accMICH, accSRCL]
-        self.lockAccuracies = accuracies.copy()
+        self.lockAccuracies = copy.deepcopy(accuracies)
 
 
         nameDARM = self.DARM.signal_name(kat)
@@ -617,9 +610,7 @@ noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
     def generate_lock_block(self, kat, verbose=False):
         if self.lockNames == None or self.lockAccuracies == None or self.lockGains == None:
             raise pkex.BasePyKatException("run gerate_locks before generate_lock_block")            
-        code1 = """
-%%% FTblock locks
-###########################################################################
+        code1 = """###########################################################################
 set AS_f2_I_re {} re
 set CARM_err {} re
 set PRCL_err {} re
@@ -656,7 +647,7 @@ noplot CARM_lock
 noplot ETMX_lock
 noplot ETMY_lock
 ###########################################################################
-%%% FTend locks"""
+"""
         if verbose:
             print(" .--------------------------------------------------.")
             print(" | Lock commands used:                              |")
