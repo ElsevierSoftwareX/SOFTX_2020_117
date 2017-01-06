@@ -170,7 +170,7 @@ class lock(Command):
         self.__accuracy = accuracy
         self.singleLock = singleLock
         self.enabled = True
-        
+        self.noplot = False
         
         self.output = putter(name, self)
         self._putters.append(self.output)
