@@ -14,11 +14,6 @@ from scipy.special import hermite
 from pykat.math.jacobi import jacobi
 from pykat.SIfloat import SIfloat
 
-class gauss_param(BeamParam):
-    pass
-
-class beam_param(BeamParam):
-    pass
         
 class BeamParam(object):
     """
@@ -499,3 +494,13 @@ def LG2HG(p,l):
         coefficients[j] = c * (-1.0)**p * (-2)**j * jacobi(j,n-j,m-j,0.0)
     
     return coefficients, ns, ms
+
+
+# These classes are here as legacy classes, BeamParam should throw a warning if they are used instead.
+
+
+class gauss_param(BeamParam):
+    pass
+
+class beam_param(BeamParam):
+    pass

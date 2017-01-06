@@ -216,13 +216,19 @@ class BlockedKatFile(object):
         self.blocks = {self.__NO_BLOCK:""}
         self.__currentBlock = self.__NO_BLOCK
         
-    def remove(self, block):
-        if block not in self.ordering or block not in self.blocks:
-            raise Exception("%s block not found")
+    def remove(self, *blocks):
+        if len(blocks[0]) > 1 and not isinstance(blocks[0], six.string_types):
+            # if we've got an iterable thing that isn't a string, eg list or tuple
+            # just use that
+            blocks = blocks[0]
         
-        self.ordering.remove(block)
-        self.blocks.pop(block)
-        
+        for block in blocks:
+            if block not in self.ordering or block not in self.blocks:
+               raise Exception("%s block not found")
+
+            self.ordering.remove(block)
+            self.blocks.pop(block)
+            
     def add(self, block, contents, addAfter=None):
 
         if block in self.ordering or block in self.blocks:
