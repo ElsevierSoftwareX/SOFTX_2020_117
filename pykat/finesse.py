@@ -1146,8 +1146,9 @@ class kat(object):
         
             commands=self.processConstants(commands)
         
-            after_process = [] # list of commands that should be processed after 
-                               # objects have been set and created
+            # Some commands need to be processed after others, and some after that.
+            # Here we have two lists of processing priority.
+            after_process = ([], [])
         
             for line in commands:
                 if len(line.strip()) >= 2:
@@ -1246,21 +1247,21 @@ class kat(object):
                     elif(first == "x2axis" or first == "x2axis*"):
                         obj = pykat.commands.x2axis.parseFinesseText(line)
                     elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag))
                     elif(first == "scale"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[1].append((line, self.__currentTag))
                     elif(first == "pdtype"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag))
                     elif(first == "cav"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag))
                     elif(first == "func"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag))
                     elif(first == "variable"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag))
                     elif(first == "lock"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag))
                     elif(first == "attr"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag))
                     elif(first == "noxaxis"):
                         self.noxaxis = True
                     elif(first == "lambda"):
@@ -1306,11 +1307,11 @@ class kat(object):
                         if self.verbose:
                             print ("Ignoring Gnuplot/Python terminal command '{0}'".format(line))
                     elif(first == "fsig"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag))
                     elif(first == "noplot"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[1].append((line, self.__currentTag))
                     elif(first == "put" or first == "put*"):
-                        after_process.append((line, self.__currentTag))
+                        after_process[1].append((line, self.__currentTag))
                     else:
                         if self.verbose:
                             print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
@@ -1326,209 +1327,203 @@ class kat(object):
                                 print ("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
 
                         self.add(obj, block=self.__currentTag)
-                
-            
-            # Before processing the rest, all "noplot" commands are moved to the
-            # end of the list to make sure they are after all "func" commands.
-            for k in range(len(after_process)-1,-1,-1):
-                if after_process[k][0].split(" ", 1)[0] == "noplot":
-                    after_process.append(after_process.pop(k))
 
             # now process all the varous gauss/attr etc. commands which require
             # components to exist first before they can be processed
-            for item in after_process:
-                line = item[0]
-                first, rest = line.split(" ",1)
-                block = item[1]
+            for _ in after_process:
+                for item in _:
+                    line = item[0]
+                    first, rest = line.split(" ",1)
+                    block = item[1]
                 
-                if first == "gauss" or first == "gauss*" or first == "gauss**":
-                    pykat.commands.gauss.parseFinesseText(line, self)
+                    if first == "gauss" or first == "gauss*" or first == "gauss**":
+                        pykat.commands.gauss.parseFinesseText(line, self)
                     
-                elif (first == "cav"):
-                    self.add(pykat.commands.cavity.parseFinesseText(line, self), block=block)
+                    elif (first == "cav"):
+                        self.add(pykat.commands.cavity.parseFinesseText(line, self), block=block)
                     
-                elif (first == "lock"):
-                    self.add(pykat.commands.lock.parseFinesseText(line, self), block=block)
+                    elif (first == "lock"):
+                        self.add(pykat.commands.lock.parseFinesseText(line, self), block=block)
                     
-                elif (first == "func"):
-                    self.add(pykat.commands.func.parseFinesseText(line, self), block=block)
+                    elif (first == "func"):
+                        self.add(pykat.commands.func.parseFinesseText(line, self), block=block)
                     
-                elif (first == "variable"):
-                    self.add(pykat.commands.variable.parseFinesseText(line, self), block=block)
+                    elif (first == "variable"):
+                        self.add(pykat.commands.variable.parseFinesseText(line, self), block=block)
                     
-                elif (first == "noplot"):
-                    if not hasattr(self, rest):
-                        raise pkex.BasePyKatException("noplot command `{0}` refers to non-existing detector".format(line))
+                    elif (first == "noplot"):
+                        if not hasattr(self, rest):
+                            raise pkex.BasePyKatException("noplot command `{0}` refers to non-existing detector".format(line))
                         
-                    getattr(self, rest).noplot = True
+                        getattr(self, rest).noplot = True
                 
-                elif (first == "put" or first =="put*"):
-                    alt = first == "put*"
+                    elif (first == "put" or first =="put*"):
+                        alt = first == "put*"
                     
-                    values = line.split()
-                    obj = values[1]
-                    target = values[2]
-                    variable = values[3]
+                        values = line.split()
+                        obj = values[1]
+                        target = values[2]
+                        variable = values[3]
                     
-                    try:
-                        if not hasattr(self, obj):
-                            raise pkex.BasePyKatException("put command `{0}` refers to non-existing component".format(line))
+                        try:
+                            if not hasattr(self, obj):
+                                raise pkex.BasePyKatException("put command `{0}` refers to non-existing component".format(line))
                     
-                        obj = getattr(self, obj)
+                            obj = getattr(self, obj)
                     
-                        if not hasattr(obj, target):
-                            raise pkex.BasePyKatException("put command component `{0}` does not have a parameter `{1}`".format(line, target))
+                            if not hasattr(obj, target):
+                                raise pkex.BasePyKatException("put command component `{0}` does not have a parameter `{1}`".format(line, target))
                         
-                        target = getattr(obj, target)
+                            target = getattr(obj, target)
                     
-                        if not target.isPutable:
-                            raise pkex.BasePyKatException("put command `{0}` parameter `{1}` cannot be put to".format(line, target))
+                            if not target.isPutable:
+                                raise pkex.BasePyKatException("put command `{0}` parameter `{1}` cannot be put to".format(line, target))
                         
-                        target.put(self.getVariable(variable.replace('$', '')), alt)
+                            target.put(self.getVariable(variable.replace('$', '')), alt)
                         
-                    except pkex.BasePyKatException as ex:
-                        if self.verbose:
-                            print("Warning: ", ex.msg)
-                            print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
+                        except pkex.BasePyKatException as ex:
+                            if self.verbose:
+                                print("Warning: ", ex.msg)
+                                print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
                     
-                        obj = line
-                        # manually add the line to the block contents
-                        self.__blocks[block].contents.append(line)
+                            obj = line
+                            # manually add the line to the block contents
+                            self.__blocks[block].contents.append(line)
                         
                  
-                elif (first == "scale"):
-                    v = line.split()
-                    accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "deg", "rad", "1/deg", "1/rad",]
+                    elif (first == "scale"):
+                        v = line.split()
+                        accepted = ["psd","psd_hf","asd","asd_hf","meter", "ampere", "deg", "rad", "1/deg", "1/rad",]
                 
-                    if len(v) == 3:
-                        component_name = v[2]
+                        if len(v) == 3:
+                            component_name = v[2]
                     
-                        if v[1].lower() in accepted:
-                            val = v[1]
-                        else:
-                            try:
-                                val = SIfloat(v[1])
-                            except ValueError as ex:
-                                raise pkex.BasePyKatException("Line `{0}`:\nAccepted scale values are decimal numbers or %s." % (line,str(accepted)))
+                            if v[1].lower() in accepted:
+                                val = v[1]
+                            else:
+                                try:
+                                    val = SIfloat(v[1])
+                                except ValueError as ex:
+                                    raise pkex.BasePyKatException("Line `{0}`:\nAccepted scale values are decimal numbers or %s." % (line,str(accepted)))
                             
-                        if component_name in self.__detectors :
-                            self.__detectors[component_name].scale.append(val)
+                            if component_name in self.__detectors :
+                                self.__detectors[component_name].scale.append(val)
+                            else:
+                                raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(component_name))
+                        elif len(v) == 2:
+                            if v[1] == "meter" or v[1] == "ampere" or v[1] == "deg":
+                                self.scale = v[1]
+                            else:
+                                self.scale = SIfloat(v[1])
                         else:
-                            raise pkex.BasePyKatException("scale command `{0}` refers to non-existing output".format(component_name))
-                    elif len(v) == 2:
-                        if v[1] == "meter" or v[1] == "ampere" or v[1] == "deg":
-                            self.scale = v[1]
+                            raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(line))
+                    elif (first == "pdtype"):
+                        v = line.split()
+                        if len(v) == 3:
+                            component_name = v[1]
+                            if component_name in self.__detectors :
+                                self.__detectors[component_name].pdtype = v[2]
+                            else:
+                                raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(component_name))
                         else:
-                            self.scale = SIfloat(v[1])
-                    else:
-                        raise pkex.BasePyKatException("scale command `{0}` is incorrect.".format(line))
-                elif (first == "pdtype"):
-                    v = line.split()
-                    if len(v) == 3:
-                        component_name = v[1]
-                        if component_name in self.__detectors :
-                            self.__detectors[component_name].pdtype = v[2]
-                        else:
-                            raise pkex.BasePyKatException("pdtype command `{0}` refers to non-existing detector".format(component_name))
-                    else:
-                        raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(line))
-                elif(first == "attr"):
-                    v = line.split()
+                            raise pkex.BasePyKatException("pdtype command `{0}` is incorrect.".format(line))
+                    elif(first == "attr"):
+                        v = line.split()
 
-                    if len(v) < 4:
-                        raise pkex.BasePyKatException("attr command `{0}` is incorrect.".format(line))
-                    else:
-                        # get the component/detector in question
-                        if v[1] in self.__components:
-                            comp = self.__components[v[1]]
-                        elif v[1] in self.__detectors:
-                            comp = self.__detectors[v[1]]
+                        if len(v) < 4:
+                            raise pkex.BasePyKatException("attr command `{0}` is incorrect.".format(line))
                         else:
-                            raise pkex.BasePyKatException("Could not find the component '{0}' for attr command in line '{1}'".format(v[1], line))
+                            # get the component/detector in question
+                            if v[1] in self.__components:
+                                comp = self.__components[v[1]]
+                            elif v[1] in self.__detectors:
+                                comp = self.__detectors[v[1]]
+                            else:
+                                raise pkex.BasePyKatException("Could not find the component '{0}' for attr command in line '{1}'".format(v[1], line))
                 
-                        if len(v[2:]) % 2 == 1:
-                            raise pkex.BasePyKatException("Attr command '{0}' must specify both parameter and value pairs".format(line))
+                            if len(v[2:]) % 2 == 1:
+                                raise pkex.BasePyKatException("Attr command '{0}' must specify both parameter and value pairs".format(line))
                                                 
-                        # convert split list to key value pairs
-                        #kv = dict(itertools.izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
-                        kv = dict(izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
+                            # convert split list to key value pairs
+                            #kv = dict(itertools.izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
+                            kv = dict(izip_longest(*[iter(v[2:])] * 2, fillvalue=None))
 
-                        comp.parseAttributes(kv)
+                            comp.parseAttributes(kv)
                     
-                elif(first == "fsig"):
+                    elif(first == "fsig"):
                 
-                    v = line.split()
+                        v = line.split()
                 
-                    name = str(v[1])
+                        name = str(v[1])
                 
-                    if len(v) == 3:
-                        self.signals._default_name = name
-                        self.signals.f = SIfloat(v[2])
-                    else:
-                        if v[2] not in self.__components:
-                            raise pkex.BasePyKatException("Could not find the component '{0}'. Line: '{1}'".format(v[2], line))
-                
-                        comp = self.__components[v[2]]
-                
-                        if comp._default_fsig() is None:
-                            raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
-                    
-                        param_name = None
-                        amp = None
-                    
                         if len(v) == 3:
                             self.signals._default_name = name
-                            freq = SIfloat(v[3])
-                        elif len(v) == 5:
-                            #param is None
-                            freq = SIfloat(v[3])
-                            phase = SIfloat(v[4])
-                        elif len(v) == 6:
-                        
-                            try:
-                                SIfloat(v[3])
-                                isFloat = True
-                            except:
-                                isFloat = False
-                            
-                            if isFloat:
+                            self.signals.f = SIfloat(v[2])
+                        else:
+                            if v[2] not in self.__components:
+                                raise pkex.BasePyKatException("Could not find the component '{0}'. Line: '{1}'".format(v[2], line))
+                
+                            comp = self.__components[v[2]]
+                
+                            if comp._default_fsig() is None:
+                                raise pkex.BasePyKatException("Component '{0}' cannot be fsig'd. Line: '{1}'".format(comp.name, line))
+                    
+                            param_name = None
+                            amp = None
+                    
+                            if len(v) == 3:
+                                self.signals._default_name = name
+                                freq = SIfloat(v[3])
+                            elif len(v) == 5:
+                                #param is None
                                 freq = SIfloat(v[3])
                                 phase = SIfloat(v[4])
-                                amp = SIfloat(v[5])
-                            else:
+                            elif len(v) == 6:
+                        
+                                try:
+                                    SIfloat(v[3])
+                                    isFloat = True
+                                except:
+                                    isFloat = False
+                            
+                                if isFloat:
+                                    freq = SIfloat(v[3])
+                                    phase = SIfloat(v[4])
+                                    amp = SIfloat(v[5])
+                                else:
+                                    param_name = v[3]
+                                    freq = SIfloat(v[4])
+                                    phase = SIfloat(v[5])
+                        
+                            elif len(v) == 7:
                                 param_name = v[3]
                                 freq = SIfloat(v[4])
                                 phase = SIfloat(v[5])
-                        
-                        elif len(v) == 7:
-                            param_name = v[3]
-                            freq = SIfloat(v[4])
-                            phase = SIfloat(v[5])
-                            amp = SIfloat(v[6])
-                        else:
-                            raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
+                                amp = SIfloat(v[6])
+                            else:
+                                raise pkex.BasePyKatException("'{0}' isnot a valid fsig command".format(line))
                     
-                        self.signals.f = freq
+                            self.signals.f = freq
                     
-                        param = None
+                            param = None
                 
-                        if param_name is None:
-                            param = comp._default_fsig()
-                        else:
-                            for p in comp._params:
-                                if p.canFsig and p.fsigName == param_name:
-                                    param = p
-                                    break
+                            if param_name is None:
+                                param = comp._default_fsig()
+                            else:
+                                for p in comp._params:
+                                    if p.canFsig and p.fsigName == param_name:
+                                        param = p
+                                        break
                     
-                            if param is None:
-                                raise pkex.BasePyKatException("Line: '{0}': {1} is not a valid fsig target for {2}".format(line, param_name, comp.name))
+                                if param is None:
+                                    raise pkex.BasePyKatException("Line: '{0}': {1} is not a valid fsig target for {2}".format(line, param_name, comp.name))
                         
-                        self.signals.apply(param, amp, phase, name)
+                            self.signals.apply(param, amp, phase, name)
                 
-                else:
-                    raise pkex.BasePyKatException("Haven't handled parsing of '{0}'".format(line))
+                    else:
+                        raise pkex.BasePyKatException("Haven't handled parsing of '{0}'".format(line))
                     
-            self.__currentTag = NO_BLOCK 
+                self.__currentTag = NO_BLOCK 
         
 
         except pkex.BasePyKatException as ex:
