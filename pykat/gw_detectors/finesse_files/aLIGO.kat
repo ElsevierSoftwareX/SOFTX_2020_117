@@ -1,3 +1,4 @@
+%%% FTblock header
 #--------------------------------------------------------------------------
 # an aLIGO file to introduce a PI to one arm
 # based on 
@@ -58,6 +59,8 @@
 #   - changed names of arm spaces from LXarm, LYarm to LX, LY
 #
 #
+#--------------------------------------------------------------------------
+%%% FTend header
 
 
 %%% FTblock laser
@@ -316,7 +319,6 @@ pd1 AS_f2_Q $f2 103 nSRM2
 
 %%% FTblock locks
 ###########################################################################
-/*
 set PRCL_err POP_f1_I  re
 set MICH_err POP_f2_Q  re
 set CARM_err REFL_f1_I re
@@ -351,6 +353,7 @@ put* ETMYAR  phi     $ETMY_lock
 
 put* SRM     phi     $SRCL_lock
 
+
 noplot PRCL_lock
 noplot SRCL_lock
 noplot MICH_lock
@@ -359,9 +362,8 @@ noplot CARM_lock
 noplot mMICH_lock
 noplot ETMX_lock
 noplot ETMY_lock
-*/
+
+
 ###########################################################################
 %%% FTend locks
 
-%%% FTblock commands
-%%% FTend commands 
