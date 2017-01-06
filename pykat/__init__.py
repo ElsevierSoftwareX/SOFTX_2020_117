@@ -26,7 +26,7 @@ import pykat.components as components
 import pykat.detectors as detectors
 import pykat.commands as commands
 
-from pykat.optics.gaussian_beams import beam_param
+from pykat.optics.gaussian_beams import BeamParam
 
 from pykat.plotting import init_pykat_plotting
 

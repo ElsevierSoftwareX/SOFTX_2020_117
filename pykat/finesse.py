@@ -325,7 +325,7 @@ def GUILength(L):
     """
     return L # * ( 40 * erfc(L/400.0) + 0.01)
             
-class katRun(object):
+class KatRun(object):
     def __init__(self):
         self.runtime = None
         self.StartDateTime = datetime.datetime.now()
@@ -579,7 +579,7 @@ class katRun(object):
         
         return fig
         
-    def savekatRun(self, filename):
+    def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
             pickle.dump(self, outfile)
     
@@ -618,7 +618,7 @@ class katRun(object):
         else:
             raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
       
-class katRun2D(object):
+class KatRun2D(object):
     def __init__(self):
         self.runtime = None
         self.startDateTime = datetime.datetime.now()
@@ -1546,7 +1546,7 @@ class kat(object):
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False, usePipe=True):
         """ 
         Runs the current simulation setup that has been built thus far.
-        It returns a katRun or katRun2D object which is populated with the various
+        It returns a KatRun or KatRun2D object which is populated with the various
         data from the simulation run.
         plot (string) - Sets gnuterm for plotting
         save_output (bool) - if true does not delete out file
@@ -1597,9 +1597,9 @@ class kat(object):
             if self.verbose: print ("Running kat - Started at " + str(datetime.datetime.fromtimestamp(start)))
             
             if hasattr(self, "x2axis") and self.noxaxis == False:
-                r = katRun2D()
+                r = KatRun2D()
             else:
-                r = katRun()
+                r = KatRun()
                 
             r.yaxis = self.yaxis
             
@@ -1782,8 +1782,8 @@ class kat(object):
                                         qx = spqx[0].split("=")[1].replace('i','j').replace(' ','') 
                                         qy = spqy[0].split("=")[1].replace('i','j').replace(' ','') 
                                         
-                                        traceData[-1][node_name] = (pykat.beam_param(q=complex(qx), wavelength=self.lambda0),
-                                                                    pykat.beam_param(q=complex(qy), wavelength=self.lambda0),
+                                        traceData[-1][node_name] = (pykat.BeamParam(q=complex(qx), wavelength=self.lambda0),
+                                                                    pykat.BeamParam(q=complex(qy), wavelength=self.lambda0),
                                                                     component_name)
                             
                         finally:

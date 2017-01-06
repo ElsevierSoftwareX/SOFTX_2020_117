@@ -21,7 +21,7 @@ from pykat.structs import *
 from numpy import min, max
 from pykat.param import Param, putter
 from collections import namedtuple
-from pykat.optics.gaussian_beams import beam_param
+from pykat.optics.gaussian_beams import BeamParam
 
 
 
@@ -297,22 +297,22 @@ class gauss(object):
         
         if not values[0].endswith("*"):
             if len(values) == 6:
-                gp = beam_param(kat.lambda0, w0=values[-2], z=values[-1])
+                gp = BeamParam(kat.lambda0, w0=values[-2], z=values[-1])
             elif len(values) == 8:
-                gpx = beam_param(kat.lambda0, w0=values[-4], z=values[-3])
-                gpy = beam_param(kat.lambda0, w0=values[-2], z=values[-1])
+                gpx = BeamParam(kat.lambda0, w0=values[-4], z=values[-3])
+                gpy = BeamParam(kat.lambda0, w0=values[-2], z=values[-1])
         elif values[0].endswith("*"):
             if len(values) == 6:
-                gp = beam_param(kat.lambda0, z=values[-2], zr=values[-1])
+                gp = BeamParam(kat.lambda0, z=values[-2], zr=values[-1])
             elif len(values) == 8:
-                gpx = beam_param(kat.lambda0, z=values[-4], zr=values[-3])
-                gpy = beam_param(kat.lambda0, z=values[-2], zr=values[-1])
+                gpx = BeamParam(kat.lambda0, z=values[-4], zr=values[-3])
+                gpy = BeamParam(kat.lambda0, z=values[-2], zr=values[-1])
         elif values[0].endswith("**"):
             if len(values) == 6:
-                gp = beam_param(kat.lambda0, w=values[-2], rc=values[-1])
+                gp = BeamParam(kat.lambda0, w=values[-2], rc=values[-1])
             elif len(values) == 8:
-                gpx = beam_param(kat.lambda0, w=values[-4], rc=values[-3])
-                gpy = beam_param(kat.lambda0, w=values[-2], rc=values[-1])
+                gpx = BeamParam(kat.lambda0, w=values[-4], rc=values[-3])
+                gpy = BeamParam(kat.lambda0, w=values[-2], rc=values[-1])
         else:
             raise pkex.BasePyKatException("Unexpected ending to gauss command '{0}'".format(text))
             

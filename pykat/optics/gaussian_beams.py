@@ -14,30 +14,34 @@ from scipy.special import hermite
 from pykat.math.jacobi import jacobi
 from pykat.SIfloat import SIfloat
 
-class gauss_param(object):
+class gauss_param(BeamParam):
+    pass
+
+class beam_param(BeamParam):
+    pass
+        
+class BeamParam(object):
     """
-    Use beam_param instead, will be the future name of this object.
+    Gaussian beam complex parameter.
     
-    Gaussian beam complex parameter
-    
-    beam_param is effectively a complex number with extra
+    BeamParam is effectively a complex number with extra
     functionality to determine beam parameters.
     
     Defaults to 1064e-9m for wavelength and refractive index 1
     usage:
-        q = gauss_param(w0=w0, z=z)
-        q = gauss_param(z=z, zr=zr)
-        q = gauss_param(w=w, rc=rc)
-        q = gauss_param(q=a) # where a is a complex number
+        q = BeamParam(w0=w0, z=z)
+        q = BeamParam(z=z, zr=zr)
+        q = BeamParam(w=w, rc=rc)
+        q = BeamParam(q=a) # where a is a complex number
         
         or change default wavelength and refractive index with:
         
-        q = gauss_param(wavelength, nr, w0=w0, zr=zr)
+        q = BeamParam(wavelength, nr, w0=w0, zr=zr)
     """
     
     def __init__(self, wavelength=1064e-9, nr=1, *args, **kwargs):
-        if self.__class__ != beam_param:
-            warnings.warn("Name changed. Use beam_param instead of gauss_param.")
+        if self.__class__ != BeamParam:
+            warnings.warn("Name changed. Use BeamParam instead of gauss_param or beam_param.")
             
         self.__q = None
         self.__lambda = SIfloat(wavelength)
@@ -195,7 +199,7 @@ class gauss_param(object):
         return abs(4*q1.imag * q2.imag)/abs(q1.conjugate()-q2)**2
         
     def conjugate(self):
-        return beam_param(self.__lambda, self.__nr, self.__q.conjugate())
+        return BeamParam(self.__lambda, self.__nr, self.__q.conjugate())
     
     def __abs__(self):
         return abs(complex(self.__q))
@@ -207,7 +211,7 @@ class gauss_param(object):
         return str(self.__q)
     
     def __mul__(self, a):
-        return beam_param(self.__lambda, self.__nr, self.__q * complex(a))
+        return BeamParam(self.__lambda, self.__nr, self.__q * complex(a))
     
     def __imul__(self, a):
         self.__q *= complex(a)
@@ -216,7 +220,7 @@ class gauss_param(object):
     __rmul__ = __mul__
     
     def __add__(self, a):
-        return beam_param(self.__lambda, self.__nr, self.__q + complex(a))
+        return BeamParam(self.__lambda, self.__nr, self.__q + complex(a))
     
     def __iadd__(self, a):
         self.__q += complex(a)
@@ -225,27 +229,27 @@ class gauss_param(object):
     __radd__ = __add__
     
     def __sub__(self, a):
-        return beam_param(self.__lambda, self.__nr, self.__q - complex(a))
+        return BeamParam(self.__lambda, self.__nr, self.__q - complex(a))
     
     def __isub__(self, a):
         self.__q -= complex(a)
         return self
         
     def __rsub__(self, a):
-        return beam_param(self.__lambda, self.__nr, complex(a) - self.__q)
+        return BeamParam(self.__lambda, self.__nr, complex(a) - self.__q)
     
     def __div__(self, a):
-        return beam_param(self.__lambda, self.__nr, self.__q / complex(a))
+        return BeamParam(self.__lambda, self.__nr, self.__q / complex(a))
     
     def __idiv__(self, a):
         self.__q /= complex(a)
         return self
     
     def __pow__(self, q):
-        return beam_param(self.__lambda, self.__nr, self.__q**q)
+        return BeamParam(self.__lambda, self.__nr, self.__q**q)
 
     def __neg__(self, q):
-        return beam_param(self.__lambda, self.__nr, -self.__q)
+        return BeamParam(self.__lambda, self.__nr, -self.__q)
         
     def __eq__(self, q):
         if q is None:
@@ -266,15 +270,12 @@ class gauss_param(object):
     # reverse beam direction 
     def reverse(self):
         self.__q = -1.0 * self.__q.real + 1j * self.__q.imag
-
-
-class beam_param(gauss_param):
-    pass
-
+        
+        
 class HG_mode(object):
     """ Hermite-Gauss mode profile. Example usage:
     import pykat.optics.gaussian_beams as gb
-    qx=gb.beam_param(w0=1e-3,z=0)
+    qx=gb.BeamParam(w0=1e-3,z=0)
     beam=gb.HG_mode(qx,n=2,m=0)
     beam.plot()
     """    
@@ -317,12 +318,12 @@ class HG_mode(object):
             return (self._qx.q, self._qy.q)
     @q.setter
     def q(self, value):
-        if value.__class__ == beam_param:
+        if value.__class__ == BeamParam:
             self._qx = copy.deepcopy(value)
             self._qy = copy.deepcopy(value)
         else:
-            self._qx = beam_param(q=complex(value))
-            self._qy = beam_param(q=complex(value))
+            self._qx = BeamParam(q=complex(value))
+            self._qy = BeamParam(q=complex(value))
     
     @property
     def qx(self):
@@ -330,10 +331,10 @@ class HG_mode(object):
         
     @qx.setter
     def qx(self, value):
-        if value.__class__ == beam_param:
+        if value.__class__ == BeamParam:
             self._qx = copy.deepcopy(value)
         else:
-            self._qx = beam_param(q=complex(value))
+            self._qx = BeamParam(q=complex(value))
     
     @property
     def qy(self):
@@ -341,10 +342,10 @@ class HG_mode(object):
         
     @qy.setter
     def qy(self, value):
-        if value.__class__ == beam_param:
+        if value.__class__ == BeamParam:
             self._qy = copy.deepcopy(value)
         else:
-            self._qy = beam_param(q=complex(value))
+            self._qy = BeamParam(q=complex(value))
     
     @property
     def constant_x(self):

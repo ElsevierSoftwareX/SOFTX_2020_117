@@ -13,7 +13,7 @@ import itertools
 from copy import copy
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 from itertools import combinations_with_replacement as combinations
-from pykat.optics.gaussian_beams import beam_param
+from pykat.optics.gaussian_beams import BeamParam
 from scipy.linalg import inv
 from math import factorial
 from pykat.math.hermite import *

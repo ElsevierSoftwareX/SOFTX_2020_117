@@ -1,5 +1,5 @@
 from itertools import combinations_with_replacement as combinations
-from pykat.optics.gaussian_beams import beam_param, HG_mode
+from pykat.optics.gaussian_beams import BeamParam, HG_mode
 from pykat.exceptions import BasePyKatException
 from pykat.optics.romhom import u_star_u
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar

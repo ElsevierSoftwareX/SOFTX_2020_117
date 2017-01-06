@@ -1,8 +1,8 @@
 import numpy as np
-from pykat.optics.gaussian_beams import beam_param
+from pykat.optics.gaussian_beams import BeamParam
 
 def apply(ABCD, q1, n1, n2):
-    return beam_param(nr=n2, q=n2 * (ABCD[0,0] * q1/float(n1) + ABCD[0,1]) / (ABCD[1,0] * q1/float(n1) + ABCD[1,1]))
+    return BeamParam(nr=n2, q=n2 * (ABCD[0,0] * q1/float(n1) + ABCD[0,1]) / (ABCD[1,0] * q1/float(n1) + ABCD[1,1]))
 
 def mirror_trans(n1, n2, Rc):
     return np.matrix([[1.0,0.0],[(n2-n1)/float(Rc),1.0]])

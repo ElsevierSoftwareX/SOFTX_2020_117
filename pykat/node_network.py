@@ -20,7 +20,7 @@ import pykat.external.six as six
 
 from pykat.components import Component, NodeGaussSetter
 from pykat.detectors import BaseDetector as Detector
-from pykat.optics.gaussian_beams import beam_param
+from pykat.optics.gaussian_beams import BeamParam
 from copy import deepcopy
 
 id___ = 0
@@ -554,11 +554,11 @@ class Node(object):
         self.__q_comp = component
         
         if len(args) == 1:  
-            self.__q_x = beam_param(self._network.kat.lambda0, q=args[0])
-            self.__q_y = beam_param(self._network.kat.lambda0, q=args[0])
+            self.__q_x = BeamParam(self._network.kat.lambda0, q=args[0])
+            self.__q_y = BeamParam(self._network.kat.lambda0, q=args[0])
         elif len(args) == 2:
-            self.__q_x = beam_param(self._network.kat.lambda0, q=args[0])
-            self.__q_y = beam_param(self._network.kat.lambda0, q=args[1])
+            self.__q_x = BeamParam(self._network.kat.lambda0, q=args[0])
+            self.__q_y = BeamParam(self._network.kat.lambda0, q=args[1])
         else:
             raise pkex.BasePyKatException("Must specify either 1 Gaussian beam parameter or 2 for astigmatic beams")
                 
