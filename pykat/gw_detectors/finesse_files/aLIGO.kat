@@ -12,7 +12,7 @@
 #   http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
 # - G. Billingsley. LIGO core optics reference page. https://galaxy.ligo. caltech.edu/optics/
 # 
-# Anna Green, 28th November 2016
+# Anna Green, Andreas Freise, 28th November 2016
 #--------------------------------------------------------------------------
 #
 # References used for aLIGO parameters
@@ -49,7 +49,7 @@
 #   Changes in file structure
 #   - removed length calculation fucntions for PRC and SRC sub-length
 #     and added length values into space components
-#   -
+#   - removed maxtem 4 command from HOMs block
 #   
 #   Naming changes
 #   - changed naming for thermal lens components
@@ -57,6 +57,8 @@
 #   - changed naming of SRMHR to SRM and node names in SRM substrate
 #   - changed name of ITMHR to ITM and ETMHR to ETM
 #   - changed names of arm spaces from LXarm, LYarm to LX, LY
+#		- changed name of HOMs block to cavities
+#		- changed PR2 node4 name from dump11 to nAPOP (auxilliary POP)
 #
 #
 #--------------------------------------------------------------------------
@@ -95,7 +97,7 @@ attr PRM Rc 11.009
 # Distance between PRM and PR2
 s lp1 16.6107 nPRM2 nPR2a
 # PR2
-bs1 PR2 250u $Mloss 0 -0.79 nPR2a nPR2b nPOP dump11
+bs1 PR2 250u $Mloss 0 -0.79 nPR2a nPR2b nPOP nAPOP
 attr PR2 Rc -4.545
 # Distance from PR2 to PR3
 s lp2 16.1647 nPR2b nPR3a
