@@ -840,7 +840,7 @@ class kat(object):
         return object.__new__(cnew)
     
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
-
+        self._unfreeze()
         self.__looking = False
         self.scene = None # scene object for GUI
         self.verbose = True
@@ -887,7 +887,18 @@ class kat(object):
         
         if kat_file != None:
             self.loadKatFile(kat_file)
+    
+        self._freeze()
+        
+    def _freeze(self): self.__dict__["____FROZEN____"] = True
+    def _unfreeze(self): self.__dict__["____FROZEN____"] = False
+        
+    def __setattr__(self, name, value):
+        if "____FROZEN____" in self.__dict__ and self.__dict__["____FROZEN____"] and not hasattr(self, name):
+            warnings.warn("'%s' does not have attribute called '%s'" % (self.__name, name), stacklevel=2)
 
+        super(kat, self).__setattr__(name, value)
+        
     def deepcopy(self):
         return copy.deepcopy(self)
     
@@ -2033,6 +2044,7 @@ class kat(object):
         
     def add(self, obj, block=NO_BLOCK):
         try:
+            self._unfreeze()
             obj.tag = block
             self.__blocks[block].contents.append(obj)
             
@@ -2065,9 +2077,11 @@ class kat(object):
                 raise pkex.BasePyKatException("Object {0} could not be added".format(obj))
                 
             obj._on_kat_add(self)
-            
+        
         except pkex.BasePyKatException as ex:
             pkex.PrintError("Error on adding object:", ex)
+        finally:
+            self._freeze()
 
     def readOutFile(self, filename):
         
