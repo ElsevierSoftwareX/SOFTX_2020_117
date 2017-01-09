@@ -16,6 +16,7 @@ import pykat.external.six as six
 if six.PY2:
 	import exceptions
 
+import warnings
 import pykat.exceptions as pkex
 import pykat
 from pykat.node_network import *
@@ -102,6 +103,7 @@ class Component(object):
         return object.__new__(cnew)
         
     def __init__(self, name=None):
+        self._unfreeze()
         
         self._optivis_component = None
         self.__name = name
@@ -118,7 +120,23 @@ class Component(object):
         global next_component_id
         self.__id = next_component_id
         next_component_id += 1    
-       
+     
+    def _freeze(self): self.__dict__["____FROZEN____"] = True
+    def _unfreeze(self): self.__dict__["____FROZEN____"] = False
+        
+    def __setattr__(self, name, value):
+        if self.__dict__["____FROZEN____"] and not hasattr(self, name):
+            warnings.warn("'%s' does not have attribute called '%s'" % (self.__name, name), stacklevel=2)
+            
+        if hasattr(self, name) and hasattr(self.__class__, name):
+            prop = getattr(self.__class__, name)
+            
+            if isinstance(prop, property):
+                prop.fset(self, value)
+                return
+                
+        self.__dict__[name] = value
+         
     def __deepcopy__(self, memo):
         """
         When deep copying a kat object we need to take into account
@@ -204,7 +222,8 @@ class Component(object):
                 self.__add_node_setter(ns)
         
     def __add_node_setter(self, ns):
-
+        self._unfreeze()
+        
         if not isinstance(ns, NodeGaussSetter):
             raise exceptions.ValueError("Argument is not of type NodeGaussSetter")
         
@@ -214,6 +233,8 @@ class Component(object):
         setattr(self.__class__, name, property(fget))
         setattr(self, '__nodesetter_' + name, ns)                   
 
+        self._freeze()
+        
     def __get_node_setter(self, name):
         return getattr(self, '__nodesetter_' + name)   
         
@@ -480,7 +501,8 @@ class mirror(AbstractMirrorComponent):
         
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
-
+        self._freeze()
+        
     def parseAttributes(self, values):
         
         for key in values.keys():
@@ -572,6 +594,8 @@ class beamSplitter(AbstractMirrorComponent):
         self._requested_node_names.append(node3)
         self._requested_node_names.append(node4)
         self.__alpha = Param("alpha", self, SIfloat(alpha))
+
+        self._freeze()
         
     @property
     def alpha(self): return self.__alpha
@@ -684,6 +708,8 @@ class space(Component):
         self.__gy = AttrParam("gy", self, gy)
         
         self._default_fsig_param = self.__L
+
+        self._freeze()
         
     @property
     def L(self): return self.__L
@@ -810,6 +836,8 @@ class grating(Component):
         self.__rho_0 = AttrParam("rho_0", self, SIfloat(rho_0))
         self.__alpha = AttrParam("alpha", self, SIfloat(alpha))
         self._svgItem = None
+
+        self._freeze()
         
     @property
     def n(self): return Param('n', self.__n)
@@ -939,6 +967,7 @@ class isolator(Component):
         self.__S = Param("S",self,SIfloat(S))
         self.__L = Param("L",self,SIfloat(L))
 
+        self._freeze()
         
     @property
     def S(self): return self.__S
@@ -1044,6 +1073,8 @@ class isolator1(Component):
         self._requested_node_names.append(node4)
         self._svgItem = None
 
+        self._freeze()
+        
     @staticmethod
     def parseFinesseText(text):
         values = text.split()
@@ -1084,6 +1115,8 @@ class lens(Component):
         self._svgItem = None
         self.__f = Param("f", self, SIfloat(f))
         self.__p = Param("p", self, SIfloat(p))
+
+        self._freeze()
         
     @property
     def f(self): return self.__f
@@ -1180,6 +1213,8 @@ class modulator(Component):
         self.type = modulation_type
         
         self._default_fsig_param = self.__phase
+        
+        self._freeze()
             
     @property 
     def f(self): return self.__f
@@ -1296,6 +1331,8 @@ class laser(Component):
         self._svgItem = None
         
         self._default_fsig_param = self.__f_offset
+
+        self._freeze()
         
     @property
     def P(self): return self.__power
@@ -1393,6 +1430,9 @@ class squeezer(Component):
         self.__angle = Param("angle", self, SIfloat(angle), canFsig=False, fsig_name="angle")
         self._svgItem = None
         self.entangled_carrier = entangled_carrier
+
+        self._freeze()
+        
         
     @property
     def db(self): return self.__db

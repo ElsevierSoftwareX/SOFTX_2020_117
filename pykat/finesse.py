@@ -1149,6 +1149,9 @@ class kat(object):
             print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
     
     def parseCommands(self, commands, blocks=None, addToBlock=None, preserve=False):
+        
+        commands = str(commands)
+        
         try:
             if addToBlock is not None and blocks is not None:
                 raise pkex.BasePyKatException("When parsing commands you cannot set both blocks and addToBlock arguments")
