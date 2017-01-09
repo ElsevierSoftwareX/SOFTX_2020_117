@@ -43,31 +43,25 @@ class Command(object):
         When deep copying a kat object we need to take into account
         the instance specific properties.
         """
-
         cls = self.__class__
         result = cls.__new__(cls)
+        result._unfreeze()
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
         for _ in result._putters:
             _._updateOwner(result)
-        
+
+        result._freeze()
         return result
     
     def _freeze(self): self.__dict__["____FROZEN____"] = True
     def _unfreeze(self): self.__dict__["____FROZEN____"] = False
         
     def __setattr__(self, name, value):
-        if self.__dict__["____FROZEN____"] and not hasattr(self, name):
+        if "____FROZEN____" in self.__dict__ and self.__dict__["____FROZEN____"] and not hasattr(self, name):
             warnings.warn("'%s' does not have attribute called '%s'" % (self.__name, name), stacklevel=2)
-            
-        if hasattr(self, name) and hasattr(self.__class__, name):
-            prop = getattr(self.__class__, name)
-            
-            if isinstance(prop, property):
-                prop.fset(self, value)
-                return
-                
-        self.__dict__[name] = value
+
+        super(Command, self).__setattr__(name, value)
                        
     def getFinesseText(self):
         """ Base class for individual finesse optical components """
