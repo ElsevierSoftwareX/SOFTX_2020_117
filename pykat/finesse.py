@@ -275,12 +275,14 @@ class BlockedKatFile(object):
             if len(values) >= 3 and values[0] == "%%%":
                 if values[1] == "FTblock":
                     newTag = values[2]
-
+                    
                     if self.__currentBlock != None and self.__currentBlock != self.__NO_BLOCK: 
                         warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentBlock))    
     
                     if newTag in self.blocks:
-                        raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                        #raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                        self.__currentBlock = newTag
+                        continue
     
                     self.blocks[newTag] = ""
                     self.__currentBlock = newTag
@@ -1182,7 +1184,9 @@ class kat(object):
                                     warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
                         
                                 if newTag in self.__blocks:
-                                    raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                                    #raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                                    self.__currentTag = newTag
+                                    continue # Just add to existing block data
                         
                                 self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
                                 self.__currentTag = newTag
