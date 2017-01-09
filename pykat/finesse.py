@@ -210,6 +210,16 @@ class BlockedKatFile(object):
         bkf.write("mytest.kat")
     """
     
+    def __str__(self):
+         rtn = ""
+         
+         for block in self.ordering:
+             rtn += "\n%%% FTblock " + block + "\n"
+             rtn += self.blocks[block]
+             rtn += "%%% FTend " + block + "\n"
+         
+         return rtn
+         
     def __init__(self, NO_BLOCK="NO_BLOCK"):
         self.__NO_BLOCK = NO_BLOCK
         self.ordering = [self.__NO_BLOCK]
