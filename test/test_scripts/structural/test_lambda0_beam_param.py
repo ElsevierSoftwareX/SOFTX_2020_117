@@ -26,7 +26,7 @@ yaxis abs:deg                                 # move detector frequency with xax
 kat = finesse.kat()
 kat.verbose = False
 kat.lambda0 = 1550e-9
-kat.parseKatCode(kat_code)
+kat.parseCommands(kat_code)
 kat.maxtem = 0
 kat.trace = 2
 out, T = kat.run(getTraceData=True)

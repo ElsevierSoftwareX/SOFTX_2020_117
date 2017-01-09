@@ -878,6 +878,7 @@ class kat(object):
         self.__time_code = None
         self.__yaxis = "abs" # default yaxis
         self.__lambda0 = 1064e-9
+        self.__finesse_dir = None
         
         if kat_code != None and kat_file != None:
             raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
@@ -895,7 +896,7 @@ class kat(object):
         
     def __setattr__(self, name, value):
         if "____FROZEN____" in self.__dict__ and self.__dict__["____FROZEN____"] and not hasattr(self, name):
-            warnings.warn("'%s' does not have attribute called '%s'" % (self.__name, name), stacklevel=2)
+            warnings.warn("'%s' does not have attribute called '%s'" % (self.__class__.__name__, name), stacklevel=2)
 
         super(kat, self).__setattr__(name, value)
         

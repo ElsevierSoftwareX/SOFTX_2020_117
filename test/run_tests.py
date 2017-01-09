@@ -2,6 +2,9 @@ import pykat
 import traceback
 import os
 import sys
+import warnings
+
+warnings.filterwarnings('error')
 
 class bcolors:
     HEADER = '\033[95m'
