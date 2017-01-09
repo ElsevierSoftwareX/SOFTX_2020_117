@@ -231,9 +231,8 @@ attr SRM Rc -5.6938
 ###########################################################################
 %%% FTend SRC
 
-%%% FTblock HOMs
+%%% FTblock cavities
 ###########################################################################
-maxtem 4
 #cav cavIMC MC2 nMC2in MC2 nMC2refl 
 cav cavXARM ITMX nITMX2 ETMX nETMX1
 cav cavYARM ITMY nITMY2 ETMY nETMY1
@@ -244,7 +243,7 @@ cav cavSRY SRM nSRM1 ITMY nITMYs2
 # removed OMC
 
 ###########################################################################
-%%% FTend HOMs
+%%% FTend cavities
 
 %%% FTblock constants
 ###########################################################################
