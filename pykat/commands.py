@@ -11,6 +11,7 @@ from __future__ import unicode_literals
 
 import numpy
 import warnings
+import pykat
 import pykat.external.six as six
 import pykat.exceptions as pkex
 
@@ -23,8 +24,9 @@ from numpy import min, max
 from pykat.param import Param, putter
 from collections import namedtuple
 from pykat.optics.gaussian_beams import BeamParam
+from pykat.freeze import canFreeze
 
-
+@canFreeze
 class Command(object):
     __metaclass__ = abc.ABCMeta
     
@@ -54,15 +56,6 @@ class Command(object):
         result._freeze()
         return result
     
-    def _freeze(self): self.__dict__["____FROZEN____"] = True
-    def _unfreeze(self): self.__dict__["____FROZEN____"] = False
-        
-    def __setattr__(self, name, value):
-        if "____FROZEN____" in self.__dict__ and self.__dict__["____FROZEN____"] and not hasattr(self, name):
-            warnings.warn("'%s' does not have attribute called '%s'" % (self.__name, name), stacklevel=2)
-
-        super(Command, self).__setattr__(name, value)
-                       
     def getFinesseText(self):
         """ Base class for individual finesse optical components """
         raise NotImplementedError("This function is not implemented")

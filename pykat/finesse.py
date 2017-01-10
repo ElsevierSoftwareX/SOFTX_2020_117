@@ -87,14 +87,13 @@ from pykat.commands import Command, xaxis
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 from pykat.external import progressbar
-
+from pykat.freeze import canFreeze
 import pykat.external.six as six
 
 import pykat.exceptions as pkex
 
 from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
 
-    
 if HAS_OPTIVIS:
     from optivis.bench.labels import Label as optivis_label
     from optivis.geometry import Coordinates as optivis_coord
@@ -342,18 +341,24 @@ def GUILength(L):
     Should scale the lengths in some way to handle km and mm for time being
     """
     return L # * ( 40 * erfc(L/400.0) + 0.01)
-            
+
+@canFreeze
 class KatRun(object):
     def __init__(self):
+        self._unfreeze()
         self.runtime = None
         self.StartDateTime = datetime.datetime.now()
         self.x = None
+        self.stdout = None
+        self.stderr = None
+        self.runDateTime = None
         self.y = None
         self.xlabel = None
         self.ylabels = None
         self.katScript = None
         self.katVersion = None
         self.yaxis = None
+        self._freeze()
         
     def info(self):
         
@@ -635,9 +640,11 @@ class KatRun(object):
                 return out.squeeze()
         else:
             raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
-      
+            
+@canFreeze 
 class KatRun2D(object):
     def __init__(self):
+        self._unfreeze()
         self.runtime = None
         self.startDateTime = datetime.datetime.now()
         self.x = None
@@ -650,6 +657,7 @@ class KatRun2D(object):
         self.katVersion = None
         self.stderr = None
         self.stdout = None
+        self._freeze()
         
     def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
@@ -670,10 +678,13 @@ class KatRun2D(object):
         else:
             raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
     
-        
+@canFreeze    
 class Signals(object):
+    
+    @canFreeze 
     class fsig(object):
         def __init__(self, param, name, amplitude, phase, signal):
+            self._unfreeze()
             self._params = []
             self.__target = param
             self.__name = name
@@ -681,6 +692,7 @@ class Signals(object):
             self.__phase = Param("phase", self, SIfloat(phase))
             self.__removed = False
             self.__signal = signal
+            self._freeze()
             
             # unfortunatenly the target names for fsig are not the same as the
             # various parameter names of the components, e.g. mirror xbeta is x 
@@ -766,11 +778,13 @@ class Signals(object):
         self.__f.value = SIfloat(value)
     
     def __init__(self, kat):
+        self._unfreeze()
         self._default_name = "fsignal"
         self.targets = []
         self._params = []
         self.__f = Param("f", self, None)
         self._kat = kat
+        self._freeze()
         
     def _register_param(self, param):
         self._params.append(param)
@@ -823,6 +837,7 @@ Constant = namedtuple('Constant', 'name, value, usedBy')
 
 id___ = 0
 
+@canFreeze
 class kat(object):  
 
     def __new__(cls, *args, **kwargs):
@@ -890,15 +905,6 @@ class kat(object):
             self.loadKatFile(kat_file)
     
         self._freeze()
-        
-    def _freeze(self): self.__dict__["____FROZEN____"] = True
-    def _unfreeze(self): self.__dict__["____FROZEN____"] = False
-        
-    def __setattr__(self, name, value):
-        if "____FROZEN____" in self.__dict__ and self.__dict__["____FROZEN____"] and not hasattr(self, name):
-            warnings.warn("'%s' does not have attribute called '%s'" % (self.__class__.__name__, name), stacklevel=2)
-
-        super(kat, self).__setattr__(name, value)
         
     def deepcopy(self):
         return copy.deepcopy(self)

@@ -26,6 +26,7 @@ import warnings
 import copy
 
 from pykat import USE_GUI, NoGUIException
+from pykat.freeze import canFreeze
 
 if USE_GUI:
     import pykat.gui.resources
@@ -33,6 +34,7 @@ if USE_GUI:
 
 id_____pykat_class = 0
 
+@canFreeze
 class BaseDetector(object) :
     """
     This is a base class for all detectors. Classes Detector1 and Detector2 should be used directly.
@@ -99,15 +101,6 @@ class BaseDetector(object) :
                 self._requested_nodes.append(nodes)
             else:
                 raise pkex.BasePyKatException("Nodes should be a list or tuple of node names or a singular node name as a string.")
-    
-    def _freeze(self): self.__dict__["____FROZEN____"] = True
-    def _unfreeze(self): self.__dict__["____FROZEN____"] = False
-        
-    def __setattr__(self, name, value):
-        if "____FROZEN____" in self.__dict__ and self.__dict__["____FROZEN____"] and not hasattr(self, name):
-            warnings.warn("'%s' does not have attribute called '%s'" % (self.__name, name), stacklevel=2)
-
-        super(BaseDetector, self).__setattr__(name, value)
     
     def __deepcopy__(self, memo):
         """

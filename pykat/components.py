@@ -37,6 +37,7 @@ from pykat.param import Param, AttrParam
 import weakref
 import pykat.exceptions as pkex
 from copy import deepcopy
+from pykat.freeze import canFreeze
 
 next_component_id = 1
 
@@ -86,7 +87,8 @@ class NodeGaussSetter(object):
         self.__node().setGauss(self.__comp(), self.qx, complex(value))
         
 id_____pykat_class = 0
-  
+ 
+@canFreeze
 class Component(object):
     __metaclass__ = abc.ABCMeta
 
@@ -121,15 +123,6 @@ class Component(object):
         global next_component_id
         self.__id = next_component_id
         next_component_id += 1    
-     
-    def _freeze(self): self.__dict__["____FROZEN____"] = True
-    def _unfreeze(self): self.__dict__["____FROZEN____"] = False
-        
-    def __setattr__(self, name, value):
-        if "____FROZEN____" in self.__dict__ and self.__dict__["____FROZEN____"] and not hasattr(self, name):
-            warnings.warn("'%s' does not have attribute called '%s'" % (self.__name, name), stacklevel=2)
-
-        super(Component, self).__setattr__(name, value)
          
     def __deepcopy__(self, memo):
         """
