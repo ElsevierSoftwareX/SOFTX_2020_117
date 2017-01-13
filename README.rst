@@ -6,6 +6,8 @@ It aims to provide a Python toolset for automating more complex tasks
 as well as providing a GUI for manipulating and viewing simulation
 setups.
 
+Source code is hosted at https://git.ligo.org/finesse/pykat
+
 Installation
 -------------
 
