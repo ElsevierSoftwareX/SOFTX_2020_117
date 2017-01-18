@@ -8,13 +8,18 @@ import math
 import copy
 import warnings
 import cmath
+import inspect
+import six 
+
 from pykat import finesse
 from pykat.finesse import BlockedKatFile
+
 import pykat.components
 import pykat.exceptions as pkex
 import pykat.external.peakdetect as peak
 import matplotlib.pyplot as plt
 import pkg_resources
+
 from scipy.optimize import fmin
 
 global nsilica, clight
@@ -116,7 +121,16 @@ class aLIGO(object):
         self.CARM =  DOF("CARM", self.REFL_f1, "I", ["ETMX", "ETMY"], [1, 1], 1.5)
         self.DARM =  DOF("DARM", self.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0)
         self.SRCL =  DOF("SRCL", self.REFL_f2, "I", "SRM", 1, 1e2)
-            
+        
+        self.__DOFs = {}
+        
+        for _ in inspect.getmembers(self, lambda x: isinstance(x, DOF)):
+            self.__DOFs[_[0]] = _[1]
+    
+    @property
+    def DOFs(self):
+        return copy.copy(self.__DOFs)
+    
     def adjust_PRC_length(self, kat, verbose=False):
         """
         Adjust PRC length so that it fulfils the requirement
@@ -159,7 +173,7 @@ put f1m f $mx1
         ax.set_xlim([np.min(out.x-self.f1), np.max(out.x-self.f1)])
         ax.set_xlabel("delta_f1 [Hz]")
         ax.set_ylabel('sqrt(W) ')
-        ax.grid()
+        ax.grid(True)
         ax.legend()
         plt.tight_layout()
         plt.show(block=0)
@@ -395,28 +409,120 @@ put f1m f $mx1
             ax.set_xlim([np.min(out.x), np.max(out.x)])
             ax.set_xlabel("phi [deg] {}".format(d.optics[0]))
             ax.set_ylabel('{} [W] '.format(d.signal_name(kat)))
-            ax.grid()
+            ax.grid(True)
         plt.tight_layout()
         plt.show(block=0)
 
-    def plot_error_signals(self, _kat, xlimits=[-1,1]):
+    def _strToDOFs(self, DOFs):
+        dofs = []
+        
+        for _ in DOFs:
+            if isinstance(_, six.string_types):
+                if _ in self.__DOFs:
+                    dofs.append(self.__DOFs[_])
+                else:
+                    raise pkex.BasePyKatException("Could not find DOF called `%s`. Possible DOF options: %s" % (_, str(list(self.__DOFs.keys()))))
+            else:
+                raise pkex.BasePyKatException("'%s' not possible DOF options: %s" % (_, str(list(self.__DOFs.keys()))))
+        
+        return dofs
+
+    def plot_error_signals(self, _kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
+                                replaceDOFSignals=False, block=True, fig=None, legend=None):
+        """
+        Displays error signals for a given kat file. Can also be used to plot multiple
+        DOF's error signals against each other for visualising any cross coupling.
+        
+        _kat: LIGO based kat object.
+        xlimits: Range of DOF to plot in degrees
+        DOFs: list, DOF names to compute. Default: DARM, CARM, PRCL, SRCL, MICH
+        plotDOFs: list, DOF names to plot against each DOF. If None the same DOF as in DOFs is plotted.
+        block: Boolean, for plot blocking terminal or not if being shown
+        replaceDOFSignals: Bool, replaces already present signals for any DOF if already defined in kat. Regardless of this value, it will add default signals if none found.
+        fig: figure, uses predefined figure, when defined it won't be shown automatically
+        legend: string, if no plotDOFs is defined this legend is shown
+        
+        Example:
+            import pykat
+            from pykat.gw_detectors import ifo
+
+            ligo = ifo.aLIGO()
+            
+            # Plot default
+            ligo.plot_error_signals(ligo.kat, block=True)
+            # plot MICH and CARM against themselves
+            ligo.plot_error_signals(ligo.kat, DOFs=["MICH", "CARM"], block=True)
+            # plot DARM and CARM against MICH
+            ligo.plot_error_signals(ligo.kat, DOFs=["MICH"], plotDOFs=["DARM", "CARM"], block=True)
+        """
+        
         kat = _kat.deepcopy()
         kat.verbose = False
         kat.noxaxis = True
-        dofs = [self.DARM, self.CARM, self.PRCL, self.SRCL,  self.MICH]
-        idx=1
-        fig = plt.figure()
-        for d in dofs:
-            ax = fig.add_subplot(2,3,idx)
-            idx+=1
-            out = scan_DOF(kat, d, xlimits = np.multiply(d.scale,xlimits), relative = True)
-            ax.plot(out.x,out[d.signal_name(kat)])
+        
+        if DOFs is None:
+            dofs = [self.DARM, self.CARM, self.PRCL, self.SRCL, self.MICH]
+        else:
+            dofs = self._strToDOFs(DOFs)
+        
+        # add in signals for those DOF to plot
+        for _ in dofs:
+            if not (not replaceDOFSignals and hasattr(kat, _.signal_name(kat))):
+                kat.parseCommands(_.signal(kat))
+                
+        toShow = None
+        
+        if plotDOFs is not None:
+            toShow = self._strToDOFs(plotDOFs)
+        
+            # Check if other DOF signals we need to include for plotting
+            for _ in toShow:
+                if not (not replaceDOFSignals and hasattr(kat, _.signal_name(kat))):
+                    kat.parseCommands(_.signal(kat))
+                    
+        if fig is not None:
+            _fig = fig
+        else:
+            _fig = plt.figure()
+        
+        nrows = 2
+        ncols = 3
+        
+        if DOFs is not None:
+            n = len(DOFs)
+            
+            if n < 3:
+                nrows = 1
+                ncols = n
+        
+        for d, idx in zip(dofs, range(1, len(dofs)+1)):
+            ax = _fig.add_subplot(nrows, ncols, idx)
+            
+            scan_cmd = scan_optics_string(d.optics, d.factors, "scan", linlog="lin",
+                                            xlimits=np.multiply(d.scale, xlimits), steps=200,
+                                            axis=1, relative=True)
+            kat.parseCommands(scan_cmd)
+            out = kat.run()
+            
+            if toShow is None:
+                ax.plot(out.x, out[d.signal_name(kat)], label=legend)
+            else:
+                for _ in toShow:
+                    ax.plot(out.x, out[_.signal_name(kat)], label=_.name)
+                
             ax.set_xlim([np.min(out.x), np.max(out.x)])
             ax.set_xlabel("{} [deg]".format(d.name))
             ax.set_ylabel('{} [W] '.format(d.port.name))
-            ax.grid()
+            
+            ax.grid(True)
+        
+        if toShow is not None or legend is not None:
+            plt.legend(loc=0)
+           
         plt.tight_layout()
-        plt.show(block=0)
+        
+        if fig is None:
+            plt.show(block=block)
 
     def set_DC_offset(self, _kat, DCoffset=None, verbose=False):
         if DCoffset:
@@ -799,19 +905,24 @@ class port(object):
 def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
     optics=make_list_copy(_optics)
     factors=make_list_copy(_factors)
+    
     if len(optics) != len(factors):
         raise pkex.BasePyKatException("you must provide a factor for each optics")
 
     if linlog not in ["lin", "log"]: 
         raise pkex.BasePyKatException("linlog must be 'lin' or 'log'")
+        
     _tuneStr  = "var {} 0\n".format(_varName)
+    
     if axis==1:
         _tuneStr += "xaxis {} phi {} {} {} {}".format(_varName, linlog, xlimits[0], xlimits[1], steps)
     elif (axis==2 or axis==3): 
         _tuneStr += "x{}axis {} phi {} {} {} {}".format(axis, _varName, linlog, xlimits[0], xlimits[1], steps)
     else:
         raise pkex.BasePyKatException("axis must be 1, 2 or 3")
+        
     _putStr = ""
+    
     for idx, o in enumerate(optics):
         if factors[idx] == 1:
             _xStr="$x"
@@ -826,6 +937,7 @@ def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100,
                 
         _putStr = "\n".join([_putStr, "{} {} phi {}{}".format(_putCmd, o, _xStr, axis)])            
         _tuneStr += _putStr
+        
     return _tuneStr
         
 def make_transparent(kat, _components):
@@ -915,12 +1027,14 @@ def BS_optical_path(thickness, n=nsilica, angle=45.0):
 
 def scan_DOF(_kat, DOF, xlimits=[-100, 100], steps=200, relative=False): 
     kat = _kat.deepcopy()
-    scan_string = scan_optics_string(DOF.optics, DOF.factors, "scan", linlog="lin", xlimits=xlimits, steps=steps, axis=1,relative=relative)
+    
+    scan_string = scan_optics_string(DOF.optics, DOF.factors, "scan", linlog="lin",
+                                     xlimits=xlimits, steps=steps, axis=1, relative=relative)
+    
     kat.parseCommands(scan_string)
-    sigStr = DOF.signal(kat)
-    kat.parseCommands(sigStr)
-    out = kat.run()
-    return out
+    kat.parseCommands(DOF.signal(kat))
+    
+    return kat.run()
 
 def scan_optics(_kat, _optics, _factors, xlimits=[-100, 100], steps=200,relative=False): 
     """
@@ -935,12 +1049,16 @@ def scan_optics(_kat, _optics, _factors, xlimits=[-100, 100], steps=200,relative
     scan_optis(kat, ["ETMX", "ETMY", [1, -1])
     """
     kat = _kat.deepcopy()
+    
     optics=make_list_copy(_optics)
     factors=make_list_copy(_factors)
-    scan_string = scan_optics_string(optics, factors, "scan", linlog="lin", xlimits=xlimits, steps=steps, axis=1,relative=relative)
+    
+    scan_string = scan_optics_string(optics, factors, "scan", linlog="lin", xlimits=xlimits,
+                                      steps=steps, axis=1,relative=relative)
+    
     kat.parseCommands(scan_string)
-    out = kat.run()
-    return out
+    
+    return kat.run()
 
 def optical_gain(_kat, DOF_sig, DOF_det, f=10.0):
     kat = _kat.deepcopy()
