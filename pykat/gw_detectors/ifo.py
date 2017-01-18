@@ -508,7 +508,10 @@ put f1m f $mx1
                 ax.plot(out.x, out[d.signal_name(kat)], label=legend)
             else:
                 for _ in toShow:
-                    ax.plot(out.x, out[_.signal_name(kat)], label=_.name)
+                    if legend is None:
+                        legend = _.name
+                        
+                    ax.plot(out.x, out[_.signal_name(kat)], label=legend)
                 
             ax.set_xlim([np.min(out.x), np.max(out.x)])
             ax.set_xlabel("{} [deg]".format(d.name))
@@ -516,7 +519,7 @@ put f1m f $mx1
             if plotDOFs is None:
                 ax.set_ylabel('{} [W] '.format(d.port.name))
             else:
-                ax.set_ylabel('{Error signal} [W] ')
+                ax.set_ylabel('Error signal [W]')
             
             ax.grid(True)
         
