@@ -512,7 +512,11 @@ put f1m f $mx1
                 
             ax.set_xlim([np.min(out.x), np.max(out.x)])
             ax.set_xlabel("{} [deg]".format(d.name))
-            ax.set_ylabel('{} [W] '.format(d.port.name))
+            
+            if plotDOFs is None:
+                ax.set_ylabel('{} [W] '.format(d.port.name))
+            else:
+                ax.set_ylabel('{Error signal} [W] ')
             
             ax.grid(True)
         
