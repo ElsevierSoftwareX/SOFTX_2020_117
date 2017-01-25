@@ -772,16 +772,17 @@ class Signals(object):
     def f(self): return self.__f
     @f.setter
     def f(self,value):
+        if value is None:
+            self.__f.value = None
+            return
+            
         v = SIfloat(value)
         
-        if v is not None and v <= 0:
+        if v <= 0:
             raise pkex.BasePyKatException("Signal frequency must be greater than 0.")
             
-            self.__f.value = SIfloat(value)
-        else:
-            self.__f.value = None
+        self.__f.value = SIfloat(value)
         
-    
     def __init__(self, kat):
         self._unfreeze()
         self._default_name = "fsignal"
@@ -795,7 +796,6 @@ class Signals(object):
         self._params.append(param)
         
     def apply(self, target, amplitude, phase, name=None):
-        
         if target is None:
             raise  pkex.BasePyKatException("No target was specified for signal to be applied")
         
