@@ -715,7 +715,7 @@ class Signals(object):
                 raise pkex.BasePyKatException("Signal {0} has already been marked as removed".format(self.name))
             else:
                 self.__signal.targets.remove(self)
-                self.__remove = True
+                self.__removed = True
         
         @property
         def name(self): return self.__name
@@ -766,16 +766,21 @@ class Signals(object):
         
         del self.targets[:]
         
+        self.f = None
+        
     @property
     def f(self): return self.__f
     @f.setter
     def f(self,value):
         v = SIfloat(value)
         
-        if v <= 0:
+        if v is not None and v <= 0:
             raise pkex.BasePyKatException("Signal frequency must be greater than 0.")
             
-        self.__f.value = SIfloat(value)
+            self.__f.value = SIfloat(value)
+        else:
+            self.__f.value = None
+        
     
     def __init__(self, kat):
         self._unfreeze()
