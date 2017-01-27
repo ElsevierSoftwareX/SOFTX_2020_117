@@ -44,7 +44,7 @@ kat1.o1.num_demods = 2
 assert(hasattr(kat1.o1, "f2"))
 assert(not hasattr(kat0.o1, "f2"))
 
-kat1.num_demods = 1
+kat1.o1.num_demods = 1
 
 assert(hasattr(kat1.o1, "f1"))
 

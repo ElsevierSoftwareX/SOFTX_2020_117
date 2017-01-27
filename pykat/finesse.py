@@ -87,14 +87,13 @@ from pykat.commands import Command, xaxis
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 from pykat.external import progressbar
-
+from pykat.freeze import canFreeze
 import pykat.external.six as six
 
 import pykat.exceptions as pkex
 
 from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
 
-    
 if HAS_OPTIVIS:
     from optivis.bench.labels import Label as optivis_label
     from optivis.geometry import Coordinates as optivis_coord
@@ -210,6 +209,16 @@ class BlockedKatFile(object):
         bkf.write("mytest.kat")
     """
     
+    def __str__(self):
+         rtn = ""
+         
+         for block in self.ordering:
+             rtn += "\n%%% FTblock " + block + "\n"
+             rtn += self.blocks[block]
+             rtn += "%%% FTend " + block + "\n"
+         
+         return rtn
+         
     def __init__(self, NO_BLOCK="NO_BLOCK"):
         self.__NO_BLOCK = NO_BLOCK
         self.ordering = [self.__NO_BLOCK]
@@ -265,12 +274,14 @@ class BlockedKatFile(object):
             if len(values) >= 3 and values[0] == "%%%":
                 if values[1] == "FTblock":
                     newTag = values[2]
-
+                    
                     if self.__currentBlock != None and self.__currentBlock != self.__NO_BLOCK: 
                         warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentBlock))    
     
                     if newTag in self.blocks:
-                        raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                        #raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                        self.__currentBlock = newTag
+                        continue
     
                     self.blocks[newTag] = ""
                     self.__currentBlock = newTag
@@ -330,18 +341,24 @@ def GUILength(L):
     Should scale the lengths in some way to handle km and mm for time being
     """
     return L # * ( 40 * erfc(L/400.0) + 0.01)
-            
+
+@canFreeze
 class KatRun(object):
     def __init__(self):
+        self._unfreeze()
         self.runtime = None
         self.StartDateTime = datetime.datetime.now()
         self.x = None
+        self.stdout = None
+        self.stderr = None
+        self.runDateTime = None
         self.y = None
         self.xlabel = None
         self.ylabels = None
         self.katScript = None
         self.katVersion = None
         self.yaxis = None
+        self._freeze()
         
     def info(self):
         
@@ -623,9 +640,11 @@ class KatRun(object):
                 return out.squeeze()
         else:
             raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
-      
+            
+@canFreeze 
 class KatRun2D(object):
     def __init__(self):
+        self._unfreeze()
         self.runtime = None
         self.startDateTime = datetime.datetime.now()
         self.x = None
@@ -638,6 +657,7 @@ class KatRun2D(object):
         self.katVersion = None
         self.stderr = None
         self.stdout = None
+        self._freeze()
         
     def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
@@ -658,10 +678,13 @@ class KatRun2D(object):
         else:
             raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
     
-        
+@canFreeze    
 class Signals(object):
+    
+    @canFreeze 
     class fsig(object):
         def __init__(self, param, name, amplitude, phase, signal):
+            self._unfreeze()
             self._params = []
             self.__target = param
             self.__name = name
@@ -669,6 +692,7 @@ class Signals(object):
             self.__phase = Param("phase", self, SIfloat(phase))
             self.__removed = False
             self.__signal = signal
+            self._freeze()
             
             # unfortunatenly the target names for fsig are not the same as the
             # various parameter names of the components, e.g. mirror xbeta is x 
@@ -691,7 +715,7 @@ class Signals(object):
                 raise pkex.BasePyKatException("Signal {0} has already been marked as removed".format(self.name))
             else:
                 self.__signal.targets.remove(self)
-                self.__remove = True
+                self.__removed = True
         
         @property
         def name(self): return self.__name
@@ -742,29 +766,36 @@ class Signals(object):
         
         del self.targets[:]
         
+        self.f = None
+        
     @property
     def f(self): return self.__f
     @f.setter
     def f(self,value):
+        if value is None:
+            self.__f.value = None
+            return
+            
         v = SIfloat(value)
         
         if v <= 0:
             raise pkex.BasePyKatException("Signal frequency must be greater than 0.")
             
         self.__f.value = SIfloat(value)
-    
+        
     def __init__(self, kat):
+        self._unfreeze()
         self._default_name = "fsignal"
         self.targets = []
         self._params = []
         self.__f = Param("f", self, None)
         self._kat = kat
+        self._freeze()
         
     def _register_param(self, param):
         self._params.append(param)
         
     def apply(self, target, amplitude, phase, name=None):
-        
         if target is None:
             raise  pkex.BasePyKatException("No target was specified for signal to be applied")
         
@@ -811,6 +842,7 @@ Constant = namedtuple('Constant', 'name, value, usedBy')
 
 id___ = 0
 
+@canFreeze
 class kat(object):  
 
     def __new__(cls, *args, **kwargs):
@@ -828,7 +860,7 @@ class kat(object):
         return object.__new__(cnew)
     
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
-
+        self._unfreeze()
         self.__looking = False
         self.scene = None # scene object for GUI
         self.verbose = True
@@ -866,6 +898,7 @@ class kat(object):
         self.__time_code = None
         self.__yaxis = "abs" # default yaxis
         self.__lambda0 = 1064e-9
+        self.__finesse_dir = None
         
         if kat_code != None and kat_file != None:
             raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
@@ -875,7 +908,9 @@ class kat(object):
         
         if kat_file != None:
             self.loadKatFile(kat_file)
-
+    
+        self._freeze()
+        
     def deepcopy(self):
         return copy.deepcopy(self)
     
@@ -1137,6 +1172,9 @@ class kat(object):
             print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
     
     def parseCommands(self, commands, blocks=None, addToBlock=None, preserve=False):
+        
+        commands = str(commands)
+        
         try:
             if addToBlock is not None and blocks is not None:
                 raise pkex.BasePyKatException("When parsing commands you cannot set both blocks and addToBlock arguments")
@@ -1172,7 +1210,9 @@ class kat(object):
                                     warnings.warn("found block {0} before block {1} ended".format(newTag, self.__currentTag))    
                         
                                 if newTag in self.__blocks:
-                                    raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                                    #raise pkex.BasePyKatException("Block `{0}` has already been read".format(newTag))
+                                    self.__currentTag = newTag
+                                    continue # Just add to existing block data
                         
                                 self.__blocks[newTag] = Block(newTag) # create new list to store all references to components in block
                                 self.__currentTag = newTag
@@ -1791,6 +1831,10 @@ class kat(object):
                                         traceData[-1][node_name] = (pykat.BeamParam(q=complex(qx), wavelength=self.lambda0),
                                                                     pykat.BeamParam(q=complex(qy), wavelength=self.lambda0),
                                                                     component_name)
+                                        direc = a[1].split(";")[-1].strip().split(maxsplit=1)[-1]
+                                        
+                                        traceData[-1][node_name][0].direction = direc
+                                        traceData[-1][node_name][1].direction = direc
                             
                         finally:
                             ifile.close()
@@ -2016,6 +2060,7 @@ class kat(object):
         
     def add(self, obj, block=NO_BLOCK):
         try:
+            self._unfreeze()
             obj.tag = block
             self.__blocks[block].contents.append(obj)
             
@@ -2048,9 +2093,11 @@ class kat(object):
                 raise pkex.BasePyKatException("Object {0} could not be added".format(obj))
                 
             obj._on_kat_add(self)
-            
+        
         except pkex.BasePyKatException as ex:
             pkex.PrintError("Error on adding object:", ex)
+        finally:
+            self._freeze()
 
     def readOutFile(self, filename):
         

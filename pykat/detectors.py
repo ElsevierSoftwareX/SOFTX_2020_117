@@ -26,6 +26,7 @@ import warnings
 import copy
 
 from pykat import USE_GUI, NoGUIException
+from pykat.freeze import canFreeze
 
 if USE_GUI:
     import pykat.gui.resources
@@ -33,6 +34,7 @@ if USE_GUI:
 
 id_____pykat_class = 0
 
+@canFreeze
 class BaseDetector(object) :
     """
     This is a base class for all detectors. Classes Detector1 and Detector2 should be used directly.
@@ -51,9 +53,12 @@ class BaseDetector(object) :
         
         cnew = type(cnew_name, (cls,), {})
         
-        return object.__new__(cnew)
+        o = object.__new__(cnew)
+        return o
         
     def __init__(self, name, nodes=None, max_nodes=1):
+
+        self._unfreeze()
         
         self.__name = name
         self._svgItem = None
@@ -106,8 +111,10 @@ class BaseDetector(object) :
         # Here we create a copy of this object based of the base class
         # of this one, otherwise we're making a copy of a copy of a copy...
         result = self.__class__.__new__(self.__class__.__base__)
+        result._unfreeze()
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
+        result._freeze()
         return result
                 
     def _register_param(self, param):
@@ -243,6 +250,8 @@ class beam(Detector1):
         self.alternate_beam = alternate_beam
         self.__f = Param("f", self, frequency)        
     
+        self._freeze()
+        
     @property
     def f(self): return self.__f
     
@@ -291,6 +300,8 @@ class cp(Detector0):
         self.cavity = str(cavity)
         self.direction = direction
         self.parameter = parameter
+        
+        self._freeze()
 
     @property
     def direction(self): return self.__direction
@@ -345,6 +356,8 @@ class xd(Detector0):
         
         self.component = component
         self.motion = motion
+    
+        self._freeze()
 
     @staticmethod
     def parseFinesseText(text): 
@@ -372,6 +385,8 @@ class ad(Detector1):
         self.mode = mode
         self.alternate_beam = alternate_beam
         self.__f = Param("f", self, frequency)
+    
+        self._freeze()
     
     @property
     def mode(self): return self.__mode
@@ -426,6 +441,8 @@ class gouy(Detector1):
         self.spaces = copy.copy(spaces)
         self.direction = direction
         self.alternate_beam = False
+    
+        self._freeze()
         
     @property
     def direction(self): return self.__dir
@@ -475,6 +492,8 @@ class bp(Detector1):
         self.parameter = parameter
         self.direction = direction
         self.alternate_beam = alternate_beam
+    
+        self._freeze()
         
     @property
     def direction(self): return self.__dir
@@ -598,9 +617,10 @@ class pd(Detector1):
                 ps[i].value = kwargs[p]
             elif i<num_demods-1:
                 raise pkex.BasePyKatException("Missing demodulation phase {0} (phase{0})".format(i+1))
-        
    
         self.__set_demod_attrs()
+    
+        self._freeze()
                 
     @property
     def senstype(self): return self.__senstype
@@ -655,6 +675,7 @@ class pd(Detector1):
         For the set number of demodulations the correct number of 
         Parameters are created.
         """
+        self._unfreeze()
         
         # if there are demodulations present then we want to add
         # the various parameters so they are available for users
@@ -678,8 +699,8 @@ class pd(Detector1):
                         
                     if hasattr(self, "phase"+name):
                         delattr(self.__class__, "phase"+name)
-        else:
-            return
+        
+        self._freeze()
     
     @staticmethod
     def parseFinesseText(text): 
@@ -776,7 +797,11 @@ class qnoised(pd):
     def __init__(self, name, num_demods, node_name, alternate_beam=False, pdtype=None, **kwargs):
         super(qnoised, self).__init__(name, num_demods, node_name, alternate_beam=alternate_beam, pdtype=pdtype, **kwargs)
     
+        self._unfreeze()
+        
         self.__homangle = AttrParam("homangle", self, None)
+        
+        self._freeze()
     
     @property
     def homangle(self): return self.__homangle
@@ -985,7 +1010,9 @@ class hd(Detector2):
         BaseDetector.__init__(self, name, (node1_name, node2_name), max_nodes=2)
     
         self.__phase = Param("phase", self, phase)
-    
+
+        self._freeze()
+        
     @property
     def phase(self): return self.__phase
     @phase.setter
@@ -1026,6 +1053,8 @@ class qhd(Detector2):
     
         self.__phase = Param("phase", self, phase)
         self.sensitivity = sensitivity
+    
+        self._freeze()
         
     @property
     def phase(self): return self.__phase

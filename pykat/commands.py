@@ -10,6 +10,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import numpy
+import warnings
+import pykat
 import pykat.external.six as six
 import pykat.exceptions as pkex
 
@@ -22,35 +24,38 @@ from numpy import min, max
 from pykat.param import Param, putter
 from collections import namedtuple
 from pykat.optics.gaussian_beams import BeamParam
+from pykat.freeze import canFreeze
 
-
-
-
+@canFreeze
 class Command(object):
     __metaclass__ = abc.ABCMeta
     
     def __init__(self, name, unique):
+        self.__dict__["____FROZEN____"] = False
+        self._kat = None
         self.__unique = unique
         self.tag = None
         self.__removed = False
         self.__name = name.strip("*")
         self._putters = []
     
+        
     def __deepcopy__(self, memo):
         """
         When deep copying a kat object we need to take into account
         the instance specific properties.
         """
-
         cls = self.__class__
         result = cls.__new__(cls)
+        result._unfreeze()
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
         for _ in result._putters:
             _._updateOwner(result)
-        
+
+        result._freeze()
         return result
-            
+    
     def getFinesseText(self):
         """ Base class for individual finesse optical components """
         raise NotImplementedError("This function is not implemented")
@@ -103,7 +108,8 @@ class variable(Command):
     def __init__(self, name, value):
         Command.__init__(self, name, False)
         self.__value = value
-    
+        self._freeze()
+        
     def getFinesseText(self):
         return "variable {name} {value}".format(name=self.name, value=self.value)
     
@@ -135,6 +141,8 @@ class func(Command):
         
         self.output = putter(name, self)
         self._putters.append(self.output)
+
+        self._freeze()
         
     def getFinesseText(self):
         rtn = []
@@ -175,7 +183,8 @@ class lock(Command):
         self.output = putter(name, self)
         self._putters.append(self.output)
 
-
+        self._freeze()
+        
     @staticmethod
     def parseFinesseText(line, kat):
         v = line.split()
@@ -228,6 +237,8 @@ class cavity(Command):
         
         self.enabled = True
 
+        self._freeze()
+        
     def getFinesseText(self):
         if self.enabled:
             return 'cav {0} {1} {2} {3} {4}'.format(self.name, self.__c1.name, self.__n1.name, self.__c2.name, self.__n2.name);
@@ -405,6 +416,8 @@ class tf(Command):
         self.poles = []
         self.gain = 1
         self.phase = 0
+        
+        self._freeze()
     
     def addPole(self,f, Q):
         self.poles.append(tf.fQ(SIfloat(f), SIfloat(Q)))
@@ -504,6 +517,8 @@ class xaxis(Command):
             self.__param = param
             self.__comp = param._owner()
 
+        self._freeze()
+        
     def _set_variables(self):
         self.x = putter("x1", self)
         self.mx = putter("mx1", self)

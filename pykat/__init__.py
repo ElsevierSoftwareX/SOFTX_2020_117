@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__version__ = "1.0.14"
+__version__ = "1.0.17"
 
 # This flag is used to switch on the gui features in pkat at import time
 USE_GUI = False
@@ -20,7 +20,7 @@ except ImportError:
 import pykat.exceptions as pkex
 
 NoGUIException = pkex.BasePyKatException("No PyQt4 module was found so cannot open a GUI")
-
+    
 import pykat.finesse as finesse
 import pykat.components as components
 import pykat.detectors as detectors
@@ -29,5 +29,4 @@ import pykat.commands as commands
 from pykat.optics.gaussian_beams import BeamParam
 
 from pykat.plotting import init_pykat_plotting
-
 
