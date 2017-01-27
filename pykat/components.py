@@ -339,7 +339,27 @@ class AbstractMirrorComponent(Component):
         if R is not None: self.R.value = R
         if T is not None: self.T.value = T
         if L is not None: self.L.value = L
-    
+
+    def completeRTL(self, R=None, T=None, L=None):
+        setValues = sum(x is not None for x in [R,T,L])
+        if setValues == 3:
+            self.setRTL(R,T,L)
+        elif setValues < 2:
+            raise pkex.BasePyKatException("must set at least two out of three parameters (R, T, L)")            
+        else:
+            if R is not None:
+                self.R.value = R
+            else:
+                self.R.value = 1-T-L            
+            if T is not None:
+                self.T.value = T
+            else:
+                self.T.value = 1-R-L            
+            if L is not None:
+                self.L.value = L
+            else:
+                self.L.value = 1-R-T            
+
     @property
     def z(self): return self.__z
     @property
