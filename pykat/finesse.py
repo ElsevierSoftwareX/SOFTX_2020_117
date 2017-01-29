@@ -1841,7 +1841,7 @@ class kat(object):
                                         traceData[-1][node_name] = (pykat.BeamParam(q=complex(qx), wavelength=self.lambda0),
                                                                     pykat.BeamParam(q=complex(qy), wavelength=self.lambda0),
                                                                     component_name)
-                                        direc = a[1].split(";")[-1].strip().split(maxsplit=1)[-1]
+                                        direc = a[1].split(";")[-1].strip().split(None, 1)[-1]
                                         
                                         traceData[-1][node_name][0].direction = direc
                                         traceData[-1][node_name][1].direction = direc
