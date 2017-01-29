@@ -1765,6 +1765,16 @@ class kat(object):
             
             k = r.stdout.rfind('computation time:')
             
+            if usePipe == False:
+                # Set version if not using pipe information
+                s = r.stdout.find('(build ') + 7
+                e = r.stdout[s:].find(')')
+                
+                if s == -1 or e == -1:
+                    r.katVersion = "Couldn't get version number"
+                else:
+                    r.katVersion = r.stdout[s:(s+e)]
+                
             if k > 0:
                 try:
                     line = r.stdout[k:]
