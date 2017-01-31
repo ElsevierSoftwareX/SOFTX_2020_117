@@ -126,7 +126,10 @@ class aLIGO(object):
         
         for _ in inspect.getmembers(self, lambda x: isinstance(x, DOF)):
             self.__DOFs[_[0]] = _[1]
-    
+
+        self.lockNames = None
+
+                
     @property
     def DOFs(self):
         return copy.copy(self.__DOFs)
@@ -722,7 +725,7 @@ noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
         
     def generate_lock_block(self, kat, verbose=False):
         if self.lockNames == None or self.lockAccuracies == None or self.lockGains == None:
-            raise pkex.BasePyKatException("run gerate_locks before generate_lock_block")            
+            raise pkex.BasePyKatException("run generate_locks before generate_lock_block")            
         code1 = """###########################################################################
 set AS_f2_I_re {} re
 set CARM_err {} re

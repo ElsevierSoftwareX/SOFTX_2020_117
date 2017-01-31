@@ -272,8 +272,6 @@ const phi_BS 0
 ###########################################################################
 %%% FTend tunings
 
-# reintroduced: errsigs, locks, powers (partial)
-
 %%% FTblock powers
 ###########################################################################
 pd P_DC_AS  nSRM2
