@@ -431,7 +431,7 @@ put f1m f $mx1
         return dofs
 
     def plot_error_signals(self, _kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
-                                replaceDOFSignals=False, block=True, fig=None, legend=None):
+                                replaceDOFSignals=False, block=0, fig=None, legend=None):
         """
         Displays error signals for a given kat file. Can also be used to plot multiple
         DOF's error signals against each other for visualising any cross coupling.
@@ -611,7 +611,9 @@ const phi_ETMY {:.8}""".format(float(kat.ITMX.phi), float(kat.ITMY.phi), float(k
 const phi_BS   {:.8}
 const phi_PRM  {:.8}
 const phi_SRM  {:.8}
-###########################################################################""".format(float(kat.BS.phi), float(kat.PRM.phi), float(kat.SRM.phi))
+maxtem {}
+phase {}
+###########################################################################""".format(float(kat.BS.phi), float(kat.PRM.phi), float(kat.SRM.phi), kat.maxtem, kat.phase)
 
         return "".join([code1, code2])
 
@@ -1125,7 +1127,7 @@ def find_peak(out, detector, minmax='max', debug=False):
         plt.plot(X_out,Y_out,'o')
         plt.xlabel('tuning [deg]')
         plt.ylabel('{0} output'.format(detector))
-        plt.show()
+        plt.show(block=0)
     return X_out, stepsize
 
 def make_list_copy(_l):
