@@ -3,6 +3,8 @@ import sys
 from flask import Flask
 from optparse import OptionParser
 
+repo_url = "https://git.ligo.org/finesse"
+
 def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/git"):
         
     os.environ["GIT_BIN"] = git_bin
@@ -32,7 +34,7 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
     # need local copy of src
     if not os.path.exists(os.path.join(app.instance_path,"finesse_src")):
         print "finesse src folder didn't exist, cloning now..."
-        utils.git(["clone","https://gitlab.aei.uni-hannover.de/finesse/finesse.git","finesse_src"])
+        utils.git(["clone","%s/finesse.git"%repo_url,"finesse_src"])
     else:
         # get the latest version for logs etc.
         utils.git("pull", cwd=os.path.join(app.instance_path,"finesse_src"))
@@ -42,7 +44,7 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
     # need local copy of test
     if not os.path.exists(os.path.join(app.instance_path,"finesse_test")):
         print "finesse test folder didn't exist, cloning now..."
-        utils.git(["clone","git://gitmaster.atlas.aei.uni-hannover.de/finesse/test.git","finesse_test"])
+        utils.git(["clone","%s/test.git"%repo_url,"finesse_test"])
         utils.git(["config","core.sharedRepository","true"], cwd="./finesse_test/")
     
     # load up the actual interface code
