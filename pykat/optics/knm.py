@@ -216,31 +216,37 @@ def __gen_riemann_knm_cache(x, y, couplings, q1, q2, q1y=None, q2y=None, delta=(
     if q2y is None:
         q2y = q2
         
-    it = np.nditer(couplings, flags=['refs_ok','f_index'])
+    #it = np.nditer(couplings, flags=['refs_ok','f_index'])
     
     cache = {}
     
-    while not it.finished:
-        try:
-            mode_in = [int(it.next()), int(it.next())]
-            mode_out = [int(it.next()), int(it.next())]
-            
-            strx = "u1[%i,%i]" % (mode_in[0], mode_out[0])
-            stry = "u2[%i,%i]" % (mode_in[1], mode_out[1])
-            
-            #Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
-            #Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
+    #while not it.finished:
+    #    try:
+    #        mode_in = [int(it.next()), int(it.next())]
+    #        mode_out = [int(it.next()), int(it.next())]
     
-            if strx not in cache:
-                cache[strx] = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, mode_in[0], mode_out[0], x, x+delta[0])    
-                #Hg_in.Un(x) * Hg_out.Un(x).conjugate()   
+    couplings = couplings.copy()
+    couplings.resize(int(couplings.size/4), 4)
+    
+    for _ in couplings:
+        mode_in = _[:2]
+        mode_out = _[2:]        
+        strx = "u1[%i,%i]" % (mode_in[0], mode_out[0])
+        stry = "u2[%i,%i]" % (mode_in[1], mode_out[1])
+        
+        #Hg_in  = HG_beam(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
+        #Hg_out = HG_beam(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
+
+        if strx not in cache:
+            cache[strx] = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, mode_in[0], mode_out[0], x, x+delta[0])    
+            #Hg_in.Un(x) * Hg_out.Un(x).conjugate()   
+        
+        if stry not in cache:
+            cache[stry] = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, mode_in[1], mode_out[1], y, y+delta[1])    
+            #Hg_in.Um(y) * Hg_out.Um(y).conjugate()
             
-            if stry not in cache:
-                cache[stry] = u_star_u(q1y.z,   q2y.z,  q1y.w0,  q2y.w0, mode_in[1], mode_out[1], y, y+delta[1])    
-                #Hg_in.Um(y) * Hg_out.Um(y).conjugate()
-            
-        except StopIteration:
-            break
+    #    except StopIteration:
+    #        break
     
     return cache
     
@@ -254,7 +260,7 @@ def __gen_ROM_HG_knm_cache(weights, couplings, q1, q2, q1y=None, q2y=None):
     if q2y is None:
         q2y = q2
         
-    it = np.nditer(couplings, flags=['refs_ok','f_index'])
+    
     
     cache = {}
     
@@ -265,23 +271,40 @@ def __gen_ROM_HG_knm_cache(weights, couplings, q1, q2, q1y=None, q2y=None):
     cache["w_ij_Q2Q3"] = weights.w_ij_Q2 + weights.w_ij_Q3
     cache["w_ij_Q3Q4"] = weights.w_ij_Q3 + weights.w_ij_Q4
     cache["w_ij_Q1Q2Q3Q4"] = weights.w_ij_Q1 + weights.w_ij_Q3 + weights.w_ij_Q2 + weights.w_ij_Q4
+
+    couplings = couplings.copy()
+    couplings.resize(int(couplings.size/4), 4)
     
-    while not it.finished:
-        try:
-            mode_in = [int(it.next()), int(it.next())]
-            mode_out = [int(it.next()), int(it.next())]
-            
-            strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
-            stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
-            
-            if strx not in cache:
-                cache[strx] = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, mode_in[0], mode_out[0], weights.EI["xm"].nodes)   
-            
-            if stry not in cache:
-                cache[stry] = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, mode_in[1], mode_out[1], weights.EI["ym"].nodes)
-            
-        except StopIteration:
-            break
+    for _ in couplings:
+        mode_in = _[:2]
+        mode_out = _[2:]
+
+        strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
+        stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
+
+        if strx not in cache:
+            cache[strx] = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, mode_in[0], mode_out[0], weights.EI["xm"].nodes)
+
+        if stry not in cache:
+            cache[stry] = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, mode_in[1], mode_out[1], weights.EI["ym"].nodes)
+    
+    # it = np.nditer(couplings, flags=['refs_ok','f_index'])
+    # while not it.finished:
+    #     try:
+    #         mode_in = [int(it.next()), int(it.next())]
+    #         mode_out = [int(it.next()), int(it.next())]
+    #
+    #         strx = "x[%i,%i]" % (mode_in[0], mode_out[0])
+    #         stry = "y[%i,%i]" % (mode_in[1], mode_out[1])
+    #
+    #         if strx not in cache:
+    #             cache[strx] = u_star_u(q1.z,   q2.z,  q1.w0,  q2.w0, mode_in[0], mode_out[0], weights.EI["xm"].nodes)
+    #
+    #         if stry not in cache:
+    #             cache[stry] = u_star_u(q1y.z, q2y.z, q1y.w0, q2y.w0, mode_in[1], mode_out[1], weights.EI["ym"].nodes)
+    #
+    #     except StopIteration:
+    #         break
     
     return cache
 
@@ -543,7 +566,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
     maxtem = 0
     c = couplings.flatten()
     
-    for i in range(0, c.size/2):
+    for i in range(0, int(c.size/2)):
         maxtem = max(sum(c[i*2:(i*2+2)]), maxtem)
     
     global __fac_cache
@@ -559,7 +582,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
     
     K = np.zeros((couplings.size/4,), dtype=np.complex128)
     
-    it = np.nditer(couplings, flags=['refs_ok','f_index'])
+    #it = np.nditer(couplings, flags=['refs_ok','f_index'])
     
     i = 0
     
@@ -593,37 +616,36 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
     if verbose:
         p = ProgressBar(maxval=couplings.size, widgets=["Knm (%s): " % method, Percentage(), Bar(), ETA()])
     
-    while not it.finished:
-        try:
-            if profile:
-                t0 = time.time()
+    _couplings = couplings.copy()
+    _couplings.resize(int(_couplings.size/4), 4)
+    
+    for _ in _couplings:
+        mode_in = _[:2]
+        mode_out = _[2:]
+
+        if profile:
+            t0 = time.time()
                 
-            mode_in = [int(it.next()), int(it.next())]
-            mode_out = [int(it.next()), int(it.next())]
-            
-            
-            if method == "riemann":
-                K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache, delta=delta)
-            elif method == "romhom":
-                K[i] = ROM_HG_knm(weights, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, cache=cache)
-            elif method == "bayerhelms":
-                K[i] = bayerhelms_HG_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, gamma=gamma)
-            elif method == "adaptive":
-                K[i] = adaptive_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, smap=surface_map, delta=delta, params=params)
-            else:
-                raise BasePyKatException("method value '%s' not accepted" % method)
-            
-            if profile:
-                Ktime[i] = time.time() - t0
-            
-            i +=1
-            
-            if verbose:
-                p.update(i*4)
-                
-                 
-        except StopIteration:
-            break
+        
+        
+        if method == "riemann":
+            K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache, delta=delta)
+        elif method == "romhom":
+            K[i] = ROM_HG_knm(weights, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, cache=cache)
+        elif method == "bayerhelms":
+            K[i] = bayerhelms_HG_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, gamma=gamma)
+        elif method == "adaptive":
+            K[i] = adaptive_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, smap=surface_map, delta=delta, params=params)
+        else:
+            raise BasePyKatException("method value '%s' not accepted" % method)
+        
+        if profile:
+            Ktime[i] = time.time() - t0
+        
+        i +=1
+        
+        if verbose:
+            p.update(i*4)
 
     if profile:
         return K.reshape(couplings.shape[:-1]), Ktime.reshape(couplings.shape[:-1]), cache_time
@@ -631,38 +653,45 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         return K.reshape(couplings.shape[:-1])
 
 
-
-
-
-def plot_knm_matrix(couplings, knm):
+def plot_knm_matrix(couplings, knm, cmap=None, show=True):
     import pylab as plt
     
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    cax = ax.imshow(knm, interpolation='nearest')
+    cax = ax.pcolormesh(abs(knm), cmap=cmap)
     fig.colorbar(cax)
     
     numrows, numcols = knm.shape
     
     c = couplings[:, 0, :2]
     c_ = []
-    
+
     for d in c:
-        c_.append("%i,%i"%(d[0], d[1]))
+        c_.append("[%i,%i]"%(d[0], d[1]))
     
+    A = np.arange(1, len(c)+1)-0.5
+    ax.set_xticks(A)
+    ax.set_yticks(A)
     ax.set_xticklabels(c_)
     ax.set_yticklabels(c_)
     
+    ax.set_xlim(None, max(A)+0.5)
+    ax.set_ylim(None, max(A)+0.5)
+    
     def format_coord(x, y):
-        col = int(x+0.5)
-        row = int(y+0.5)
+        col = int(np.floor(x))
+        row = int(np.floor(y))
         
         if col>=0 and col<numcols and row>=0 and row<numrows:
             z = knm[row,col]
             return 'x=%s, y=%s, z=%1.4f' % (c_[col], c_[row], z)
-        else:
-            return 'x=%1.4f, y=%1.4f'%(x, y)
+        
+        return None
 
     ax.format_coord = format_coord
 
-    plt.show()
+    fig.tight_layout()
+    
+    if show: plt.show()
+    
+    return fig
