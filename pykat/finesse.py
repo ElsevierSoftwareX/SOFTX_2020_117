@@ -646,6 +646,7 @@ class KatRun2D(object):
     def __init__(self):
         self._unfreeze()
         self.runtime = None
+        self.runDateTime = None
         self.startDateTime = datetime.datetime.now()
         self.x = None
         self.y = None

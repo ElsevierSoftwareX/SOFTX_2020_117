@@ -85,7 +85,7 @@ class BeamParam(object):
     def zr(self): return self.__q.imag
     
     @property
-    def w(self):
+    def w(self, z=None):
         return np.abs(self.__q)* np.sqrt(self.__lambda / (self.__nr * math.pi * self.__q.imag))
     
     def beamsize(self, z=None, wavelength=None, nr=None, w0=None):

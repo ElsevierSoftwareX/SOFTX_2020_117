@@ -478,9 +478,9 @@ class AbstractMirrorComponent(Component):
             self.Rc = value
         elif key in ["M","m", "Mass", "mass"]:
             self.mass = value
-        elif key in ["xbeta", "xBeta"]:
+        elif key in ["xbeta", "xBeta", "yaw"]:
             self.xbeta = value
-        elif key in ["ybeta","yBeta"]:
+        elif key in ["ybeta", "yBeta", "pitch"]:
             self.ybeta = value
         elif key in ["x_off"]:
             self.x_offset = value
@@ -504,7 +504,8 @@ class AbstractMirrorComponent(Component):
         return True
         
 class mirror(AbstractMirrorComponent):
-    def __init__(self,name,node1,node2,R=None,T=None,L=None,phi=0,Rcx=None,Rcy=None,xbeta=None,ybeta=None,mass=None, r_ap=None):
+    def __init__(self, name, node1, node2, R=None, T=None, L=None,
+                 phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None):
         super(mirror, self).__init__(name, R, T, L, phi, Rcx, Rcy, xbeta, ybeta, mass, r_ap)
         
         self._requested_node_names.append(node1)
