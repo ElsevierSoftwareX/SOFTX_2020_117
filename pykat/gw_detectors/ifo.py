@@ -59,9 +59,12 @@ class aLIGO(object):
             self.kat.loadKatFile(katfile)
             self.rawBlocks.read(katfile)
         else:
+            """
             if _name not in names: # TODO different files not yet implemented
                 printf("aLIGO name `{}' not recognised, must be 'default', 'LLO' or 'LHO'",_name)
-            #print(data_path)
+            """
+            if _name != "default":
+                printf("aLIGO name `{}' not recognised, using 'default'",_name)                
             self.kat.loadKatFile(self._data_path+"aLIGO.kat")
             self.rawBlocks.read(self._data_path+"aLIGO.kat")
 
@@ -89,11 +92,11 @@ class aLIGO(object):
         if (5 * self.f1 != self.f2):
             print(" ** Warning: modulation frequencies do not match: 5*f1!=f2")
         
-        # defining a dicotionary for the main mirror positions (tunings)
-        self.tunings = {}
-        self.tunings = self.get_tunings(self.kat)
+        # defining a dicotionary for the main mirror positions (tunings),
+        # keys should include maxtem, phase and all main optics names
+        self.tunings = dict.fromkeys(["maxtem", "phase", "PRM", "ITMX", "ETMX", "ITMY", "ETMY", "BS", "SRM"])
+        self.tunings = get_tunings(self.kat, self.tunings)
         self.compute_derived_lengths(self.kat)
-
             
         # ----------------------------------------------------------------------
         # define ports and signals 
@@ -126,7 +129,9 @@ class aLIGO(object):
         
         for _ in inspect.getmembers(self, lambda x: isinstance(x, DOF)):
             self.__DOFs[_[0]] = _[1]
-    
+
+        self.lockNames = None
+
     @property
     def DOFs(self):
         return copy.copy(self.__DOFs)
@@ -177,7 +182,6 @@ put f1m f $mx1
         ax.legend()
         plt.tight_layout()
         plt.show(block=0)
-
         
     def compute_derived_lengths(self, kat, verbose=False):
         """
@@ -223,30 +227,9 @@ put f1m f $mx1
         print("| f1_PRC = {:11.8}                              |".format(self.f1_PRC))
         print("| f1     = {:11.8}, f2     = {:11.9}        |".format(self.f1, self.f2))
         print(" `--------------------------------------------------'")
-        
-    def get_tunings(self, kat):
-        self.tunings["maxtem"] = kat.maxtem
-        self.tunings["PRM"]    = kat.PRM.phi
-        self.tunings["ITMX"]   = kat.ITMX.phi
-        self.tunings["ETMX"]   = kat.ETMX.phi
-        self.tunings["ITMY"]   = kat.ITMY.phi
-        self.tunings["ETMY"]   = kat.ETMY.phi
-        self.tunings["BS"]     = kat.BS.phi
-        self.tunings["SRM"]    = kat.SRM.phi
-        return self.tunings
-    
-    def set_tunings(self, kat, tunings):
-        kat.maxtem   = tunings["maxtem"]
-        kat.PRM.phi  = tunings["PRM"]  
-        kat.ITMX.phi = tunings["ITMX"]  
-        kat.ETMX.phi = tunings["ETMX"]  
-        kat.ITMY.phi = tunings["ITMY"]  
-        kat.ETMY.phi = tunings["ETMY"]  
-        kat.BS.phi   = tunings["BS"]  
-        kat.SRM.phi  = tunings["SRM"]  
-
+                    
     def apply_lock_feedback(self, kat, out):
-        tuning = self.get_tunings(kat)
+        tuning = get_tunings(kat, self.tunings)
         if "ETMX_lock" in out.ylabels:
             tuning["ETMX"] += float(out["ETMX_lock"])
         else:
@@ -268,7 +251,7 @@ put f1m f $mx1
             tuning["SRM"]  += float(out["SRCL_lock"])
         else:
             print(" ** Warning: could not find SRCL lock")
-        self.set_tunings(kat, tuning)
+        set_tunings(kat, tuning)
 
         
     def pretune(self, _kat, pretune_precision=1.0e-4, verbose=False):
@@ -345,7 +328,7 @@ put f1m f $mx1
         out = kat.run()
         Pin = float(kat.L0.P)
     
-        tunings = self.get_tunings(kat)
+        tunings = get_tunings(kat, self.tunings)
         _maxtemStr = "{:3}".format(tunings["maxtem"])
         if tunings["maxtem"] == -1:
             _maxtemStr="off"
@@ -428,12 +411,12 @@ put f1m f $mx1
         return dofs
 
     def plot_error_signals(self, _kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
-                                replaceDOFSignals=False, block=True, fig=None, legend=None):
+                                replaceDOFSignals=False, block=0, fig=None, legend=None):
         """
         Displays error signals for a given kat file. Can also be used to plot multiple
         DOF's error signals against each other for visualising any cross coupling.
         
-        _kat: LIGO based kat object.
+        _kat: LIGO-like kat object.
         xlimits: Range of DOF to plot in degrees
         DOFs: list, DOF names to compute. Default: DARM, CARM, PRCL, SRCL, MICH
         plotDOFs: list, DOF names to plot against each DOF. If None the same DOF as in DOFs is plotted.
@@ -535,10 +518,10 @@ put f1m f $mx1
         if DCoffset:
             self.DCoffset=DCoffset
             print("-- applying user-defined DC offset:")
-            pretuning = self.get_tunings(_kat)
+            pretuning = get_tunings(_kat, self.tunings)
             pretuning["ETMY"] += self.DCoffset
             pretuning["ETMX"] -= self.DCoffset
-            self.set_tunings(_kat, pretuning)        
+            set_tunings(_kat, pretuning)        
             kat = _kat.deepcopy()
             sigStr = self.AS_DC.signal(kat)
             signame = self.AS_DC.signal_name(kat)
@@ -559,10 +542,10 @@ put f1m f $mx1
             print("   waste light in AS port of {:2} W".format(waste_light))
             kat_lock = _kat.deepcopy()
             self.find_DC_offset(kat_lock, 2*waste_light)
-            pretuning = self.get_tunings(kat_lock)
+            pretuning = get_tunings(kat_lock, self.tunings)
             pretuning["ETMY"] += self.DC_offset
             pretuning["ETMX"] -= self.DC_offset
-            self.set_tunings(_kat, pretuning)
+            set_tunings(_kat, pretuning)
         self.DCoffset_meter = self.DCoffset / 360.0 * _kat.lambda0 
         vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset_meter))
         vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
@@ -608,7 +591,9 @@ const phi_ETMY {:.8}""".format(float(kat.ITMX.phi), float(kat.ITMY.phi), float(k
 const phi_BS   {:.8}
 const phi_PRM  {:.8}
 const phi_SRM  {:.8}
-###########################################################################""".format(float(kat.BS.phi), float(kat.PRM.phi), float(kat.SRM.phi))
+maxtem {}
+phase {}
+###########################################################################""".format(float(kat.BS.phi), float(kat.PRM.phi), float(kat.SRM.phi), kat.maxtem, kat.phase)
 
         return "".join([code1, code2])
 
@@ -722,7 +707,7 @@ noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL)
         
     def generate_lock_block(self, kat, verbose=False):
         if self.lockNames == None or self.lockAccuracies == None or self.lockGains == None:
-            raise pkex.BasePyKatException("run gerate_locks before generate_lock_block")            
+            raise pkex.BasePyKatException("run generate_locks before generate_lock_block")            
         code1 = """###########################################################################
 set AS_f2_I_re {} re
 set CARM_err {} re
@@ -908,7 +893,42 @@ class port(object):
             else:
                 return "pd2 {} {} {} {} {} {}".format(name, self.f, phase, fsig, phase2, self.nodeName)
                                 
-        
+#--------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
+
+def get_tunings(kat, tunings):
+    """
+    returns the tunings of optical components and the corresponding values
+    for maxtem and phase
+    """
+    keys = list(tunings.keys())
+    if "maxtem" in keys:
+        tunings["maxtem"] = kat.maxtem
+        keys.remove("maxtem")
+    if "phase" in keys:
+        tunings["phase"] = kat.phase
+        keys.remove("phase")
+    for comp in keys:
+        tunings[comp] = kat.components[comp].phi
+    return tunings
+    
+def set_tunings(kat, tunings):
+    """
+    sets the tunings of optical components and the corresponding values
+    for maxtem and phase
+    """
+    keys = list(tunings.keys())
+    if "maxtem" in keys:
+        kat.maxtem = tunings["maxtem"]
+        keys.remove("maxtem")
+    if "phase" in keys:
+        kat.phase = tunings["phase"] 
+        keys.remove("phase")
+    for comp in keys:
+        kat.components[comp].phi = tunings[comp] 
+
 def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
     optics=make_list_copy(_optics)
     factors=make_list_copy(_factors)
@@ -1122,7 +1142,7 @@ def find_peak(out, detector, minmax='max', debug=False):
         plt.plot(X_out,Y_out,'o')
         plt.xlabel('tuning [deg]')
         plt.ylabel('{0} output'.format(detector))
-        plt.show()
+        plt.show(block=0)
     return X_out, stepsize
 
 def make_list_copy(_l):
