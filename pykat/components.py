@@ -732,7 +732,7 @@ class space(Component):
     @property
     def g(self):
         if self.__gx.value == self.__gy.value: 
-            return self.__g
+            return self.__gx.value 
         else:
             raise pkex.BasePyKatException("Gouy phase in x and y directions are different, use gx and gy properties instead")
             
