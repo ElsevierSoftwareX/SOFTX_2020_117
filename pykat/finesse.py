@@ -911,7 +911,17 @@ class kat(object):
             self.loadKatFile(kat_file)
     
         self._freeze()
-        
+      
+    @property
+    def binaryDirectory(self):
+        """
+        Returns the directory of the FINESSE binary that will be called when running the simulation. 
+        """
+        if len(self.__katdir) == 0:
+            return os.environ.get('FINESSE_DIR')
+        else:
+            return self.__katdir
+      
     def deepcopy(self):
         return copy.deepcopy(self)
     
