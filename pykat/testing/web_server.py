@@ -11,7 +11,7 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
     # we import this now so that we can set the GIT_BIN env var
     from pykat.testing import utils
     
-    print "starting web server..."
+    print("starting web server...")
     
     if instance_path is None:
         raise Exception("instance_path must be defined")
@@ -26,14 +26,14 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
     from pykat.testing.web import app    
     
     if(app.instance_path!=instance_path):
-	print app.instance_path, instance_path
+        print (app.instance_path, instance_path)
         raise Exception("Instance path of Flask app (%s) didn't match the requested value (%s)" %(app.instance_path, instance_path))
     
     os.chdir(instance_path)    
     
     # need local copy of src
     if not os.path.exists(os.path.join(app.instance_path,"finesse_src")):
-        print "finesse src folder didn't exist, cloning now..."
+        print ("finesse src folder didn't exist, cloning now...")
         utils.git(["clone","%s/finesse.git"%repo_url,"finesse_src"])
     else:
         # get the latest version for logs etc.
@@ -43,7 +43,7 @@ def start(instance_path,port=5000, debug=True, ip="0.0.0.0", git_bin="/usr/bin/g
     
     # need local copy of test
     if not os.path.exists(os.path.join(app.instance_path,"finesse_test")):
-        print "finesse test folder didn't exist, cloning now..."
+        print ("finesse test folder didn't exist, cloning now...")
         utils.git(["clone","%s/test.git"%repo_url,"finesse_test"])
         utils.git(["config","core.sharedRepository","true"], cwd="./finesse_test/")
     
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     options, args = parser.parse_args()
     
     if options.instance_path is None:
-        print "Must specify a path for the web server"
+        print ("Must specify a path for the web server")
         exit()
     
     start(options.instance_path, port=options.port, git_bin=options.git_bin )
