@@ -1846,12 +1846,14 @@ class kat(object):
                                         spqx = line2x.strip().split("gamma")
                                         spqy = line2y.strip().split("gamma")
                                         
+                                        nr = values[4].split("=")[1]
                                         qx = spqx[0].split("=")[1].replace('i','j').replace(' ','') 
                                         qy = spqy[0].split("=")[1].replace('i','j').replace(' ','') 
                                         
-                                        traceData[-1][node_name] = (pykat.BeamParam(q=complex(qx), wavelength=self.lambda0),
-                                                                    pykat.BeamParam(q=complex(qy), wavelength=self.lambda0),
+                                        traceData[-1][node_name] = (pykat.BeamParam(q=complex(qx), nr=nr, wavelength=self.lambda0),
+                                                                    pykat.BeamParam(q=complex(qy), nr=nr, wavelength=self.lambda0),
                                                                     component_name)
+                                                                    
                                         direc = a[1].split(";")[-1].strip().split(None, 1)[-1]
                                         
                                         traceData[-1][node_name][0].direction = direc
