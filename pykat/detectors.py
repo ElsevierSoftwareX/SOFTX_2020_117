@@ -383,11 +383,24 @@ class ad(Detector1):
     def __init__(self, name, frequency, node_name, mode=None, alternate_beam=False):
         BaseDetector.__init__(self, name, node_name)
         self.mode = mode
+        
         self.alternate_beam = alternate_beam
         self.__f = Param("f", self, frequency)
     
         self._freeze()
     
+    @property
+    def n(self): return self.__mode[0]
+    @n.setter
+    def n(self, value):
+        self.__mode[0] = int(value)
+        
+    @property
+    def m(self): return self.__mode[1] 
+    @m.setter
+    def m(self, value):
+        self.__mode[1] = int(value)
+        
     @property
     def mode(self): return self.__mode
     @mode.setter

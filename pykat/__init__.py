@@ -30,3 +30,5 @@ from pykat.optics.gaussian_beams import BeamParam
 
 from pykat.plotting import init_pykat_plotting
 
+from .SIfloat import SIfloat
+
