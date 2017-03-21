@@ -3,7 +3,6 @@ from time import sleep
 from uuid import uuid4
 from flask import Flask
 from flask import jsonify
-from flask import Module
 from flask import request, make_response
 from flask import render_template, url_for
 from datetime import datetime
