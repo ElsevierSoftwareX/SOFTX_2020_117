@@ -882,6 +882,7 @@ class kat(object):
         self.__prevrunfilename = None
         self.printmatrix = None
         self.__variables = {}
+        self.IFO = None
         
         # initialise default block
         self.__currentTag= NO_BLOCK
@@ -925,7 +926,7 @@ class kat(object):
     def deepcopy(self):
         return copy.deepcopy(self)
     
-    def getAll(self, type):
+    def getAll(self, type, parameter=None):
         """
         Returns a collection of all objects of the type argument that are
         part of this kat object.
@@ -933,6 +934,9 @@ class kat(object):
         Example:
             # returns all cav commands that are present in this kat object
             cavs = kat.getAll(pykat.commands.cavity)
+        
+            # Get all the names of photodiodes
+            names = kat.getAll(pykat.commands.cavity, "name")
         """
         items = []
         
@@ -942,7 +946,10 @@ class kat(object):
             if isinstance(b, type):
                 items.append(b)
 
-        return tuple(items)
+        if parameter is None:
+            return tuple(items)
+        else:
+            return tuple(getattr(_, parameter) for _ in items)
         
     def __deepcopy__(self, memo):
         """
