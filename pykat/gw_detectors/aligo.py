@@ -29,8 +29,12 @@ class ALIGO_IFO(IFO):
     variables.
     
     Functions that operate on the kat/IFO objects, manipulate their
-    structure and return it, should not be included here. They should
-    be separate functions that are called by the user.
+    structure and return a new one, should not be included here. They should
+    be separate functions that are called by the user. Functions that are
+    chained together by the user, like pretuning, should be separate functions.
+    
+    The functions here should be those that update the kat with information
+    from the IFO or vice-versa.
     """
     def compute_derived_resonances(self):
         self.fsrX = 0.5 * clight / float(self.kat.LX.L)
@@ -120,9 +124,13 @@ def make_kat(name="default", katfile=None, verbose = False, debug=False):
     
     # Create empty object to just store whatever DOFs, port, variables in
     # that will be used by processing functions
-    kat.IFO = ALIGO_IFO(kat, ["maxtem", "phase"])
+    kat.IFO = ALIGO_IFO(kat,
+                        # Define which keys are used for a tuning description
+                        ["maxtem", "phase"],
+                        # Define which mirrors create the tuning description
+                        ["PRM", "ITMX", "ETMX", "ITMY", "ETMY", "BS", "SRM"])
     
-    kat.IFO._data_path=pkg_resources.resource_filename('pykat.gw_detectors','finesse_files/')
+    kat.IFO._data_path=pkg_resources.resource_filename('pykat.gw_detectors', 'finesse_files/')
 
     kat.IFO.rawBlocks = BlockedKatFile()
     
@@ -135,7 +143,7 @@ def make_kat(name="default", katfile=None, verbose = False, debug=False):
             printf("aLIGO name `{}' not recognised, must be 'default', 'LLO' or 'LHO'",name)
         """
         if name != "default":
-            printf("aLIGO name `{}' not recognised, using 'default'",name)
+            printf("aLIGO name `{}' not recognised, using 'default'", name)
         
         kat.loadKatFile(kat.IFO._data_path+"aLIGO.kat")
         kat.IFO.rawBlocks.read(kat.IFO._data_path+"aLIGO.kat")
@@ -378,34 +386,44 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     
 
 
-def pretune_status(self, _kat):
+def pretune_status(_kat):
     assert_aligo_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     kat.verbose = False
     kat.noxaxis = True
-    pretune_DOFs = [self.preARMX, self.preARMY, self.prePRCL, self.preMICH, self.preSRCL]
+    
+    pretune_DOFs = [kat.IFO.preARMX, kat.IFO.preARMY, kat.IFO.prePRCL, kat.IFO.preMICH, kat.IFO.preSRCL]
+    
     _detStr=""
+    
     for p in pretune_DOFs:
         _sigStr = p.port.signal(kat)
         _detStr = "\n".join([_detStr, _sigStr])
+        
     kat.parseCommands(_detStr)
     out = kat.run()
     Pin = float(kat.L0.P)
 
     tunings = get_tunings(kat, self.tunings)
     _maxtemStr = "{:3}".format(tunings["maxtem"])
+    
     if tunings["maxtem"] == -1:
         _maxtemStr="off"
+        
     print(" .--------------------------------------------------.")
     print(" | pretuned for maxtem = {}, phase = {:2}            |".format(_maxtemStr, int(kat.phase)))
+    
     keys_t = list(tunings.keys())
     keys_t.remove("maxtem")
+    
     print(" .--------------------------------------------------.")
     print(" | port   power[W] pow. ratio | optics   tunings    |")
     print(" +----------------------------|---------------------+")
+    
     idx_p = 0
     idx_t = 0
+    
     while (idx_p < len(pretune_DOFs) or idx_t < len(keys_t)):
         if idx_p < len(pretune_DOFs):
             p = pretune_DOFs[idx_p]
@@ -413,12 +431,14 @@ def pretune_status(self, _kat):
             idx_p +=1
         else:
             print(" |                            |", end="")
+            
         if idx_t < len(keys_t):
             t=keys_t[idx_t]
             print(" {:5}: {:9.3g}    |".format(t, float(self.tunings[t])))
             idx_t +=1
         else:
             print("                     |")
+            
     print(" `--------------------------------------------------'")
 
 # probably extra and can be removed

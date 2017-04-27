@@ -39,6 +39,8 @@ import numpy as np
 import datetime
 import time
 import pickle
+import base64
+import zlib
 import pykat
 import warnings
 import re
@@ -66,16 +68,6 @@ try:
 except NameError:
     FileNotFoundError = IOError
     
-"""
-try:
-    from future_builtins import zip_longest
-except ImportError: # not 2.6+ or is 3.x
-    try:
-        from itertools import izip_longest as zip_longest # < 2.5 or 3.x
-    except ImportError:
-        print("boom")
-        pass
-"""
 
 from math import erfc, pi
 from collections import namedtuple, OrderedDict
@@ -106,6 +98,7 @@ if USE_GUI:
 
 from multiprocessing import Process, Manager
 
+PYKAT_DATA = "PYKAT_DATA="
 NO_BLOCK = "NO_BLOCK"
 pykat_web = "www.gwoptics.org/pykat"
 
@@ -884,6 +877,8 @@ class kat(object):
         self.__variables = {}
         self.IFO = None
         
+        self.data = {}
+        
         # initialise default block
         self.__currentTag= NO_BLOCK
         self.__blocks[NO_BLOCK] = Block(NO_BLOCK)
@@ -912,7 +907,30 @@ class kat(object):
             self.loadKatFile(kat_file)
     
         self._freeze()
-      
+     
+    def _data2str(self):
+        """
+        From the pykat data object we serialise, compress and convert into a base64 string.
+        """
+        if not isinstance(self.data, dict):
+            raise pkex.BasePyKatException("Data object is not a dictionary")
+            
+        return base64.b64encode(zlib.compress(pickle.dumps(self.data))).decode('ascii')
+    
+    def _str2data(self, data_str):
+        """
+        Takes a compressed string of _data2str and converts it back into a data object
+        """
+        dic = pickle.loads(zlib.decompress(base64.decodebytes(bytes(data_str, 'ascii'))))
+        
+        if not isinstance(dic, dict):
+            raise pkex.BasePyKatException("Read data object is not a dictionary")
+        
+        if not isinstance(self.data, dict):
+            raise pkex.BasePyKatException("Data object is not a dictionary")
+             
+        self.data = {**self.data, **dic}
+        
     @property
     def binaryDirectory(self):
         """
@@ -1075,11 +1093,33 @@ class kat(object):
   ..`--...___`.  .    ,  
    `^-....____:   +.      {1}\n""".format(pykat.__version__, pykat_web))
     
-    def loadKatFile(self, katfile, blocks=None):
-        with open(katfile) as f:
+    
+    def save(self, filename=None):
+        """
+        Saves the current pykat object to a file. This is a primarily just a Finesse file,
+        but can also contain extra serialised pykat data.
+        """
+        with open(filename,'w') as katfile:
+            katScript = "".join(self.generateKatScript())       
+            katfile.writelines(katScript)
+            
+            katfile.write("")
+            katfile.write(PYKAT_DATA + self._data2str())
+            katfile.flush()
+            
+    def saveScript(self, filename=None):
+        warnings.warn('saveScript() depreciated, use save(...).', stacklevel=2)
+        self.save(filename=filename)
+        
+    def load(self, filename, blocks=None):
+        with open(filename) as f:
             commands= f.read()
             
         self.parseCommands(commands, blocks=blocks)
+        
+    def loadKatFile(self, katfile, blocks=None):
+        warnings.warn('loadKatFile() depreciated, use load(...).', stacklevel=2)
+        self.load(katfile, blocks=blocks)
     
     def parseKatCode(self, code, blocks=None):
         warnings.warn('parseKatCode depreciated, use parseCommands.', stacklevel=2)
@@ -1258,6 +1298,14 @@ class kat(object):
                         blockComment = False
                         continue
             
+                    if line.startswith(PYKAT_DATA):
+                        v = line.split("=", 1)
+                        
+                        if len(v)==2:
+                            self._str2data(v[1])
+                            
+                        continue
+                    
                     first = line.split(" ",1)[0]
                     obj = None
 
@@ -1593,20 +1641,7 @@ class kat(object):
         except pkex.BasePyKatException as ex:
             pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
             sys.exit(1)
-            
-    def saveScript(self, filename=None):
-        """
-        Saves the current kat object to a Finesse input file
-        """
-        try:
-            with open(filename,'w') as katfile:
-                katScript = "".join(self.generateKatScript())       
-                katfile.writelines(katScript)
-                katfile.flush()
-
-        except pkex.BasePyKatException as ex:
-            print (ex)
-
+    
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False, usePipe=True):
         """ 
         Runs the current simulation setup that has been built thus far.

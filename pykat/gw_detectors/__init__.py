@@ -219,13 +219,34 @@ class IFO(object):
     be contained in a detector specific class that inherits from this, such as
     ALIGO_IFO.
     """
-    def __init__(self, kat, tuning_keys):
+    def __init__(self, kat, tuning_keys_list, tunings_components_list):
         self.__kat = kat
-        self.__tuning_keys = tuning_keys
+        self.__tuning_keys = make_list_copy(tuning_keys_list)
+        self.__tuning_comps = make_list_copy(tunings_components_list[:])
     
     @property
     def kat(self): return self.__kat
     
+    def get_tunings(self):
+        keys = self.__tuning_keys
+            
+        rtn = {}
+        
+        for comp in self.__tuning_comps:
+            if not hasattr(self.kat, comp):
+                raise pkex.BasePyKatException("`%s` is not a component of the kat object" % comp)
+                
+            _ = getattr(self.kat, comp)
+            
+            rtn[comp] = float(_.phi)
+        
+        rtn["keys"] = {}
+        
+        for key in keys:
+            rtn["keys"][key] = getattr(self.kat, key)
+        
+        return rtn
+            
     def save_tunings(self):
         """
         returns the tunings of optical components and the corresponding values

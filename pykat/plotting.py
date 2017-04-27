@@ -45,6 +45,7 @@ def init_pykat_plotting(mode="display", dpi=100):
 
         pgf_with_pdflatex = {
             "pgf.texsystem": "pdflatex",
+            "text.usetex": True,
             "pgf.preamble": [
                  r"\\usepackage{amsmath, amssymb}",
                  r"\\usepackage{mathtools, siunitx}" ,
@@ -64,7 +65,7 @@ def init_pykat_plotting(mode="display", dpi=100):
         mpl.rcParams['axes.prop_cycle']=mpl.cycler('color', ['b', 'r', 'k', 'g', 'c', 'm', 'y'])
     mpl.rcParams['lines.linewidth'] = 1.2
     mpl.rcParams.update({"figure.figsize": (6, 3.708)})
-    mpl.rcParams.update({'font.size': 11})
+    mpl.rcParams.update({'font.size': 12})
     mpl.rcParams.update({'figure.dpi': __DPI__})
     mpl.rcParams.update({'savefig.dpi': __DPI__})
     mpl.rcParams.update({'font.family': "serif"})
