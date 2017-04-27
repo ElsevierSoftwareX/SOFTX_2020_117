@@ -221,13 +221,28 @@ class IFO(object):
     """
     def __init__(self, kat, tuning_keys_list, tunings_components_list):
         self.__kat = kat
-        self.__tuning_keys = make_list_copy(tuning_keys_list)
+        self.__tuning_keys = frozenset(make_list_copy(tuning_keys_list))
         self.__tuning_comps = make_list_copy(tunings_components_list[:])
     
     @property
     def kat(self): return self.__kat
     
+    def _tuning_key(self, **kwargs):
+        if set(kwargs.keys()) != self.__tuning_keys:
+            raise pkex.BasePyKatException("input keyword arguments should be: %s" % ", ".join(self.__tuning_keys))
+            
+        vals = []
+        
+        for key in self.__tuning_keys:
+            vals.append(str(kwargs[key]))
+        
+        return "-".join(vals)
+            
     def get_tunings(self):
+        """
+        For the current state of the kat object, this will return 
+        a dictionary that contains all the required tunings for the interferometer.
+        """
         keys = self.__tuning_keys
             
         rtn = {}
@@ -248,40 +263,40 @@ class IFO(object):
         return rtn
             
     def save_tunings(self):
-        """
-        returns the tunings of optical components and the corresponding values
-        for maxtem and phase
-        """
+        tunings = self.kat.IFO.get_tunings()
         
-        if "maxtem" in tunings.keys():
-            tunings["maxtem"] = self.kat.maxtem
-            keys.remove("maxtem")
+        if "IFO.tunings" not in self.kat.data:
+            self.kat.data["IFO.tunings"] = {}
             
-        if "phase" in tunings.keys():
-            tunings["phase"] = self.kat.phase
-            keys.remove("phase")
-            
-        for comp in tunings.keys():
-            tunings[comp] = self.kat.components[comp].phi
-            
+        key = self._tuning_key(**tunings['keys'])
+        self.kat.data["IFO.tunings"][key] = tunings
+        
         return tunings
     
-    def load_tunings(self, tunings):
+    def load_tunings(self, **kwargs):
         """
         sets the tunings of optical components and the corresponding values
         for maxtem and phase
         """
-        keys = list(tunings.keys())
         
-        if "maxtem" in keys:
-            self.kat.maxtem = tunings["maxtem"]
-            keys.remove("maxtem")
-        if "phase" in keys:
-            self.kat.phase = tunings["phase"] 
-            keys.remove("phase")
-        for comp in keys:
-            self.kat.components[comp].phi = tunings[comp]
+        key = self._tuning_key(**kwargs)
+        
+        if "IFO.tunings" not in self.kat.data:
+            pkex.printWarning("No IFO tunings are stored in this kat")
+        elif key not in self.kat.data["IFO.tunings"]:
+            pkex.printWarning("Could not find tunings for values %s" % kwargs)
+        else:        
+            return self.kat.data["IFO.tunings"][key]
     
+    def apply_tunings(self, tunings):
+        for comp in tunings:
+            if comp == "keys": continue
+            
+            if comp in self.kat.components:
+                self.kat.components[comp].phi = tunings[comp]
+            else:
+                pkex.printWarning("%s not present in kat, skipping" % comp)
+                
     def strsToDOFs(self, DOFs):
         """
         Converts a list of strings of DOF names into a
@@ -325,7 +340,7 @@ class IFO(object):
     def scan_DOF(self, DOF, xlimits=[-100, 100], steps=200, relative=False): 
         kat = self.kat.deepcopy()
         kat.parseCommands(self.scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
-        kat.parseCommands(DOF.signal(kat))
+        kat.parseCommands(DOF.signal())
         
         return kat.run()
 
@@ -372,7 +387,8 @@ class DOF(object):
     objects and how to move them, and the default output port to read
     out the DOF signal.
     """
-    def __init__(self, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z"):
+    def __init__(self, IFO, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z"):
+        self.__IFO = IFO
         self.name = _DOFName
         self.port = _port
         self.quad = _quad
@@ -384,30 +400,34 @@ class DOF(object):
         # Thus DARM has a scale of 1, all other DOFs a scale >1
         self.scale = _scale
 
-    def apply_tuning(self, kat, phi, add=False):
+    def apply_tuning(self, phi, add=False):
         for idx, o in enumerate(self.optics):
             if add:
-                kat.components[o].phi += phi * self.factors[idx]
+                self.__IFO.kat.components[o].phi += phi * self.factors[idx]
             else:
-                kat.components[o].phi = phi * self.factors[idx]
+                self.__IFO.kat.components[o].phi = phi * self.factors[idx]
             
-    def signal(self, kat):
-        return self.port.signal(kat, self.quad, sigtype=self.sigtype)
-    def signal_name(self, kat):
-        return self.port.signal_name(kat, self.quad, sigtype=self.sigtype)
+    def signal(self):
+        return self.port.signal(self.quad, sigtype=self.sigtype)
+        
+    def signal_name(self):
+        return self.port.signal_name(self.quad, sigtype=self.sigtype)
 
-    def transfer(self, kat, fsig, phase2=None):
-        return self.port.transfer(kat, self.quad, fsig=fsig, phase2=phase2, sigtype=self.sigtype)
-    def transfer_name(self, kat):
-        return self.port.transfer_name(kat, self.quad)
+    def transfer(self, fsig, phase2=None):
+        return self.port.transfer(self.quad, fsig=fsig, phase2=phase2, sigtype=self.sigtype)
+        
+    def transfer_name(self):
+        return self.port.transfer_name(self.quad)
 
     def fsig(self, _fsigName, fsig=1.0):
         _fsigStr= ""
+        
         for idx, o in enumerate(self.optics):
             phase = 0.0
             if self.factors[idx] == -1:
                 phase = 180.0
             _fsigStr = "\n".join([_fsigStr, "fsig {} {} {} {} ".format(_fsigName, o, fsig, phase)])
+            
         return _fsigStr
 
 class Port(object):
@@ -415,48 +435,59 @@ class Port(object):
     Defining an output port for the interferometer, can be either a
     pd or a pd1 detector (for error signal generation).
     """
-    def __init__(self, _portName, _nodeNames, f=None, phase=None):
+    def __init__(self, IFO, _portName, _nodeNames, f=None, phase=None):
+        self.__IFO = IFO
         self.portName = _portName
         self.nodeNames = make_list_copy(_nodeNames)
         self.f=f            # demodulation frequency, float
         self.phase = phase  # demodulation frequency for I quadrature, float
         self.name = self.portName            
     
-    def check_nodeName(self, kat):
+    def check_nodeName(self):
         self.nodeName = None
+        
         for node in self.nodeNames:
             _node = node
             if _node[-1] == "*":
                 _node = _node[:-1]
-            if _node in kat.nodes:
+                
+            if _node in self.__IFO.kat.nodes:
                 self.nodeName=node
                 break
+                
         if self.nodeName==None:
             raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name,self.nodeNames))
 
-    def amplitude_name(self, kat, f, n=None, m=None, sigtype="z"):
+    def amplitude_name(self, f, n=None, m=None, sigtype="z"):
         name = self.name + "_ad"
         return name
     
-    def amplitude(self, kat, f, n=None, m=None, sigtype="z"):
-        self.check_nodeName(kat)
-        name = self.amplitude_name(kat, f, n=n, m=m, sigtype=sigtype)
+    def amplitude(self, f, n=None, m=None, sigtype="z"):
+        self.check_nodeName()
+        
+        name = self.amplitude_name(f, n=n, m=m, sigtype=sigtype)
+        
         if n==None and m==None:
             return "ad {} {} {}".format(name, f, self.nodeName)
         else:
             return "ad {} {} {} {} {}".format(name, f, n, m, self.nodeName)
     
-    def signal_name(self, kat, quad="I", sigtype="z"):
+    def signal_name(self, quad="I", sigtype="z"):
         name = self.name
+        
         if self.f!=None:
             name = self.name+"_"+quad
+            
         return name
     
-    def signal(self, kat, quad="I", sigtype="z"):
-        self.check_nodeName(kat)
-        name = self.signal_name(kat, quad=quad, sigtype=sigtype)
+    def signal(self, quad="I", sigtype="z"):
+        self.check_nodeName()
+        
+        name = self.signal_name(quad=quad, sigtype=sigtype)
+        
         if sigtype != "z":
-                raise pkex.BasePyKatException("alignment signals are not implemented yet")            
+            raise pkex.BasePyKatException("alignment signals are not implemented yet")            
+                
         if self.f==None:
             return "pd {} {}".format(name, self.nodeName)
         else:
@@ -472,17 +503,22 @@ class Port(object):
                 phase -= 360.0
         return phase
         
-    def transfer_name(self, kat, quad="I"):
+    def transfer_name(self, quad="I"):
         name = self.name
+        
         if self.f!=None:
             name = self.name+"_"+quad
+            
         return name
         
-    def transfer(self, kat, quad="I", fsig=1.0, phase2=None, sigtype="z"):
-        self.check_nodeName(kat)
+    def transfer(self, quad="I", fsig=1.0, phase2=None, sigtype="z"):
+        self.check_nodeName()
+        
         name = self.transfer_name(kat, quad=quad)
+        
         if sigtype!="z":
-                raise pkex.BasePyKatException("alignment signals are not implemented yet")            
+            raise pkex.BasePyKatException("alignment signals are not implemented yet")            
+            
         if self.f==None:
             if phase2 == None:
                 return "pd1 {} {} {}".format(name, fsig, self.nodeName)
@@ -491,7 +527,9 @@ class Port(object):
         else:
             if quad !="I" and quad != "Q":
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
+                
             phase = self.IQ_phase(quad, self.phase)
+            
             if phase2 == None:
                 return "pd2 {} {} {} {} {}".format(name, self.f , phase, fsig, self.nodeName)
             else:
