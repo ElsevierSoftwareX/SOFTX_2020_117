@@ -13,12 +13,11 @@ import six
 
 from pykat import finesse
 from pykat.finesse import BlockedKatFile
-from . import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, reconnect_nodes, remove_commands, remove_components, round_to_n, scan_optics_string
+from pykat.gw_detectors import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, reconnect_nodes, remove_commands, remove_components, round_to_n, scan_optics_string
 
 import pykat.components
 import pykat.exceptions as pkex
 import pykat.external.peakdetect as peak
-import matplotlib.pyplot as plt
 import pkg_resources
 
 from scipy.optimize import fmin
@@ -90,7 +89,7 @@ class ALIGO_IFO(IFO):
         lPRC = (N+1/2) * c/(2*f1), see [1] equation C.1
         In the current design N=3.
     
-        Function directly alters the associated kat object.
+        This function directly alters the lengths of the associated kat object.
         """
         kat = self.kat
         
@@ -101,8 +100,153 @@ class ALIGO_IFO(IFO):
         kat.lp1.L += delta_l
     
         kat.IFO.compute_derived_lengths(kat)
+
+    def apply_lock_feedback(self, out):
+        """
+        This function will apply the lock values that have been calculated
+        in a previous kat run. This should bring the kat object closer to an
+        initial lock point so that the lock commands do not need to be run
+        on startup.
         
+        This function directly alters the tunings of the associated kat object.
+        """
+        
+        tuning = self.kat.IFO.get_tunings()
+    
+        if "ETMX_lock" in out.ylabels:
+            tuning["ETMX"] += float(out["ETMX_lock"])
+        else:
+            pkex.printWarning("could not find ETMX lock")
+        
+        if "ETMY_lock" in out.ylabels:
+            tuning["ETMY"] += float(out["ETMY_lock"])
+        else:
+            pkex.printWarning("could not find ETMY lock")
+        
+        if "PRCL_lock" in out.ylabels:
+            tuning["PRM"]  += float(out["PRCL_lock"])
+        else:
+            pkex.printWarning("could not find PRCL lock")
+        
+        if ("MICH_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
+            tuning["ITMX"] += float(out["MICH_lock"])
+            tuning["ITMY"] += float(out["ITMY_lock"])
+        else:
+            pkex.printWarning("could not find MICH (ITMY) lock")
+        
+        if "SRCL_lock" in out.ylabels:
+            tuning["SRM"]  += float(out["SRCL_lock"])
+        else:
+            pkex.printWarning("could not find SRCL lock")
+        
+        self.kat.IFO.apply_tunings(tuning)
+    
+    def set_DC_offset(self, DCoffset=None, verbose=False):
+        """
+        Sets the DC offset for this inteferometer.
+        
+        This function directly alters the tunings of the associated kat object.
+        """
+        _kat = self.kat
+        
+        if DCoffset:
+            self.DCoffset = DCoffset
+        
+            print("-- applying user-defined DC offset:")
+        
+            tunings = self.get_tunings()
+        
+            tunings["ETMY"] += self.DCoffset
+            tunings["ETMX"] -= self.DCoffset
+        
+            self.apply_tunings(tunings)        
+        
+            # Compute the DC offset powers
+            kat = _kat.deepcopy()
+        
+            sigStr = kat.IFO.AS_DC.signal()
+            signame = kat.IFO.AS_DC.signal_name()
+        
+            kat.parseCommands(sigStr)
+            kat.noxaxis=True
+        
+            out = kat.run(cmd_args=["-cr=on"])
+        
+            _kat.IFO.DCoffsetW = float(out[signame])
+        else:
+            # Finding light power in AS port (mostly due to RF sidebands now)
+            kat = _kat.deepcopy()
+        
+            sigStr = kat.IFO.AS_DC.signal()
+            signame = kat.IFO.AS_DC.signal_name()
+        
+            kat.parseCommands(sigStr)
+            kat.noxaxis=True
+        
+            out = kat.run()
+        
+            print("-- adjusting DCoffset based on light in dark port:")
+        
+            waste_light = round(float(out[signame]),1)
+        
+            print("   waste light in AS port of {:2} W".format(waste_light))
+        
+            #kat_lock = _kat.deepcopy()
+        
+            find_DC_offset(_kat, 2*waste_light)
+        
+        vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset / 360.0 * _kat.lambda0 ))
+        vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
+
+
+    def find_DC_offset(self, AS_power, precision=1e-4, verbose=False):
+        """
+        Returns the DC offset of DARM that corrponds to the specified power in the AS power.
+        
+        This function directly alters the tunings of the associated kat object.
+        """
+        vprint(verbose, "   finding DC offset for AS power of {:3g} W".format(AS_power))
+    
+        _kat = self.kat
+        
+        kat = _kat.deepcopy()
+        kat.verbose = False
+        kat.noxaxis = True
+    
+        _sigStr = kat.IFO.AS_DC.signal()
+    
+        kat.parseCommands(_sigStr)
+    
+        Xphi = float(kat.ETMX.phi)
+        Yphi = float(kat.ETMY.phi)
+
+        def powerDiff(phi, kat, Xphi, Yphi, AS_power):
+            kat.ETMY.phi = Yphi + phi
+            kat.ETMX.phi = Xphi - phi
+        
+            out = kat.run()
+        
+            #print(out[self.AS_DC.name]-AS_power)
+            return np.abs(out[self.AS_DC.name] - AS_power)
+
+        vprint(verbose, "   starting peak search...")
+        out = fmin(powerDiff, 0, xtol=precision, ftol=1e-3, args=(kat, Xphi, Yphi, AS_power), disp=verbose)
+    
+        vprint(verbose, "   ... done")
+        vprint(verbose, "   DC offset for AS_DC={} W is: {}".format(AS_power, out[0]))
+    
+        self.DCoffset = round(out[0],6)
+        self.DCoffsetW = AS_power
+    
+        tunings = self.get_tunings()
+        tunings["ETMY"] += self.DC_offset
+        tunings["ETMX"] -= self.DC_offset
+    
+        self.apply_tunings(tunings)
  
+ 
+
+
 def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
@@ -222,85 +366,6 @@ def make_kat(name="default", katfile=None, verbose = False, debug=False):
     return kat
     
 
-
-def plot_f1_PRC_resonance(_kat, ax=None, show=True):
-    """
-    Plot the sideband amplitudes for modulation frequecy
-    f1 (~ 9MHz) in the PRC, to check the resonance
-    condition.
-    """
-    assert_aligo_ifo_kat(_kat)
-    
-    kat = _kat.deepcopy()
-    
-    # Don't need locks for this plot so remove if present
-    kat.removeBlock('locks', False)
-    
-    if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(1,1,1)
-
-    startf = kat.IFO.f1 - 4000.0
-    stopf  = kat.IFO.f1 + 4000.0
-
-    if _kat.maxtem == "off":
-        nmStr = None
-    else:
-        nmStr = "0 0"
-        
-    code = """
-            ad f1p {0} {1} nPRM2
-            ad f1m {0} -{1} nPRM2
-            xaxis mod1 f lin {2} {3} 200
-            put f1p f $x1 
-            put f1m f $mx1 
-            """.format(nmStr, kat.IFO.f1, startf, stopf)
-            
-    kat.parseCommands(code)
-    
-    out = kat.run()
-    
-    ax.plot(out.x-kat.IFO.f1,np.abs(out["f1p"]), label=" f1")
-    ax.plot(out.x-kat.IFO.f1,np.abs(out["f1m"]), label="-f1", ls="--")
-    ax.set_xlim([np.min(out.x-kat.IFO.f1), np.max(out.x-kat.IFO.f1)])
-    ax.set_xlabel("delta_f1 [Hz]")
-    ax.set_ylabel('sqrt(W) ')
-    ax.grid(True)
-    ax.legend()
-    ax.figure.set_tight_layout(True)
-    
-    if show: plt.show()
-    
-def apply_lock_feedback(kat, out):
-    tuning = kat.IFO.get_tunings()
-    
-    if "ETMX_lock" in out.ylabels:
-        tuning["ETMX"] += float(out["ETMX_lock"])
-    else:
-        pkex.printWarning(" ** Warning: could not find ETMX lock")
-        
-    if "ETMY_lock" in out.ylabels:
-        tuning["ETMY"] += float(out["ETMY_lock"])
-    else:
-        pkex.printWarning(" ** Warning: could not find ETMY lock")
-        
-    if "PRCL_lock" in out.ylabels:
-        tuning["PRM"]  += float(out["PRCL_lock"])
-    else:
-        pkex.printWarning(" ** Warning: could not find PRCL lock")
-        
-    if ("MICH_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
-        tuning["ITMX"] += float(out["MICH_lock"])
-        tuning["ITMY"] += float(out["ITMY_lock"])
-    else:
-        pkex.printWarning(" ** Warning: could not find MICH (ITMY) lock")
-        
-    if "SRCL_lock" in out.ylabels:
-        tuning["SRM"]  += float(out["SRCL_lock"])
-    else:
-        pkex.printWarning(" ** Warning: could not find SRCL lock")
-        
-    kat.IFO.apply_tunings(tuning)
     
 def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
     while precision > pretune_precision * DOF.scale:
@@ -468,222 +533,3 @@ def power_ratios(_kat):
     for p in ports:
         print(" {0:6} = {1:8.3g} W ({0:6}/Pin = {2:8.2g})" .format(p.name, float(out[p.name]), float(out[p.name])/Pin))
         
-
-def plot_pretuning_powers(self, _kat, xlimits=[-10,10]):
-    assert_aligo_ifo_kat(_kat)
-    
-    kat = _kat.deepcopy()
-    kat.verbose = False
-    kat.noxaxis = True
-    dofs = [self.preARMX, self.preARMY, self.preMICH, self.prePRCL]
-    idx=1
-    fig = plt.figure()
-    for d in dofs:
-        ax = fig.add_subplot(2,2,idx)
-        idx+=1
-        out = scan_DOF(kat, d, xlimits = np.multiply(d.scale, xlimits), relative = True)
-        ax.semilogy(out.x,out[d.signal_name(kat)])
-        ax.set_xlim([np.min(out.x), np.max(out.x)])
-        ax.set_xlabel("phi [deg] {}".format(d.optics[0]))
-        ax.set_ylabel('{} [W] '.format(d.signal_name(kat)))
-        ax.grid(True)
-    plt.tight_layout()
-    plt.show(block=0)
-    
-def plot_error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
-                            replaceDOFSignals=False, block=0, fig=None, legend=None):
-    """
-    Displays error signals for a given kat file. Can also be used to plot multiple
-    DOF's error signals against each other for visualising any cross coupling.
-    
-    _kat: LIGO-like kat object.
-    xlimits: Range of DOF to plot in degrees
-    DOFs: list, DOF names to compute. Default: DARM, CARM, PRCL, SRCL, MICH
-    plotDOFs: list, DOF names to plot against each DOF. If None the same DOF as in DOFs is plotted.
-    block: Boolean, for plot blocking terminal or not if being shown
-    replaceDOFSignals: Bool, replaces already present signals for any DOF if already defined in kat. Regardless of this value, it will add default signals if none found.
-    fig: figure, uses predefined figure, when defined it won't be shown automatically
-    legend: string, if no plotDOFs is defined this legend is shown
-    
-    Example:
-        import pykat
-        from pykat.gw_detectors import ifo
-
-        ligo = ifo.aLIGO()
-        
-        # Plot default
-        ligo.plot_error_signals(ligo.kat, block=True)
-        # plot MICH and CARM against themselves
-        ligo.plot_error_signals(ligo.kat, DOFs=["MICH", "CARM"], block=True)
-        # plot DARM and CARM against MICH
-        ligo.plot_error_signals(ligo.kat, DOFs=["MICH"], plotDOFs=["DARM", "CARM"], block=True)
-    """
-    
-    kat = _kat.deepcopy()
-    kat.verbose = False
-    kat.noxaxis = True
-    
-    if DOFs is None:
-        dofs = [kat.IFO.DARM, kat.IFO.CARM, kat.IFO.PRCL, kat.IFO.SRCL, kat.IFO.MICH]
-    else:
-        dofs = kat.IFO.strToDOFs(DOFs)
-    
-    # add in signals for those DOF to plot
-    for _ in dofs:
-        if not (not replaceDOFSignals and hasattr(kat, _.signal_name())):
-            kat.parseCommands(_.signal())
-            
-    toShow = None
-    
-    if plotDOFs is not None:
-        toShow = self._strToDOFs(plotDOFs)
-    
-        # Check if other DOF signals we need to include for plotting
-        for _ in toShow:
-            if not (not replaceDOFSignals and hasattr(kat, _.signal_name())):
-                kat.parseCommands(_.signal())
-                
-    if fig is not None:
-        _fig = fig
-    else:
-        _fig = plt.figure()
-    
-    nrows = 2
-    ncols = 3
-    
-    if DOFs is not None:
-        n = len(DOFs)
-        
-        if n < 3:
-            nrows = 1
-            ncols = n
-    
-    for d, idx in zip(dofs, range(1, len(dofs)+1)):
-        ax = _fig.add_subplot(nrows, ncols, idx)
-        
-        scan_cmd = scan_optics_string(d.optics, d.factors, "scan", linlog="lin",
-                                        xlimits=np.multiply(d.scale, xlimits), steps=200,
-                                        axis=1, relative=True)
-        kat.parseCommands(scan_cmd)
-        out = kat.run()
-        
-        if toShow is None:
-            ax.plot(out.x, out[d.signal_name()], label=legend)
-        else:
-            for _ in toShow:
-                if legend is None:
-                    legend = _.name
-                    
-                ax.plot(out.x, out[_.signal_name()], label=legend)
-            
-        ax.set_xlim([np.min(out.x), np.max(out.x)])
-        ax.set_xlabel("{} [deg]".format(d.name))
-        
-        if plotDOFs is None:
-            ax.set_ylabel('{} [W] '.format(d.port.name))
-        else:
-            ax.set_ylabel('Error signal [W]')
-        
-        ax.grid(True)
-    
-    if toShow is not None or legend is not None:
-        plt.legend(loc=0)
-       
-    plt.tight_layout()
-    
-    if fig is None:
-        plt.show(block=block)
-        
-        
-def set_DC_offset(_kat, DCoffset=None, verbose=False):
-    if DCoffset:
-        _kat.IFO.DCoffset = DCoffset
-        
-        print("-- applying user-defined DC offset:")
-        
-        tunings = _kat.IFO.get_tunings()
-        
-        tunings["ETMY"] += _kat.IFO.DCoffset
-        tunings["ETMX"] -= _kat.IFO.DCoffset
-        
-        _kat.IFO.apply_tunings(tunings)        
-        
-        kat = _kat.deepcopy()
-        
-        sigStr = kat.IFO.AS_DC.signal()
-        signame = kat.IFO.AS_DC.signal_name()
-        
-        kat.parseCommands(sigStr)
-        kat.noxaxis=True
-        
-        out = kat.run()
-        
-        _kat.IFO.DCoffsetW = float(out[signame])
-    else:
-        # Finding light power in AS port (mostly due to RF sidebands now
-        kat = _kat.deepcopy()
-        
-        sigStr = kat.IFO.AS_DC.signal()
-        signame = kat.IFO.AS_DC.signal_name()
-        
-        kat.parseCommands(sigStr)
-        kat.noxaxis=True
-        
-        out = kat.run()
-        
-        print("-- adjusting DCoffset based on light in dark port:")
-        
-        waste_light = round(float(out[signame]),1)
-        
-        print("   waste light in AS port of {:2} W".format(waste_light))
-        
-        #kat_lock = _kat.deepcopy()
-        
-        find_DC_offset(_kat, 2*waste_light)
-        
-    vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(_kat.IFO.DCoffset, _kat.IFO.DCoffset / 360.0 * _kat.lambda0 ))
-    vprint(verbose, "   at dark port power: {:6.4}W".format(_kat.IFO.DCoffsetW))
-
-
-def find_DC_offset(_kat, AS_power, precision=1e-4, verbose=False):
-    """
-    Returns the DC offset of DARM that corrponds to the
-    specified power in the AS power.
-    """
-    vprint(verbose, "   finding DC offset for AS power of {:3g} W".format(AS_power))
-    
-    kat = _kat.deepcopy()
-    kat.verbose = False
-    kat.noxaxis = True
-    
-    _sigStr = kat.IFO.AS_DC.signal()
-    
-    kat.parseCommands(_sigStr)
-    
-    Xphi = float(kat.ETMX.phi)
-    Yphi = float(kat.ETMY.phi)
-
-    def powerDiff(phi, kat, Xphi, Yphi, AS_power):
-        kat.ETMY.phi = Yphi + phi
-        kat.ETMX.phi = Xphi - phi
-        
-        out = kat.run()
-        
-        #print(out[self.AS_DC.name]-AS_power)
-        return np.abs(out[self.AS_DC.name] - AS_power)
-
-    vprint(verbose, "   starting peak search...")
-    out = fmin(powerDiff, 0, xtol=precision, ftol=1e-3, args=(kat, Xphi, Yphi, AS_power), disp=verbose)
-    
-    vprint(verbose, "   ... done")
-    vprint(verbose, "   DC offset for AS_DC={} W is: {}".format(AS_power, out[0]))
-    
-    _kat.IFO.DCoffset = round(out[0],6)
-    _kat.IFO.DCoffsetW = AS_power
-    
-    tunings = _kat.IFO.get_tunings()
-    tunings["ETMY"] += _kat.IFO.DC_offset
-    tunings["ETMX"] -= _kat.IFO.DC_offset
-    
-    _kat.IFO.apply_tunings(tunings)
-    
