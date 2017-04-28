@@ -151,14 +151,19 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
         kat.parseCommands(scan_cmd)
         out = kat.run()
         
+        if d.name == "DARM":
+            DC_Offset = kat.IFO.DCoffsetW
+        else:
+            DC_Offset = 0
+        
         if toShow is None:
-            ax.plot(out.x, out[d.signal_name()], label=legend)
+            ax.plot(out.x, out[d.signal_name()] - DC_Offset, label=legend)
         else:
             for _ in toShow:
                 if legend is None:
                     legend = _.name
                     
-                ax.plot(out.x, out[_.signal_name()], label=legend)
+                ax.plot(out.x, out[_.signal_name()] - DC_Offset, label=legend)
             
         ax.set_xlim([np.min(out.x), np.max(out.x)])
         ax.set_xlabel("{} [deg]".format(d.name))

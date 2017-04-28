@@ -838,7 +838,9 @@ id___ = 0
 
 @canFreeze
 class kat(object):  
-
+    #def __del__(self):
+    #    print ("\33[101m__del__() called: object %08x destroyed (%s)\33[0m" % (id(self), self.__class__))
+        
     def __new__(cls, *args, **kwargs):
         # This may seem like an arbitrary step but here we are creating a
         # new class that is a base class of itself. This is because when
@@ -851,9 +853,15 @@ class kat(object):
         global id___
         id___ += 1
         cnew = type(pykat.finesse.kat.__name__ + str("_") + str(id___), (pykat.finesse.kat,), {})
-        return object.__new__(cnew)
+        
+        obj = object.__new__(cnew)
+        
+        #print ("\33[104m__del__() called: object %08x created (%s)\33[0m" % (id(obj), obj.__class__))
+        
+        return obj
     
     def __init__(self, kat_file=None, kat_code=None, katdir="", katname="", tempdir=None, tempname=None):
+        
         self._unfreeze()
         self.__looking = False
         self.scene = None # scene object for GUI

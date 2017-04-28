@@ -367,17 +367,18 @@ class IFO(object):
 
     def optical_gain(self, DOF_sig, DOF_det, f=10.0):
         kat = self.kat.deepcopy()
-        
+        kat.removeBlock('locks', False)
+         
         _fsigStr = DOF_sig.fsig("sig1", fsig=f)
-        _detStr = DOF_det.transfer(kat, fsig=f)
-        _detName = DOF_det.transfer_name(kat)
+        _detStr = DOF_det.transfer(fsig=f)
+        _detName = DOF_det.transfer_name()
         
         kat.parseCommands(_fsigStr)
         kat.parseCommands(_detStr)
         kat.noxaxis = True
         kat.parseCommands("yaxis lin abs:deg")
         
-        out = kat.run(cmd_args="-cr=on")
+        out = kat.run()
         
         return float(np.real(out[_detName]))
         
@@ -514,7 +515,7 @@ class Port(object):
     def transfer(self, quad="I", fsig=1.0, phase2=None, sigtype="z"):
         self.check_nodeName()
         
-        name = self.transfer_name(kat, quad=quad)
+        name = self.transfer_name(quad=quad)
         
         if sigtype!="z":
             raise pkex.BasePyKatException("alignment signals are not implemented yet")            

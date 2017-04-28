@@ -11,6 +11,8 @@ import cmath
 import inspect
 import six 
 
+from itertools import chain
+
 from pykat import finesse
 from pykat.finesse import BlockedKatFile
 from pykat.gw_detectors import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, reconnect_nodes, remove_commands, remove_components, round_to_n, scan_optics_string
@@ -243,9 +245,121 @@ class ALIGO_IFO(IFO):
         tunings["ETMX"] -= self.DC_offset
     
         self.apply_tunings(tunings)
- 
- 
 
+    def add_errsigs_block(self, noplot=True):
+        """
+        Creates and adds the 'errsigs' block to the kat object based on the
+        DARM, CARM, PRCL, MICH and SRCL DOF objects
+        
+        Removes exisiting errsigs block if present.
+        
+        Returns the commands added for reference.
+        """
+        kat = self.kat
+        
+        sigDARM = kat.IFO.DARM.signal()
+        sigCARM = kat.IFO.CARM.signal()
+        sigPRCL = kat.IFO.PRCL.signal()
+        sigMICH = kat.IFO.MICH.signal()
+        sigSRCL = kat.IFO.SRCL.signal()
+    
+        code2 = "\n".join([sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL])
+
+        code3= ""
+    
+        if noplot:
+            nameDARM = kat.IFO.DARM.signal_name()
+            nameCARM = kat.IFO.CARM.signal_name()
+            namePRCL = kat.IFO.PRCL.signal_name()
+            nameMICH = kat.IFO.MICH.signal_name()
+            nameSRCL = kat.IFO.SRCL.signal_name()
+        
+            code3 = """
+                    noplot {}
+                    noplot {}
+                    noplot {}
+                    noplot {}
+                    noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL).replace("  ","")
+                    
+        cmds = "".join([code2, code3])
+        kat.removeBlock("errsigs", False)
+        kat.parseCommands(cmds, addToBlock="errsigs")
+        
+        return cmds
+        
+    def add_locks_block(self, lock_data, verbose=False):
+        """
+        Accepts a dictionary describing the lock gains and accuracies, e.g.:
+            data = {
+                "DARM": {"accuracy":1, "gain":1},
+                "CARM": {"accuracy":1, "gain":1},
+                "PRCL": {"accuracy":1, "gain":1},
+                "MICH": {"accuracy":1, "gain":1},
+                "SRCL": {"accuracy":1, "gain":1},
+            }
+        
+        This then generates the lock block and adds it to the kat object in the 'locks' block.
+        
+        Removes exisiting locks block if present.
+        
+        Returns the commands added for reference.
+        """
+        
+        DOFs = ["DARM", "CARM", "PRCL", "MICH", "SRCL"]
+        
+        names = [getattr(self, _).signal_name() for _ in DOFs]
+        accuracies = [lock_data[_]['accuracy'] for _ in DOFs]
+        gains = [lock_data[_]['gain'] for _ in DOFs]
+        
+        code1 = ("set _DARM_err {} re\n"
+                 "set CARM_err {} re\n"
+                 "set PRCL_err {} re\n"
+                 "set MICH_err {} re\n"
+                 "set SRCL_err {} re\n"
+                 "func DARM_err = $_DARM_err - {}\n").format(*names, self.kat.IFO.DCoffsetW)
+
+        code2 = ("lock DARM_lock $DARM_err {:8.2} {:8.2}\n"
+                 "lock CARM_lock $CARM_err {:8.2g} {:8.2g}\n"
+                 "lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}\n"
+                 "lock MICH_lock $MICH_err {:8.2g} {:8.2g}\n"
+                 "lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}\n").format(*chain.from_iterable(zip(gains, accuracies)))
+
+        code3 = ("noplot ITMY_lock\n"
+                 "func ITMY_lock = (-1.0) * $MICH_lock\n"
+                 "func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock\n"
+                 "func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock\n"
+                 "put* PRM     phi     $PRCL_lock\n"
+                 "put* ITMX    phi     $MICH_lock\n"
+                 "put* ITMY    phi     $ITMY_lock\n"
+                 "put* ETMX    phi     $ETMX_lock\n"
+                 "put* ETMY    phi     $ETMY_lock\n"
+                 "put* SRM     phi     $SRCL_lock\n"
+                 "noplot PRCL_lock\n"
+                 "noplot SRCL_lock\n"
+                 "noplot MICH_lock\n"
+                 "noplot DARM_lock\n"
+                 "noplot CARM_lock\n"
+                 "noplot ETMX_lock\n"
+                 "noplot ETMY_lock\n")
+
+        if verbose:
+            print(" .--------------------------------------------------.")
+            print(" | Lock commands used:                              |")
+            print(" +--------------------------------------------------+")
+            for l in code2.splitlines():
+                print (" | {:49}|".format(l))
+            print(" `--------------------------------------------------'")
+
+        cmds = "".join([code1, code2, code3])
+        
+        self.kat.removeBlock("locks", False) # Remove existing block if exists
+        self.kat.parseCommands(cmds, addToBlock="locks")
+        
+        return cmds
+        
+        
+        
+        
 
 def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
@@ -532,4 +646,94 @@ def power_ratios(_kat):
     
     for p in ports:
         print(" {0:6} = {1:8.3g} W ({0:6}/Pin = {2:8.2g})" .format(p.name, float(out[p.name]), float(out[p.name])/Pin))
+
+
+def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
+                    gains=None, accuracies=None,
+                    rms=[1e-13, 1e-13, 1e-12, 1e-11, 50e-11], verbose=True):
+    """
+    gainsAdjustment: factors to apply to loop gains computed from optical gains
+    gains:           override loop gain [W per deg]
+    accuracies:      overwrite error signal threshold [W]
+                    
+    rms: loop accuracies in meters (manually tuned for the loops to work
+         with the default file)
+         to compute accuracies from rms, we convert
+         rms to radians as rms_rad = rms * 2 pi/lambda
+         and then multiply by the optical gain.
+                    
+    NOTE: gainsAdjustment, gains, accuracies and rms are specified in the order of DARM, CARM, PRCL, MICH, SRCL.
+    """
+    assert_aligo_ifo_kat(kat)
         
+    # optical gains in W/rad
+    
+    ogDARM = kat.IFO.optical_gain(kat.IFO.DARM, kat.IFO.DARM)
+    ogCARM = kat.IFO.optical_gain(kat.IFO.CARM, kat.IFO.CARM)
+    ogPRCL = kat.IFO.optical_gain(kat.IFO.PRCL, kat.IFO.PRCL)
+    ogMICH = kat.IFO.optical_gain(kat.IFO.MICH, kat.IFO.MICH)
+    ogSRCL = kat.IFO.optical_gain(kat.IFO.SRCL, kat.IFO.SRCL)
+
+    if gains is None:            
+        # manually tuning relative gains
+        factor = -1.0 * 180 / math.pi # convert from rad/W to -1 * deg/W
+        
+        gainDARM = round_to_n(gainsAdjustment[0] * factor / ogDARM, 2) # manually tuned
+        gainCARM = round_to_n(gainsAdjustment[1] * factor / ogCARM, 2) # factor 0.005 for better gain hirarchy with DARM
+        gainPRCL = round_to_n(gainsAdjustment[2] * factor / ogPRCL, 2) # manually tuned
+        gainMICH = round_to_n(gainsAdjustment[3] * factor / ogMICH, 2) # manually tuned
+        gainSRCL = round_to_n(gainsAdjustment[4] * factor / ogSRCL, 2) # gain hirarchy with MICH
+        
+        gains = [ gainDARM, gainCARM, gainPRCL, gainMICH, gainSRCL]
+    
+    if accuracies is None:
+        factor = 2.0 * math.pi / kat.lambda0 # convert from m to radians
+        
+        accDARM = round_to_n(np.abs(factor * rms[0] * ogDARM), 2) 
+        accCARM = round_to_n(np.abs(factor * rms[1] * ogCARM), 2)
+        accPRCL = round_to_n(np.abs(factor * rms[2] * ogPRCL), 2)
+        accMICH = round_to_n(np.abs(factor * rms[3] * ogMICH), 2)
+        accSRCL = round_to_n(np.abs(factor * rms[4] * ogSRCL), 2)
+
+        accuracies = [accDARM, accCARM, accPRCL, accMICH, accSRCL]
+        
+    factor1 = 2.0 * math.pi / 360.0 
+    factor2 = 2.0 * math.pi / kat.lambda0 
+    factor3 = 360.0  / kat.lambda0
+    factor4 = -1.0 * 180 / math.pi 
+
+    if verbose:
+        print(" .--------------------------------------------------.")
+        print(" | Parameters for locks:                            |")
+        print(" +--------------------------------------------------+")
+        print(" | -- optical gains [W/rad], [W/deg] and [W/m]:     |")
+        print(" | DARM: {:12.5}, {:12.5}, {:12.5}   |".format(ogDARM, ogDARM*factor1, ogDARM*factor2))
+        print(" | CARM: {:12.5}, {:12.5}, {:12.5}   |".format(ogCARM, ogCARM*factor1, ogCARM*factor2))
+        print(" | PRCL: {:12.5}, {:12.5}, {:12.5}   |".format(ogPRCL, ogPRCL*factor1, ogPRCL*factor2))
+        print(" | MICH: {:12.5}, {:12.5}, {:12.5}   |".format(ogMICH, ogMICH*factor1, ogMICH*factor2))
+        print(" | SRCL: {:12.5}, {:12.5}, {:12.5}   |".format(ogSRCL, ogSRCL*factor1, ogSRCL*factor2))
+        print(" +--------------------------------------------------+")
+        print(" | -- defult loop accuracies [deg], [m] and [W]:    |")
+        print(" | DARM: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[0], rms[0], np.abs(rms[0]*ogDARM*factor2)))
+        print(" | CARM: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[1], rms[1], np.abs(rms[1]*ogCARM*factor2)))
+        print(" | PRCL: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[2], rms[2], np.abs(rms[2]*ogPRCL*factor2)))
+        print(" | MICH: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[3], rms[3], np.abs(rms[3]*ogMICH*factor2)))
+        print(" | SRCL: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[4], rms[4], np.abs(rms[4]*ogSRCL*factor2)))
+        print(" +--------------------------------------------------+")
+        print(" | -- extra gain factors (factor * 1/optical_gain): |")
+        print(" | DARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[0],factor4/ogDARM, gainsAdjustment[0]*factor4/ogDARM))
+        print(" | CARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[1],factor4/ogCARM, gainsAdjustment[1]*factor4/ogCARM))
+        print(" | PRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[2],factor4/ogPRCL, gainsAdjustment[2]*factor4/ogPRCL))
+        print(" | MICH: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[3],factor4/ogMICH, gainsAdjustment[3]*factor4/ogMICH))
+        print(" | SRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[4],factor4/ogSRCL, gainsAdjustment[4]*factor4/ogSRCL))
+        print(" `--------------------------------------------------'")
+        
+    data = {
+        "DARM": {"accuracy": accuracies[0], "gain": gains[0]},
+        "CARM": {"accuracy": accuracies[1], "gain": gains[1]},
+        "PRCL": {"accuracy": accuracies[2], "gain": gains[2]},
+        "MICH": {"accuracy": accuracies[3], "gain": gains[3]},
+        "SRCL": {"accuracy": accuracies[4], "gain": gains[4]},
+    }
+    
+    return data
