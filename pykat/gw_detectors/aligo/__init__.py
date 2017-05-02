@@ -316,7 +316,7 @@ class ALIGO_IFO(IFO):
                  "set PRCL_err {} re\n"
                  "set MICH_err {} re\n"
                  "set SRCL_err {} re\n"
-                 "func DARM_err = $_DARM_err - {}\n").format(*names, self.kat.IFO.DCoffsetW)
+                 "func DARM_err = $_DARM_err - {DC}\n").format(*names, DC=self.kat.IFO.DCoffsetW)
 
         code2 = ("lock DARM_lock $DARM_err {:8.2} {:8.2}\n"
                  "lock CARM_lock $CARM_err {:8.2g} {:8.2g}\n"
