@@ -937,7 +937,7 @@ class kat(object):
         if not isinstance(self.data, dict):
             raise pkex.BasePyKatException("Data object is not a dictionary")
              
-        self.data = {**self.data, **dic}
+        self.data.update(dic)
         
     @property
     def binaryDirectory(self):
