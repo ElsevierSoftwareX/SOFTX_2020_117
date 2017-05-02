@@ -1,6 +1,6 @@
 import pykat
 import json
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from pykat.gw_detectors import remove_components
 import pykat.gw_detectors.aligo as aligo
