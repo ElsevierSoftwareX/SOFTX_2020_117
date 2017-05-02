@@ -5,6 +5,7 @@ import pykat.external.peakdetect as peak
 import numpy as np
 import inspect
 import math
+import six
 
 global nsilica, clight
 nsilica = 1.44963098985906
@@ -308,12 +309,12 @@ class IFO(object):
         
         for _ in DOFs:
             if isinstance(_, six.string_types):
-                if _ in self.__DOFs:
-                    dofs.append(self.__DOFs[_])
+                if _ in self.DOFs:
+                    dofs.append(self.DOFs[_])
                 else:
-                    raise pkex.BasePyKatException("Could not find DOF called `%s`. Possible DOF options: %s" % (_, str(list(self.__DOFs.keys()))))
+                    raise pkex.BasePyKatException("Could not find DOF called `%s`. Possible DOF options: %s" % (_, str(list(self.DOFs.keys()))))
             else:
-                raise pkex.BasePyKatException("'%s' not possible DOF options: %s" % (_, str(list(self.__DOFs.keys()))))
+                raise pkex.BasePyKatException("'%s' not possible DOF options: %s" % (_, str(list(self.DOFs.keys()))))
         
         return dofs
     

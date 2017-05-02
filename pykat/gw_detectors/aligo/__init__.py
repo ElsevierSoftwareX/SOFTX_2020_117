@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import os
 import numpy as np
 import math
 import copy
@@ -200,7 +201,6 @@ class ALIGO_IFO(IFO):
         vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset / 360.0 * _kat.lambda0 ))
         vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
 
-
     def find_DC_offset(self, AS_power, precision=1e-4, verbose=False):
         """
         Returns the DC offset of DARM that corrponds to the specified power in the AS power.
@@ -365,13 +365,22 @@ def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
               
-def make_kat(name="default", katfile=None, verbose = False, debug=False):
+def make_kat(name="design", katfile=None, verbose = False, debug=False):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
+    
+    The `name` argument selects from default aLIGO files included in Pykat:
+    
+        - design: A file based on the design parameters for the final aLIGO setup.
+          125W input, T_SRM = 20%.
+    
+        - design_low_power: A file based on the design parameters for the final aLIGO setup.
+          20W input, T_SRM = 35%. The higher SRM transmission mirror is used for low power
+          operation. 20W input power from O1 observation.
     """
     
-    names = ['default', 'LLO', 'LHO']
+    names = ['design', 'design_low_power']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
@@ -388,7 +397,7 @@ def make_kat(name="default", katfile=None, verbose = False, debug=False):
                         # Define which mirrors create the tuning description
                         ["PRM", "ITMX", "ETMX", "ITMY", "ETMY", "BS", "SRM"])
     
-    kat.IFO._data_path=pkg_resources.resource_filename('pykat.gw_detectors', 'finesse_files/')
+    kat.IFO._data_path=pkg_resources.resource_filename('pykat.gw_detectors', os.path.join('aligo','files'))
 
     kat.IFO.rawBlocks = BlockedKatFile()
     
@@ -396,15 +405,13 @@ def make_kat(name="default", katfile=None, verbose = False, debug=False):
         kat.load(katfile)
         kat.IFO.rawBlocks.read(katfile)
     else:
-        """
-        if name not in names: # TODO different files not yet implemented
-            printf("aLIGO name `{}' not recognised, must be 'default', 'LLO' or 'LHO'",name)
-        """
-        if name != "default":
-            printf("aLIGO name `{}' not recognised, using 'default'", name)
+        if name not in names:
+            pkex.printWarning("aLIGO name `{}' not recognised, options are {}, using default 'design'".format(name, names))
         
-        kat.load(kat.IFO._data_path+"aLIGO.kat")
-        kat.IFO.rawBlocks.read(kat.IFO._data_path+"aLIGO.kat")
+        katkile = os.path.join(kat.IFO._data_path, name+".kat")
+        
+        kat.load(katkile)
+        kat.IFO.rawBlocks.read(katkile)
         
     # ----------------------------------------------------------------------
     # set variables to zero first
