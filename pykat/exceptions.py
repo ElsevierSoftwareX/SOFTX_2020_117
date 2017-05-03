@@ -50,7 +50,6 @@ def printWarning(message, exception=None):
             
     finally:
         print ("\033[0m")
-        sys.exit(1)
     
 
 class BasePyKatException(Exception):

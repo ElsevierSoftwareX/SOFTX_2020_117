@@ -2,9 +2,8 @@ import pykat
 import json
 #import matplotlib.pyplot as plt
 
-from pykat.gw_detectors import remove_components
-import pykat.gw_detectors.aligo as aligo
-import pykat.gw_detectors.aligo.plot
+import pykat.ifo.aligo as aligo
+import pykat.ifo.aligo.plot
 
 kat = aligo.make_kat()
 
@@ -31,7 +30,7 @@ kat.IFO.adjust_PRC_length()
 # Pretuning ensures each of the ARMs, PRC and SRC are on the correct resonance to being with
 # Run a copy of aLIGO without the modulators to get the pretuning
 _ = kat.deepcopy()
-remove_components(_, ["mod1", "lmod2", "mod2", "lmod3"], component_in="lmod1");
+_.IFO.remove_modulators()
 aligo.pretune(_, verbose=True)
 
 # Apply the tunings to our base kat file

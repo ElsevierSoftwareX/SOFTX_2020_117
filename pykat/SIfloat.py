@@ -28,6 +28,9 @@ __suffix = {'y': 'e-24',  # yocto
 __exceptions = ["$fs", "$mfs"]
 
 def SIfloat(value):
+    if str(value).startswith('$'):
+        return value
+        
     if value is None: 
         return value
     

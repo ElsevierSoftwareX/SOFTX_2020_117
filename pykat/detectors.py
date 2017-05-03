@@ -285,7 +285,7 @@ class beam(Detector1):
         if self.f.value is None:
             rtn.append("beam {name} {node}{alt}".format(name=self.name, node=self.node.name, alt=alt))
         else:
-            rtn.append("beam {name} {f} {node}{alt}".format(name=self.name, f=str(self.f.value), node=self.node.name, alt=alt))
+            rtn.append("beam {name} {f} {node}{alt}".format(name=self.name, f=self.f, node=self.node.name, alt=alt))
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -438,9 +438,9 @@ class ad(Detector1):
             alt = ''
         
         if self.mode is None:
-            rtn.append("ad {name} {f} {node}{alt}".format(name=self.name, f=str(self.f.value), node=self.node.name, alt=alt))
+            rtn.append("ad {name} {f} {node}{alt}".format(name=self.name, f=self.f, node=self.node.name, alt=alt))
         else:
-            rtn.append("ad {name} {n} {m} {f} {node}{alt}".format(name=self.name, n=str(self.mode[0]), m=str(self.mode[1]), f=str(self.f.value), node=self.node.name, alt=alt))
+            rtn.append("ad {name} {n} {m} {f} {node}{alt}".format(name=self.name, n=str(self.mode[0]), m=str(self.mode[1]), f=self.f, node=self.node.name, alt=alt))
             
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -778,13 +778,13 @@ class pd(Detector1):
                 if _f == "$fs":
                     fphi_str += " $fs"
                 else:
-                    fphi_str += " {0:.16g}".format(float(_f))
+                    fphi_str += " {0}".format(_f)
                     
                 phi_val = self.__getattribute__("phase"+str(n))
                 
                 if phi_val != None:
                     if type(phi_val) == float:
-                        fphi_str += " {0:.16g}".format(float(phi_val))
+                        fphi_str += " {}".format(phi_val)
                     else:
                         fphi_str += " {0}".format(phi_val)
             
@@ -802,7 +802,7 @@ class pd(Detector1):
                 
             for p in self._params:
                 rtn.extend(p.getFinesseText())
-            
+        
         return rtn
   
 class qnoised(pd):

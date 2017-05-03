@@ -301,16 +301,21 @@ class AbstractMirrorComponent(Component):
     def __init__(self, name, R=None, T=None, L=None, phi=0, Rcx=None, Rcy=None, xbeta=None, ybeta=None, mass=None, r_ap=None, Ix=None, Iy=None, zmech=None, rxmech=None, rymech=None):
         super(AbstractMirrorComponent, self).__init__(name)
  
-        if (L != None and R != None and T != None) and SIfloat(R)+SIfloat(T)+SIfloat(L) != 1: 
-            raise pkex.BasePyKatException('L+R+T must equal 1 if all are specified at {0}'.format(self.name))
-        elif (R != None and L is None and T != None):
-            L = 1- (SIfloat(R)+SIfloat(T))
-        elif (R is None and L != None and T != None):
-            R = 1 - (SIfloat(L)+SIfloat(T))
-        elif (R != None and L != None and T is None):
-            T = 1 - (SIfloat(L)+SIfloat(R))
-        elif (L is None and R is None and T is None):
-            raise pkex.BasePyKatException('Must specify at least two of L, R or T')
+        # This checking is no longer done on creating the object. Pykat will only complain about 
+        # R,T,L values when generating the actual finesse command. Up to that point you can set what
+        # ever you like. This is because we can now set parameters to be `constants` values, which 
+        # can be changed and are only final when we write it to the a finesse file.
+        
+        # if (L != None and R != None and T != None) and SIfloat(R)+SIfloat(T)+SIfloat(L) != 1:
+        #     raise pkex.BasePyKatException('L+R+T must equal 1 if all are specified at {0}'.format(self.name))
+        # elif (R != None and L is None and T != None):
+        #     L = 1- (SIfloat(R)+SIfloat(T))
+        # elif (R is None and L != None and T != None):
+        #     R = 1 - (SIfloat(L)+SIfloat(T))
+        # elif (R != None and L != None and T is None):
+        #     T = 1 - (SIfloat(L)+SIfloat(R))
+        # elif (L is None and R is None and T is None):
+        #     raise pkex.BasePyKatException('Must specify at least two of L, R or T')
         
         self.__R = Param("R", self, SIfloat(R))
         self.__T = Param("T", self, SIfloat(T))
@@ -345,9 +350,9 @@ class AbstractMirrorComponent(Component):
         self._default_fsig_param = self.__phi
     
     def setRTL(self, R=None, T=None, L=None):
-        if R is not None: self.R.value = R
-        if T is not None: self.T.value = T
-        if L is not None: self.L.value = L
+        if R is not None: self.R = R
+        if T is not None: self.T = T
+        if L is not None: self.L = L
 
     def completeRTL(self, R=None, T=None, L=None):
         setValues = sum(x is not None for x in [R,T,L])
@@ -357,17 +362,17 @@ class AbstractMirrorComponent(Component):
             raise pkex.BasePyKatException("must set at least two out of three parameters (R, T, L)")            
         else:
             if R is not None:
-                self.R.value = R
+                self.R = R
             else:
-                self.R.value = 1-T-L            
+                self.R = 1-T-L            
             if T is not None:
-                self.T.value = T
+                self.T = T
             else:
-                self.T.value = 1-R-L            
+                self.T = 1-R-L            
             if L is not None:
-                self.L.value = L
+                self.L = L
             else:
-                self.L.value = 1-R-T            
+                self.L = 1-R-T            
 
     @property
     def z(self): return self.__z
@@ -540,14 +545,44 @@ class mirror(AbstractMirrorComponent):
                 return mirror(values[0], values[4], values[5], T=None, R=values[1], L=values[2], phi=values[3])
 
     def getFinesseText(self):
-        if abs(self.R + self.T + self.L - 1) > 1e-14:
-            raise pkex.BasePyKatException("Mirror {0} has R+T+L = {1}, must equal 1 +- 1e-14".format(self.name, self.R+self.T+self.L))
+        mode = 'm'
+        opt1 = None
+        opt2 = None
         
+        if self.R.value is not None and self.T.value is not None and self.L.value is None:
+            mode = 'm'
+            opt1 = self.R
+            opt2 = self.T
+            msg = "R+T"
+        elif self.R.value is None and self.T.value is not None and self.L.value is not None:
+            mode = 'm1'
+            opt1 = self.T
+            opt2 = self.L
+            msg = "T+L"
+        elif self.R.value is not None and self.T.value is None and self.L.value is not None:
+            mode = 'm2'
+            opt1 = self.R
+            opt2 = self.L
+            msg = "R+L"
+        elif self.R.value is not None and self.T.value is not None and self.L.value is not None:
+            mode = 'm'
+            opt1 = self.R
+            opt2 = self.T
+            v = opt1.value + opt2.value + self.L.value
+            
+            if v > 1+1e-14 or v < 0:
+                raise pkex.BasePyKatException("Mirror {0} has R+T+L = {1}, must be, 0 < R+T+L <= 1".format(self.name, v))
+        else:
+            raise pkex.BasePyKatException("Mirror {0} has R={1}, T={2} and L={3}. You must define at least a pair of values".format(self.name, self.R, self.T, self.L))
+        
+        if opt1.value + opt2.value > 1+1e-14:
+            raise pkex.BasePyKatException("Mirror {0} has {1} = {2}, must be <= 1".format(self.name, msg, opt1+opt2))
+            
         rtn = []
             
-        rtn.append('m {0} {1} {2} {3} {4} {5}'.format(
-                self.name, self.R.value, self.T.value, self.phi.value,
-                self.nodes[0].name, self.nodes[1].name))
+        rtn.append('{mode} {0} {1} {2} {3} {4} {5}'.format(
+                self.name, opt1, opt2, self.phi,
+                self.nodes[0].name, self.nodes[1].name, mode=mode))
 
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -677,16 +712,46 @@ class beamSplitter(AbstractMirrorComponent):
                                 values[1], None, values[2], values[3], values[4])
         
     def getFinesseText(self):
-        if abs(self.R + self.T + self.L - 1) > 1e-14:
-            raise pkex.BasePyKatException("Beamsplitter {0} has R+T+L = {1}, must equal 1 +- 1e-14".format(self.name, self.R+self.T+self.L))
-
+        mode = 'bs'
+        opt1 = None
+        opt2 = None
+        
+        if self.R.value is not None and self.T.value is not None and self.L.value is None:
+            mode = 'bs'
+            opt1 = self.R
+            opt2 = self.T
+            msg = "R+T"
+        elif self.R.value is None and self.T.value is not None and self.L.value is not None:
+            mode = 'bs1'
+            opt1 = self.T
+            opt2 = self.L
+            msg = "T+L"
+        elif self.R.value is not None and self.T.value is None and self.L.value is not None:
+            mode = 'bs2'
+            opt1 = self.R
+            opt2 = self.L
+            msg = "R+L"
+        elif self.R.value is not None and self.T.value is not None and self.L.value is not None:
+            mode = 'bs'
+            opt1 = self.R
+            opt2 = self.T
+            v = opt1.value + opt2.value + self.L.value
+            
+            if v > 1+1e-14 or v < 0:
+                raise pkex.BasePyKatException("Beamsplitter {0} has R+T+L = {1}, must be, 0 < R+T+L <= 1".format(self.name, v))
+        else:
+            raise pkex.BasePyKatException("Beamsplitter {0} has R={1}, T={2} and L={3}. You must define at least a pair of values".format(self.name, self.R.value,self.T.value,self.L.value))
+        
+        if opt1.value + opt2.value > 1+1e-14:
+            raise pkex.BasePyKatException("Beamsplitter {0} has {1} = {2}, must be <= 1".format(self.name, msg, opt1+opt2))
+            
         rtn = []
             
-        rtn.append('bs {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
-                self.name, self.R.value, self.T.value, self.phi.value,
-                self.alpha.value, self.nodes[0].name,
+        rtn.append('{mode} {0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
+                self.name, opt1, opt2, self.phi,
+                self.alpha, self.nodes[0].name,
                 self.nodes[1].name, self.nodes[2].name,
-                self.nodes[3].name))
+                self.nodes[3].name, mode=mode))
 
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -796,9 +861,9 @@ class space(Component):
         rtn = []
         
         if self.__n == 1:
-            rtn.append('s {0} {1} {2} {3}'.format(self.name, self.__L.value, self.nodes[0].name, self.nodes[1].name))
+            rtn.append('s {0} {1} {2} {3}'.format(self.name, self.__L, self.nodes[0].name, self.nodes[1].name))
         else:
-            rtn.append('s {0} {1} {2} {3} {4}'.format(self.name, self.__L.value, self.__n.value, self.nodes[0].name, self.nodes[1].name))
+            rtn.append('s {0} {1} {2} {3} {4}'.format(self.name, self.__L, self.__n, self.nodes[0].name, self.nodes[1].name))
        
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -929,11 +994,11 @@ class grating(Component):
         rtn = []
         
         if self.__n == 2:
-            rtn.append('gr{0} {1} {2} {3} {4}'.format(self.__n, self.name, self.__d.value, self.nodes[0].name, self.nodes[1].name))
+            rtn.append('gr{0} {1} {2} {3} {4}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name))
         elif self.__n == 3:
-            rtn.append('gr{0} {1} {2} {3} {4} {5}'.format(self.__n, self.name, self.__d.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name))
+            rtn.append('gr{0} {1} {2} {3} {4} {5}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name))
         else:
-            rtn.append('gr{0} {1} {2} {3} {4} {5} {6}'.format(self.__n, self.name, self.__d.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, self.nodes[3].name))
+            rtn.append('gr{0} {1} {2} {3} {4} {5} {6}'.format(self.__n, self.name, self.__d, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, self.nodes[3].name))
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -1024,7 +1089,7 @@ class isolator(Component):
         elif self._option == 1:
             cmd = "isol*"
             
-        rtn = ['{cmd} {0} {1} {2} {3} {4} {5}'.format(self.name, self.S.value, self.L.value, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, cmd=cmd)]
+        rtn = ['{cmd} {0} {1} {2} {3} {4} {5}'.format(self.name, self.S, self.L, self.nodes[0].name, self.nodes[1].name, self.nodes[2].name, cmd=cmd)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -1164,9 +1229,9 @@ class lens(Component):
         
     def getFinesseText(self):
         if self.__p.value is None:
-            rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f.value, self.nodes[0].name, self.nodes[1].name)]
+            rtn = ['lens {0} {1} {2} {3}'.format(self.name, self.f, self.nodes[0].name, self.nodes[1].name)]
         else:
-            rtn = ['lens* {0} {1} {2} {3}'.format(self.name, self.p.value, self.nodes[0].name, self.nodes[1].name)]
+            rtn = ['lens* {0} {1} {2} {3}'.format(self.name, self.p, self.nodes[0].name, self.nodes[1].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -1387,7 +1452,7 @@ class laser(Component):
             raise exceptions.FinesseParse("Laser Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
-        rtn = ['l {0} {1} {2} {3} {4}'.format(self.name, self.__power.value, self.__f_offset.value, self.__phase.value, self.nodes[0].name)]
+        rtn = ['l {0} {1} {2} {3} {4}'.format(self.name, self.__power, self.__f_offset, self.__phase, self.nodes[0].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())
@@ -1490,9 +1555,9 @@ class squeezer(Component):
     
     def getFinesseText(self):
         if self.entangled_carrier:
-            rtn = ['sq* {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
+            rtn = ['sq* {0} {1} {2} {3} {4}'.format(self.name, self.f, self.db, self.angle, self.nodes[0].name)]
         else:
-            rtn = ['sq {0} {1} {2} {3} {4}'.format(self.name, self.f.value, self.db.value, self.angle.value, self.nodes[0].name)]
+            rtn = ['sq {0} {1} {2} {3} {4}'.format(self.name, self.f, self.db, self.angle, self.nodes[0].name)]
         
         for p in self._params:
             rtn.extend(p.getFinesseText())

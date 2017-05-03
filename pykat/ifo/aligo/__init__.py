@@ -16,7 +16,7 @@ from itertools import chain
 
 from pykat import finesse
 from pykat.finesse import BlockedKatFile
-from pykat.gw_detectors import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, reconnect_nodes, remove_commands, remove_components, round_to_n, scan_optics_string
+from pykat.ifo import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, remove_commands, round_to_n, scan_optics_string
 
 import pykat.components
 import pykat.exceptions as pkex
@@ -86,6 +86,18 @@ class ALIGO_IFO(IFO):
         print("| f1     = {:11.8}, f2     = {:11.9}        |".format(self.f1, self.f2))
         print(" `--------------------------------------------------'")
     
+    def remove_modulators(self):
+        """
+        Removes the input modulators and reconnects the input laser to the PRC reflection node.
+        
+        This function alters the kat object directly.
+        """
+        # Keep any lengths the same
+        self.kat.lmod1.L += self.kat.lmod2.L + self.kat.lmod3.L
+        
+        self.kat.remove("mod1", "lmod2", "mod2", "lmod3")    # Remove modulators
+        self.kat.nodes.replaceNode(self.kat.lmod1, 'n1', 'nREFL') # Reconnect laser
+        
     def adjust_PRC_length(self, verbose=False):
         """
         Adjust PRC length so that it fulfils the requirement
@@ -379,7 +391,6 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False):
           20W input, T_SRM = 35%. The higher SRM transmission mirror is used for low power
           operation. 20W input power from O1 observation.
     """
-    
     names = ['design', 'design_low_power']
     
     if debug:
@@ -397,7 +408,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False):
                         # Define which mirrors create the tuning description
                         ["PRM", "ITMX", "ETMX", "ITMY", "ETMY", "BS", "SRM"])
     
-    kat.IFO._data_path=pkg_resources.resource_filename('pykat.gw_detectors', os.path.join('aligo','files'))
+    kat.IFO._data_path=pkg_resources.resource_filename('pykat.ifo', os.path.join('aligo','files'))
 
     kat.IFO.rawBlocks = BlockedKatFile()
     

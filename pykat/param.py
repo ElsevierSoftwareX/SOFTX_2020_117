@@ -6,7 +6,9 @@ from __future__ import unicode_literals
 import abc
 import pykat.exceptions as pkex
 import weakref
-    
+
+from pykat.freeze import canFreeze
+
 class putable(object):
     """
     Objects that inherit this should be able to have something `put` to it.
@@ -118,17 +120,19 @@ class putter(object):
     
     def put_name(self): return self._put_name
     
-        
+@canFreeze
 class Param(putable, putter):
 
     def __init__(self, name, owner, value, canFsig=False, fsig_name=None, isPutable=True, isPutter=True, isTunable=True, var_name=None, register=True):
+        self._unfreeze()
         self._name = name
         self._registered = register
         self._owner = weakref.ref(owner)
-        self._value = value
         self._isPutter = isPutter
         self._isTunable = isTunable
         self._canFsig = False
+        self._isConst = False
+        self._constName = None
         
         if self._registered:
             self._owner()._register_param(self)
@@ -148,6 +152,10 @@ class Param(putable, putter):
         putter.__init__(self, var_name, owner, isPutter)
             
         putable.__init__(self, owner.name, name, isPutable)
+
+        self.value = value
+        
+        self._freeze()
         
     @property
     def canFsig(self): return self._canFsig
@@ -168,22 +176,48 @@ class Param(putable, putter):
     def isTuneable(self): return self._isTunable
     
     @property
+    def isConstant(self):
+        """
+        True if the value of this parameter is set by a constant
+        """
+        return self._isConst
+    
+    @property
+    def constantName(self):
+        """
+        Name of the constant that the value of this parameter comes from
+        """
+        return self._constName
+        
+    @property
     def value(self):
         if self._owner().removed:
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
         else:
-            return self._value
+            if self._isConst:
+                return self.owner._kat.constants[self._constName[1:]].value
+            else:
+                return self._value
     
     @value.setter
     def value(self, value):
         if self._owner().removed:
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
         else:
-            self._value = value
+            if str(value).startswith('$'):
+                self._isConst = True
+                self._constName = value
+                self._value = None
+            else:
+                self._isConst = False
+                self._constName = None
+                self._value = value
     
     def __str__(self):
         if self._owner().removed:
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
+        elif self._isConst:
+            return self._constName
         elif type(self.value) == float:
             return repr(self.value)
         else:
@@ -216,8 +250,10 @@ class Param(putable, putter):
         Should only be called by the __deepcopy__ component method to ensure things
         are kept up to date.
         """
+        self._unfreeze()
         del self._owner
         self._owner = weakref.ref(newOwner)
+        self._freeze()
         
     def _onOwnerRemoved(self):
         #if this param can be put somewhere we need to check if it is
@@ -301,7 +337,7 @@ class AttrParam(Param):
         rtn = []
         
         if self.value != None:
-            rtn.append("attr {0} {1} {2}".format(self._owner().name, self.name, self.value))
+            rtn.append("attr {0} {1} {2}".format(self._owner().name, self.name, self))
             
         rtn.extend(super(AttrParam, self).getFinesseText())
         

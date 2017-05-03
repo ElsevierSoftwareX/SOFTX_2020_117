@@ -100,14 +100,34 @@ class Command(object):
     @property
     def removed(self): return self.__removed
 
+class Constant(Command):
+    def __init__(self, name, value):
+        Command.__init__(self, name, False)
+        self.value = value
+        self.usedBy = []
+        self._freeze()
 
-
-
-
+    def getFinesseText(self):
+        return "const {name} {value}".format(name=self.name, value=self.value)
+    
+    @staticmethod
+    def parseFinesseText(line, kat):
+        v = line.split()
+        
+        if len(v) != 3:
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse const command".format(line))
+        
+        return Constant(v[1], SIfloat(v[2]))
+    
+    @property
+    def value(self): return self.__value
+    @value.setter
+    def value(self, Value): self.__value = SIfloat(Value)
+    
 class variable(Command):
     def __init__(self, name, value):
         Command.__init__(self, name, False)
-        self.__value = value
+        self.value = value
         self._freeze()
         
     def getFinesseText(self):

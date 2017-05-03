@@ -36,18 +36,6 @@ def make_transparent(kat, _components):
         
     return kat
 
-def reconnect_nodes(kat, component1, idx1, node_name, verbose=False):
-    c_string = component1.getFinesseText()
-    c = c_string[0].split()
-    new_string = " ".join(c[:-2])
-    nodes = {}
-    nodes[0] = c[-2]
-    nodes[1] = c[-1]
-    nodes[idx1]=node_name
-    new_string = new_string + " " + nodes[0] + " " + nodes[1]
-    vprint(verbose, "   new string ='{}'".format(new_string))
-    kat.parseCommands(new_string)
-
 def remove_commands(kat, _commands, verbose=False):
     commands=make_list_copy(_commands)
     # removing commands
@@ -59,30 +47,6 @@ def remove_commands(kat, _commands, verbose=False):
     if len(commands) != 0:
         raise pkex.BasePyKatException("Cannot find command(s) {}".format(commands))
     return kat
-    
-def remove_components(kat, _components, component_in=None, component_out=None, verbose=False):
-    components=make_list_copy(_components)
-    if  kat.components[components[-1]].nodes[1]:
-        node_in  = kat.components[components[-1]].nodes[1].name
-    else:
-        node_in = None
-    node_out = kat.components[components[0]].nodes[0].name
-    # removing components
-    for o in kat.components.values():
-        if o.name in components:
-            o.remove()
-            components = [c for c in components if c != o.name]
-            vprint(verbose, '  {} removed'.format(o))
-    if len(components) != 0:
-        raise pkex.BasePyKatException("Cannot find component(s) {}".format(components))
-    # reconnecting nodes if requested
-    if component_in:
-        reconnect_nodes(kat, kat.components[component_in],1, node_in)
-    if component_out:
-        reconnect_nodes(kat, kat.components[component_out],0, node_out)
-    return kat
-    
-    
     
 def round_to_n(x, n):
     if not x: return 0

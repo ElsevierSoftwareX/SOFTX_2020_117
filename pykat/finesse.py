@@ -75,7 +75,7 @@ from collections import namedtuple, OrderedDict
 from pykat.node_network import NodeNetwork
 from pykat.detectors import BaseDetector as Detector
 from pykat.components import Component
-from pykat.commands import Command, xaxis
+from pykat.commands import Command, xaxis, Constant
 from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 from pykat.external import progressbar
@@ -217,7 +217,7 @@ class BlockedKatFile(object):
         self.ordering = [self.__NO_BLOCK]
         self.blocks = {self.__NO_BLOCK:""}
         self.__currentBlock = self.__NO_BLOCK
-        
+             
     def remove(self, *blocks):
         if len(blocks[0]) > 1 and not isinstance(blocks[0], six.string_types):
             # if we've got an iterable thing that isn't a string, eg list or tuple
@@ -682,12 +682,13 @@ class Signals(object):
             self._params = []
             self.__target = param
             self.__name = name
-            self.__amplitude = Param("amp", self, SIfloat(amplitude))
-            self.__phase = Param("phase", self, SIfloat(phase))
             self.__removed = False
             self.__signal = signal
-            self._freeze()
+
+            self.__amplitude = Param("amp", self, SIfloat(amplitude))
+            self.__phase = Param("phase", self, SIfloat(phase))
             
+            self._freeze()
             # unfortunatenly the target names for fsig are not the same as the
             # various parameter names of the components, e.g. mirror xbeta is x 
             # for fsig. So we need to check here what type of component we are targetting
@@ -699,7 +700,8 @@ class Signals(object):
             self._params.append(param)
         
         @property
-        def removed(self): return self.__removed
+        def removed(self):
+            return self.__removed
   
         def remove(self):
             self.__signal._kat.remove(self)
@@ -832,7 +834,21 @@ class Block:
     @property
     def name(self): return self.__name
     
-Constant = namedtuple('Constant', 'name, value, usedBy')
+    def __str__(self):
+        objs = []
+        
+        for _ in self.contents:
+            if isinstance(_, six.string_types):
+                objs.append(_)
+            else:
+                __ = _.getFinesseText()
+
+                if isinstance(__, six.string_types):
+                    objs.append(__)
+                else:
+                    objs += __
+        
+        return "\n".join(objs)
 
 id___ = 0
 
@@ -915,7 +931,16 @@ class kat(object):
             self.loadKatFile(kat_file)
     
         self._freeze()
-     
+    
+    def __and__(self, other):
+        """
+        Quick syntax for returning a string of the block if present.
+        
+        Example:
+            print(kat & 'locks')
+        """
+        return self.getBlockString(other)
+        
     def _data2str(self):
         """
         From the pykat data object we serialise, compress and convert into a base64 string.
@@ -976,7 +1001,7 @@ class kat(object):
             return tuple(items)
         else:
             return tuple(getattr(_, parameter) for _ in items)
-        
+    
     def __deepcopy__(self, memo):
         """
         When deep copying a kat object we need to take into account
@@ -1119,11 +1144,19 @@ class kat(object):
         warnings.warn('saveScript() depreciated, use save(...).', stacklevel=2)
         self.save(filename=filename)
         
-    def load(self, filename, blocks=None):
+    def load(self, filename, blocks=None, keepComments=False, preserveConstants=False, useConstants=None):
+        """
+        This will load a kat file and parse all the commands in it into the kat object.
+        
+        filename: path and filename to load
+        blocks:   blocks to read from file
+        keepComments: Will keep the comments in the kat object
+        """
         with open(filename) as f:
             commands= f.read()
             
-        self.parseCommands(commands, blocks=blocks)
+        self.parseCommands(commands, blocks=blocks, keepComments=keepComments,
+                            preserveConstants=preserveConstants, useConstants=useConstants)
         
     def loadKatFile(self, katfile, blocks=None):
         warnings.warn('loadKatFile() depreciated, use load(...).', stacklevel=2)
@@ -1133,60 +1166,98 @@ class kat(object):
         warnings.warn('parseKatCode depreciated, use parseCommands.', stacklevel=2)
         self.parseCommands(code, blocks=blocks)
 
-    def processConstants(self, commands):
+    def processConstants(self, commands, useConstants=None, preserve=False):
         """
         Before fully parsing a bunch of commands firstly any constants or variables
-        to be recorded and replaced.
+        to be recorded or replaced.
+        
+        Pykat cannot handle all scenarios that the Finesse const command can be used
+        for. For example, you could use a const a detector type (pd, pd1, pd2) which would be replaced
+        with the actual value when Finesse runs the file. However, pykat parses objects beforehand
+        and cannot deal with this level of flexibilty in the script. Constant use should be limited
+        just to parameter values, like R, T, loss, modulator frequencies.
+        
+        If you do something complicated with constants you should *not* preserve the constant
+        commands. If you want to change the value of a constant before parsing into pykat set
+        the `constants` dictionary with the value required.
+        
+        Cannot specify useConstants dictionary and preserve at the same time.
+        
+        commands: list of command strings to parse
+        constants: dictionary of constant values to use to replace tokens with.
+        preserve: If true the constant values will be read in and kept. The parameters that
+                  use the constant will then have a value of `$name` which will be written
+                  to the Finesse file to run.
         """
         
+        if useConstants is not None and preserve:
+            raise pkex.BasePyKatException("Cannot specify useConstants dictionary and preserve at the same time")
+        
+        if useConstants is not None:
+            for _ in useConstants:
+                useConstants[_] = Constant(_, useConstants[_])
+            
         try:
-            constants = self.constants
+            constants = self.constants.copy()
+            
+            if useConstants is not None:
+                constants.update(useConstants)
         
             for line in commands:
                 values = line.split()
             
                 if len(values)>0 and values[0] == 'const':
-                
                     if len(values) >= 3:
+                        if useConstants is not None and values[1] in useConstants:
+                            pkex.printWarning("Specified {} constant value in useConstants, ignoring line {}".format(values[1], line))
+                            continue
+                        
                         if values[1] in constants:
-                            raise pkex.BasePyKatException('const command with the name "{0}" already used'.format(values[1]))
+                            raise pkex.BasePyKatException('const command with the name "{0}" already set'.format(values[1]))
                         else:
-                            constants[str(values[1])] = Constant(values[1], values[2], [])
+                            c = Constant(values[1], values[2])
+                            constants[str(values[1])] = c
+                            self.add(c)
                     else:
                         raise pkex.BasePyKatException('const command "{0}" was not the correct format'.format(line))
         
-            commands_new = []
+            if not preserve:
+                # replace all the constant reference with the actual value
+                commands_new = []
         
-            for line in commands:
-                values = line.split()
+                for line in commands:
+                    values = line.split()
             
-                if len(values) > 0 and values[0] != 'const':
-                    # check if we have a var/constant in this line
-                    if line.find('$') >= 0:
-                        for key in constants.keys():
-                            # TODO: need to fix this for checking mulitple instances of const in a single line
+                    if len(values) > 0 and values[0] != 'const':
+                        # check if we have a var/constant in this line
+                        if line.find('$') >= 0:
+                            for key in constants.keys():
+                                # TODO: need to fix this for checking mulitple instances of const in a single line
                         
-                            chars = [' ', '+', '-', '*', '/', ')']
+                                chars = [' ', '+', '-', '*', '/', ')']
 
-                            for c in chars:
-                                none_found = False
+                                for c in chars:
+                                    none_found = False
                             
-                                while not none_found:
-                                    if line.find('$'+key+c) > -1:
-                                        constants[key].usedBy.append(line)
-                                        line = line.replace('$'+key+c, str(constants[key].value)+ c)
-                                    else:
-                                        none_found = True
+                                    while not none_found:
+                                        if line.find('$'+key+c) > -1:
+                                            constants[key].usedBy.append(line)
+                                            line = line.replace('$'+key+c, str(constants[key].value)+ c)
+                                        else:
+                                            none_found = True
                         
-                            if line.endswith('$'+key):
-                                constants[key].usedBy.append(line)
-                                line = line.replace('$'+key, str(constants[key].value))
+                                if line.endswith('$'+key):
+                                    constants[key].usedBy.append(line)
+                                    line = line.replace('$'+key, str(constants[key].value))
                         
-                    commands_new.append(line)
-    
-            self.constants = constants
+                        commands_new.append(line)
         
-            return commands_new
+                return commands_new
+            else:
+                # If we are preserving then we need to keep the constants for later
+                self.constants = constants
+        
+                return commands
             
         except pkex.BasePyKatException as ex:
             pkex.PrintError("Error processing constants:", ex)
@@ -1194,6 +1265,12 @@ class kat(object):
     
     def getBlocks(self):
         return self.__blocks.keys()
+    
+    def getBlockString(self, name):
+        if name not in self.__blocks:
+            pkex.PrintError("Error getting block:", pkex.BasePyKatException('Block "{0}" was not found'.format(name)))
+            
+        return str(self.__blocks[name])
     
     def removeBlock(self, name, failOnBlockNotFound=True):
         
@@ -1237,7 +1314,10 @@ class kat(object):
         for key in self.__variables:
             print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
     
-    def parseCommands(self, commands, blocks=None, addToBlock=None, preserve=False):
+    def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None):
+        blockCommentWarning = False
+        inlineCommentWarning = False
+        blockComment = False
         
         commands = str(commands)
         
@@ -1249,13 +1329,14 @@ class kat(object):
             if addToBlock is not None:
                 if addToBlock not in self.__blocks:
                     self.__blocks[addToBlock] = Block(addToBlock)
-                
-            blockComment = False
-        
-            commands=self.remove_comments(commands)
-        
-            commands=self.processConstants(commands)
-        
+
+            if not keepComments:
+                commands = self._removeComments(commands)
+            else:
+                commands = commands.split("\n")
+
+            commands = self.processConstants(commands, preserve=preserveConstants, useConstants=useConstants)
+            
             # Some commands need to be processed after others, and some after that.
             # Here we have two lists of processing priority.
             after_process = ([], [])
@@ -1293,19 +1374,34 @@ class kat(object):
                     # only include listed blocks, if we have specfied them
                     if blocks != None and self.__currentTag not in blocks:
                         continue
-                
+                    
                     # don't read comment lines
                     if line[0] == "#" or line[0] == "%":
+                        if keepComments:
+                            self.addLine(line, self.__currentTag)
+                            
                         continue
             
                     # check if block comment is being used
                     if not blockComment and line[0:2] == "/*":
+                        if not blockCommentWarning:
+                            blockCommentWarning = True
+                            pkex.printWarning("Pykat parsing does not preserve multiline comments with /* */. Prepending comment lines with '#' instead")
+                            
                         blockComment = True
                         continue
+                            
                     elif blockComment and line[0:2] == "*/":
                         blockComment = False
                         continue
-            
+                    
+                    if blockComment:
+                        if keepComments:
+                            # If we're in a block comment add the hash and add it in
+                            self.addLine("# " + line, self.__currentTag)
+                            
+                        continue
+                    
                     if line.startswith(PYKAT_DATA):
                         v = line.split("=", 1)
                         
@@ -1314,6 +1410,24 @@ class kat(object):
                             
                         continue
                     
+                    if keepComments and "#" in line:
+                        if not inlineCommentWarning:
+                            inlineCommentWarning = True
+                            pkex.printWarning("Pykat parsing does not preserve inline comments. Moving inline comments before command")
+                        
+                        idx = line.find('#')
+                        self.addLine("# " + line[idx:], self.__currentTag)
+                        line = line[:idx]
+                    
+                    if keepComments and "%" in line:
+                        if not inlineCommentWarning:
+                            inlineCommentWarning = True
+                            pkex.printWarning("Pykat parsing does not preserve inline comments. Moving inline comments before command")
+                        
+                        idx = line.find('%')
+                        self.addLine("% " + line[idx:], self.__currentTag)
+                        line = line[:idx]
+                            
                     first = line.split(" ",1)[0]
                     obj = None
 
@@ -1432,19 +1546,32 @@ class kat(object):
                         after_process[1].append((line, self.__currentTag))
                     elif(first == "put" or first == "put*"):
                         after_process[1].append((line, self.__currentTag))
+                    elif(first == "const"):
+                        if preserveConstants:
+                            v = line.split()
+                            # if preserving the constant should be in the constants dictionary
+                            const = self.constants[v[1]]
+                            
+                            self.__blocks['NO_BLOCK'].contents.remove(const)
+                            self.__blocks[self.__currentTag].contents.append(const)
+                        else:
+                            # If not preserving then just ignore the constant as it
+                            # has already been parsed and replaced in processConstants
+                            obj = None
                     else:
                         if self.verbose:
                             print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
                     
                         obj = line
                         # manually add the line to the block contents
-                        self.__blocks[self.__currentTag].contents.append(line) 
+                        self.addLine(line, self.__currentTag) 
             
                     if obj != None and not isinstance(obj, six.string_types):
                         if self.hasNamedObject(obj.name):
                             getattr(self, obj.name).remove()
+                            
                             if self.verbose:
-                                print ("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
+                                pkex.printWarning("Removed existing object '{0}' of type {1} to add line '{2}'".format(obj.name, obj.__class__, line))
 
                         self.add(obj, block=self.__currentTag)
 
@@ -1467,7 +1594,7 @@ class kat(object):
                     
                     elif (first == "func"):
                         self.add(pykat.commands.func.parseFinesseText(line, self), block=block)
-                    
+                        
                     elif (first == "variable"):
                         self.add(pykat.commands.variable.parseFinesseText(line, self), block=block)
                     
@@ -1503,8 +1630,8 @@ class kat(object):
                         
                         except pkex.BasePyKatException as ex:
                             if self.verbose:
-                                print("Warning: ", ex.msg)
-                                print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
+                                pkex.printWarning("Warning: ", ex.msg)
+                                pkex.printWarning("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
                     
                             obj = line
                             # manually add the line to the block contents
@@ -1790,7 +1917,7 @@ class kat(object):
                         except FileNotFoundError as ex:
                             if self.verbose:
                                 if not self.__looking:
-                                    print("Looking for pykat pipe...")
+                                    pkex.printWarning("Looking for pykat pipe...")
                                     self.__looking = True
                 
                 if fifo is not None:
@@ -1984,7 +2111,7 @@ class kat(object):
             else:
                 return rtn
         except KeyboardInterrupt as ex:
-            print("Keyboard interrupt caught, stopped simulation.")
+            pkex.printWarning("Keyboard interrupt caught, stopped simulation.")
         except pkex.FinesseRunError as ex:
             if rethrowExceptions:
                 raise ex 
@@ -2000,63 +2127,86 @@ class kat(object):
             if self.verbose:
                 print ("")
                 print ("Finished in {0:g} seconds".format(float(time.time() - start)))
-            
-            
-    def remove(self, obj):
-        try:
-            
-            if hasattr(obj, "name") and not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
-                raise pkex.BasePyKatException("'{0}' is not currently in the simulation".format(obj.name))
-            
-            if hasattr(obj, "removed") and obj.removed:
-                raise pkex.BasePyKatException("'{0}' has already been removed".format(obj.name))        
 
-            nodes = None
+    def __isObjectFromName(self, name):
+        """
+        Tries to get the pykat object from its name
+        """
+        if name in self.__commands: return self.__commands[name]
+        if name in self.__detectors: return self.__detectors[name]
+        if name in self.__components: return self.__components[name]
         
-            # store nodes that this componet is attached to as a reference for gui
-            if isinstance(obj, Component):
-                nodes = self.nodes.getComponentNodes(obj)
-
-            if isinstance(obj, Component):    
-                del self.__components[obj.name]
-                self.__del_component(obj)
-                self.nodes._removeComponent(obj)
+        return name
+        
+    def remove(self, *args):
+        """
+        Removes a given Pykat object associated with this kat object. Can pass the direct object or
+        a string of its name.
+        
+        Can also provide a list of objects, or string of names of objects to remove.
+        """
+        
+        for obj in args:
+            if isinstance(obj, (list, tuple)):
+                for _ in obj:
+                    self.remove(_)
                 
-            elif isinstance(obj, Command):  
-                if obj._Command__unique:  
-                    del self.__commands[obj.__class__.__name__]
-                else:
-                    del self.__commands[obj.name]
+            try:
+                if isinstance(obj, six.string_types):
+                    obj = self.__isObjectFromName(obj)
+            
+                if hasattr(obj, "name") and not isinstance(obj, pykat.finesse.Signals) and not (obj.name in self.__components  or obj.name in self.__detectors or obj.name in self.__commands or obj in self.signals.targets):
+                    raise pkex.BasePyKatException("'{0}' is not currently in the simulation".format(obj.name))
+            
+                if hasattr(obj, "removed") and obj.removed:
+                    raise pkex.BasePyKatException("'{0}' has already been removed".format(obj.name))        
+
+                nodes = None
+        
+                # store nodes that this componet is attached to as a reference for gui
+                if isinstance(obj, Component):
+                    nodes = self.nodes.getComponentNodes(obj)
+
+                if isinstance(obj, Component):    
+                    del self.__components[obj.name]
+                    self.__del_component(obj)
+                    self.nodes._removeComponent(obj)
+                
+                elif isinstance(obj, Command):  
+                    if obj._Command__unique:  
+                        del self.__commands[obj.__class__.__name__]
+                    else:
+                        del self.__commands[obj.name]
                     
-                self.__del_command(obj)
+                    self.__del_command(obj)
                 
-            elif isinstance(obj, Detector):    
-                del self.__detectors[obj.name]
-                self.__del_detector(obj)
+                elif isinstance(obj, Detector):    
+                    del self.__detectors[obj.name]
+                    self.__del_detector(obj)
                 
-            elif isinstance(obj, pykat.finesse.Signals):
-                obj.remove()
+                elif isinstance(obj, pykat.finesse.Signals):
+                    obj.remove()
                 
-            elif isinstance(obj, pykat.finesse.Signals.fsig):
-                obj._on_remove()
+                elif isinstance(obj, pykat.finesse.Signals.fsig):
+                    obj._on_remove()
             
-            for b in self.__blocks:
-                if obj in self.__blocks[b].contents:
-                    self.__blocks[b].contents.remove(obj)
+                for b in self.__blocks:
+                    if obj in self.__blocks[b].contents:
+                        self.__blocks[b].contents.remove(obj)
         
-            if self.pykatgui != None:
-                self.pykatgui._onComponentRemoved(obj, nodes)
+                if self.pykatgui != None:
+                    self.pykatgui._onComponentRemoved(obj, nodes)
     
-            del nodes
+                del nodes
         
-            if hasattr(obj, "_on_kat_remove"):
-                obj._on_kat_remove()
+                if hasattr(obj, "_on_kat_remove"):
+                    obj._on_kat_remove()
             
-            #import gc
-            #print (gc.get_referrers(obj))
+                #import gc
+                #print (gc.get_referrers(obj))
             
-        except pkex.BasePyKatException as ex:
-            pkex.PrintError("Error on removing object:", ex)
+            except pkex.BasePyKatException as ex:
+                pkex.PrintError("Error on removing object:", ex)
 
     def undumpNodes(self, undumped_name_prefix = "dump"):
         """
@@ -2263,7 +2413,7 @@ class kat(object):
                     found = True
         
         if not found:
-            print("No extra lines were found")
+            pkex.printWarning("No extra lines were found")
         
                         
     def generateKatScript(self) :
@@ -2387,7 +2537,7 @@ class kat(object):
 
     def optivis(self):
         if not HAS_OPTIVIS:
-            print("Optivis is not installed")
+            pkex.printWarning("Optivis is not installed")
             return None
         
         import optivis.scene as scene
@@ -2456,7 +2606,7 @@ class kat(object):
         Change at some point to use a stored GUI reference
         """
         if not HAS_OPTIVIS:
-            print("Optivis is not installed")
+            pkex.printWarning("Optivis is not installed")
             return None
         
         prev = self.noxaxis
@@ -2507,7 +2657,7 @@ class kat(object):
         Save kat script from Optivis
         """
         if not HAS_OPTIVIS:
-            print("Optivis is not installed")
+            pkex.printWarning("Optivis is not installed")
             return None
     
         # generate file path
@@ -2741,7 +2891,7 @@ class kat(object):
     def __get_component(self, name):
         return getattr(self, '__comp_' + name)        
 
-    def remove_comments(self, string):
+    def _removeComments(self, string):
         """
         This takes a raw Finesse code string and removes any comments
         It returns a list of lines however, not a multiline string.

@@ -7,3 +7,17 @@
 *.pdf
 *.out
 *.bak
+*.bck
+*.bkp
+*.gnu
+*.p
+*.log
+*.m
+*.pickle
+*.mat
+
+.ipynb_checkpoints
+build
+dist
+bin
+MANIFEST
