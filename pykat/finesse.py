@@ -824,8 +824,11 @@ class Signals(object):
             rtn.extend(p.getFinesseText())
         
         return rtn
-        
+
 class Block:
+    class Placeholder(object):
+        pass
+        
     def __init__(self, name):
         self.__name = name
         self.contents = [] # List of objects and strings of finesse code
@@ -1342,7 +1345,7 @@ class kat(object):
             after_process = ([], [])
         
             for line in commands:
-                if len(line.strip()) >= 2:
+                if len(line.strip()) >= 1:
                     line = line.strip()
 
                     # Looking for block start or end
@@ -1430,6 +1433,11 @@ class kat(object):
                             
                     first = line.split(" ",1)[0]
                     obj = None
+                    
+                    def get_ph(): 
+                        ph = Block.Placeholder()
+                        self.__blocks[self.__currentTag].contents.append(ph)
+                        return ph
 
                     if(first == "m" or first == "m1" or first == "m2"):
                         obj = pykat.components.mirror.parseFinesseText(line)
@@ -1487,13 +1495,13 @@ class kat(object):
                     elif(first == "pdtype"):
                         after_process[0].append((line, self.__currentTag))
                     elif(first == "cav"):
-                        after_process[0].append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag, get_ph()))
                     elif(first == "func"):
-                        after_process[0].append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag, get_ph()))
                     elif(first == "variable"):
-                        after_process[0].append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag, get_ph()))
                     elif(first == "lock"):
-                        after_process[0].append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag, get_ph()))
                     elif(first == "attr"):
                         after_process[0].append((line, self.__currentTag))
                     elif(first == "noxaxis"):
@@ -1541,7 +1549,7 @@ class kat(object):
                         if self.verbose:
                             print ("Ignoring Gnuplot/Python terminal command '{0}'".format(line))
                     elif(first == "fsig"):
-                        after_process[0].append((line, self.__currentTag))
+                        after_process[0].append((line, self.__currentTag, get_ph()))
                     elif(first == "noplot"):
                         after_process[1].append((line, self.__currentTag))
                     elif(first == "put" or first == "put*"):
@@ -1579,24 +1587,33 @@ class kat(object):
             # components to exist first before they can be processed
             for _ in after_process:
                 for item in _:
-                    line = item[0]
-                    first, rest = line.split(" ",1)
-                    block = item[1]
-                
+                    if len(item) == 2:
+                        line = item[0]
+                        first, rest = line.split(" ",1)
+                        block = item[1]
+                        plc_holder = None
+                    elif len(item) == 3:
+                        line = item[0]
+                        first, rest = line.split(" ",1)
+                        block = item[1]
+                        plc_holder = item[2]
+                    else:
+                        pkex.printWarning("Unexpected number of items")
+                        
                     if first == "gauss" or first == "gauss*" or first == "gauss**":
                         pykat.commands.gauss.parseFinesseText(line, self)
                     
                     elif (first == "cav"):
-                        self.add(pykat.commands.cavity.parseFinesseText(line, self), block=block)
+                        self.add(pykat.commands.cavity.parseFinesseText(line, self), block=block, placeholder=plc_holder)
                     
                     elif (first == "lock"):
-                        self.add(pykat.commands.lock.parseFinesseText(line, self), block=block)
+                        self.add(pykat.commands.lock.parseFinesseText(line, self), block=block, placeholder=plc_holder)
                     
                     elif (first == "func"):
-                        self.add(pykat.commands.func.parseFinesseText(line, self), block=block)
+                        self.add(pykat.commands.func.parseFinesseText(line, self), block=block, placeholder=plc_holder)
                         
                     elif (first == "variable"):
-                        self.add(pykat.commands.variable.parseFinesseText(line, self), block=block)
+                        self.add(pykat.commands.variable.parseFinesseText(line, self), block=block, placeholder=plc_holder)
                     
                     elif (first == "noplot"):
                         if not hasattr(self, rest):
@@ -2281,12 +2298,29 @@ class kat(object):
     def hasNamedObject(self, name):
         return name in self.__components or name in self.__detectors or name in self.__commands
         
-    def add(self, obj, block=NO_BLOCK):
+    def add(self, obj, block=NO_BLOCK, placeholder=None):
+        """
+        Adds an object into the kat object. The object added should be a pykat object, such as
+        a component, detector, command, etc.
+        
+        block: Name of the block to put this component into to
+        placeholder: The position in the block can be reserved by adding in a Block.Placeholder object.
+                     This placeholder object will be replaced with the added object.
+        """
         try:
             self._unfreeze()
             obj.tag = block
-            self.__blocks[block].contents.append(obj)
             
+            if placeholder is None:
+                self.__blocks[block].contents.append(obj)
+            else:
+                c = self.__blocks[block].contents
+                try:
+                    c[c.index(placeholder)] = obj
+                    del placeholder
+                except ValueError as ex:
+                    raise pkex.BasePyKatException("Placeholder for {} was no found in block {}".format(obj, block))            
+                
             if isinstance(obj, Component):
                 
                 if obj.name in self.__components :

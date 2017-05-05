@@ -377,7 +377,7 @@ def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
               
-def make_kat(name="design", katfile=None, verbose = False, debug=False):
+def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
@@ -390,6 +390,9 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False):
         - design_low_power: A file based on the design parameters for the final aLIGO setup.
           20W input, T_SRM = 35%. The higher SRM transmission mirror is used for low power
           operation. 20W input power from O1 observation.
+    
+    keepComments: If true it will keep the original comments from the file
+    preserveComments: If true it will keep the const commands in the kat
     """
     names = ['design', 'design_low_power']
     
@@ -421,7 +424,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False):
         
         katkile = os.path.join(kat.IFO._data_path, name+".kat")
         
-        kat.load(katkile)
+        kat.load(katkile, keepComments=keepComments, preserveConstants=preserveConstants)
         kat.IFO.rawBlocks.read(katkile)
         
     # ----------------------------------------------------------------------

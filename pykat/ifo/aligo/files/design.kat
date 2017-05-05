@@ -1,8 +1,7 @@
 %%% FTblock header
 #--------------------------------------------------------------------------
-# an aLIGO file to introduce a PI to one arm
-# based on 
-# aLIGO_IFO_AWC_tuning_DCoff_maxtem4.kat (details in the original file header)
+# An aLIGO design file base on older aLIGO_IFO_AWC_tuning_DCoff_maxtem4.kat
+# (details in the original file header)
 #
 # updated to re-include locks 
 # (errsig, powers and locks blocks, plus EOMs 1 and 2 (9 and 45kHz))
@@ -88,7 +87,6 @@ s lmod3 1 n4 nREFL # TODO
 # PRM
 # AR surface
 m2 PRMAR 0 40u 0 nREFL nPRMs1
-#bs2 PRMAR 35u 4.5u 0 0 nREFL nPRMAR1 nPRMs1 nPRMAR2
 # Substrate
 s sPRMsub1 0.0737 $nsilica nPRMs1 nPRMs2
 # HR surface
@@ -155,7 +153,6 @@ s ITMY_th2 0 nITM_th3 nITMY1
 
 # Y arm input mirror
 m2 ITMYAR 0 20u 0 nITMY1 nITMYs1
-#bs2 ITMYAR 20u 0 0 0 nITMY1 nITMYAR1 nITMYs1 nITMYAR2
 s ITMYsub 0.2 $nsilica nITMYs1 nITMYs2
 m1 ITMY 0.014 $Mloss $phi_ITMY nITMYs2 nITMY2
 attr ITMY Rc -1934
@@ -167,7 +164,6 @@ s LY $Larm nITMY2 nETMY1
 m1 ETMY 5u $Mloss $phi_ETMY nETMY1 nETMYs1
 s ETMYsub 0.2 $nsilica nETMYs1 nETMYs2
 m2 ETMYAR 0 500u 0 nETMYs2 nPTY
-#bs2 ETMYAR 500u 0 0 0 nETMYs2 nETMYAR1 nPTY nETMYAR1
 attr ETMY Rc 2245
 attr ETMY mass 40
 attr ITMY mass 40
@@ -189,7 +185,6 @@ s ITMX_th2 0 nITMX_th3 nITMX1
 
 # X arm input mirror
 m2 ITMXAR 0 20u 0 nITMX1 nITMXs1 
-#bs2 ITMXAR 20u 0 0 0 nITMX1 nITMXAR1 nITMXs1 nITMXAR2
 s ITMXsub 0.2 $nsilica nITMXs1 nITMXs2
 m1 ITMX 0.014 $Mloss $phi_ITMX nITMXs2 nITMX2
 attr ITMX Rc -1934
@@ -200,7 +195,6 @@ s LX $Larm nITMX2 nETMX1
 # X arm end mirror
 m1 ETMX 5u $Mloss $phi_ETMX nETMX1 nETMXs1
 s ETMXsub 0.2 $nsilica nETMXs1 nETMXs2
-#bs2 ETMXAR 500u 0 0 0 nETMXs2 nETMXAR1 nPTX nETMXAR1
 m2 ETMXAR 0 500u 0 nETMXs2 nPTX 
 attr ETMX Rc 2245
 attr ETMX mass 40
@@ -275,7 +269,6 @@ const phi_BS 0
 %%% FTblock powers
 ###########################################################################
 pd P_DC_AS  nSRM2
-# pd P_DC_OMC nOMC_HROC_trans
 pd PIMCtrans nREFL*
 pd Px nITMX2
 pd Py nITMY2
@@ -285,7 +278,6 @@ ad prc0 0 nPRM2
 ad prcf1 $f1 nPRM2
 ad prcf2 $f2 nPRM2
 
-#ad aoc0 0 nOMC_HROC_trans
 ad asc0 0 nSRM2
 ad asf1 $f1 nSRM2
 ad asf2 $f2 nSRM2

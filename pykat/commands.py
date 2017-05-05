@@ -107,6 +107,10 @@ class Constant(Command):
         self.usedBy = []
         self._freeze()
 
+    def _on_kat_remove(self):
+        Command._on_kat_remove(self)
+        self._kat.constants.pop(self.name)
+
     def getFinesseText(self):
         return "const {name} {value}".format(name=self.name, value=self.value)
     
@@ -123,6 +127,8 @@ class Constant(Command):
     def value(self): return self.__value
     @value.setter
     def value(self, Value): self.__value = SIfloat(Value)
+    
+    def __str__(self): return "$"+self.name
     
 class variable(Command):
     def __init__(self, name, value):
@@ -172,7 +178,7 @@ class func(Command):
                 rtn.append("noplot " + self.name)
         
             rtn.append("func {name} = {value}".format(name=self.name, value=str(self.value)))
-
+            rtn.extend(self.output._getPutFinesseText())
         return rtn
 
     @staticmethod
@@ -217,15 +223,20 @@ class lock(Command):
 
     def getFinesseText(self):
         if self.enabled:
+            rtn = []
             cmds = "{name} {var} {gain} {accuracy}".format( name=self.name,
                                                             var=str(self.variable),
                                                             gain=str(self.gain),
                                                             accuracy=str(self.accuracy))
             
             if self.singleLock:
-                return "lock* %s" % cmds
+                rtn.append("lock* %s" % cmds)
             else:
-                return "lock %s" % cmds
+                rtn.append("lock %s" % cmds)
+            
+            rtn.extend(self.output._getPutFinesseText())
+            
+            return rtn
         else:
             return None
 

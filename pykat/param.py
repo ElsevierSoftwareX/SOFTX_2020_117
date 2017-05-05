@@ -47,25 +47,25 @@ class putable(object):
         if var is not None:
             self._putter.register(self)
         
-    def _getPutFinesseText(self):
-        rtn = []
-
-        if self._isPutable and self._putter is not None:
-            putter_enabled = True
-                
-            if hasattr(self._putter.owner, 'enabled'):
-                putter_enabled = self._putter.owner.enabled
-                                
-            if putter_enabled:
-                if self._alt:
-                    alt = '*'
-                else:
-                    alt = ''
-    
-                # if something is being put to this 
-                rtn.append("put{alt} {comp} {param} ${value}".format(alt=alt, comp=self._component_name, param=self._parameter_name, value=self._putter.put_name()))
-        
-        return rtn
+    # def _getPutFinesseText(self):
+    #     rtn = []
+    #
+    #     if self._isPutable and self._putter is not None:
+    #         putter_enabled = True
+    #
+    #         if hasattr(self._putter.owner, 'enabled'):
+    #             putter_enabled = self._putter.owner.enabled
+    #
+    #         if putter_enabled:
+    #             if self._alt:
+    #                 alt = '*'
+    #             else:
+    #                 alt = ''
+    #
+    #             # if something is being put to this
+    #             rtn.append("put{alt} {comp} {param} ${value}".format(alt=alt, comp=self._component_name, param=self._parameter_name, value=self._putter.put_name()))
+    #
+    #     return rtn
         
         
 class putter(object):
@@ -120,6 +120,28 @@ class putter(object):
     
     def put_name(self): return self._put_name
     
+    def _getPutFinesseText(self):    
+        rtn = []
+        has = hasattr(self.owner, 'enabled')
+        
+        if (has and not self.owner.enabled):
+            return rtn
+            
+        if self.isPutter and len(self.putees) > 0:
+            for _ in self.putees:
+
+                has = hasattr(_.owner, 'enabled')
+                if (has and _.owner.enabled) or not has:
+                    if _._alt:
+                        alt = '*'
+                    else:
+                        alt = ''
+    
+                    # if something is being put to this 
+                    rtn.append("put{alt} {comp} {param} ${value}".format(alt=alt, comp=_._component_name, param=_._parameter_name, value=self.put_name()))
+        
+        return rtn
+        
 @canFreeze
 class Param(putable, putter):
 
@@ -195,6 +217,8 @@ class Param(putable, putter):
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
         else:
             if self._isConst:
+                if self._constName[1:] not in self.owner._kat.constants:
+                    raise pkex.BasePyKatException("Parameter {}.{} could not find a Finesse constant called `{}`".format(self.owner.name, self.name, self._constName))
                 return self.owner._kat.constants[self._constName[1:]].value
             else:
                 return self._value
@@ -234,8 +258,8 @@ class Param(putable, putter):
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
             
         rtn = []
-        
-        if self.isPutable: rtn.extend(self._getPutFinesseText())
+        #if self.isPutable: rtn.extend(self._getPutFinesseText())
+        if self.isPutter: rtn.extend(self._getPutFinesseText())
         
         # if this parameter is being put somewhere then we need to
         # set it as a variable

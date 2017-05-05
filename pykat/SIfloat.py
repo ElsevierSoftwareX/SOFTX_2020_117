@@ -7,6 +7,7 @@ import os
 import re
 import pykat.exceptions as pkex
 import numpy as np
+import pykat
 
 __suffix = {'y': 'e-24',  # yocto
             'z': 'e-21',  # zepto
@@ -28,6 +29,9 @@ __suffix = {'y': 'e-24',  # yocto
 __exceptions = ["$fs", "$mfs"]
 
 def SIfloat(value):
+    if isinstance(value, pykat.commands.Constant):
+        return '$' + value.name
+        
     if str(value).startswith('$'):
         return value
         
