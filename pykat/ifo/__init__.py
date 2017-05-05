@@ -2,6 +2,8 @@ import pykat
 import pykat.exceptions as pkex
 import pykat.external.peakdetect as peak
 
+import matplotlib.pyplot as plt
+
 import numpy as np
 import inspect
 import math
@@ -106,14 +108,22 @@ def find_peak(out, detector, minmax='max', debug=False):
     if debug:
         plt.figure()
         plt.plot(out.x,out[detector])
+        plt.show()
+        
         print("max: ")
         print(_max)
         print("min: ")
         print(_min)
         
+    if len(_max) == 0 and minmax == "max":
+        raise pkex.BasePyKatException("No maximum peaks found in {}".format(detector))
+    if len(_min) == 0 and minmax == "min":
+        raise pkex.BasePyKatException("No minimum peaks found in {}".format(detector))
+        
     if minmax == 'max':
         X = [p[0] for p in _max]
         Y = [p[1] for p in _max]
+        
         X_out = X[np.argmax(Y)]
         Y_out = np.max(Y)
     elif minmax == 'min':
@@ -306,7 +316,6 @@ class IFO(object):
         kat = self.kat.deepcopy()
         kat.parseCommands(self.scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
         kat.parseCommands(DOF.signal())
-        
         return kat.run()
 
     def scan_optics(self, _optics, _factors, xlimits=[-100, 100], steps=200,relative=False): 

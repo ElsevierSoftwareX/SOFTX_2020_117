@@ -134,10 +134,11 @@ class variable(Command):
     def __init__(self, name, value):
         Command.__init__(self, name, False)
         self.value = value
+        
         self._freeze()
         
     def getFinesseText(self):
-        return "variable {name} {value}".format(name=self.name, value=self.value)
+        return "var {name} {value}".format(name=self.name, value=self.value)
     
     @staticmethod
     def parseFinesseText(line, kat):
@@ -591,9 +592,14 @@ class xaxis(Command):
         comp_name = self.__comp.name if hasattr(self.__comp, "name") else self.__comp
         param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
         
-        return '{axis_type} {0} {1} {2} {3:.16g} {4:.16g} {5}'.format(
+        rtn =   ['{axis_type} {0} {1} {2} {3:.16g} {4:.16g} {5}'.format(
                 comp_name, param_name, self.scale,
-                self.limits[0], self.limits[1], self.steps, axis_type=self._axis_type);
+                self.limits[0], self.limits[1], self.steps, axis_type=self._axis_type)]
+            
+        rtn.extend(self.x._getPutFinesseText())
+        rtn.extend(self.mx._getPutFinesseText())
+        
+        return rtn
 
 class x2axis(xaxis):
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="x2axis"):

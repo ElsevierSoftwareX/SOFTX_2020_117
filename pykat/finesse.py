@@ -1498,7 +1498,7 @@ class kat(object):
                         after_process[0].append((line, self.__currentTag, get_ph()))
                     elif(first == "func"):
                         after_process[0].append((line, self.__currentTag, get_ph()))
-                    elif(first == "variable"):
+                    elif(first == "var"):
                         after_process[0].append((line, self.__currentTag, get_ph()))
                     elif(first == "lock"):
                         after_process[0].append((line, self.__currentTag, get_ph()))
@@ -1612,7 +1612,7 @@ class kat(object):
                     elif (first == "func"):
                         self.add(pykat.commands.func.parseFinesseText(line, self), block=block, placeholder=plc_holder)
                         
-                    elif (first == "variable"):
+                    elif (first == "var"):
                         self.add(pykat.commands.variable.parseFinesseText(line, self), block=block, placeholder=plc_holder)
                     
                     elif (first == "noplot"):
