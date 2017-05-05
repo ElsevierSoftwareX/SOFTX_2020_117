@@ -100,18 +100,45 @@ class Command(object):
     @property
     def removed(self): return self.__removed
 
+class Constant(Command):
+    def __init__(self, name, value):
+        Command.__init__(self, name, False)
+        self.value = value
+        self.usedBy = []
+        self._freeze()
 
+    def _on_kat_remove(self):
+        Command._on_kat_remove(self)
+        self._kat.constants.pop(self.name)
 
-
-
+    def getFinesseText(self):
+        return "const {name} {value}".format(name=self.name, value=self.value)
+    
+    @staticmethod
+    def parseFinesseText(line, kat):
+        v = line.split()
+        
+        if len(v) != 3:
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse const command".format(line))
+        
+        return Constant(v[1], SIfloat(v[2]))
+    
+    @property
+    def value(self): return self.__value
+    @value.setter
+    def value(self, Value): self.__value = SIfloat(Value)
+    
+    def __str__(self): return "$"+self.name
+    
 class variable(Command):
     def __init__(self, name, value):
         Command.__init__(self, name, False)
-        self.__value = value
+        self.value = value
+        
         self._freeze()
         
     def getFinesseText(self):
-        return "variable {name} {value}".format(name=self.name, value=self.value)
+        return "var {name} {value}".format(name=self.name, value=self.value)
     
     @staticmethod
     def parseFinesseText(line, kat):
@@ -152,7 +179,7 @@ class func(Command):
                 rtn.append("noplot " + self.name)
         
             rtn.append("func {name} = {value}".format(name=self.name, value=str(self.value)))
-
+            rtn.extend(self.output._getPutFinesseText())
         return rtn
 
     @staticmethod
@@ -197,15 +224,20 @@ class lock(Command):
 
     def getFinesseText(self):
         if self.enabled:
+            rtn = []
             cmds = "{name} {var} {gain} {accuracy}".format( name=self.name,
                                                             var=str(self.variable),
                                                             gain=str(self.gain),
                                                             accuracy=str(self.accuracy))
             
             if self.singleLock:
-                return "lock* %s" % cmds
+                rtn.append("lock* %s" % cmds)
             else:
-                return "lock %s" % cmds
+                rtn.append("lock %s" % cmds)
+            
+            rtn.extend(self.output._getPutFinesseText())
+            
+            return rtn
         else:
             return None
 
@@ -560,9 +592,14 @@ class xaxis(Command):
         comp_name = self.__comp.name if hasattr(self.__comp, "name") else self.__comp
         param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
         
-        return '{axis_type} {0} {1} {2} {3:.16g} {4:.16g} {5}'.format(
+        rtn =   ['{axis_type} {0} {1} {2} {3:.16g} {4:.16g} {5}'.format(
                 comp_name, param_name, self.scale,
-                self.limits[0], self.limits[1], self.steps, axis_type=self._axis_type);
+                self.limits[0], self.limits[1], self.steps, axis_type=self._axis_type)]
+            
+        rtn.extend(self.x._getPutFinesseText())
+        rtn.extend(self.mx._getPutFinesseText())
+        
+        return rtn
 
 class x2axis(xaxis):
     def __init__(self, scale, limits, param, steps, comp=None, axis_type="x2axis"):

@@ -8,7 +8,7 @@ if six.PY2:
 	import exceptions
 import os, sys
 
-def PrintError(message, exception):
+def PrintError(message, exception=None):
     size = 62
     
     print("\033[91m")
@@ -20,15 +20,36 @@ def PrintError(message, exception):
         for a in wrap(message, size):
             print(a)
             
-        for a in wrap(str(exception.msg), size):
-            a = a.replace("*** ", "\n")
-            a = a.replace("** ", "\n")
-            print(a)
+        if exception is not None:
+            for a in wrap(str(exception.msg), size):
+                a = a.replace("*** ", "\n")
+                a = a.replace("** ", "\n")
+                print(a)
             
         print ("-" * size)
     finally:
         print ("\033[0m")
         sys.exit(1)
+
+def printWarning(message, exception=None):
+    size = 62
+    
+    print("\033[93m")
+    
+    try:
+        from textwrap import wrap, fill
+        
+        for a in wrap(message, size):
+            print(a)
+
+        if exception is not None:
+            for a in wrap(str(exception.msg), size):
+                a = a.replace("*** ", "\n")
+                a = a.replace("** ", "\n")
+                print(a)
+            
+    finally:
+        print ("\033[0m")
     
 
 class BasePyKatException(Exception):

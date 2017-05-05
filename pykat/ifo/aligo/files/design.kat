@@ -1,0 +1,360 @@
+%%% FTblock header
+#--------------------------------------------------------------------------
+# An aLIGO design file base on older aLIGO_IFO_AWC_tuning_DCoff_maxtem4.kat
+# (details in the original file header)
+#
+# updated to re-include locks 
+# (errsig, powers and locks blocks, plus EOMs 1 and 2 (9 and 45kHz))
+# 
+# - R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
+# - Advanced LIGO, CQG, 2015 
+#   http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
+# - G. Billingsley. LIGO core optics reference page. https://galaxy.ligo. caltech.edu/optics/
+# 
+# Anna Green, Andreas Freise, 28th November 2016
+#--------------------------------------------------------------------------
+#
+# References used for aLIGO parameters
+# [1] R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
+# [2] Advanced LIGO, CQG, 2015 
+#     http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
+# [3] G. Billingsley. LIGO core optics reference page. https://galaxy.ligo.caltech.edu/optics/
+# [4] D. Martynov, `Lock Acquisition and Sensitivity Analysis of Advanced
+#     LIGO Interferometers', PhD thesis, Caltech, 2015
+#     http://thesis.library.caltech.edu/8899/1/DenisMartynovThesis.pdf
+# [4] A. Staley, `Locking the Advanced LIGO Gravitational Wave Detector:
+#     with a focus on the Arm Length Stabilization Technique', PhD thesis,
+#     Columbia University, 2015
+#     https://academiccommons.columbia.edu/catalog/ac:189457
+#
+# Changes since 12/2016:
+# - 06.12.2016, initial corrections compared to previous files, Anna and Andreas
+#
+#   Bug fixes
+#   - AR coatings of ETMs and ITMs were using mirror components with non-zero
+#     reflectivity. This is wrng as it causes residual resoances with the HR
+#     surfaces and ignores the wedge in the substrate. Instead the mirror component
+#     should have losses but no reflectivity. Alternatively beamsplitter components
+#     with non-zero reflectivity can be used to detect the AR reflections
+#   - Same as above for PRM and SRM AR coatings
+#   - change order of `cav' commands, arm cavities need to come first
+#
+#   Change of parameter values
+#   - BS substrate length were assymetric and did not match substrate thickness,
+#     changed to symmetric 0.0687m, using pykat.GWdetectors.aLIGO.BSpath(0.06)
+#   - changed SRM transmission from 35% to 20%, matching the aLIGO 2015 paper
+#   - changed arm length to L=3994.4692, see [4], Table 10.2
+#
+#   Changes in file structure
+#   - removed length calculation fucntions for PRC and SRC sub-length
+#     and added length values into space components
+#   - removed maxtem 4 command from HOMs block
+#   
+#   Naming changes
+#   - changed naming for thermal lens components
+#   - changed naming of PRMHR to PRM and node names in PRM substrate
+#   - changed naming of SRMHR to SRM and node names in SRM substrate
+#   - changed name of ITMHR to ITM and ETMHR to ETM
+#   - changed names of arm spaces from LXarm, LYarm to LX, LY
+#		- changed name of HOMs block to cavities
+#		- changed PR2 node4 name from dump11 to nAPOP (auxilliary POP)
+#
+#
+#--------------------------------------------------------------------------
+%%% FTend header
+
+
+%%% FTblock laser
+###########################################################################
+# Laser and input optics
+l L0 125 0 n0
+s lmod1 1 n0 n1
+# modulators for core interferometer sensing - Advanced LIGO, CQG, 2015 
+# http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
+# 9MHz (CARM, PRC, SRC loops)
+const f1 9099471
+const f2 45497355
+mod mod1 $f1 0.18 1 pm n1 n2
+s lmod2 1 n2 n3
+# 45MHz (MICH, SRC loops)
+mod mod2 $f2 0.18 1 pm n3 n4
+s lmod3 1 n4 nREFL # TODO
+###########################################################################
+%%% FTend laser
+
+%%% FTblock PRC
+###########################################################################
+# PRM
+# AR surface
+m2 PRMAR 0 40u 0 nREFL nPRMs1
+# Substrate
+s sPRMsub1 0.0737 $nsilica nPRMs1 nPRMs2
+# HR surface
+m1 PRM 0.03 8.5u $phi_PRM nPRMs2 nPRM2
+attr PRM Rc 11.009
+# Distance between PRM and PR2
+s lp1 16.6107 nPRM2 nPR2a
+# PR2
+bs1 PR2 250u $Mloss 0 -0.79 nPR2a nPR2b nPOP nAPOP
+attr PR2 Rc -4.545
+# Distance from PR2 to PR3
+s lp2 16.1647 nPR2b nPR3a
+# PR3
+bs1 PR3 0 $Mloss 0 0.615 nPR3a nPR3b dump12 dump13
+attr PR3 Rc 36.027
+# Distance from PR3
+s lp3 19.5381 nPR3b nPRBS
+
+###########################################################################
+%%% FTend PRC
+
+%%% FTblock BS
+###########################################################################
+# BS beamsplitter
+##------------------------------------------------------------ 
+## BS 
+##                             ^ 
+##                  to IMY     |      
+##                             |      ,'-.
+##                             |     +    `. 
+##                        nYBS |   ,'       :'
+##      nPR3b                  |  +i1      +
+##         ---------------->    ,:._  i2 ,'
+##    from the PRC       nPRBS + \  `-. + nXBS
+##                           ,' i3\   ,' --------------->
+##                          +      \ +     to IMX
+##                        ,'     i4.'
+##                       `._      ..
+##                          `._ ,' |nSRBS
+##                             -   |
+##                                 |to the SRC
+##                                 |
+##                                 v
+##------------------------------------------------------------
+bs1 BS 0.5 $Mloss $phi_BS 45 nPRBS nYBS nBSi1 nBSi3
+s BSsub1 0.0687 $nsilica nBSi1 nBSi2
+s BSsub2 0.0687 $nsilica nBSi3 nBSi4
+bs2 BSAR1 50u 0 0 -29.195 nBSi2 dump14 nXBS nPOX
+bs2 BSAR2 50u 0 0 29.195 nBSi4 dump15 nSRBS dump16
+
+###########################################################################
+%%% FTend BS
+
+%%% FTblock Yarm
+###########################################################################
+# Distance from beam splitter to Y arm input mirror
+s ly1 5.0126 nYBS nITMY1a
+
+# Thermal lens correction
+lens ITMY_therm $th_f nITMY1a nITM_th1
+s ITMY_th1 0 nITM_th1 nITM_th2
+lens ITMY_lens inf nITM_th2 nITM_th3
+s ITMY_th2 0 nITM_th3 nITMY1
+
+# Y arm input mirror
+m2 ITMYAR 0 20u 0 nITMY1 nITMYs1
+s ITMYsub 0.2 $nsilica nITMYs1 nITMYs2
+m1 ITMY 0.014 $Mloss $phi_ITMY nITMYs2 nITMY2
+attr ITMY Rc -1934
+
+# Y arm length
+s LY $Larm nITMY2 nETMY1
+
+# Y arm end mirror
+m1 ETMY 5u $Mloss $phi_ETMY nETMY1 nETMYs1
+s ETMYsub 0.2 $nsilica nETMYs1 nETMYs2
+m2 ETMYAR 0 500u 0 nETMYs2 nPTY
+attr ETMY Rc 2245
+attr ETMY mass 40
+attr ITMY mass 40
+
+###########################################################################
+%%% FTend Yarm
+
+%%% FTblock Xarm
+###########################################################################
+
+# Distance from beam splitter to X arm input mirror 
+s lx1 4.993 nXBS nITMX1a
+
+# Thermal lens correction
+lens ITMX_therm $th_f nITMX1a nITMX_th1
+s ITMX_th1 0 nITMX_th1 nITMX_th2
+lens ITMX_lens inf nITMX_th2 nITMX_th3
+s ITMX_th2 0 nITMX_th3 nITMX1
+
+# X arm input mirror
+m2 ITMXAR 0 20u 0 nITMX1 nITMXs1 
+s ITMXsub 0.2 $nsilica nITMXs1 nITMXs2
+m1 ITMX 0.014 $Mloss $phi_ITMX nITMXs2 nITMX2
+attr ITMX Rc -1934
+
+# X arm length
+s LX $Larm nITMX2 nETMX1
+
+# X arm end mirror
+m1 ETMX 5u $Mloss $phi_ETMX nETMX1 nETMXs1
+s ETMXsub 0.2 $nsilica nETMXs1 nETMXs2
+m2 ETMXAR 0 500u 0 nETMXs2 nPTX 
+attr ETMX Rc 2245
+attr ETMX mass 40
+attr ITMX mass 40
+
+###########################################################################
+%%% FTend Xarm
+
+%%% FTblock SRC
+###########################################################################
+# Distance to SR3
+s ls3 19.3661 nSRBS nSR3b
+# SR3
+bs1 SR3 0 $Mloss 0 0.785 nSR3b nSR3a dump17 dump18
+attr SR3 Rc 35.972841
+# Distance from SR3 to SR2
+s ls2 15.4435 nSR3a nSR2b
+# SR2
+bs1 SR2 0 $Mloss 0 -0.87 nSR2b nSR2a dump19 dump20
+attr SR2 Rc -6.406
+# Distance from SR2 to SRM
+s ls1 15.7586 nSR2a nSRM1
+# Signal recycling mirror SRM-08
+m1 SRM 0.20 8.7u $phi_SRM nSRM1 nSRMs1
+s SRMsub 0.0749 $nsilica nSRMs1 nSRMs2
+m2 SRMAR 0 50n 0 nSRMs2 nSRM2
+#bs2 SRMAR 50n 0 0 0 nSRMs2 nSRMAR1 nSRM2 nSRMAR2
+attr SRM Rc -5.6938
+
+###########################################################################
+%%% FTend SRC
+
+%%% FTblock cavities
+###########################################################################
+#cav cavIMC MC2 nMC2in MC2 nMC2refl 
+cav cavXARM ITMX nITMX2 ETMX nETMX1
+cav cavYARM ITMY nITMY2 ETMY nETMY1
+cav cavPRX PRM nPRM2 ITMX nITMXs2
+cav cavPRY PRM nPRM2 ITMY nITMYs2
+cav cavSRX SRM nSRM1 ITMX nITMXs2
+cav cavSRY SRM nSRM1 ITMY nITMYs2
+# removed OMC
+
+###########################################################################
+%%% FTend cavities
+
+%%% FTblock constants
+###########################################################################
+const nsilica 1.44963098985906
+const nTGG 1.954
+const nCalcite 1.65846
+const Mloss 37.5u
+const Larm 3994.4692
+const fM 36.397884M
+const fP 54.596826M
+const th_f 34.5k
+###########################################################################
+%%% FTend constants
+
+%%% FTblock tunings
+###########################################################################
+const phi_SRM 90.0
+const phi_PRM 0.0
+const phi_ITMX 0.0
+const phi_ITMY 0.0
+const phi_ETMX 0.0
+const phi_ETMY 0.0
+const phi_BS 0
+###########################################################################
+%%% FTend tunings
+
+%%% FTblock powers
+###########################################################################
+pd P_DC_AS  nSRM2
+pd PIMCtrans nREFL*
+pd Px nITMX2
+pd Py nITMY2
+pd Pprc nPRM2
+pd Psrc nSRM1*
+ad prc0 0 nPRM2
+ad prcf1 $f1 nPRM2
+ad prcf2 $f2 nPRM2
+
+ad asc0 0 nSRM2
+ad asf1 $f1 nSRM2
+ad asf2 $f2 nSRM2
+ad src0 0 nSRM1*
+ad srcf1 $f1 nSRM1*
+ad srcf2 $f2 nSRM1*
+###########################################################################
+%%% FTend powers
+
+%%% FTblock errsigs
+###########################################################################
+
+# N.B. the I signal refers to most symmetric signal, not greatest slope.
+pd1 REFL_f1_I $f1 101 nREFL
+pd1 REFL_f1_Q $f1 191 nREFL
+pd1 REFL_f2_I $f2 14 nREFL
+pd1 REFL_f2_Q $f2 104 nREFL
+pd1 POP_f1_I $f1 101 nPOP
+pd1 POP_f1_Q $f1 191 nPOP
+pd1 POP_f2_I $f2 13 nPOP
+pd1 POP_f2_Q $f2 103 nPOP
+pd1 AS_f1_I $f1 0 nSRM2
+pd1 AS_f1_Q $f1 90 nSRM2
+pd1 AS_f2_I $f2 13 nSRM2
+pd1 AS_f2_Q $f2 103 nSRM2
+#pd1 OMClockpd $fdither -1.22 nAS
+
+###########################################################################
+%%% FTend errsigs
+
+%%% FTblock locks
+###########################################################################
+set PRCL_err POP_f1_I  re
+set MICH_err POP_f2_Q  re
+set CARM_err REFL_f1_I re
+set SRCL_err REFL_f2_I re
+set AS_f2_I_re AS_f2_I re
+
+func DARM_err = $AS_f2_I_re - 0.728491141201167
+
+lock PRCL_lock $PRCL_err -2.769589345492097 10u
+lock MICH_lock $MICH_err 12.029218280984777 10u
+lock CARM_lock $CARM_err 0.0001193478133584417 10u
+lock DARM_lock $DARM_err -0.002325573315055089 10u
+lock SRCL_lock $SRCL_err -4.886172716885925 10u
+
+func mMICH_lock = 0 - $MICH_lock
+func ETMX_lock  = $CARM_lock + $MICH_lock + $DARM_lock
+func ETMY_lock  = $CARM_lock - $MICH_lock - $DARM_lock
+
+put* PRM     phi     $PRCL_lock
+put* PRMAR   phi     $PRCL_lock
+
+put* ITMX    phi     $MICH_lock
+put* ITMXAR  phi     $MICH_lock
+put* ITMY    phi     $mMICH_lock
+put* ITMYAR  phi     $mMICH_lock
+
+put* ETMX    phi     $ETMX_lock
+put* ETMXAR  phi     $ETMX_lock
+
+put* ETMY    phi     $ETMY_lock
+put* ETMYAR  phi     $ETMY_lock
+
+put* SRM     phi     $SRCL_lock
+
+
+noplot PRCL_lock
+noplot SRCL_lock
+noplot MICH_lock
+noplot DARM_lock
+noplot CARM_lock
+noplot mMICH_lock
+noplot ETMX_lock
+noplot ETMY_lock
+
+
+###########################################################################
+%%% FTend locks
+

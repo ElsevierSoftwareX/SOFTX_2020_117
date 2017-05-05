@@ -20,6 +20,7 @@ from pykat.testing import utils
 import sys, traceback
 import stat
 import math
+from pykat.testing.web_server import repo_url
 
 def initProcess(dkats):
     #print "init!!!", dkats
@@ -217,7 +218,7 @@ class FinesseTestProcess(Thread):
                 shutil.rmtree(BUILD_PATH)
 
             print "Checking out finesse base..."
-            utils.git(["clone","https://gitlab.aei.uni-hannover.de/finesse/finesse.git", BUILD_PATH])
+            utils.git(["clone","%s/finesse.git" % repo_url, BUILD_PATH])
 
             print "Checking out and building develop version of finesse " + self.git_commit
             

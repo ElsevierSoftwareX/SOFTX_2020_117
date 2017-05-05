@@ -78,11 +78,11 @@ def adaptive_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, smap=None, delta
             ylims = (min(smap.y), max(smap.y))
             
             def Rfunc(y,x):
-                Nfuncs[-1] += len(x)
+                #Nfuncs[-1] += len(x)
                 return (Hg_in.Unm(x+delta[0], y+delta[1]) * smap.z_xy(x=x,y=y) * Hg_out.Unm(x, y).conjugate()).real
                 
             def Ifunc(y,x):
-                Nfuncs[-1] += len(x)
+                #Nfuncs[-1] += len(x)
                 return (Hg_in.Unm(x+delta[0], y+delta[1]) * smap.z_xy(x=x,y=y) * Hg_out.Unm(x, y).conjugate()).imag
             
         else:
@@ -90,13 +90,13 @@ def adaptive_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, smap=None, delta
             ylims = (0, params["aperture"])
             
             def Rfunc(r, phi):
-                Nfuncs[-1] += len(x)
+                #Nfuncs[-1] += len(phi)
                 x = r*np.cos(phi)
                 y = r*np.sin(phi)
                 return (r * Hg_in.Unm(x, y) * smap.z_xy(x=x,y=y) * Hg_out.Unm(x, y).conjugate()).real
                 
             def Ifunc(r, phi):
-                Nfuncs[-1] += len(x)
+                #Nfuncs[-1] += len(x)
                 x = r*np.cos(phi)
                 y = r*np.sin(phi)
                 return (r * Hg_in.Unm(x, y) * smap.z_xy(x=x,y=y) * Hg_out.Unm(x, y).conjugate()).imag

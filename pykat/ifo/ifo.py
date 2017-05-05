@@ -199,6 +199,7 @@ put f1m f $mx1
         self.lPRC = self.lpr + self.lMI
         self.lSRC = self.lsr + self.lMI
         self.lSchnupp = self.lx - self.ly
+        
         self.compute_derived_resonances(kat)
 
     def compute_derived_resonances(self, kat):
@@ -568,6 +569,7 @@ put f1m f $mx1
         vprint(verbose, "   DC offset for AS_DC={} W is: {}".format(AS_power, out[0]))
         self.DCoffset = round(out[0],6)
         self.DCoffsetW = AS_power
+        
         return self.DCoffset
 
     def generate_tuning_block(self, kat):
