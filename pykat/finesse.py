@@ -903,6 +903,7 @@ class kat(object):
         self.printmatrix = None
         self.__variables = {}
         self.IFO = None
+        self.mf = []
         
         self.data = {}
         
@@ -1451,8 +1452,8 @@ class kat(object):
                         obj = pykat.components.beamSplitter.parseFinesseText(line)
                     elif(first[0:2] == "gr"):
                         obj = pykat.components.grating.parseFinesseText(line)
-                    elif(first[0:5] == "isol1"):
-                        obj = pykat.components.isolator1.parseFinesseText(line)
+                    elif(first[0:5] == "dbs"):
+                        obj = pykat.components.dbs.parseFinesseText(line)
                     elif(first[0:4] == "isol"):
                         obj = pykat.components.isolator.parseFinesseText(line)
                     elif(first[0:4] == "lens"):
@@ -1566,6 +1567,11 @@ class kat(object):
                             # If not preserving then just ignore the constant as it
                             # has already been parsed and replaced in processConstants
                             obj = None
+
+                    elif(first == "mf"):
+                        obj = None
+                        for _ in line.split()[1:]:
+                            self.mf.append(_)
                     else:
                         if self.verbose:
                             print ("Parsing `{0}` into pykat object not implemented yet, added as extra line.".format(line))
@@ -1574,7 +1580,7 @@ class kat(object):
                         # manually add the line to the block contents
                         self.addLine(line, self.__currentTag) 
             
-                    if obj != None and not isinstance(obj, six.string_types):
+                    if obj is not None and not isinstance(obj, six.string_types):
                         if self.hasNamedObject(obj.name):
                             getattr(self, obj.name).remove()
                             
@@ -2558,6 +2564,9 @@ class kat(object):
             
         if self.printmatrix is not None and self.printmatrix == True:
             out.append("printmatrix\n")
+            
+        if len(self.mf) > 0:
+            out.append("mf " + " ".join(self.mf))
             
         if self.lambda0 != 1064e-9:
             out.append("lambda {0}\n".format(self.lambda0))

@@ -16,7 +16,7 @@ from itertools import chain
 
 from pykat import finesse
 from pykat.finesse import BlockedKatFile
-from pykat.ifo import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, remove_commands, round_to_n, scan_optics_string
+from pykat.ifo import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, round_to_n, scan_optics_string
 
 import pykat.components
 import pykat.exceptions as pkex
@@ -32,11 +32,10 @@ class ALIGO_IFO(IFO):
     
     Functions that operate on the kat/IFO objects, manipulate their
     structure and return a new one, should not be included here. They should
-    be separate functions that are called by the user. Functions that are
-    chained together by the user, like pretuning, should be separate functions.
+    be separate functions that are called by the user. 
     
     The functions here should be those that update the kat with information
-    from the IFO or vice-versa.
+    from the IFO object or vice-versa.
     """
     def compute_derived_resonances(self):
         self.fsrX = 0.5 * clight / float(self.kat.LX.L)
@@ -92,12 +91,36 @@ class ALIGO_IFO(IFO):
         
         This function alters the kat object directly.
         """
-        # Keep any lengths the same
-        self.kat.lmod1.L += self.kat.lmod2.L + self.kat.lmod3.L
+        self.kat.remove("lmod1", "mod1", "lmod2", "mod2", "lmod3")    # Remove modulators
+        # Set output node of laser block to be on the laser
+        self.kat.nodes.replaceNode(self.kat.L0, 'n0', 'nLaserOut')
         
-        self.kat.remove("mod1", "lmod2", "mod2", "lmod3")    # Remove modulators
-        self.kat.nodes.replaceNode(self.kat.lmod1, 'n1', 'nREFL') # Reconnect laser
+    def remove_IMC_HAM2(self, removeIMC, removeHAM2):
+        """
+        For use with files that have the IMC and HAM2 blocks.
         
+        Removes the IMC and HAM2 blocks if not required in the model. Reconnects
+        spaces between the laser and HAM2 and PRC. Assumes spaces exists
+        with name and node:
+            sHAM2in and node nIMCout
+            sPRCin  and node nHAM2out
+        
+        
+        This function alters the kat object directly.
+        """
+        
+        if removeHAM2 and not removeIMC:
+            raise pkex.BasePyKatException("Must remove IMC if removing HAM2 block")
+        
+        if removeIMC:
+            self.kat.removeBlock("IMC")
+            self.kat.cavIMC.remove()
+            self.kat.nodes.replaceNode(self.kat.sHAM2in, 'nIMCout', 'nLaserOut')
+        
+        if removeHAM2:
+            self.kat.removeBlock("HAM2")
+            self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
+     
     def adjust_PRC_length(self, verbose=False):
         """
         Adjust PRC length so that it fulfils the requirement
@@ -368,9 +391,27 @@ class ALIGO_IFO(IFO):
         self.kat.parseCommands(cmds, addToBlock="locks")
         
         return cmds
+    
+    def add_REFL_gouy_telescope(self, gouy=0):
+        """
         
+        """
+        block = "REFL_gouy_tele"
         
+        self.kat.removeBlock(block, False) # Remove old one
         
+        self.kat.parseCommands("""
+        # POP WFS RF detectors
+        s sREFLGT1 0.1 nREFL nREFLGTin
+
+        bs REFLGTBS 0.5 0.5 0 45 nREFLWFSBSin nREFLWFSB1 nREFLWFSA1  nREFLWFSBSrefl
+
+        s sREFLGTA 0 nREFLWFSA1 nREFLWFSA #0.267
+        attr sREFLGTA gouy {}
+
+        s sREFLGTB 0 nREFLWFSB1 nREFLWFSB #0.636                      
+        attr sREFLGTB gouy {}
+        """.format(gouy, gouy+90), addToBlock=block)
         
 
 def assert_aligo_ifo_kat(kat):
@@ -394,7 +435,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['design', 'design_low_power']
+    names = ['design', 'design_low_power', 'design_with_IMC_HAM2']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
@@ -473,18 +514,52 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.POW_Y   = Port(kat.IFO, "PowY",  "nITMY2")
 
     # pretune DOF
-    kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0)
-    kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0)
-    kat.IFO.preMICH =  DOF(kat.IFO, "AS"  , kat.IFO.AS_DC,   "", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 6.0)
-    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PRM",  1, 10.0)
-    kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0)
+    kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
+    kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
+    kat.IFO.preMICH =  DOF(kat.IFO, "AS"  , kat.IFO.AS_DC,   "", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 6.0, sigtype="z")
+    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PRM",  1, 10.0, sigtype="z")
+    kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0, sigtype="z")
     
     # control scheme as in [1] Table C.1  
-    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0)
-    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 100.0)
-    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [1, 1], 1.5)
-    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0)
-    kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", 1, 1e2)
+    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
+    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 100.0, sigtype="z")
+    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [1, 1], 1.5, sigtype="z")
+    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0, sigtype="z")
+    kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", 1, 1e2, sigtype="z")
+    
+    # Pitch DOfs
+    # There is a difference in the way LIGO and Finesse define positive and negative
+    # rotations of the cavity mirrors. For LIGO the rotational DOFs assume ITM + rotation
+    # is clockwise and ETM + rotation is anticlockwise.
+    # I'll be explict here for future reference.
+    cav_mirrors = ["ETMX", "ETMXAR", "ETMY", "ETMYAR", "ITMX", "ITMXAR", "ITMY", "ITMYAR"]
+
+    # LIGO definitions
+    # Based on figure 7 in T0900511-v4
+    CHARD_factors   = np.array([ 1, 1, 1, 1,-1,-1,-1,-1])
+    DHARD_factors   = np.array([ 1, 1,-1,-1,-1,-1, 1, 1])
+    CSOFT_factors   = np.array([-1,-1,-1,-1,-1,-1,-1,-1])
+    DSOFT_factors   = np.array([-1,-1, 1, 1, 1, 1,-1,-1])
+
+    # Finesse definitions
+    # negative for ITM rotations
+    ITMS = np.in1d(cav_mirrors, np.array(["ITMX", "ITMXAR", "ITMY", "ITMYAR"]))
+    CHARD_factors[ITMS] *= -1
+    DHARD_factors[ITMS] *= -1
+    CSOFT_factors[ITMS] *= -1
+    DSOFT_factors[ITMS] *= -1
+
+    kat.IFO.CHARD_P = DOF(kat.IFO, "CHARD_P", None , None, cav_mirrors, CHARD_factors, 1, sigtype="ybeta")
+    kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", None , None, cav_mirrors, DHARD_factors, 1, sigtype="ybeta")
+    kat.IFO.CSOFT_P = DOF(kat.IFO, "CSOFT_P", None , None, cav_mirrors, CSOFT_factors, 1, sigtype="ybeta")
+    kat.IFO.DSOFT_P = DOF(kat.IFO, "DSOFT_P", None , None, cav_mirrors, DSOFT_factors, 1, sigtype="ybeta")
+    kat.IFO.PRM_P   = DOF(kat.IFO, "PRM_P"  , None , None, ["PRM", "PRMAR"], [1,1], 1, sigtype="ybeta")
+    kat.IFO.PRC2_P  = DOF(kat.IFO, "PRC2_P" , None , None, ["PR2"], [1], 1, sigtype="ybeta")
+    kat.IFO.PRC3_P  = DOF(kat.IFO, "PRC3_P" , None , None, ["PR3"], [1], 1, sigtype="ybeta")
+    kat.IFO.SRM_P   = DOF(kat.IFO, "SRM_P"  , None , None, ["SRM", "SRMAR"], [1,1], 1, sigtype="ybeta")
+    kat.IFO.SRC2_P  = DOF(kat.IFO, "SRC2_P" , None , None, ["SR2"], [1], 1, sigtype="ybeta")
+    kat.IFO.SRC3_P  = DOF(kat.IFO, "SRC3_P" , None , None, ["SR3"], [1], 1, sigtype="ybeta")
+    kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, ["BS", "BSAR1", "BSAR2"], [1,1,1], 1, sigtype="ybeta")
     
     kat.IFO.DOFs = {}
     

@@ -37,18 +37,6 @@ def make_transparent(kat, _components):
         raise pkex.BasePyKatException("Cannot find component {}".format(components))
         
     return kat
-
-def remove_commands(kat, _commands, verbose=False):
-    commands=make_list_copy(_commands)
-    # removing commands
-    for o in kat.commands.values():
-        if o.name in commands:
-            o.remove()
-            commands = [c for c in commands if c != o.name]
-            vprint(verbose, '   {} removed'.format(o))
-    if len(commands) != 0:
-        raise pkex.BasePyKatException("Cannot find command(s) {}".format(commands))
-    return kat
     
 def round_to_n(x, n):
     if not x: return 0
@@ -82,8 +70,9 @@ def make_list_copy(_l):
     "string" copy to ["string"]
     ["string1", "string2"] copy to ["string1", "string2"]
     """
-    if not isinstance(_l, (list, tuple)):
+    if not isinstance(_l, (list, tuple, np.ndarray)):
         _l = [_l]
+        
         
     return _l[:] # copy the list, just to be save
 
@@ -165,19 +154,22 @@ def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100,
     _putStr = ""
     
     for idx, o in enumerate(optics):
+        
         if factors[idx] == 1:
             _xStr="$x"
         elif factors[idx] == -1:
             _xStr="$mx"
         else:
             raise pkex.BasePyKatException("optics factors must be 1 or -1")
+            
         if (relative):
             _putCmd = "put*"
         else:
             _putCmd = "put"
                 
         _putStr = "\n".join([_putStr, "{} {} phi {}{}".format(_putCmd, o, _xStr, axis)])            
-        _tuneStr += _putStr
+        
+    _tuneStr += _putStr
         
     return _tuneStr
     
@@ -339,12 +331,16 @@ class IFO(object):
     
         return kat.run(cmd_args="-cr=on")
 
-    def optical_gain(self, DOF_sig, DOF_det, f=10.0):
+    def optical_gain(self, DOF_sig, DOF_det, f=1.0):
+        """
+        Returns W/rad for length sensing
+        """
+        
         kat = self.kat.deepcopy()
         kat.removeBlock('locks', False)
          
         _fsigStr = DOF_sig.fsig("sig1", fsig=f)
-        _detStr = DOF_det.transfer(fsig=f)
+        _detStr  = DOF_det.transfer(fsig=f)
         _detName = DOF_det.transfer_name()
         
         kat.parseCommands(_fsigStr)
@@ -354,7 +350,13 @@ class IFO(object):
         
         out = kat.run()
         
-        return float(np.real(out[_detName]))
+        if DOF_sig.sigtype == "phase":
+            return float(np.real(out[_detName])) # W/rad
+        elif DOF_sig.sigtype == "z":
+            k = 2*np.pi/kat.lambda0
+            return float(np.real(out[_detName])) / k # W/m -> W/rad
+        else:
+            raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
         
 class DOF(object):
     """
@@ -370,6 +372,7 @@ class DOF(object):
         self.sigtype = sigtype
         self.optics=make_list_copy(_optics)
         self.factors=make_list_copy(_factors)
+        
         # scaling factor, to compensate for lower sensitivity compared
         # to DARM (in tuning plots for example)
         # Thus DARM has a scale of 1, all other DOFs a scale >1
@@ -399,9 +402,17 @@ class DOF(object):
         
         for idx, o in enumerate(self.optics):
             phase = 0.0
-            if self.factors[idx] == -1:
+            
+            if self.factors[idx] < 0:
                 phase = 180.0
-            _fsigStr = "\n".join([_fsigStr, "fsig {} {} {} {} ".format(_fsigName, o, fsig, phase)])
+            
+            #fsig name component [type] f phase [amp]
+            _fsigStr = "\n".join([_fsigStr, "fsig {name} {component} {type} {f} {phase} {amp}".format(name=_fsigName, 
+                                                                                                    component=o,
+                                                                                                    type=self.sigtype,
+                                                                                                    f=fsig,
+                                                                                                    phase=phase,
+                                                                                                    amp=abs(self.factors[idx]))])
             
         return _fsigStr
 

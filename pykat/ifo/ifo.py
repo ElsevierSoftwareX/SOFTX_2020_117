@@ -52,7 +52,7 @@ class aLIGO(object):
         else:
             self.kat = finesse.kat()
         self.kat.verbose=verbose
-        self._data_path=pkg_resources.resource_filename('pykat.gw_detectors','finesse_files/')
+        self._data_path=pkg_resources.resource_filename('pykat.ifo.aligo','files/')
 
         self.rawBlocks = BlockedKatFile()
         if katfile:
@@ -482,7 +482,7 @@ put f1m f $mx1
         for d, idx in zip(dofs, range(1, len(dofs)+1)):
             ax = _fig.add_subplot(nrows, ncols, idx)
             
-            scan_cmd = scan_optics_string(d.optics, d.factors, "scan", linlog="lin",
+            scan_cmd = scan_optics_string(d.optics, d.factors, "scan"+d.name, linlog="lin",
                                             xlimits=np.multiply(d.scale, xlimits), steps=200,
                                             axis=1, relative=True)
             kat.parseCommands(scan_cmd)
