@@ -1219,13 +1219,18 @@ class kat(object):
                         if values[1] in constants:
                             raise pkex.BasePyKatException('const command with the name "{0}" already set'.format(values[1]))
                         else:
-                            c = Constant(values[1], values[2])
-                            constants[str(values[1])] = c
-                            self.add(c)
+                            constants[str(values[1])] = Constant(values[1], values[2])
                     else:
                         raise pkex.BasePyKatException('const command "{0}" was not the correct format'.format(line))
-        
-            if not preserve:
+            
+            if preserve:
+                for c in constants:
+                    if not hasattr(self, c):
+                        self.constants[c] = constants[c]
+                        self.add(constants[c])
+                
+                return commands
+            else:
                 # replace all the constant reference with the actual value
                 commands_new = []
         
@@ -1257,11 +1262,6 @@ class kat(object):
                         commands_new.append(line)
         
                 return commands_new
-            else:
-                # If we are preserving then we need to keep the constants for later
-                self.constants = constants
-        
-                return commands
             
         except pkex.BasePyKatException as ex:
             pkex.PrintError("Error processing constants:", ex)

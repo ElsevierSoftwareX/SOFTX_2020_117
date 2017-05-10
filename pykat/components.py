@@ -769,7 +769,7 @@ class beamSplitter(AbstractMirrorComponent):
         return self._svgItem
    
 class space(Component):
-    def __init__(self, name, node1, node2, L = 0, n = 1, g = None, gx = None, gy = None):
+    def __init__(self, name, node1, node2, L = 0, n = 1, gx = None, gy = None):
         Component.__init__(self, name)
         
         self._requested_node_names.append(node1)
@@ -795,26 +795,26 @@ class space(Component):
     def n(self,value): self.__n.value = SIfloat(value)
 
     @property
-    def g(self):
+    def gouy(self):
         if self.__gx.value == self.__gy.value: 
             return self.__gx.value 
         else:
             raise pkex.BasePyKatException("Gouy phase in x and y directions are different, use gx and gy properties instead")
             
-    @g.setter
-    def g(self,value):
+    @gouy.setter
+    def gouy(self,value):
         self.__gx.value = SIfloat(value)
         self.__gy.value = SIfloat(value)
         
     @property
-    def gx(self): return self.__gx
-    @gx.setter
-    def gx(self,value): self.__gx.value = SIfloat(value)
+    def gouyx(self): return self.__gx
+    @gouyx.setter
+    def gouyx(self,value): self.__gx.value = SIfloat(value)
 
     @property
-    def gy(self): return self.__gy
-    @gy.setter
-    def gy(self,value): self.__gy.value = SIfloat(value)
+    def gouyy(self): return self.__gy
+    @gouyy.setter
+    def gouyy(self,value): self.__gy.value = SIfloat(value)
     
     def connectingComponents(self):
         """

@@ -194,6 +194,11 @@ class IFO(object):
     @property
     def kat(self): return self.__kat
     
+    def requires_nodes(self, *args):
+        for node in args:
+            pass
+            
+        
     def _tuning_key(self, **kwargs):
         if set(kwargs.keys()) != self.__tuning_keys:
             raise pkex.BasePyKatException("input keyword arguments should be: %s" % ", ".join(self.__tuning_keys))
@@ -333,14 +338,15 @@ class IFO(object):
 
     def optical_gain(self, DOF_sig, DOF_det, f=1.0):
         """
-        Returns W/rad for length sensing
+        Returns W/rad for length sensing. Will throw an exception if it can't convert the
+        units into W/rad.
         """
         
         kat = self.kat.deepcopy()
         kat.removeBlock('locks', False)
          
         _fsigStr = DOF_sig.fsig("sig1", fsig=f)
-        _detStr  = DOF_det.transfer(fsig=f)
+        _detStr  = DOF_det.transfer()
         _detName = DOF_det.transfer_name()
         
         kat.parseCommands(_fsigStr)
@@ -354,7 +360,7 @@ class IFO(object):
             return float(np.real(out[_detName])) # W/rad
         elif DOF_sig.sigtype == "z":
             k = 2*np.pi/kat.lambda0
-            return float(np.real(out[_detName])) / k # W/m -> W/rad
+            return float(np.real(out[_detName])) / k # W/(m*k) -> W/rad
         else:
             raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
         
@@ -386,13 +392,13 @@ class DOF(object):
                 self.__IFO.kat.components[o].phi = phi * self.factors[idx]
             
     def signal(self):
-        return self.port.signal(self.quad, sigtype=self.sigtype)
+        return self.port.signal(self.quad)
         
     def signal_name(self):
-        return self.port.signal_name(self.quad, sigtype=self.sigtype)
+        return self.port.signal_name(self.quad)
 
-    def transfer(self, fsig, phase2=None):
-        return self.port.transfer(self.quad, fsig=fsig, phase2=phase2, sigtype=self.sigtype)
+    def transfer(self, phase2=None):
+        return self.port.transfer(self.quad, phase2=phase2)
         
     def transfer_name(self):
         return self.port.transfer_name(self.quad)
@@ -406,7 +412,6 @@ class DOF(object):
             if self.factors[idx] < 0:
                 phase = 180.0
             
-            #fsig name component [type] f phase [amp]
             _fsigStr = "\n".join([_fsigStr, "fsig {name} {component} {type} {f} {phase} {amp}".format(name=_fsigName, 
                                                                                                     component=o,
                                                                                                     type=self.sigtype,
@@ -421,12 +426,12 @@ class Port(object):
     Defining an output port for the interferometer, can be either a
     pd or a pd1 detector (for error signal generation).
     """
-    def __init__(self, IFO, _portName, _nodeNames, f=None, phase=None):
+    def __init__(self, IFO, _portName, _nodeNames, f=None, phase=0):
         self.__IFO = IFO
         self.portName = _portName
         self.nodeNames = make_list_copy(_nodeNames)
-        self.f=f            # demodulation frequency, float
-        self.phase = phase  # demodulation frequency for I quadrature, float
+        self.f = f            # demodulation frequency, float
+        self.phase = phase    # demodulation phase for I quadrature, float
         self.name = self.portName            
     
     def check_nodeName(self):
@@ -444,9 +449,8 @@ class Port(object):
         if self.nodeName==None:
             raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name,self.nodeNames))
 
-    def amplitude_name(self, f, n=None, m=None, sigtype="z"):
-        name = self.name + "_ad"
-        return name
+    def amplitude_name(self):
+        return self.name + "_ad"
     
     def amplitude(self, f, n=None, m=None, sigtype="z"):
         self.check_nodeName()
@@ -458,7 +462,7 @@ class Port(object):
         else:
             return "ad {} {} {} {} {}".format(name, f, n, m, self.nodeName)
     
-    def signal_name(self, quad="I", sigtype="z"):
+    def signal_name(self, quad="I"):
         name = self.name
         
         if self.f!=None:
@@ -466,13 +470,10 @@ class Port(object):
             
         return name
     
-    def signal(self, quad="I", sigtype="z"):
+    def signal(self, quad="I"):
         self.check_nodeName()
         
-        name = self.signal_name(quad=quad, sigtype=sigtype)
-        
-        if sigtype != "z":
-            raise pkex.BasePyKatException("alignment signals are not implemented yet")            
+        name = self.signal_name(quad=quad)
                 
         if self.f==None:
             return "pd {} {}".format(name, self.nodeName)
@@ -483,10 +484,15 @@ class Port(object):
             return "pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName)
         
     def IQ_phase(self, quad, phase):
-        if quad== "Q":
+        if phase is None:
+            raise pkex.BasePyKatException("Phase cannot be None")
+            
+        if quad == "Q":
             phase = phase + 90.0
+            
             if phase >=360.0 :
                 phase -= 360.0
+                
         return phase
         
     def transfer_name(self, quad="I"):
@@ -497,28 +503,25 @@ class Port(object):
             
         return name
         
-    def transfer(self, quad="I", fsig=1.0, phase2=None, sigtype="z"):
+    def transfer(self, quad="I", phase2=None):
         self.check_nodeName()
         
         name = self.transfer_name(quad=quad)
-        
-        if sigtype!="z":
-            raise pkex.BasePyKatException("alignment signals are not implemented yet")            
             
-        if self.f==None:
-            if phase2 == None:
-                return "pd1 {} {} {}".format(name, fsig, self.nodeName)
+        if self.f is None:
+            if phase2 is None:
+                return "pd1 {} {} {}".format(name, "$fs", self.nodeName)
             else:
-                return "pd1 {} {} {} {}".format(name, fsig, phase2, self.nodeName)
+                return "pd1 {} {} {} {}".format(name, "$fs", phase2, self.nodeName)
         else:
-            if quad !="I" and quad != "Q":
+            if quad not in ("I", "Q"):
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
                 
             phase = self.IQ_phase(quad, self.phase)
             
-            if phase2 == None:
-                return "pd2 {} {} {} {} {}".format(name, self.f , phase, fsig, self.nodeName)
+            if phase2 is None:
+                return "pd2 {} {} {} {} {}".format(name, self.f , phase, "$fs", self.nodeName)
             else:
-                return "pd2 {} {} {} {} {} {}".format(name, self.f, phase, fsig, phase2, self.nodeName)
+                return "pd2 {} {} {} {} {} {}".format(name, self.f, phase, "$fs", phase2, self.nodeName)
                 
                 

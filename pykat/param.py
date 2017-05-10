@@ -228,7 +228,10 @@ class Param(putable, putter):
         if self._owner().removed:
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
         else:
-            if str(value).startswith('$'):
+            v = str(value)
+            
+            # signal frequency constant is internal to finesse so handled like a usual value
+            if v.startswith('$') and v not in ("$fs", "$mfs"):
                 self._isConst = True
                 self._constName = value
                 self._value = None

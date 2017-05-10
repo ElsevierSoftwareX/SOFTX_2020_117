@@ -394,26 +394,50 @@ class ALIGO_IFO(IFO):
     
     def add_REFL_gouy_telescope(self, gouy=0):
         """
+        Adds in the gouy phase telescope for WFS detectors and the IFO port objects.
+        Commands added into block "REFL_gouy_tele". This attaches to the
+        nREFL node.
         
+        gouy: gouy phase of A path, B path set to gouy + 90 deg
         """
-        block = "REFL_gouy_tele"
         
-        self.kat.removeBlock(block, False) # Remove old one
+        self.kat.removeBlock("REFL_gouy_tele", False) # Remove old one
         
         self.kat.parseCommands("""
-        # POP WFS RF detectors
-        s sREFLGT1 0.1 nREFL nREFLGTin
-
-        bs REFLGTBS 0.5 0.5 0 45 nREFLWFSBSin nREFLWFSB1 nREFLWFSA1  nREFLWFSBSrefl
-
-        s sREFLGTA 0 nREFLWFSA1 nREFLWFSA #0.267
-        attr sREFLGTA gouy {}
-
-        s sREFLGTB 0 nREFLWFSB1 nREFLWFSB #0.636                      
-        attr sREFLGTB gouy {}
-        """.format(gouy, gouy+90), addToBlock=block)
+        s  sFI_REFL_WFS   0.1 nREFL nREFL_WFS_BS1
+        bs WFS_REFL_BS 0.5 0.5 0 0 nREFL_WFS_BS1 nREFL_WFS_BS2 nREFL_WFS_BS3 dump
+        s  sWFS_REFL_A  0 nREFL_WFS_BS3 nREFL_WFS_A #0.267 lengths from T1000247 if needed
+        s  sWFS_REFL_B  0 nREFL_WFS_BS2 nREFL_WFS_B #0.636
+        """.format(gouy, gouy+90), addToBlock="REFL_gouy_tele")
         
+        self.set_REFL_gouy_telescope_phase(gouy)
+        
+        self.kat.IFO.ASC_REFL9A_P   = Port(self.kat.IFO, "ASC_REFL9A_P",  "nREFL_WFS_A",  self.kat.IFO.f1)
+        self.kat.IFO.ASC_REFL9B_P   = Port(self.kat.IFO, "ASC_REFL9B_P",  "nREFL_WFS_B",  self.kat.IFO.f1)
 
+        self.kat.IFO.ASC_REFL45A_P  = Port(self.kat.IFO, "ASC_REFL45A_P",  "nREFL_WFS_A",  self.kat.IFO.f2)
+        self.kat.IFO.ASC_REFL45B_P  = Port(self.kat.IFO, "ASC_REFL45B_P",  "nREFL_WFS_B",  self.kat.IFO.f2)
+        
+        self.kat.IFO.ASC_REFL36A_P  = Port(self.kat.IFO, "ASC_REFL36A_P",  "nREFL_WFS_A",  self.kat.IFO.f36M)
+        self.kat.IFO.ASC_REFL36B_P  = Port(self.kat.IFO, "ASC_REFL36B_P",  "nREFL_WFS_B",  self.kat.IFO.f36M)
+        
+    def set_REFL_gouy_telescope_phase(self, gouyA, gouyB=None):
+        """
+        Sets the gouy phase of the REFL gouy phase telescope paths.
+        Can specify A and B phase separately, if A is set only then
+        gouyB = gouyA + 90.
+        """
+        
+        if "REFL_gouy_tele" in self.kat.getBlocks():
+            if gouyB is None:
+                gouyB = gouyA + 90
+                
+            self.kat.sWFS_REFL_A.gouy = gouyA
+            self.kat.sWFS_REFL_B.gouy = gouyB
+        else:
+            raise pkex.BasePyKatException("\033[91mREFL Gouy phase telescope isn't in the kat object, use kat.IFO.add_REFL_gouy_telescope()\033[0m")
+
+        
 def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
@@ -489,6 +513,8 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
         
     if "f3" in kat.constants.keys():
         kat.IFO.f3 = float(kat.constants["f3"].value)
+    
+    kat.IFO.f36M = kat.IFO.f2 - kat.IFO.f1
         
     # TODO add else here!
     # check modultion frequencies
