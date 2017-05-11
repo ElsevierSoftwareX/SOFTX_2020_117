@@ -1321,7 +1321,7 @@ class kat(object):
             print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
     
     def parse(self, *args, **kwargs):
-        self.parse(*args, **kwargs)
+        self.parseCommands(*args, **kwargs)
         
     def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None):
         if not isinstance(commands, six.string_types) and hasattr(commands, "__iter__"):
