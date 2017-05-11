@@ -1319,6 +1319,12 @@ class kat(object):
             print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
     
     def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None):
+        if not isinstance(commands, six.string_types) and hasattr(commands, "__iter__"):
+            for _ in commands:
+                self.parseCommands(_, blocks, addToBlock, keepComments, preserveConstants, useConstants)
+            
+            return
+                
         blockCommentWarning = False
         inlineCommentWarning = False
         blockComment = False

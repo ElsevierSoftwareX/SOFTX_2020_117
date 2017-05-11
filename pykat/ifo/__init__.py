@@ -423,8 +423,12 @@ class DOF(object):
 
 class Port(object):
     """
-    Defining an output port for the interferometer, can be either a
-    pd or a pd1 detector (for error signal generation).
+    This object defines an output port of an interferometer demodulated at a particular
+    modulation frequency, or DC. It does not specify any detectors in particular. However, using
+    this object you can get the Finesse commands for the following detectors:
+        * Photodiodes
+        * Transfer functions 
+        * Amplitude detectors
     """
     def __init__(self, IFO, _portName, _nodeNames, f=None, phase=0):
         self.__IFO = IFO
@@ -452,15 +456,29 @@ class Port(object):
     def amplitude_name(self):
         return self.name + "_ad"
     
-    def amplitude(self, f, n=None, m=None, sigtype="z"):
+    def amplitude(self, f, n=None, m=None):
+        rtn = []
+        
         self.check_nodeName()
         
-        name = self.amplitude_name(f, n=n, m=m, sigtype=sigtype)
+        name = self.amplitude_name(f, n=n, m=m)
         
         if n==None and m==None:
-            return "ad {} {} {}".format(name, f, self.nodeName)
+            rtn.append("ad {} {} {}".format(name, f, self.nodeName))
         else:
-            return "ad {} {} {} {} {}".format(name, f, n, m, self.nodeName)
+            rtn.append("ad {} {} {} {} {}".format(name, f, n, m, self.nodeName))
+            
+        return rtn
+    
+    def _pdtype(self, name, sigtype):
+        rtn = []
+        
+        if sigtype == "pitch":
+            rtn.append("pdtype {} y-split".format(name))
+        elif sigtype == "yaw":
+            rtn.append("pdtype {} x-split".format(name))
+        
+        return rtn
     
     def signal_name(self, quad="I"):
         name = self.name
@@ -470,18 +488,26 @@ class Port(object):
             
         return name
     
-    def signal(self, quad="I"):
+    def signal(self, quad="I", sigtype="z"):
+        rtn = []
+        
         self.check_nodeName()
         
         name = self.signal_name(quad=quad)
                 
         if self.f==None:
-            return "pd {} {}".format(name, self.nodeName)
+            rtn.append("pd {} {}".format(name, self.nodeName))
         else:
             if quad !="I" and quad != "Q":
-                raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
+                raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")
+                
             phase = self.IQ_phase(quad, self.phase)
-            return "pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName)
+            
+            rtn.append("pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName))
+        
+        rtn.extend(self._pdtype(name, sigtype))
+        
+        return rtn
         
     def IQ_phase(self, quad, phase):
         if phase is None:
