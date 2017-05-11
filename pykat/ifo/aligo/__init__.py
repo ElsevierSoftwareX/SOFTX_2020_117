@@ -16,12 +16,15 @@ from itertools import chain
 
 from pykat import finesse
 from pykat.finesse import BlockedKatFile
-from pykat.ifo import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, round_to_n, scan_optics_string
+from pykat.ifo import *
 
 import pykat.components
 import pykat.exceptions as pkex
 import pykat.external.peakdetect as peak
 import pkg_resources
+
+from scipy.constants import c as clight
+
 
 from scipy.optimize import fmin
 
@@ -38,6 +41,7 @@ class ALIGO_IFO(IFO):
     from the IFO object or vice-versa.
     """
     def compute_derived_resonances(self):
+        clight
         self.fsrX = 0.5 * clight / float(self.kat.LX.L)
         self.fsrY = 0.5 * clight / float(self.kat.LY.L)
         self.fsrPRC = 0.5 * clight / self.lPRC
@@ -613,7 +617,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     
 def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
     while precision > pretune_precision * DOF.scale:
-        out = kat.IFO.scan_DOF(DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
+        out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
         phi, precision = find_peak(out, DOF.port.portName, minmax=minmax)
         
     return phi, precision
@@ -796,11 +800,11 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
         
     # optical gains in W/rad
     
-    ogDARM = kat.IFO.optical_gain(kat.IFO.DARM, kat.IFO.DARM)
-    ogCARM = kat.IFO.optical_gain(kat.IFO.CARM, kat.IFO.CARM)
-    ogPRCL = kat.IFO.optical_gain(kat.IFO.PRCL, kat.IFO.PRCL)
-    ogMICH = kat.IFO.optical_gain(kat.IFO.MICH, kat.IFO.MICH)
-    ogSRCL = kat.IFO.optical_gain(kat.IFO.SRCL, kat.IFO.SRCL)
+    ogDARM = optical_gain(kat.IFO.DARM, kat.IFO.DARM)
+    ogCARM = optical_gain(kat.IFO.CARM, kat.IFO.CARM)
+    ogPRCL = optical_gain(kat.IFO.PRCL, kat.IFO.PRCL)
+    ogMICH = optical_gain(kat.IFO.MICH, kat.IFO.MICH)
+    ogSRCL = optical_gain(kat.IFO.SRCL, kat.IFO.SRCL)
 
     if gains is None:            
         # manually tuning relative gains

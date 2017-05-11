@@ -2585,7 +2585,7 @@ class kat(object):
                     except ValueError:
                         cmd += " " + str(_)
                     
-                out.append(cmd)
+                out.append(cmd + "\n")
             else:
                 out.append("mf " + str(self.mf))
             

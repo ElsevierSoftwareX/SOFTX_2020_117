@@ -1,17 +1,10 @@
 import pykat
 import pykat.exceptions as pkex
-import pykat.external.peakdetect as peak
-
-import matplotlib.pyplot as plt
 
 import numpy as np
 import inspect
 import math
 import six
-
-global nsilica, clight
-nsilica = 1.44963098985906
-clight = 299792458.0
 
 def make_transparent(kat, _components):
     """
@@ -48,7 +41,7 @@ def vprint(verbose, printstr):
     if verbose:
         print(printstr)
         
-def BS_optical_path(thickness, n=nsilica, angle=45.0):
+def BS_optical_path(thickness, n=1.44963098985906, angle=45.0):
     """
     Compute optical path length in BS substrate, default
     parameters assume angle of incidence of 45 deg and fused
@@ -88,6 +81,8 @@ def find_peak(out, detector, minmax='max', debug=False):
     find_peak(out, "pdout")
     find_peak(out, "pdout", minmax='min')
     """
+    import pykat.external.peakdetect as peak
+    
     stepsize = out.x[1]-out.x[0]
     if debug:
         print("  stepsize (precision) of scan: {0:g}".format(stepsize))
@@ -95,6 +90,8 @@ def find_peak(out, detector, minmax='max', debug=False):
     _max, _min = peak.peakdetect( out[detector],out.x, 1)
     
     if debug:
+        import matplotlib.pyplot as plt
+        
         plt.figure()
         plt.plot(out.x,out[detector])
         plt.show()
@@ -132,7 +129,7 @@ def find_peak(out, detector, minmax='max', debug=False):
     return X_out, stepsize
 
 
-def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
+def scan_optics_string(_optics, _factors, _varName, target="phi", linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
     optics=make_list_copy(_optics)
     factors=make_list_copy(_factors)
     
@@ -145,9 +142,9 @@ def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100,
     _tuneStr  = "var {} 0\n".format(_varName)
     
     if axis==1:
-        _tuneStr += "xaxis {} phi {} {} {} {}".format(_varName, linlog, xlimits[0], xlimits[1], steps)
+        _tuneStr += "xaxis {} {} {} {} {} {}".format(_varName, target, linlog, xlimits[0], xlimits[1], steps)
     elif (axis==2 or axis==3): 
-        _tuneStr += "x{}axis {} phi {} {} {} {}".format(axis, _varName, linlog, xlimits[0], xlimits[1], steps)
+        _tuneStr += "x{}axis {} {} {} {} {} {}".format(axis, _varName, target, linlog, xlimits[0], xlimits[1], steps)
     else:
         raise pkex.BasePyKatException("axis must be 1, 2 or 3")
         
@@ -167,14 +164,122 @@ def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100,
         else:
             _putCmd = "put"
                 
-        _putStr = "\n".join([_putStr, "{} {} phi {}{}".format(_putCmd, o, _xStr, axis)])            
+        _putStr = "\n".join([_putStr, "{} {} {} {}{}".format(_putCmd, o, target, _xStr, axis)])            
         
     _tuneStr += _putStr
         
     return _tuneStr
     
     
+def scan_DOF_cmds(DOF, xlimits=[-100, 100], steps=200, relative=False):    
+    return scan_optics_string(DOF.optics, 
+                              DOF.factors,
+                              "scan",
+                              target=DOF._mirror_target(),
+                              linlog="lin",
+                              xlimits=xlimits,
+                              steps=steps,
+                              axis=1,
+                              relative=relative)
+
+def scan_optic_cmds(self, optics, factors, xlimits=[-100, 100], steps=200,relative=False):
+    return scan_optics_string(optics,
+                              factors,
+                              "scan",
+                              linlog="lin",
+                              xlimits=xlimits,
+                              steps=steps,
+                              axis=1,
+                              relative=relative)
+                              
+def scan_DOF(kat, DOF, xlimits=[-100, 100], steps=200, relative=False): 
+    kat = kat.deepcopy()
+    kat.parse(scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
+    kat.verbose = True
     
+    if DOF.port is not None:
+        kat.parse(DOF.signal())
+    
+    return kat.run(cmd_args=["-cr=on"])
+
+def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps=200,relative=False): 
+    """
+    Scans one or more optics (by scanning the `target` parameter).
+    
+    Parameters:
+    optics: list of names of components to be tuned
+    factors: list of scaling factors for the tuning for each optics, first element must be 1.0
+    xlimits: limits of the scan
+    steps: number of steps to use in scan
+    
+    Usage:
+        scan_optics(kat, "PRM", 1)
+        scan_optics(kat, ["ETMX", "ETMY", [1, -1])
+    """
+    kat = kat.deepcopy()
+
+    optics=make_list_copy(_optics)
+    factors=make_list_copy(_factors)
+
+    kat.parse(scan_optic_cmds(_optics, _factors, target=target, xlimits=xlimits, steps=steps, relative=relative))
+
+    return kat.run(cmd_args="-cr=on")
+
+def optical_gain(DOF_sig, DOF_det, f=1.0):
+    """
+    Returns W/rad for length sensing. Will throw an exception if it can't convert the
+    units into W/rad.
+    """
+    
+    kat = DOF_sig.kat.deepcopy()
+    kat.removeBlock('locks', False)
+     
+    _fsigStr = DOF_sig.fsig("sig1", fsig=f)
+    _detStr  = DOF_det.transfer()
+    _detName = DOF_det.transfer_name()
+    
+    kat.parse(_fsigStr)
+    kat.parse(_detStr)
+    kat.noxaxis = True
+    kat.parse("yaxis lin abs:deg")
+    
+    out = kat.run()
+    
+    if DOF_sig.sigtype == "phase":
+        return float(np.real(out[_detName])) # W/rad
+    elif DOF_sig.sigtype == "z":
+        k = 2*np.pi/kat.lambda0
+        return float(np.real(out[_detName])) / k # W/(m*k) -> W/rad
+    else:
+        raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
+ 
+def scan_demod_phase_cmds(DOF, pd_detectors, deriv_h=1e-12):
+    rtn = ("var x 0\n"
+            "diff x re\n"
+            "deriv_h %g\n" 
+            "set _dx x re\n"
+            "func DX = $_dx\n"
+            "noplot DX\n"
+            "func mDX = (-1) * $_dx\n"
+            "noplot mDX\n") % deriv_h
+    
+    
+    for o,f in zip(DOF.optics, DOF.factors):
+        if f == 1:
+            rtn += "put %s ybeta $DX\n" % o
+        elif f == -1:
+            rtn += "put %s ybeta $mDX\n" % o
+        else:
+            raise pkex.BasePyKatException("Factor can only be -1 or 1 currently")
+
+    rtn += ("var scan 0\n"
+            "xaxis scan re lin 0 360 100\n")
+
+    for _ in pd_detectors:
+        rtn += "put %s phi1 $x1\n" % _
+        
+    return rtn
+          
 class IFO(object):
     """
     A generic object that contains various interferometer properties.
@@ -289,81 +394,7 @@ class IFO(object):
         
         return dofs
     
-    def scan_DOF_cmds(self, DOF, xlimits=[-100, 100], steps=200, relative=False):
-        return scan_optics_string(DOF.optics, 
-                                  DOF.factors,
-                                  "scan",
-                                  linlog="lin",
-                                  xlimits=xlimits,
-                                  steps=steps,
-                                  axis=1,
-                                  relative=relative)
     
-    def scan_optic_cmds(self, optics, factors, xlimits=[-100, 100], steps=200,relative=False):
-        return scan_optics_string(optics,
-                                  factors,
-                                  "scan",
-                                  linlog="lin",
-                                  xlimits=xlimits,
-                                  steps=steps,
-                                  axis=1,
-                                  relative=relative)
-                                  
-    def scan_DOF(self, DOF, xlimits=[-100, 100], steps=200, relative=False): 
-        kat = self.kat.deepcopy()
-        kat.parse(self.scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
-        kat.parse(DOF.signal())
-        return kat.run()
-
-    def scan_optics(self, _optics, _factors, xlimits=[-100, 100], steps=200,relative=False): 
-        """
-        Scans one or more optics (by changing its tuning).
-        Parameters:
-        optics: list of names of components to be tuned
-        factors: list of scaling factors for the tuning for each optics, first element must be 1.0
-        xlimits: limits of scan, defaults to [-100, 100]
-        steps: number of steps to use in scan, default is 200
-        Usage:
-        scan_optis(kat, "PRM", 1)
-        scan_optis(kat, ["ETMX", "ETMY", [1, -1])
-        """
-        kat = self.kat.deepcopy()
-    
-        optics=make_list_copy(_optics)
-        factors=make_list_copy(_factors)
-    
-        kat.parse(self.scan_optic_cmds(_optics, _factors, xlimits=xlimits, steps=steps, relative=relative))
-    
-        return kat.run(cmd_args="-cr=on")
-
-    def optical_gain(self, DOF_sig, DOF_det, f=1.0):
-        """
-        Returns W/rad for length sensing. Will throw an exception if it can't convert the
-        units into W/rad.
-        """
-        
-        kat = self.kat.deepcopy()
-        kat.removeBlock('locks', False)
-         
-        _fsigStr = DOF_sig.fsig("sig1", fsig=f)
-        _detStr  = DOF_det.transfer()
-        _detName = DOF_det.transfer_name()
-        
-        kat.parse(_fsigStr)
-        kat.parse(_detStr)
-        kat.noxaxis = True
-        kat.parse("yaxis lin abs:deg")
-        
-        out = kat.run()
-        
-        if DOF_sig.sigtype == "phase":
-            return float(np.real(out[_detName])) # W/rad
-        elif DOF_sig.sigtype == "z":
-            k = 2*np.pi/kat.lambda0
-            return float(np.real(out[_detName])) / k # W/(m*k) -> W/rad
-        else:
-            raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
-        
 class DOF(object):
     """
     Defining a degree of freedom for the interferometer, includes the
@@ -383,7 +414,36 @@ class DOF(object):
         # to DARM (in tuning plots for example)
         # Thus DARM has a scale of 1, all other DOFs a scale >1
         self.scale = _scale
-
+    
+    def _mirror_target(self):
+        """
+        Returns which parameter to target in puts and xaxis depending on sigtype
+        """
+    
+        if self.sigtype == "z":
+            target = "phi"
+        elif self.sigtype == "pitch":
+            target = "ybeta"
+        elif self.sigtype == "yaw":
+            target = "xbeta"
+        else:
+            raise pkex.BasePyKatException("Unexpected sigtype %s" % self.sigtype)
+        
+        return target
+        
+    @property
+    def kat(self):
+        """For referencing the kat object this DOF is associated with"""
+        return self.__IFO.kat
+        
+    def scan(self, **kwargs):
+        """
+        Convenience method for calling `scan_DOF` for this particular DOF and associated kat object.
+        
+        See `scan_DOF` for keyword arguments options.
+        """
+        return scan_DOF(self.__IFO.kat, self, **kwargs)
+        
     def apply_tuning(self, phi, add=False):
         for idx, o in enumerate(self.optics):
             if add:
@@ -463,7 +523,12 @@ class Port(object):
         self.phase = phase    # demodulation phase for I quadrature, float
         self.name = self.portName            
         self._block = block
-        
+
+    @property
+    def kat(self):
+        """For referencing the kat object this DOF is associated with"""
+        return self.__IFO.kat
+          
     def check_nodeName(self):
         self.nodeName = None
         
