@@ -202,10 +202,8 @@ class ALIGO_IFO(IFO):
             # Compute the DC offset powers
             kat = _kat.deepcopy()
         
-            sigStr = kat.IFO.AS_DC.signal()
-            signame = kat.IFO.AS_DC.signal_name()
+            signame = kat.IFO.AS_DC.add_signal()
         
-            kat.parseCommands(sigStr)
             kat.noxaxis=True
         
             out = kat.run(cmd_args=["-cr=on"])
@@ -298,8 +296,11 @@ class ALIGO_IFO(IFO):
         sigMICH = kat.IFO.MICH.signal()
         sigSRCL = kat.IFO.SRCL.signal()
     
-        code2 = "\n".join([sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL])
+        code2 = ""
+        for _ in [sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL]:
+            code2 += "\n".join(_) + "\n"
 
+        
         code3= ""
     
         if noplot:
@@ -396,7 +397,14 @@ class ALIGO_IFO(IFO):
         """
         Adds in the gouy phase telescope for WFS detectors and the IFO port objects.
         Commands added into block "REFL_gouy_tele". This attaches to the
-        nREFL node.
+        nREFL node which should be from an isolator on the input path.
+        
+        Also adds the relevant IFO port objects for generating detectors:
+            * ASC_REFL9A, ASC_REFL9B
+            * ASC_REFL45A, ASC_REFL45B
+            * ASC_REFL36A, ASC_REFL36B
+        
+        These ports are associated with the block "REFL_gouy_tele".
         
         gouy: gouy phase of A path, B path set to gouy + 90 deg
         """
@@ -412,14 +420,14 @@ class ALIGO_IFO(IFO):
         
         self.set_REFL_gouy_telescope_phase(gouy)
         
-        self.kat.IFO.ASC_REFL9A_P   = Port(self.kat.IFO, "ASC_REFL9A_P",  "nREFL_WFS_A",  self.kat.IFO.f1)
-        self.kat.IFO.ASC_REFL9B_P   = Port(self.kat.IFO, "ASC_REFL9B_P",  "nREFL_WFS_B",  self.kat.IFO.f1)
+        self.kat.IFO.ASC_REFL9A   = Port(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A",  self.kat.IFO.f1, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL9B   = Port(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B",  self.kat.IFO.f1, block="REFL_gouy_tele")
 
-        self.kat.IFO.ASC_REFL45A_P  = Port(self.kat.IFO, "ASC_REFL45A_P",  "nREFL_WFS_A",  self.kat.IFO.f2)
-        self.kat.IFO.ASC_REFL45B_P  = Port(self.kat.IFO, "ASC_REFL45B_P",  "nREFL_WFS_B",  self.kat.IFO.f2)
+        self.kat.IFO.ASC_REFL45A  = Port(self.kat.IFO, "ASC_REFL45A",  "nREFL_WFS_A",  self.kat.IFO.f2, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL45B  = Port(self.kat.IFO, "ASC_REFL45B",  "nREFL_WFS_B",  self.kat.IFO.f2, block="REFL_gouy_tele")
         
-        self.kat.IFO.ASC_REFL36A_P  = Port(self.kat.IFO, "ASC_REFL36A_P",  "nREFL_WFS_A",  self.kat.IFO.f36M)
-        self.kat.IFO.ASC_REFL36B_P  = Port(self.kat.IFO, "ASC_REFL36B_P",  "nREFL_WFS_B",  self.kat.IFO.f36M)
+        self.kat.IFO.ASC_REFL36A  = Port(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  self.kat.IFO.f36M, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL36B  = Port(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  self.kat.IFO.f36M, block="REFL_gouy_tele")
         
     def set_REFL_gouy_telescope_phase(self, gouyA, gouyB=None):
         """
@@ -698,11 +706,9 @@ def pretune_status(_kat):
     
     _detStr=""
     
-    for p in pretune_DOFs:
-        _sigStr = p.port.signal(kat)
-        _detStr = "\n".join([_detStr, _sigStr])
+    for dof in pretune_DOFs:
+        dof.add_signal()
         
-    kat.parseCommands(_detStr)
     out = kat.run()
     Pin = float(kat.L0.P)
 

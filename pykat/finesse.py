@@ -108,7 +108,9 @@ node_trace = namedtuple("node_trace", ['qx','qy'])
 cav_trace = namedtuple("cav_trace", ['isStable','gx','gy','qx','qy','finesse','loss','length','FSR','FWHM','pole'])
          
 lkat_location = ctypes.util.find_library("kat")
-                                     
+
+isContainer = lambda c: (not isinstance(c, six.string_types)) and hasattr(c, "__iter__")
+
 def f__lkat_process(callback, cmd, kwargs):
     """
     """
@@ -306,7 +308,7 @@ class KatBatch(object):
         import pykat
         kat = pykat.finesse.kat()
         kat.verbose = False
-        kat.parseCommands(commands)
+        kat.parse(commands)
         
         kw = dict()
         
@@ -357,7 +359,7 @@ class KatRun(object):
         
         kat = pykat.finesse.kat()
         kat.verbose = False
-        kat.parseCommands(self.katScript)
+        kat.parse(self.katScript)
         
         detectors = list(set([lbl.split()[0] for lbl in self.ylabels]))
         detectors.sort()
@@ -425,7 +427,7 @@ class KatRun(object):
 
         kat = pykat.finesse.kat()
         kat.verbose = False
-        kat.parseCommands(self.katScript)
+        kat.parse(self.katScript)
 
         if kat.noxaxis == True:
             raise  pkex.BasePyKatException("This kat object has noxaxis=True, so there is nothing to plot.")
@@ -929,7 +931,7 @@ class kat(object):
             raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
         
         if kat_code != None:
-            self.parseCommands(kat_code)
+            self.parse(kat_code)
         
         if kat_file != None:
             self.loadKatFile(kat_file)
@@ -1159,7 +1161,7 @@ class kat(object):
         with open(filename) as f:
             commands= f.read()
             
-        self.parseCommands(commands, blocks=blocks, keepComments=keepComments,
+        self.parse(commands, blocks=blocks, keepComments=keepComments,
                             preserveConstants=preserveConstants, useConstants=useConstants)
         
     def loadKatFile(self, katfile, blocks=None):
@@ -1167,8 +1169,8 @@ class kat(object):
         self.load(katfile, blocks=blocks)
     
     def parseKatCode(self, code, blocks=None):
-        warnings.warn('parseKatCode depreciated, use parseCommands.', stacklevel=2)
-        self.parseCommands(code, blocks=blocks)
+        warnings.warn('parseKatCode depreciated, use parse.', stacklevel=2)
+        self.parse(code, blocks=blocks)
 
     def processConstants(self, commands, useConstants=None, preserve=False):
         """
@@ -1318,10 +1320,13 @@ class kat(object):
         for key in self.__variables:
             print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
     
+    def parse(self, *args, **kwargs):
+        self.parse(*args, **kwargs)
+        
     def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None):
         if not isinstance(commands, six.string_types) and hasattr(commands, "__iter__"):
             for _ in commands:
-                self.parseCommands(_, blocks, addToBlock, keepComments, preserveConstants, useConstants)
+                self.parse(_, blocks, addToBlock, keepComments, preserveConstants, useConstants)
             
             return
                 
@@ -2572,7 +2577,17 @@ class kat(object):
             out.append("printmatrix\n")
             
         if len(self.mf) > 0:
-            out.append("mf " + " ".join(self.mf))
+            if isContainer(self.mf):
+                cmd = "mf"
+                for _ in self.mf:
+                    try:
+                        cmd += " %.15g" % float(_)
+                    except ValueError:
+                        cmd += " " + str(_)
+                    
+                out.append(cmd)
+            else:
+                out.append("mf " + str(self.mf))
             
         if self.lambda0 != 1064e-9:
             out.append("lambda {0}\n".format(self.lambda0))

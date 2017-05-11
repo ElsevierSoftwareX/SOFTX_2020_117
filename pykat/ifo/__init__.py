@@ -311,8 +311,8 @@ class IFO(object):
                                   
     def scan_DOF(self, DOF, xlimits=[-100, 100], steps=200, relative=False): 
         kat = self.kat.deepcopy()
-        kat.parseCommands(self.scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
-        kat.parseCommands(DOF.signal())
+        kat.parse(self.scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
+        kat.parse(DOF.signal())
         return kat.run()
 
     def scan_optics(self, _optics, _factors, xlimits=[-100, 100], steps=200,relative=False): 
@@ -332,7 +332,7 @@ class IFO(object):
         optics=make_list_copy(_optics)
         factors=make_list_copy(_factors)
     
-        kat.parseCommands(self.scan_optic_cmds(_optics, _factors, xlimits=xlimits, steps=steps, relative=relative))
+        kat.parse(self.scan_optic_cmds(_optics, _factors, xlimits=xlimits, steps=steps, relative=relative))
     
         return kat.run(cmd_args="-cr=on")
 
@@ -349,10 +349,10 @@ class IFO(object):
         _detStr  = DOF_det.transfer()
         _detName = DOF_det.transfer_name()
         
-        kat.parseCommands(_fsigStr)
-        kat.parseCommands(_detStr)
+        kat.parse(_fsigStr)
+        kat.parse(_detStr)
         kat.noxaxis = True
-        kat.parseCommands("yaxis lin abs:deg")
+        kat.parse("yaxis lin abs:deg")
         
         out = kat.run()
         
@@ -390,18 +390,36 @@ class DOF(object):
                 self.__IFO.kat.components[o].phi += phi * self.factors[idx]
             else:
                 self.__IFO.kat.components[o].phi = phi * self.factors[idx]
-            
+    
+    def add_signal(self):
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+        
+        return self.port.add_signal(self.quad, self.sigtype)
+                
     def signal(self):
-        return self.port.signal(self.quad)
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+            
+        return self.port.get_signal_cmds(quad=self.quad, sigtype=self.sigtype)
         
     def signal_name(self):
-        return self.port.signal_name(self.quad)
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+            
+        return self.port.get_signal_name(self.quad, self.sigtype)
 
     def transfer(self, phase2=None):
-        return self.port.transfer(self.quad, phase2=phase2)
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+            
+        return self.port.get_transfer_cmds(self.quad, phase2=phase2)
         
     def transfer_name(self):
-        return self.port.transfer_name(self.quad)
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+            
+        return self.port.get_transfer_name(self.quad)
 
     def fsig(self, _fsigName, fsig=1.0):
         _fsigStr= ""
@@ -423,21 +441,29 @@ class DOF(object):
 
 class Port(object):
     """
-    This object defines an output port of an interferometer demodulated at a particular
-    modulation frequency, or DC. It does not specify any detectors in particular. However, using
-    this object you can get the Finesse commands for the following detectors:
-        * Photodiodes
-        * Transfer functions 
-        * Amplitude detectors
+    This object defines a location in an interferometer where detectors are places and demodulated at a particular
+    modulation frequency or DC. It does not specify any detectors in particular.
+    However, using this object you can add the following detectors to the associated kat object:
+
+        * Photodiodes, for error signals (signal)
+        * Transfer functions to use with fsig (transfer)
+        * Amplitude detectors (amplitude)
+    
+    In brackets are the tags associated with each type of detector. The functions
+    here are named with each tag. The possible options are:
+    
+    You can add many detectors at a given port, which readout different quadratures or types of transfer functions
+    or signals.
     """
-    def __init__(self, IFO, _portName, _nodeNames, f=None, phase=0):
+    def __init__(self, IFO, _portName, _nodeNames, f=None, phase=0, block=None):
         self.__IFO = IFO
         self.portName = _portName
         self.nodeNames = make_list_copy(_nodeNames)
         self.f = f            # demodulation frequency, float
         self.phase = phase    # demodulation phase for I quadrature, float
         self.name = self.portName            
-    
+        self._block = block
+        
     def check_nodeName(self):
         self.nodeName = None
         
@@ -453,10 +479,10 @@ class Port(object):
         if self.nodeName==None:
             raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name,self.nodeNames))
 
-    def amplitude_name(self):
+    def get_amplitude_name(self):
         return self.name + "_ad"
     
-    def amplitude(self, f, n=None, m=None):
+    def get_amplitude_cmds(self, f, n=None, m=None):
         rtn = []
         
         self.check_nodeName()
@@ -480,20 +506,79 @@ class Port(object):
         
         return rtn
     
-    def signal_name(self, quad="I"):
+    def add_signal(self, quad=None, sigtype=None):
+        """
+        Adds a photodiode detector to the kat object at this port. Must
+        specify which demodulation quadrature and type of signal to
+        detect.
+        
+        quad: "I" or "Q", Demodoulation quadrature relative to the Port's `phase` value.
+        sigtype: "z","pitch" or "yaw", type of signal to detect
+        
+        Returns: Name of added detector
+        
+        
+        Example:
+            REFL_dets = [] # Store the names of each detector
+        
+            REFL_dets.append( base.IFO.ASC_REFL36A.add_signal('I', "pitch") )
+            REFL_dets.append( base.IFO.ASC_REFL36A.add_signal("Q", "pitch") )
+            REFL_dets.append( base.IFO.ASC_REFL36B.add_signal("I", "pitch") )
+            REFL_dets.append( base.IFO.ASC_REFL36B.add_signal("Q", "pitch") )
+        """
+        cmds = self.get_signal_cmds(quad=quad, sigtype=sigtype)
+        self.__IFO.kat.parse(cmds, addToBlock=self._block)
+        return self.get_signal_name(quad, sigtype)
+        
+    def get_signal_name(self, quad="I", sigtype='z'):
+        
         name = self.name
         
-        if self.f!=None:
-            name = self.name+"_"+quad
+        # If we're demodulating add which quadrature we're using
+        if self.f is not None: name += "_" + quad
+        
+        if sigtype == "pitch":
+            name += "_P"
+        elif sigtype == "yaw":
+            name += "_Y"
             
         return name
-    
-    def signal(self, quad="I", sigtype="z"):
+        
+    def get_signal_cmds(self, dof=None, **kwargs):
+        """
+        Returns the Finesse commands for a detector added to this port's location.
+        
+        dof: A DOF object which defines the quadrature and signal type for readout
+        
+        Optionally keyword arguments can be used for manually picking quadrature
+        and signal type (overrides any DOF object setting):
+        
+        quad: "I" or "Q", Demodoulation quadrature relative to the Port's `phase` value.
+        sigtype: "z","pitch" or "yaw", type of signal to detect
+        
+        Returns: List of commands
+            cmds = base.IFO.ASC_REFL36B.get_signal_cmds(kat.IFO.CHARD_P)
+            # Or
+            cmds = base.IFO.ASC_REFL36B.get_signal_cmds(quad="I", sigtype="pitch")
+            
+            base.parse(cmds)
+        """
+        
+        if dof is not None:
+            if dof.quad is not None: quad = dof.quad
+            if dof.sigtype is not None: sigtype = dof.sigtype
+            
+        if "quad"    in kwargs: quad    = kwargs['quad']
+        if "sigtype" in kwargs: sigtype = kwargs['sigtype']
+            
+        if self.f is not None and quad is None: raise pkex.BasePyKatException("No quadrature value specified")
+        if sigtype is None: sigtype = "z"
+        
         rtn = []
         
         self.check_nodeName()
         
-        name = self.signal_name(quad=quad)
+        name = self.get_signal_name(quad=quad, sigtype=sigtype)
                 
         if self.f==None:
             rtn.append("pd {} {}".format(name, self.nodeName))
@@ -521,7 +606,7 @@ class Port(object):
                 
         return phase
         
-    def transfer_name(self, quad="I"):
+    def get_transfer_name(self, quad="I"):
         name = self.name
         
         if self.f!=None:
@@ -529,10 +614,10 @@ class Port(object):
             
         return name
         
-    def transfer(self, quad="I", phase2=None):
+    def get_transfer_cmds(self, quad="I", phase2=None):
         self.check_nodeName()
         
-        name = self.transfer_name(quad=quad)
+        name = self.get_transfer_name(quad=quad)
             
         if self.f is None:
             if phase2 is None:
