@@ -1,17 +1,10 @@
 import pykat
 import pykat.exceptions as pkex
-import pykat.external.peakdetect as peak
-
-import matplotlib.pyplot as plt
 
 import numpy as np
 import inspect
 import math
 import six
-
-global nsilica, clight
-nsilica = 1.44963098985906
-clight = 299792458.0
 
 def make_transparent(kat, _components):
     """
@@ -37,18 +30,6 @@ def make_transparent(kat, _components):
         raise pkex.BasePyKatException("Cannot find component {}".format(components))
         
     return kat
-
-def remove_commands(kat, _commands, verbose=False):
-    commands=make_list_copy(_commands)
-    # removing commands
-    for o in kat.commands.values():
-        if o.name in commands:
-            o.remove()
-            commands = [c for c in commands if c != o.name]
-            vprint(verbose, '   {} removed'.format(o))
-    if len(commands) != 0:
-        raise pkex.BasePyKatException("Cannot find command(s) {}".format(commands))
-    return kat
     
 def round_to_n(x, n):
     if not x: return 0
@@ -60,7 +41,7 @@ def vprint(verbose, printstr):
     if verbose:
         print(printstr)
         
-def BS_optical_path(thickness, n=nsilica, angle=45.0):
+def BS_optical_path(thickness, n=1.44963098985906, angle=45.0):
     """
     Compute optical path length in BS substrate, default
     parameters assume angle of incidence of 45 deg and fused
@@ -82,8 +63,9 @@ def make_list_copy(_l):
     "string" copy to ["string"]
     ["string1", "string2"] copy to ["string1", "string2"]
     """
-    if not isinstance(_l, (list, tuple)):
+    if not isinstance(_l, (list, tuple, np.ndarray)):
         _l = [_l]
+        
         
     return _l[:] # copy the list, just to be save
 
@@ -99,6 +81,8 @@ def find_peak(out, detector, minmax='max', debug=False):
     find_peak(out, "pdout")
     find_peak(out, "pdout", minmax='min')
     """
+    import pykat.external.peakdetect as peak
+    
     stepsize = out.x[1]-out.x[0]
     if debug:
         print("  stepsize (precision) of scan: {0:g}".format(stepsize))
@@ -106,6 +90,8 @@ def find_peak(out, detector, minmax='max', debug=False):
     _max, _min = peak.peakdetect( out[detector],out.x, 1)
     
     if debug:
+        import matplotlib.pyplot as plt
+        
         plt.figure()
         plt.plot(out.x,out[detector])
         plt.show()
@@ -143,7 +129,7 @@ def find_peak(out, detector, minmax='max', debug=False):
     return X_out, stepsize
 
 
-def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
+def scan_optics_string(_optics, _factors, _varName, target="phi", linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
     optics=make_list_copy(_optics)
     factors=make_list_copy(_factors)
     
@@ -156,33 +142,204 @@ def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100,
     _tuneStr  = "var {} 0\n".format(_varName)
     
     if axis==1:
-        _tuneStr += "xaxis {} phi {} {} {} {}".format(_varName, linlog, xlimits[0], xlimits[1], steps)
+        _tuneStr += "xaxis {} {} {} {} {} {}".format(_varName, target, linlog, xlimits[0], xlimits[1], steps)
     elif (axis==2 or axis==3): 
-        _tuneStr += "x{}axis {} phi {} {} {} {}".format(axis, _varName, linlog, xlimits[0], xlimits[1], steps)
+        _tuneStr += "x{}axis {} {} {} {} {} {}".format(axis, _varName, target, linlog, xlimits[0], xlimits[1], steps)
     else:
         raise pkex.BasePyKatException("axis must be 1, 2 or 3")
         
     _putStr = ""
     
     for idx, o in enumerate(optics):
+        
         if factors[idx] == 1:
             _xStr="$x"
         elif factors[idx] == -1:
             _xStr="$mx"
         else:
             raise pkex.BasePyKatException("optics factors must be 1 or -1")
+            
         if (relative):
             _putCmd = "put*"
         else:
             _putCmd = "put"
                 
-        _putStr = "\n".join([_putStr, "{} {} phi {}{}".format(_putCmd, o, _xStr, axis)])            
-        _tuneStr += _putStr
+        _putStr = "\n".join([_putStr, "{} {} {} {}{}".format(_putCmd, o, target, _xStr, axis)])            
+        
+    _tuneStr += _putStr
         
     return _tuneStr
     
     
+def scan_DOF_cmds(DOF, xlimits=[-100, 100], steps=200, relative=False):    
+    return scan_optics_string(DOF.optics, 
+                              DOF.factors,
+                              "scan",
+                              target=DOF._mirror_target(),
+                              linlog="lin",
+                              xlimits=xlimits,
+                              steps=steps,
+                              axis=1,
+                              relative=relative)
+
+def scan_optic_cmds(self, optics, factors, xlimits=[-100, 100], steps=200,relative=False):
+    return scan_optics_string(optics,
+                              factors,
+                              "scan",
+                              linlog="lin",
+                              xlimits=xlimits,
+                              steps=steps,
+                              axis=1,
+                              relative=relative)
+                              
+def scan_DOF(kat, DOF, xlimits=[-100, 100], steps=200, relative=False): 
+    kat = kat.deepcopy()
+    kat.parse(scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
+    kat.verbose = True
     
+    if DOF.port is not None:
+        kat.parse(DOF.signal())
+    
+    return kat.run(cmd_args=["-cr=on"])
+
+def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps=200,relative=False): 
+    """
+    Scans one or more optics (by scanning the `target` parameter).
+    
+    Parameters:
+    optics: list of names of components to be tuned
+    factors: list of scaling factors for the tuning for each optics, first element must be 1.0
+    xlimits: limits of the scan
+    steps: number of steps to use in scan
+    
+    Usage:
+        scan_optics(kat, "PRM", 1)
+        scan_optics(kat, ["ETMX", "ETMY", [1, -1])
+    """
+    kat = kat.deepcopy()
+
+    optics=make_list_copy(_optics)
+    factors=make_list_copy(_factors)
+
+    kat.parse(scan_optic_cmds(_optics, _factors, target=target, xlimits=xlimits, steps=steps, relative=relative))
+
+    return kat.run(cmd_args="-cr=on")
+
+def optical_gain(DOF_sig, DOF_det, f=1.0):
+    """
+    Returns W/rad for length sensing. Will throw an exception if it can't convert the
+    units into W/rad.
+    """
+    
+    kat = DOF_sig.kat.deepcopy()
+    kat.removeBlock('locks', False)
+     
+    _fsigStr = DOF_sig.fsig("sig1", fsig=f)
+    _detStr  = DOF_det.transfer()
+    _detName = DOF_det.transfer_name()
+    
+    kat.parse(_fsigStr)
+    kat.parse(_detStr)
+    kat.noxaxis = True
+    kat.parse("yaxis lin abs:deg")
+    
+    out = kat.run()
+    
+    if DOF_sig.sigtype == "phase":
+        return float(np.real(out[_detName])) # W/rad
+    elif DOF_sig.sigtype == "z":
+        k = 2*np.pi/kat.lambda0
+        return float(np.real(out[_detName])) / k # W/(m*k) -> W/rad
+    else:
+        raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
+
+def diff_DOF(DOF, deriv_h=1e-12):
+    """
+    Returns commands to differentiate with respect to the DOF motion.
+    
+    This is typically used to find the slope of error signals.
+    """
+    rtn = ("var x 0\n"
+            "diff x re\n"
+            "deriv_h %g\n" 
+            "set _dx x re\n"
+            "func DX = $_dx\n"
+            "noplot DX\n"
+            "func mDX = (-1) * $_dx\n"
+            "noplot mDX\n") % deriv_h
+    
+    for o,f in zip(DOF.optics, DOF.factors):
+        if f == 1:
+            rtn += "put %s ybeta $DX\n" % o
+        elif f == -1:
+            rtn += "put %s ybeta $mDX\n" % o
+        else:
+            raise pkex.BasePyKatException("Factor can only be -1 or 1 currently")
+    
+    return rtn
+    
+def scan_demod_phase_cmds(pd_detectors, steps=100, demod_phase=1, relative=False):
+    """
+    For a given list of detectors this will return the commands
+    to scan the demod phase over 360 degrees
+    """
+    pd_detectors = make_list_copy(pd_detectors)
+    rtn = ("var scan 0\n"
+           "xaxis scan re lin -180 180 %i\n" % steps)
+
+    if relative:
+        cmd = "put*"
+    else:
+        cmd = "put"
+        
+    for _ in pd_detectors:
+        rtn += "%s %s phase1 $x%i\n" % (cmd, _, demod_phase)
+        
+    return rtn
+    
+def optimise_demod_phase(_kat, DOF, pd_detectors):
+    """
+    This will optimise the demodulation phase of each detector to
+    provide the largest slope in the detector outputs with respect
+    to the DOF.
+    """
+    kat = _kat.deepcopy()
+    
+    if isinstance(DOF, six.string_types):
+        DOF = kat.IFO.DOFs[DOF]
+    
+    pd_detectors = make_list_copy(pd_detectors)
+    
+    kat.removeBlock("locks", False)
+    kat.removeBlock("powers", False)
+    
+    kat.parse( aligo.diff_DOF(DOF) )
+    kat.parse( aligo.scan_demod_phase_cmds(pd_detectors) )
+    
+    # Analyitcally we can find the phase which gives a maxmium
+    # by solving for A and B in:
+    #   f(x) = Acos(x+B)
+    # assuming we take the two data points x = {0, pi/2} we find
+    #   B = arctan(y2/y1)
+    kat.xaxis.limits = (0, 90)
+    kat.xaxis.steps = 1
+    out = kat.run()
+    
+    rtn = []
+    
+    for _ in pd_detectors:
+        y1, y2 = out[_]
+        x = np.deg2rad(out.x)
+        R = np.sqrt(y1**2 + y2**2)
+        phi = np.rad2deg(np.arctan2(y2,y1))
+        
+        _kat.detectors[_].phase1 = phi
+        
+        rtn.append(phi)
+        
+    
+    return rtn
+          
 class IFO(object):
     """
     A generic object that contains various interferometer properties.
@@ -202,6 +359,11 @@ class IFO(object):
     @property
     def kat(self): return self.__kat
     
+    def requires_nodes(self, *args):
+        for node in args:
+            pass
+            
+        
     def _tuning_key(self, **kwargs):
         if set(kwargs.keys()) != self.__tuning_keys:
             raise pkex.BasePyKatException("input keyword arguments should be: %s" % ", ".join(self.__tuning_keys))
@@ -292,70 +454,7 @@ class IFO(object):
         
         return dofs
     
-    def scan_DOF_cmds(self, DOF, xlimits=[-100, 100], steps=200, relative=False):
-        return scan_optics_string(DOF.optics, 
-                                  DOF.factors,
-                                  "scan",
-                                  linlog="lin",
-                                  xlimits=xlimits,
-                                  steps=steps,
-                                  axis=1,
-                                  relative=relative)
     
-    def scan_optic_cmds(self, optics, factors, xlimits=[-100, 100], steps=200,relative=False):
-        return scan_optics_string(optics,
-                                  factors,
-                                  "scan",
-                                  linlog="lin",
-                                  xlimits=xlimits,
-                                  steps=steps,
-                                  axis=1,
-                                  relative=relative)
-                                  
-    def scan_DOF(self, DOF, xlimits=[-100, 100], steps=200, relative=False): 
-        kat = self.kat.deepcopy()
-        kat.parseCommands(self.scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
-        kat.parseCommands(DOF.signal())
-        return kat.run()
-
-    def scan_optics(self, _optics, _factors, xlimits=[-100, 100], steps=200,relative=False): 
-        """
-        Scans one or more optics (by changing its tuning).
-        Parameters:
-        optics: list of names of components to be tuned
-        factors: list of scaling factors for the tuning for each optics, first element must be 1.0
-        xlimits: limits of scan, defaults to [-100, 100]
-        steps: number of steps to use in scan, default is 200
-        Usage:
-        scan_optis(kat, "PRM", 1)
-        scan_optis(kat, ["ETMX", "ETMY", [1, -1])
-        """
-        kat = self.kat.deepcopy()
-    
-        optics=make_list_copy(_optics)
-        factors=make_list_copy(_factors)
-    
-        kat.parseCommands(self.scan_optic_cmds(_optics, _factors, xlimits=xlimits, steps=steps, relative=relative))
-    
-        return kat.run(cmd_args="-cr=on")
-
-    def optical_gain(self, DOF_sig, DOF_det, f=10.0):
-        kat = self.kat.deepcopy()
-        kat.removeBlock('locks', False)
-         
-        _fsigStr = DOF_sig.fsig("sig1", fsig=f)
-        _detStr = DOF_det.transfer(fsig=f)
-        _detName = DOF_det.transfer_name()
-        
-        kat.parseCommands(_fsigStr)
-        kat.parseCommands(_detStr)
-        kat.noxaxis = True
-        kat.parseCommands("yaxis lin abs:deg")
-        
-        out = kat.run()
-        
-        return float(np.real(out[_detName]))
-        
 class DOF(object):
     """
     Defining a degree of freedom for the interferometer, includes the
@@ -370,54 +469,126 @@ class DOF(object):
         self.sigtype = sigtype
         self.optics=make_list_copy(_optics)
         self.factors=make_list_copy(_factors)
+        
         # scaling factor, to compensate for lower sensitivity compared
         # to DARM (in tuning plots for example)
         # Thus DARM has a scale of 1, all other DOFs a scale >1
         self.scale = _scale
-
+    
+    def _mirror_target(self):
+        """
+        Returns which parameter to target in puts and xaxis depending on sigtype
+        """
+    
+        if self.sigtype == "z":
+            target = "phi"
+        elif self.sigtype == "pitch":
+            target = "ybeta"
+        elif self.sigtype == "yaw":
+            target = "xbeta"
+        else:
+            raise pkex.BasePyKatException("Unexpected sigtype %s" % self.sigtype)
+        
+        return target
+        
+    @property
+    def kat(self):
+        """For referencing the kat object this DOF is associated with"""
+        return self.__IFO.kat
+        
+    def scan(self, **kwargs):
+        """
+        Convenience method for calling `scan_DOF` for this particular DOF and associated kat object.
+        
+        See `scan_DOF` for keyword arguments options.
+        """
+        return scan_DOF(self.__IFO.kat, self, **kwargs)
+        
     def apply_tuning(self, phi, add=False):
         for idx, o in enumerate(self.optics):
             if add:
                 self.__IFO.kat.components[o].phi += phi * self.factors[idx]
             else:
                 self.__IFO.kat.components[o].phi = phi * self.factors[idx]
-            
+    
+    def add_signal(self):
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+        
+        return self.port.add_signal(self.quad, self.sigtype)
+                
     def signal(self):
-        return self.port.signal(self.quad, sigtype=self.sigtype)
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+            
+        return self.port.get_signal_cmds(quad=self.quad, sigtype=self.sigtype)
         
     def signal_name(self):
-        return self.port.signal_name(self.quad, sigtype=self.sigtype)
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+            
+        return self.port.get_signal_name(self.quad, self.sigtype)
 
-    def transfer(self, fsig, phase2=None):
-        return self.port.transfer(self.quad, fsig=fsig, phase2=phase2, sigtype=self.sigtype)
+    def transfer(self, phase2=None):
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+            
+        return self.port.get_transfer_cmds(self.quad, phase2=phase2)
         
     def transfer_name(self):
-        return self.port.transfer_name(self.quad)
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+            
+        return self.port.get_transfer_name(self.quad)
 
     def fsig(self, _fsigName, fsig=1.0):
         _fsigStr= ""
         
         for idx, o in enumerate(self.optics):
             phase = 0.0
-            if self.factors[idx] == -1:
+            
+            if self.factors[idx] < 0:
                 phase = 180.0
-            _fsigStr = "\n".join([_fsigStr, "fsig {} {} {} {} ".format(_fsigName, o, fsig, phase)])
+            
+            _fsigStr = "\n".join([_fsigStr, "fsig {name} {component} {type} {f} {phase} {amp}".format(name=_fsigName, 
+                                                                                                    component=o,
+                                                                                                    type=self.sigtype,
+                                                                                                    f=fsig,
+                                                                                                    phase=phase,
+                                                                                                    amp=abs(self.factors[idx]))])
             
         return _fsigStr
 
 class Port(object):
     """
-    Defining an output port for the interferometer, can be either a
-    pd or a pd1 detector (for error signal generation).
+    This object defines a location in an interferometer where detectors are places and demodulated at a particular
+    modulation frequency or DC. It does not specify any detectors in particular.
+    However, using this object you can add the following detectors to the associated kat object:
+
+        * Photodiodes, for error signals (signal)
+        * Transfer functions to use with fsig (transfer)
+        * Amplitude detectors (amplitude)
+    
+    In brackets are the tags associated with each type of detector. The functions
+    here are named with each tag. The possible options are:
+    
+    You can add many detectors at a given port, which readout different quadratures or types of transfer functions
+    or signals.
     """
-    def __init__(self, IFO, _portName, _nodeNames, f=None, phase=None):
+    def __init__(self, IFO, _portName, _nodeNames, f=None, phase=0, block=None):
         self.__IFO = IFO
         self.portName = _portName
         self.nodeNames = make_list_copy(_nodeNames)
-        self.f=f            # demodulation frequency, float
-        self.phase = phase  # demodulation frequency for I quadrature, float
+        self.f = f            # demodulation frequency, float
+        self.phase = phase    # demodulation phase for I quadrature, float
         self.name = self.portName            
-    
+        self._block = block
+
+    @property
+    def kat(self):
+        """For referencing the kat object this DOF is associated with"""
+        return self.__IFO.kat
+          
     def check_nodeName(self):
         self.nodeName = None
         
@@ -433,52 +604,134 @@ class Port(object):
         if self.nodeName==None:
             raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name,self.nodeNames))
 
-    def amplitude_name(self, f, n=None, m=None, sigtype="z"):
-        name = self.name + "_ad"
-        return name
+    def get_amplitude_name(self):
+        return self.name + "_ad"
     
-    def amplitude(self, f, n=None, m=None, sigtype="z"):
+    def get_amplitude_cmds(self, f, n=None, m=None):
+        rtn = []
+        
         self.check_nodeName()
         
-        name = self.amplitude_name(f, n=n, m=m, sigtype=sigtype)
+        name = self.amplitude_name(f, n=n, m=m)
         
         if n==None and m==None:
-            return "ad {} {} {}".format(name, f, self.nodeName)
+            rtn.append("ad {} {} {}".format(name, f, self.nodeName))
         else:
-            return "ad {} {} {} {} {}".format(name, f, n, m, self.nodeName)
+            rtn.append("ad {} {} {} {} {}".format(name, f, n, m, self.nodeName))
+            
+        return rtn
     
-    def signal_name(self, quad="I", sigtype="z"):
+    def _pdtype(self, name, sigtype):
+        rtn = []
+        
+        if sigtype == "pitch":
+            rtn.append("pdtype {} y-split".format(name))
+        elif sigtype == "yaw":
+            rtn.append("pdtype {} x-split".format(name))
+        
+        return rtn
+    
+    def add_signal(self, quad=None, sigtype=None):
+        """
+        Adds a photodiode detector to the kat object at this port. Must
+        specify which demodulation quadrature and type of signal to
+        detect.
+        
+        quad: "I" or "Q", Demodoulation quadrature relative to the Port's `phase` value.
+        sigtype: "z","pitch" or "yaw", type of signal to detect
+        
+        Returns: Name of added detector
+        
+        
+        Example:
+            REFL_dets = [] # Store the names of each detector
+        
+            REFL_dets.append( base.IFO.ASC_REFL36A.add_signal('I', "pitch") )
+            REFL_dets.append( base.IFO.ASC_REFL36A.add_signal("Q", "pitch") )
+            REFL_dets.append( base.IFO.ASC_REFL36B.add_signal("I", "pitch") )
+            REFL_dets.append( base.IFO.ASC_REFL36B.add_signal("Q", "pitch") )
+        """
+        cmds = self.get_signal_cmds(quad=quad, sigtype=sigtype)
+        self.__IFO.kat.parse(cmds, addToBlock=self._block)
+        return self.get_signal_name(quad, sigtype)
+        
+    def get_signal_name(self, quad="I", sigtype='z'):
+        
         name = self.name
         
-        if self.f!=None:
-            name = self.name+"_"+quad
+        # If we're demodulating add which quadrature we're using
+        if self.f is not None: name += "_" + quad
+        
+        if sigtype == "pitch":
+            name += "_P"
+        elif sigtype == "yaw":
+            name += "_Y"
             
         return name
-    
-    def signal(self, quad="I", sigtype="z"):
+        
+    def get_signal_cmds(self, dof=None, **kwargs):
+        """
+        Returns the Finesse commands for a detector added to this port's location.
+        
+        dof: A DOF object which defines the quadrature and signal type for readout
+        
+        Optionally keyword arguments can be used for manually picking quadrature
+        and signal type (overrides any DOF object setting):
+        
+        quad: "I" or "Q", Demodoulation quadrature relative to the Port's `phase` value.
+        sigtype: "z","pitch" or "yaw", type of signal to detect
+        
+        Returns: List of commands
+            cmds = base.IFO.ASC_REFL36B.get_signal_cmds(kat.IFO.CHARD_P)
+            # Or
+            cmds = base.IFO.ASC_REFL36B.get_signal_cmds(quad="I", sigtype="pitch")
+            
+            base.parse(cmds)
+        """
+        
+        if dof is not None:
+            if dof.quad is not None: quad = dof.quad
+            if dof.sigtype is not None: sigtype = dof.sigtype
+            
+        if "quad"    in kwargs: quad    = kwargs['quad']
+        if "sigtype" in kwargs: sigtype = kwargs['sigtype']
+            
+        if self.f is not None and quad is None: raise pkex.BasePyKatException("No quadrature value specified")
+        if sigtype is None: sigtype = "z"
+        
+        rtn = []
+        
         self.check_nodeName()
         
-        name = self.signal_name(quad=quad, sigtype=sigtype)
-        
-        if sigtype != "z":
-            raise pkex.BasePyKatException("alignment signals are not implemented yet")            
+        name = self.get_signal_name(quad=quad, sigtype=sigtype)
                 
         if self.f==None:
-            return "pd {} {}".format(name, self.nodeName)
+            rtn.append("pd {} {}".format(name, self.nodeName))
         else:
             if quad !="I" and quad != "Q":
-                raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
+                raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")
+                
             phase = self.IQ_phase(quad, self.phase)
-            return "pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName)
+            
+            rtn.append("pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName))
+        
+        rtn.extend(self._pdtype(name, sigtype))
+        
+        return rtn
         
     def IQ_phase(self, quad, phase):
-        if quad== "Q":
+        if phase is None:
+            raise pkex.BasePyKatException("Phase cannot be None")
+            
+        if quad == "Q":
             phase = phase + 90.0
+            
             if phase >=360.0 :
                 phase -= 360.0
+                
         return phase
         
-    def transfer_name(self, quad="I"):
+    def get_transfer_name(self, quad="I"):
         name = self.name
         
         if self.f!=None:
@@ -486,28 +739,25 @@ class Port(object):
             
         return name
         
-    def transfer(self, quad="I", fsig=1.0, phase2=None, sigtype="z"):
+    def get_transfer_cmds(self, quad="I", phase2=None):
         self.check_nodeName()
         
-        name = self.transfer_name(quad=quad)
-        
-        if sigtype!="z":
-            raise pkex.BasePyKatException("alignment signals are not implemented yet")            
+        name = self.get_transfer_name(quad=quad)
             
-        if self.f==None:
-            if phase2 == None:
-                return "pd1 {} {} {}".format(name, fsig, self.nodeName)
+        if self.f is None:
+            if phase2 is None:
+                return "pd1 {} {} {}".format(name, "$fs", self.nodeName)
             else:
-                return "pd1 {} {} {} {}".format(name, fsig, phase2, self.nodeName)
+                return "pd1 {} {} {} {}".format(name, "$fs", phase2, self.nodeName)
         else:
-            if quad !="I" and quad != "Q":
+            if quad not in ("I", "Q"):
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
                 
             phase = self.IQ_phase(quad, self.phase)
             
-            if phase2 == None:
-                return "pd2 {} {} {} {} {}".format(name, self.f , phase, fsig, self.nodeName)
+            if phase2 is None:
+                return "pd2 {} {} {} {} {}".format(name, self.f , phase, "$fs", self.nodeName)
             else:
-                return "pd2 {} {} {} {} {} {}".format(name, self.f, phase, fsig, phase2, self.nodeName)
+                return "pd2 {} {} {} {} {} {}".format(name, self.f, phase, "$fs", phase2, self.nodeName)
                 
                 

@@ -16,12 +16,15 @@ from itertools import chain
 
 from pykat import finesse
 from pykat.finesse import BlockedKatFile
-from pykat.ifo import IFO, DOF, Port, vprint, clight, nsilica, find_peak, make_transparent, remove_commands, round_to_n, scan_optics_string
+from pykat.ifo import *
 
 import pykat.components
 import pykat.exceptions as pkex
 import pykat.external.peakdetect as peak
 import pkg_resources
+
+from scipy.constants import c as clight
+
 
 from scipy.optimize import fmin
 
@@ -32,13 +35,13 @@ class ALIGO_IFO(IFO):
     
     Functions that operate on the kat/IFO objects, manipulate their
     structure and return a new one, should not be included here. They should
-    be separate functions that are called by the user. Functions that are
-    chained together by the user, like pretuning, should be separate functions.
+    be separate functions that are called by the user. 
     
     The functions here should be those that update the kat with information
-    from the IFO or vice-versa.
+    from the IFO object or vice-versa.
     """
     def compute_derived_resonances(self):
+        clight
         self.fsrX = 0.5 * clight / float(self.kat.LX.L)
         self.fsrY = 0.5 * clight / float(self.kat.LY.L)
         self.fsrPRC = 0.5 * clight / self.lPRC
@@ -92,12 +95,36 @@ class ALIGO_IFO(IFO):
         
         This function alters the kat object directly.
         """
-        # Keep any lengths the same
-        self.kat.lmod1.L += self.kat.lmod2.L + self.kat.lmod3.L
+        self.kat.remove("lmod1", "mod1", "lmod2", "mod2", "lmod3")    # Remove modulators
+        # Set output node of laser block to be on the laser
+        self.kat.nodes.replaceNode(self.kat.L0, 'n0', 'nLaserOut')
         
-        self.kat.remove("mod1", "lmod2", "mod2", "lmod3")    # Remove modulators
-        self.kat.nodes.replaceNode(self.kat.lmod1, 'n1', 'nREFL') # Reconnect laser
+    def remove_IMC_HAM2(self, removeIMC, removeHAM2):
+        """
+        For use with files that have the IMC and HAM2 blocks.
         
+        Removes the IMC and HAM2 blocks if not required in the model. Reconnects
+        spaces between the laser and HAM2 and PRC. Assumes spaces exists
+        with name and node:
+            sHAM2in and node nIMCout
+            sPRCin  and node nHAM2out
+        
+        
+        This function alters the kat object directly.
+        """
+        
+        if removeHAM2 and not removeIMC:
+            raise pkex.BasePyKatException("Must remove IMC if removing HAM2 block")
+        
+        if removeIMC:
+            self.kat.removeBlock("IMC")
+            self.kat.cavIMC.remove()
+            self.kat.nodes.replaceNode(self.kat.sHAM2in, 'nIMCout', 'nLaserOut')
+        
+        if removeHAM2:
+            self.kat.removeBlock("HAM2")
+            self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
+     
     def adjust_PRC_length(self, verbose=False):
         """
         Adjust PRC length so that it fulfils the requirement
@@ -179,10 +206,8 @@ class ALIGO_IFO(IFO):
             # Compute the DC offset powers
             kat = _kat.deepcopy()
         
-            sigStr = kat.IFO.AS_DC.signal()
-            signame = kat.IFO.AS_DC.signal_name()
+            signame = kat.IFO.AS_DC.add_signal()
         
-            kat.parseCommands(sigStr)
             kat.noxaxis=True
         
             out = kat.run(cmd_args=["-cr=on"])
@@ -275,8 +300,11 @@ class ALIGO_IFO(IFO):
         sigMICH = kat.IFO.MICH.signal()
         sigSRCL = kat.IFO.SRCL.signal()
     
-        code2 = "\n".join([sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL])
+        code2 = ""
+        for _ in [sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL]:
+            code2 += "\n".join(_) + "\n"
 
+        
         code3= ""
     
         if noplot:
@@ -368,11 +396,60 @@ class ALIGO_IFO(IFO):
         self.kat.parseCommands(cmds, addToBlock="locks")
         
         return cmds
+    
+    def add_REFL_gouy_telescope(self, gouy=0):
+        """
+        Adds in the gouy phase telescope for WFS detectors and the IFO port objects.
+        Commands added into block "REFL_gouy_tele". This attaches to the
+        nREFL node which should be from an isolator on the input path.
         
+        Also adds the relevant IFO port objects for generating detectors:
+            * ASC_REFL9A, ASC_REFL9B
+            * ASC_REFL45A, ASC_REFL45B
+            * ASC_REFL36A, ASC_REFL36B
         
+        These ports are associated with the block "REFL_gouy_tele".
         
+        gouy: gouy phase of A path, B path set to gouy + 90 deg
+        """
         
+        self.kat.removeBlock("REFL_gouy_tele", False) # Remove old one
+        
+        self.kat.parseCommands("""
+        s  sFI_REFL_WFS   0.1 nREFL nREFL_WFS_BS1
+        bs WFS_REFL_BS 0.5 0.5 0 0 nREFL_WFS_BS1 nREFL_WFS_BS2 nREFL_WFS_BS3 dump
+        s  sWFS_REFL_A  0 nREFL_WFS_BS3 nREFL_WFS_A #0.267 lengths from T1000247 if needed
+        s  sWFS_REFL_B  0 nREFL_WFS_BS2 nREFL_WFS_B #0.636
+        """.format(gouy, gouy+90), addToBlock="REFL_gouy_tele")
+        
+        self.set_REFL_gouy_telescope_phase(gouy)
+        
+        self.kat.IFO.ASC_REFL9A   = Port(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A",  self.kat.IFO.f1, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL9B   = Port(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B",  self.kat.IFO.f1, block="REFL_gouy_tele")
 
+        self.kat.IFO.ASC_REFL45A  = Port(self.kat.IFO, "ASC_REFL45A",  "nREFL_WFS_A",  self.kat.IFO.f2, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL45B  = Port(self.kat.IFO, "ASC_REFL45B",  "nREFL_WFS_B",  self.kat.IFO.f2, block="REFL_gouy_tele")
+        
+        self.kat.IFO.ASC_REFL36A  = Port(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  self.kat.IFO.f36M, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL36B  = Port(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  self.kat.IFO.f36M, block="REFL_gouy_tele")
+        
+    def set_REFL_gouy_telescope_phase(self, gouyA, gouyB=None):
+        """
+        Sets the gouy phase of the REFL gouy phase telescope paths.
+        Can specify A and B phase separately, if A is set only then
+        gouyB = gouyA + 90.
+        """
+        
+        if "REFL_gouy_tele" in self.kat.getBlocks():
+            if gouyB is None:
+                gouyB = gouyA + 90
+                
+            self.kat.sWFS_REFL_A.gouy = gouyA
+            self.kat.sWFS_REFL_B.gouy = gouyB
+        else:
+            raise pkex.BasePyKatException("\033[91mREFL Gouy phase telescope isn't in the kat object, use kat.IFO.add_REFL_gouy_telescope()\033[0m")
+
+        
 def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
@@ -394,7 +471,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['design', 'design_low_power']
+    names = ['design', 'design_low_power', 'design_with_IMC_HAM2']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
@@ -448,6 +525,8 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
         
     if "f3" in kat.constants.keys():
         kat.IFO.f3 = float(kat.constants["f3"].value)
+    
+    kat.IFO.f36M = kat.IFO.f2 - kat.IFO.f1
         
     # TODO add else here!
     # check modultion frequencies
@@ -472,19 +551,53 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.POW_X   = Port(kat.IFO, "PowX",  "nITMX2")
     kat.IFO.POW_Y   = Port(kat.IFO, "PowY",  "nITMY2")
 
-    # pretune DOF
-    kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0)
-    kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0)
-    kat.IFO.preMICH =  DOF(kat.IFO, "AS"  , kat.IFO.AS_DC,   "", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 6.0)
-    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PRM",  1, 10.0)
-    kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0)
+    # pretune LSC DOF
+    kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
+    kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
+    kat.IFO.preMICH =  DOF(kat.IFO, "AS"  , kat.IFO.AS_DC,   "", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 6.0, sigtype="z")
+    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PRM",  1, 10.0, sigtype="z")
+    kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0, sigtype="z")
     
     # control scheme as in [1] Table C.1  
-    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0)
-    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 100.0)
-    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [1, 1], 1.5)
-    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0)
-    kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", 1, 1e2)
+    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
+    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 100.0, sigtype="z")
+    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [1, 1], 1.5, sigtype="z")
+    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0, sigtype="z")
+    kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", 1, 1e2, sigtype="z")
+    
+    # Pitch DOfs
+    # There is a difference in the way LIGO and Finesse define positive and negative
+    # rotations of the cavity mirrors. For LIGO the rotational DOFs assume ITM + rotation
+    # is clockwise and ETM + rotation is anticlockwise.
+    # I'll be explict here for future reference.
+    cav_mirrors = ["ETMX", "ETMXAR", "ETMY", "ETMYAR", "ITMX", "ITMXAR", "ITMY", "ITMYAR"]
+
+    # LIGO definitions
+    # Based on figure 7 in T0900511-v4
+    CHARD_factors   = np.array([ 1, 1, 1, 1,-1,-1,-1,-1])
+    DHARD_factors   = np.array([ 1, 1,-1,-1,-1,-1, 1, 1])
+    CSOFT_factors   = np.array([-1,-1,-1,-1,-1,-1,-1,-1])
+    DSOFT_factors   = np.array([-1,-1, 1, 1, 1, 1,-1,-1])
+
+    # Finesse definitions
+    # negative for ITM rotations
+    ITMS = np.in1d(cav_mirrors, np.array(["ITMX", "ITMXAR", "ITMY", "ITMYAR"]))
+    CHARD_factors[ITMS] *= -1
+    DHARD_factors[ITMS] *= -1
+    CSOFT_factors[ITMS] *= -1
+    DSOFT_factors[ITMS] *= -1
+
+    kat.IFO.CHARD_P = DOF(kat.IFO, "CHARD_P", None , None, cav_mirrors, CHARD_factors, 1, sigtype="pitch")
+    kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", None , None, cav_mirrors, DHARD_factors, 1, sigtype="pitch")
+    kat.IFO.CSOFT_P = DOF(kat.IFO, "CSOFT_P", None , None, cav_mirrors, CSOFT_factors, 1, sigtype="pitch")
+    kat.IFO.DSOFT_P = DOF(kat.IFO, "DSOFT_P", None , None, cav_mirrors, DSOFT_factors, 1, sigtype="pitch")
+    kat.IFO.PRM_P   = DOF(kat.IFO, "PRM_P"  , None , None, ["PRM", "PRMAR"], [1,1], 1, sigtype="pitch")
+    kat.IFO.PRC2_P  = DOF(kat.IFO, "PRC2_P" , None , None, ["PR2"], [1], 1, sigtype="pitch")
+    kat.IFO.PRC3_P  = DOF(kat.IFO, "PRC3_P" , None , None, ["PR3"], [1], 1, sigtype="pitch")
+    kat.IFO.SRM_P   = DOF(kat.IFO, "SRM_P"  , None , None, ["SRM", "SRMAR"], [1,1], 1, sigtype="pitch")
+    kat.IFO.SRC2_P  = DOF(kat.IFO, "SRC2_P" , None , None, ["SR2"], [1], 1, sigtype="pitch")
+    kat.IFO.SRC3_P  = DOF(kat.IFO, "SRC3_P" , None , None, ["SR3"], [1], 1, sigtype="pitch")
+    kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, ["BS", "BSAR1", "BSAR2"], [1,1,1], 1, sigtype="pitch")
     
     kat.IFO.DOFs = {}
     
@@ -504,7 +617,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     
 def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
     while precision > pretune_precision * DOF.scale:
-        out = kat.IFO.scan_DOF(DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
+        out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
         phi, precision = find_peak(out, DOF.port.portName, minmax=minmax)
         
     return phi, precision
@@ -597,11 +710,9 @@ def pretune_status(_kat):
     
     _detStr=""
     
-    for p in pretune_DOFs:
-        _sigStr = p.port.signal(kat)
-        _detStr = "\n".join([_detStr, _sigStr])
+    for dof in pretune_DOFs:
+        dof.add_signal()
         
-    kat.parseCommands(_detStr)
     out = kat.run()
     Pin = float(kat.L0.P)
 
@@ -689,11 +800,11 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
         
     # optical gains in W/rad
     
-    ogDARM = kat.IFO.optical_gain(kat.IFO.DARM, kat.IFO.DARM)
-    ogCARM = kat.IFO.optical_gain(kat.IFO.CARM, kat.IFO.CARM)
-    ogPRCL = kat.IFO.optical_gain(kat.IFO.PRCL, kat.IFO.PRCL)
-    ogMICH = kat.IFO.optical_gain(kat.IFO.MICH, kat.IFO.MICH)
-    ogSRCL = kat.IFO.optical_gain(kat.IFO.SRCL, kat.IFO.SRCL)
+    ogDARM = optical_gain(kat.IFO.DARM, kat.IFO.DARM)
+    ogCARM = optical_gain(kat.IFO.CARM, kat.IFO.CARM)
+    ogPRCL = optical_gain(kat.IFO.PRCL, kat.IFO.PRCL)
+    ogMICH = optical_gain(kat.IFO.MICH, kat.IFO.MICH)
+    ogSRCL = optical_gain(kat.IFO.SRCL, kat.IFO.SRCL)
 
     if gains is None:            
         # manually tuning relative gains

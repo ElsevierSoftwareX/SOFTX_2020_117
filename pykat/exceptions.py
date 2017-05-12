@@ -43,7 +43,12 @@ def printWarning(message, exception=None):
             print(a)
 
         if exception is not None:
-            for a in wrap(str(exception.msg), size):
+            if hasattr(exception, "msg"):
+                msg = str(exception.msg)
+            else:
+                msg = str(exception)
+                
+            for a in wrap(msg, size):
                 a = a.replace("*** ", "\n")
                 a = a.replace("** ", "\n")
                 print(a)

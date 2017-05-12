@@ -145,10 +145,12 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     for d, idx in zip(dofs, range(1, len(dofs)+1)):
         ax = _fig.add_subplot(nrows, ncols, idx)
         
+        kat.removeBlock("SCAN", False)
+        
         scan_cmd = scan_optics_string(d.optics, d.factors, "scan", linlog="lin",
                                         xlimits=np.multiply(d.scale, xlimits), steps=200,
                                         axis=1, relative=True)
-        kat.parseCommands(scan_cmd)
+        kat.parseCommands(scan_cmd, addToBlock="SCAN")
         out = kat.run()
         
         if d.name == "DARM":
