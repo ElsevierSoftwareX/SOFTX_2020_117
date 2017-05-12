@@ -252,8 +252,13 @@ def optical_gain(DOF_sig, DOF_det, f=1.0):
         return float(np.real(out[_detName])) / k # W/(m*k) -> W/rad
     else:
         raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
- 
-def scan_demod_phase_cmds(DOF, pd_detectors, deriv_h=1e-12):
+
+def diff_DOF(DOF, deriv_h=1e-12):
+    """
+    Returns commands to differentiate with respect to the DOF motion.
+    
+    This is typically used to find the slope of error signals.
+    """
     rtn = ("var x 0\n"
             "diff x re\n"
             "deriv_h %g\n" 
@@ -263,7 +268,6 @@ def scan_demod_phase_cmds(DOF, pd_detectors, deriv_h=1e-12):
             "func mDX = (-1) * $_dx\n"
             "noplot mDX\n") % deriv_h
     
-    
     for o,f in zip(DOF.optics, DOF.factors):
         if f == 1:
             rtn += "put %s ybeta $DX\n" % o
@@ -271,13 +275,69 @@ def scan_demod_phase_cmds(DOF, pd_detectors, deriv_h=1e-12):
             rtn += "put %s ybeta $mDX\n" % o
         else:
             raise pkex.BasePyKatException("Factor can only be -1 or 1 currently")
+    
+    return rtn
+    
+def scan_demod_phase_cmds(pd_detectors, steps=100, demod_phase=1, relative=False):
+    """
+    For a given list of detectors this will return the commands
+    to scan the demod phase over 360 degrees
+    """
+    pd_detectors = make_list_copy(pd_detectors)
+    rtn = ("var scan 0\n"
+           "xaxis scan re lin -180 180 %i\n" % steps)
 
-    rtn += ("var scan 0\n"
-            "xaxis scan re lin 0 360 100\n")
-
-    for _ in pd_detectors:
-        rtn += "put %s phi1 $x1\n" % _
+    if relative:
+        cmd = "put*"
+    else:
+        cmd = "put"
         
+    for _ in pd_detectors:
+        rtn += "%s %s phase1 $x%i\n" % (cmd, _, demod_phase)
+        
+    return rtn
+    
+def optimise_demod_phase(_kat, DOF, pd_detectors):
+    """
+    This will optimise the demodulation phase of each detector to
+    provide the largest slope in the detector outputs with respect
+    to the DOF.
+    """
+    kat = _kat.deepcopy()
+    
+    if isinstance(DOF, six.string_types):
+        DOF = kat.IFO.DOFs[DOF]
+    
+    pd_detectors = make_list_copy(pd_detectors)
+    
+    kat.removeBlock("locks", False)
+    kat.removeBlock("powers", False)
+    
+    kat.parse( aligo.diff_DOF(DOF) )
+    kat.parse( aligo.scan_demod_phase_cmds(pd_detectors) )
+    
+    # Analyitcally we can find the phase which gives a maxmium
+    # by solving for A and B in:
+    #   f(x) = Acos(x+B)
+    # assuming we take the two data points x = {0, pi/2} we find
+    #   B = arctan(y2/y1)
+    kat.xaxis.limits = (0, 90)
+    kat.xaxis.steps = 1
+    out = kat.run()
+    
+    rtn = []
+    
+    for _ in pd_detectors:
+        y1, y2 = out[_]
+        x = np.deg2rad(out.x)
+        R = np.sqrt(y1**2 + y2**2)
+        phi = np.rad2deg(np.arctan2(y2,y1))
+        
+        _kat.detectors[_].phase1 = phi
+        
+        rtn.append(phi)
+        
+    
     return rtn
           
 class IFO(object):

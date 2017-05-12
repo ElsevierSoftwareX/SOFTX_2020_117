@@ -551,7 +551,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.POW_X   = Port(kat.IFO, "PowX",  "nITMX2")
     kat.IFO.POW_Y   = Port(kat.IFO, "PowY",  "nITMY2")
 
-    # pretune DOF
+    # pretune LSC DOF
     kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
     kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
     kat.IFO.preMICH =  DOF(kat.IFO, "AS"  , kat.IFO.AS_DC,   "", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 6.0, sigtype="z")

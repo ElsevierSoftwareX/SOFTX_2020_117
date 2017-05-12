@@ -807,14 +807,24 @@ class space(Component):
         self.__gy.value = SIfloat(value)
         
     @property
-    def gouyx(self): return self.__gx
+    def gouyx(self): return self.gx
     @gouyx.setter
-    def gouyx(self,value): self.__gx.value = SIfloat(value)
+    def gouyx(self,value): self.gx = SIfloat(value)
 
     @property
-    def gouyy(self): return self.__gy
+    def gouyy(self): return self.gy
     @gouyy.setter
-    def gouyy(self,value): self.__gy.value = SIfloat(value)
+    def gouyy(self,value): self.gy = SIfloat(value)
+
+    @property
+    def gx(self): return self.__gx
+    @gx.setter
+    def gx(self,value): self.__gx.value = SIfloat(value)
+    
+    @property
+    def gy(self): return self.__gy
+    @gy.setter
+    def gy(self,value): self.__gy.value = SIfloat(value)
     
     def connectingComponents(self):
         """
