@@ -195,7 +195,6 @@ def scan_optic_cmds(self, optics, factors, xlimits=[-100, 100], steps=200,relati
 def scan_DOF(kat, DOF, xlimits=[-100, 100], steps=200, relative=False): 
     kat = kat.deepcopy()
     kat.parse(scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
-    kat.verbose = True
     
     if DOF.port is not None:
         kat.parse(DOF.signal())
