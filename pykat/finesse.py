@@ -2997,6 +2997,163 @@ class kat(object):
         
         
         return commands
+        
+    class BeamTrace(object):
+        def print(self):
+            from tabulate import tabulate
+            comp_w = lambda comp: self.data[self.data['nodes'][self.data['components'].index(comp)][0]]['q'].w/1e-3
+            
+            data = [[_,
+                    int(self.data[_]['z']/1e-3),
+                    self.data[_]['gouy'],
+                    comp_w(_)] for _ in self.data['components'] if not self.data[_]['is_space']]
+            
+            last_node = self.data['nodes'][-1][-1]
+            data.append([last_node, int(self.data[last_node]['z']/1e-3), self.data[last_node]['gouy'], self.data[last_node]['q'].w/1e-3])
+            
+            print (tabulate(data
+                , ["Name", "z (mm)", "Acc. Gouy [deg]", "Beam size (mm)"]
+                , tablefmt='psql'))
+            
+        def plot(self, filename=None, show=True, w_scale="milli", markers=[]):
+            import matplotlib.pyplot as plt
+            data = self.data
+            fig = plt.figure()
+            ax1 = plt.subplot(211)
+            ax2 = plt.subplot(212)
+
+            w_max = 0
+            g_max = 0
+            gouy  = 0
+        
+            for comp, (from_node, to_node) in zip(data['components'], data['nodes']):
+                gouy = data[comp]['gouy_i']
+                gouy_ref = data[comp]['gouy_ref']
+
+                if data[comp]['is_space']:
+                    L = data[comp]['L']
+                    q = data[from_node]['q']
+                    z = data[from_node]['z']
+                    _z = np.linspace(0, L, 1000)                
+                    g = np.rad2deg(q.gouy(_z+q.z))
+                            
+                    # want to plot accumulated gouy phase so need to use
+                    # a reference from where it started
+                    _g = gouy + np.rad2deg(q.gouy(_z + q.z)) - gouy_ref
+                    w  = q.beamsize(_z + q.z)/pykat.SI[w_scale]
+                
+                    w_max = max(w_max, w.max())
+                    g_max = max(g_max, _g.max())
+                
+                    ax1.plot(z+_z, w, c='r')
+                    ax2.plot(z+_z, _g, c='r')
+                else:
+                    z = data[comp]['z']
+                    ax1.scatter(z, 0, marker='x', color='k')
+                    ax1.text(z, 0, comp+"\n", ha="center", va='bottom',zorder=100)
+                
+                    ax2.scatter(z, 0, marker='x', color='k')
+                    ax2.text(z, 0, comp+"\n", ha="center", va='bottom',zorder=100)
+        
+            for _, z in markers:
+                ax1.scatter(z, 0, marker='x', color='r')
+                ax1.text(z, 0, _+"\n", ha="center", va='bottom',zorder=100)
+        
+                ax2.scatter(z, 0, marker='x', color='r')
+                ax2.text(z, 0, _+"\n", ha="center", va='bottom',zorder=100)
+            
+            ax1.grid(True, zorder=-10)
+            ax1.set_xlim(0, None)
+
+            if w_scale is None:
+                ax1.set_ylabel("Beam size [m]")
+            else:
+                ax1.set_ylabel("Beam size [%sm]"%pykat.SIlabel[w_scale])
+            
+            ax1.set_xlabel("Distance [m]")
+            ax1.set_ylim(0, w_max)
+        
+            ax2.set_xlim(0, None)
+            ax2.grid(True, zorder=-10)
+            ax2.set_ylabel("Gouy phase [deg]")
+            ax2.set_xlabel("Distance [m]")
+            ax2.set_ylim(0, g_max)
+        
+            plt.tight_layout()
+        
+            if filename is not None:
+                plt.savefig(filename)
+            
+            if show: plt.show()
+    
+    def beamTrace(self, q_in, from_node, to_node):
+        """
+        This function is separate from the Finesse tracing algorithm. It is purely 
+        python based. From a given node to another this function will find the 
+        components between each node and trace a beam along it. 
+        
+        Returns a dictionary data structure that contains the beam parameter, lengths
+        and gouy phases at each node and component between the paths.
+        """
+        from .optics.ABCD import apply as apply_ABCD
+        
+        # Get a list of components and the nodes in order between from and to nodes
+        path_A, nodes_A = self.nodes.getComponentsBetween(from_node, to_node, True)
+
+        qxs = [q_in] # track the q values as we go
+
+        L = 0 # length from first node
+        gouy = 0 # Accumulated gouy from previous 
+        gouy_ref = None # Gouy phase always accumulates from this reference value
+        _g = [0] # Array of gouy phase values over a space, initialised to 0 here
+        
+        data = OrderedDict()
+        data['components'] = [_.name for _ in path_A]
+        data['nodes'] = [(_.name, __.name) for _,__ in nodes_A]
+        
+        for comp, (from_node, to_node) in zip(path_A, nodes_A):
+            Mabcd = comp.ABCD(from_node, to_node)
+            qnew = apply_ABCD(Mabcd, qxs[-1].q, from_node.n, to_node.n )
+
+            if Mabcd[1,0] != 0:
+                # The beam has been lensed so we need to make a new reference
+                # point for the gouy phase accumulation
+                gouy = _g[-1] # The most recent gouy phase value
+                gouy_ref = None # get a new reference
+
+            if isinstance(comp, pykat.components.space):
+                q = qxs[-1]
+                z = np.linspace(0, comp.L.value, 1000)                
+                g = np.rad2deg(q.gouy(z+q.z))
+
+                if gouy_ref is None:
+                    # set new reference value
+                    gouy_ref = g[0]
+            
+                # want to plot accumulated gouy phase so need to use
+                # a reference from where it started
+                _g = gouy + np.rad2deg(q.gouy(z+q.z))-gouy_ref
+            
+                data[from_node.name] = {"q": qxs[-1], "z": L, "gouy": _g[0]}
+                data[to_node.name] = {"q": qnew, "z": L+comp.L.value, "gouy": _g[-1]}
+
+                L += comp.L.value
+
+            else:
+                data[from_node.name] = {"q": qxs[-1], "L": L, "gouy": _g[-1]}
+                data[to_node.name] = {"q": qnew, "L": L, "gouy": _g[-1]}
+
+            qxs.append( qnew )
+
+            data[comp.name] = {"z": L, "gouy": _g[-1], "gouy_i":gouy, "gouy_ref": gouy_ref, "is_space": isinstance(comp, pykat.components.space)}
+            
+            if isinstance(comp, pykat.components.space):
+                data[comp.name]['L'] = comp.L.value
+        
+        bt = kat.BeamTrace()
+        bt.data = data
+        
+        return bt
 
 # printing pykat logo on first input
 kat.logo()

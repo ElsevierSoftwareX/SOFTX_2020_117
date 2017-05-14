@@ -389,18 +389,16 @@ class NodeNetwork(object):
             elif tn.components[1] == currcomp:
                 nextcomp = tn.components[0]
             
-            if nextcomp != None:
-                branches.append([False, False, tn, nextcomp, []])
+            if nextcomp is not None:
+                branches.append([False, False, tn, nextcomp, [currcomp]])
             
             if rn.components[0] == currcomp:
                 nextcomp = rn.components[1]
             elif rn.components[1] == currcomp:
                 nextcomp = rn.components[0]
             
-            if nextcomp != None:
-                branches.append([False, False, rn, nextcomp, []])
-            
-            branches[-1][-1].append(currcomp)
+            if nextcomp is not None:
+                branches.append([False, False, rn, nextcomp, [currcomp]])
             
             return False
             
@@ -445,11 +443,15 @@ class NodeNetwork(object):
             branches[-1][-1].append(currcomp)
             
             return self.__nodeSearch(nextnode, nextcomp, branches, tnode)
+
             
-    def getComponentsBetween(self, from_node, to_node):
+    def getComponentsBetween(self, from_node, to_node, getNodes=False):
         """
         This function will trace the path between the two nodes specified and return a list
         of the components it finds between them.
+        
+        if getNodes is True a list of node pairs will be returned along with components. Each
+        element contains the direction the trace has undergone, e.g. (from, to).
         """
         
         if isinstance(from_node, six.string_types):
@@ -478,21 +480,37 @@ class NodeNetwork(object):
         fn = self.__nodes[from_node.name]
         tn = self.__nodes[to_node.name]
         
-        branches.append([False, False, fn, fn.components[1], []])
-        branches.append([False, False, fn, fn.components[0], []])
+        if fn.components[0] is not None:
+            branches.append([False, False, fn, fn.components[0], []])
         
+        if fn.components[1] is not None:
+            branches.append([False, False, fn, fn.components[1], []])
+        
+        
+        #print(branches)
+        #i=0
         while len(branches) > 0 and branches[-1][1] != True:
+            #print(i)
+            #j=0
+            
             while branches[-1][0] == False:
                 branch = branches[-1]
+                #print("START", j)
+                #print(branch)
             
                 if not self.__nodeSearch(branch[2], branch[3], branches, tn):
-                    if len(branches) > 0 and branches[-1][0] != False:
+                    if len(branches) > 0 and branches[-1][0] != False:            
                         branches.pop()
+                        #print("DEL", j)
+                #print("END", j)
+                #j+=1
             
             if branches[-1][1] != True:
                 while len(branches) > 0 and branches[-1][0] == True:
                     branches.pop()
+                    #print("DEL",i)
             
+            #i += 1
             
         comps = []
         
@@ -503,7 +521,38 @@ class NodeNetwork(object):
             for b in br:
                 comps.extend(b[-1])
         
-        return comps
+        
+        if getNodes:
+            nodes = []
+
+            nc  = set([from_node])
+            end = to_node
+
+            for i in range(len(comps)):
+                n = set(comps[i].nodes)
+                
+                overlap = n & nc
+                others = n - nc
+    
+                if len(overlap) == 1:
+                    nodes.append(overlap.pop())
+        
+                    nc = others
+                else:
+                    raise pkex.BasePyKatException("No overlap in nodes between {} and {}".format(nc, n))
+    
+                if end in n:
+                    nodes.append(end)
+                    break
+            
+            _nodes = []
+            
+            for i in range(len(nodes)-1):
+                _nodes.append((nodes[i], nodes[i+1]))
+                
+            return tuple(comps), tuple(_nodes)
+        else:
+            return tuple(comps)
     
     
 class Node(object):
@@ -521,6 +570,9 @@ class Node(object):
         
     def __str__(self): return self.__name
 
+    def __repr__(self):
+        return "<%s (%s) at %s>" % (self.__class__.__name__, self.__name, hex(id(self))) 
+        
     @property
     def isDump(self): return self._isDump
         
@@ -645,7 +697,21 @@ class Node(object):
         
     @property
     def name(self): return self.__name      
+    
+    @property
+    def n(self):
+        """Returns refractive index this node is in. This depends on whether the
+        node is attached to a space, if so it will return that space's index.
+        Otherwise the value is 1."""
+        types = [isinstance(_, pykat.components.space) for _ in self.components]
         
+        if any(types):
+            if types[0]:
+                return self.components[0].n
+            else:
+                return self.components[1].n
+        else:
+            return 1
         
 class DumpNode(Node):
     __total_dump_node_id = 0

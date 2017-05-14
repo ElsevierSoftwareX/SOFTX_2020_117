@@ -16,6 +16,7 @@ import pykat.external.six as six
 if six.PY2:
 	import exceptions
 
+import math
 import warnings
 import pykat.exceptions as pkex
 import pykat
@@ -24,6 +25,7 @@ from pykat.exceptions import *
 import abc
 import copy
 from collections import OrderedDict
+from .optics import ABCD
 
 if HAS_OPTIVIS:
     import optivis.bench.components as optivis_components
@@ -85,6 +87,11 @@ class NodeGaussSetter(object):
     @qy.setter
     def qy(self, value):
         self.__node().setGauss(self.__comp(), self.qx, complex(value))
+     
+    @property 
+    def n(self):
+        return self.__node().n
+    
         
 id_____pykat_class = 0
  
@@ -171,7 +178,10 @@ class Component(object):
         self._kat = kat
         
         kat.nodes.registerComponentNodes(self, self._requested_node_names, self.__on_node_change)
-     
+    
+    def __repr__(self):
+        return "<%s (%s) at %s>" % (self.__class__.__name__, self.__name, hex(id(self)))
+        
     def _on_kat_remove(self):
         # inform all parameters that we have removed its owner
         # so that it can then warn about any puts/vars/xaxis
@@ -243,6 +253,17 @@ class Component(object):
             raise NoGUIException
             
         return None      
+    
+    def ABCD(self, from_node, to_node, direction="x"):
+        """
+        Returns a 2x2 complex ABCD matrix for this component.
+        Actual matrix depends from which to which node you go.
+        
+        from_node: node object or node name as string
+        to_node:   node object or node name as string
+        direction: 'x' horizontal beam shape, 'y' vertical beam shape
+        """
+        return np.eye(2)
     
     @property
     def removed(self): return self.__removed
@@ -628,6 +649,32 @@ class mirror(AbstractMirrorComponent):
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
             
         return self._svgItem
+        
+    def ABCD(self, from_node, to_node, direction="x"):
+        direction = direction.lower()
+        from_node = str(from_node)
+        to_node = str(to_node)
+        
+        if direction == "x" and self.Rcx.value is not None:
+            Rc = self.Rcx.value
+        elif direction == "y" and self.Rcy.value is not None:
+            Rc = self.Rcy.value
+        else:
+            Rc = math.inf
+        
+        n1 = self.nodes[0].n
+        n2 = self.nodes[1].n
+        
+        if from_node == str(self.nodes[0]) and to_node == str(self.nodes[0]):
+            return ABCD.mirror_refl(n1, Rc)
+        elif from_node == str(self.nodes[0]) and to_node == str(self.nodes[1]):
+            return ABCD.mirror_trans(n1, n2, Rc)
+        elif from_node == str(self.nodes[1]) and to_node == str(self.nodes[0]):
+            return ABCD.mirror_tran(n2, n1, -Rc)
+        elif from_node == str(self.nodes[1]) and to_node == str(self.nodes[1]):
+            return ABCD.mirror_refl(n2, -Rc)
+        else:
+            raise pkex.BasePyKatException("Check nodes {} and {} are nodes of {}".format(from_node, to_node, self.name))
 
 class beamSplitter(AbstractMirrorComponent):
     def __init__(self, name, node1, node2, node3, node4, R = None, T = None, L=None, phi = 0, alpha = 0, Rcx = None, Rcy = None, xbeta = None, ybeta = None, mass = None, r_ap = None):
@@ -767,7 +814,45 @@ class beamSplitter(AbstractMirrorComponent):
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/mirror_flat.svg", self ,[(-4,24,self.nodes[0]), (-4,6,self.nodes[1]), (14,6,self.nodes[2]), (14,24,self.nodes[3])])
             
         return self._svgItem
+        
+    def ABCD(self, from_node, to_node, direction="x"):
+        direction = direction.lower()
+        from_node = str(from_node)
+        to_node = str(to_node)
    
+        if direction == "x":
+            refl = ABCD.bs_refl_x
+            trans = ABCD.bs_trans_x
+        else:
+            refl = ABCD.bs_refl_y
+            trans = ABCD.bs_trans_y
+       
+        if direction == "x" and self.Rcx.value is not None:
+            Rc = self.Rcx.value
+        elif direction == "y" and self.Rcy.value is not None:
+            Rc = self.Rcy.value
+        else:
+            Rc = math.inf
+   
+        n1 = self.nodes[0].n
+        n2 = self.nodes[3].n
+   
+        if (from_node == str(self.nodes[0]) and to_node == str(self.nodes[1])) or \
+            (from_node == str(self.nodes[1]) and to_node == str(self.nodes[0])):
+            return refl(n1, Rc, self.alpha.value)
+        elif (from_node == str(self.nodes[2]) and to_node == str(self.nodes[3])) or \
+            (from_node == str(self.nodes[3]) and to_node == str(self.nodes[2])):
+            return refl(n2, -Rc, self.alpha.value)
+        elif from_node == str(self.nodes[0]) and to_node == str(self.nodes[2]):
+            return trans(n1, n2, Rc, self.alpha.value)
+        elif from_node == str(self.nodes[2]) and to_node == str(self.nodes[0]):
+            return trans(n2, n1, -Rc, self.alpha.value)
+        elif from_node == str(self.nodes[1]) and to_node == str(self.nodes[3]):
+            return trans(n1, n2, Rc, self.alpha.value)
+        elif from_node == str(self.nodes[3]) and to_node == str(self.nodes[1]):
+            return trans(n2, n1, -Rc, self.alpha.value)
+        else:
+            raise pkex.BasePyKatException("Check node combination {} and {} for {}".format(from_node, to_node, self.name))
 class space(Component):
     def __init__(self, name, node1, node2, L = 0, n = 1, gx = None, gy = None):
         Component.__init__(self, name)
@@ -889,6 +974,9 @@ class space(Component):
         
         return self._QItem
 
+    def ABCD(self, from_node, to_node, direction="x"):
+        return ABCD.space(self.n.value, self.L.value)
+        
 class grating(Component):
     def __init__(self, name, node1, node2, node3 = None, node4 = None, n = 2, d = 0, eta_0 = None, eta_1 = None, eta_2 = None, eta_3 = None, rho_0 = None, alpha = None): # TODO: implement Rcx, Rcy and Rc
         Component.__init__(self, name)
@@ -1256,6 +1344,12 @@ class lens(Component):
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/lens.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
         
         return self._svgItem
+        
+    def ABCD(self, from_node, to_node, direction="x"):
+        if self.f.value is not None:
+            return ABCD.lens(self.f.value)
+        else:
+            return ABCD.lens(1/self.p.value)
         
 class modulator(Component):
     def __init__(self, name, node1, node2, f, midx, order, modulation_type='pm', phase=0):
