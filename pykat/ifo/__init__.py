@@ -1,10 +1,12 @@
 import pykat
 import pykat.exceptions as pkex
-
+from pykat import isContainer
 import numpy as np
 import inspect
 import math
 import six
+
+from pandas import DataFrame
 
 def make_transparent(kat, _components):
     """
@@ -248,7 +250,7 @@ def optical_gain(DOF_sig, DOF_det, f=1.0):
         return float(np.real(out[_detName])) # W/rad
     elif DOF_sig.sigtype == "z":
         k = 2*np.pi/kat.lambda0
-        return float(np.real(out[_detName])) / k # W/(m*k) -> W/rad
+        return float(np.real(out[_detName])) / k # W/(m*k) = W/rad
     else:
         raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
 
@@ -277,14 +279,27 @@ def diff_DOF(DOF, deriv_h=1e-12):
     
     return rtn
     
-def scan_demod_phase_cmds(pd_detectors, steps=100, demod_phase=1, relative=False):
+def scan_demod_phase_cmds(pd_detectors, demod_phase=1, relative=False, xaxis=1, steps=100, xlimits=(-180, 180)):
     """
     For a given list of detectors this will return the commands
-    to scan the demod phase over 360 degrees
+    to scan the demod phase.
+    
+    pd_detectors: list of photodiode detector names
+    demod_phase: which demodulation phase should be tuned, e.g. 2 would tune phase2 parameter
+    relative: If true, put* is used
+    xaxis: 1 for xaxis, 2 for x2axis scan
+    steps: Number of steps to scan over
+    xlimits: Range of scan in deg
     """
     pd_detectors = make_list_copy(pd_detectors)
+    
+    if xaxis not in [1, 2]:
+        raise pkex.BasePyKatException("xaxis value must be 1 or 2")
+        
+    if xaxis == 1: xaxis = ""
+        
     rtn = ("var scan 0\n"
-           "xaxis scan re lin -180 180 %i\n" % steps)
+           "x%saxis scan re lin %g %g %i\n" % (str(xaxis), xlimits[0], xlimits[1], steps))
 
     if relative:
         cmd = "put*"
@@ -301,6 +316,9 @@ def optimise_demod_phase(_kat, DOF, pd_detectors):
     This will optimise the demodulation phase of each detector to
     provide the largest slope in the detector outputs with respect
     to the DOF.
+    
+    Returns list of optimised demodulation phases corresponding to the order
+    of detectors given in pd_detectors
     """
     kat = _kat.deepcopy()
     
@@ -358,11 +376,22 @@ class IFO(object):
     @property
     def kat(self): return self.__kat
     
-    def requires_nodes(self, *args):
-        for node in args:
-            pass
-            
-        
+    def requires_detectors(self, *args):
+        if len(args) == 1 and pykat.isContainer(args[0]):
+            self.requires_detectors(*args[0])
+        else:
+            for _ in args:
+                if _ not in self.kat.detectors:
+                    raise pkex.BasePyKatException("Detector `%s` was not found in the kat object" % _)
+    
+    def requires_DOFs(self, *args):
+        if len(args) == 1 and pykat.isContainer(args[0]):
+            self.requires_DOFs(*args[0])
+        else:
+            for _ in args:
+                if _ not in self.DOFs:
+                    raise pkex.BasePyKatException("DOF `%s` was not found in the IFO object" % _)
+                    
     def _tuning_key(self, **kwargs):
         if set(kwargs.keys()) != self.__tuning_keys:
             raise pkex.BasePyKatException("input keyword arguments should be: %s" % ", ".join(self.__tuning_keys))
@@ -453,6 +482,75 @@ class IFO(object):
         
         return dofs
     
+    def sensing_matrix(self, DOFs, detectors):
+        self.requires_detectors(detectors)
+        self.requires_DOFs(DOFs)
+        
+        if not isContainer(DOFs): DOFs = [DOFs]
+        
+        data = []
+
+        for DOF in DOFs:
+            kat = self.kat.deepcopy()
+    
+            kat.noxaxis = True
+            kat.yaxis = "re:im"
+            kat.removeBlock("locks", False)
+            kat.removeBlock("powers", False)
+            kat.removeBlock("errsigs", False)
+    
+            kat.parse(self.DOFs[DOF].fsig() )
+    
+            data.append(kat.run()[detectors])
+        
+        index = []
+        
+        for i in range(len(DOFs)):
+            if self.DOFs[DOF].sigtype == "z":
+                index.append(DOFs[i] + " [W/m]")
+            elif self.DOFs[DOF].sigtype in ["yaw","pitch"]:
+                index.append(DOFs[i] + " [W/rad]")
+        
+        df = DataFrame(data, columns=detectors, index=index)
+        
+        def _print(df):
+            from tabulate import tabulate
+            keys = list(df.keys())
+            keys.insert(0,"")
+            
+            print(tabulate(df.apply(np.abs), headers=keys, floatfmt=".3g"))
+            print()
+            keys[0] = "[deg]"
+            print(tabulate(df.apply(lambda x: np.rad2deg(np.angle(x))), headers=keys, floatfmt=".3g"))
+    
+        def radar_plot(df, detector):
+            import matplotlib.pyplot as plt
+            
+            A = df[detector]
+            ax = plt.subplot(111, projection='polar')
+            ax.set_theta_zero_location('E')
+
+            r_lim = (np.log10(np.abs(A)).min()-1, np.log10(np.abs(A)).max())
+
+            for _ in A.keys():
+                theta = np.angle(A[_])
+                r = np.log10(np.abs(A[_]))
+
+                ax.plot((theta,theta), (r_lim[0], r), label=_, lw=2)
+
+            plt.title(detector)
+            plt.ylim(r_lim[0], r_lim[1])
+            plt.legend(bbox_to_anchor=(0.5, -0.1), loc="upper center", ncol=len(A.keys()))
+            ax.set_rticks(np.arange(*np.round(r_lim)))
+            ax.grid(True, alpha=0.5, zorder=-10)
+
+            plt.tight_layout()
+            plt.show()
+            
+        df.print = lambda: _print(df)
+        df.radar_plot = lambda x: radar_plot(df, x)
+        
+        return df
     
 class DOF(object):
     """
@@ -540,8 +638,11 @@ class DOF(object):
             
         return self.port.get_transfer_name(self.quad)
 
-    def fsig(self, _fsigName, fsig=1.0):
+    def fsig(self, _fsigName=None, fsig=1.0):
         _fsigStr= ""
+        
+        if _fsigName is None:
+            _fsigName = self.name+ "_fsig"
         
         for idx, o in enumerate(self.optics):
             phase = 0.0
@@ -729,8 +830,13 @@ class Port(object):
                 phase -= 360.0
                 
         return phase
+    
+    def add_transfer(self, quad=None, sigtype="z"):
+        cmds = self.get_transfer_cmds(quad=quad)
+        self.__IFO.kat.parse(cmds, addToBlock=self._block)
+        return self.get_transfer_name(quad, sigtype)
         
-    def get_transfer_name(self, quad="I"):
+    def get_transfer_name(self, quad="I", sigtype="z"):
         name = self.name
         
         if self.f!=None:

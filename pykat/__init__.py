@@ -9,6 +9,13 @@ __version__ = "1.0.18"
 USE_GUI = False
 HAS_OPTIVIS = False
 
+import six
+
+########################
+# Global helper functions
+isContainer = lambda c: (not isinstance(c, six.string_types)) and hasattr(c, "__iter__")
+########################
+
 import imp
 
 try:
@@ -31,6 +38,7 @@ from pykat.optics.gaussian_beams import BeamParam
 from pykat.plotting import init_pykat_plotting
 
 from .SIfloat import SIfloat
+
 
 
 SI = {'yocto': 1E-24,  # yocto

@@ -80,11 +80,11 @@ from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 from pykat.external import progressbar
 from pykat.freeze import canFreeze
-import pykat.external.six as six
 
+import pykat.external.six as six
 import pykat.exceptions as pkex
 
-from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
+from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException, isContainer
 
 if HAS_OPTIVIS:
     from optivis.bench.labels import Label as optivis_label
@@ -109,7 +109,6 @@ cav_trace = namedtuple("cav_trace", ['isStable','gx','gy','qx','qy','finesse','l
          
 lkat_location = ctypes.util.find_library("kat")
 
-isContainer = lambda c: (not isinstance(c, six.string_types)) and hasattr(c, "__iter__")
 
 def f__lkat_process(callback, cmd, kwargs):
     """
@@ -609,32 +608,39 @@ class KatRun(object):
     def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
-        out = None
-        
-        if len(idx) > 0:
-            #out = self.y[:, idx]
-            
-            if len(idx) == 1:
-                if "abs:deg" in self.yaxis:
-                    out = self.y[:, idx[0]]
-                elif "re:im" in self.yaxis:
-                    out = self.y[:, idx[0]]
-            else: 
-                if "abs:deg" in self.yaxis:
-                    out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
-                elif "re:im" in self.yaxis :
-                    out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
-
-            if out is None:
-                out = self.y[:, idx]
-
-            if out.size == 1:
-                return out[0].squeeze()
-            else:
-                return out.squeeze()
+        if isContainer(value):
+            results = []
+            for _ in value:
+                results.append(self[_])
+                
+            return np.array(results).squeeze()
         else:
-            raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
+            idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
+            out = None
+        
+            if len(idx) > 0:
+                #out = self.y[:, idx]
+            
+                if len(idx) == 1:
+                    if "abs:deg" in self.yaxis:
+                        out = self.y[:, idx[0]]
+                    elif "re:im" in self.yaxis:
+                        out = self.y[:, idx[0]]
+                else: 
+                    if "abs:deg" in self.yaxis:
+                        out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
+                    elif "re:im" in self.yaxis :
+                        out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
+
+                if out is None:
+                    out = self.y[:, idx]
+
+                if out.size == 1:
+                    return out[0].squeeze()
+                else:
+                    return out.squeeze()
+            else:
+                raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
             
 @canFreeze 
 class KatRun2D(object):
@@ -1323,7 +1329,7 @@ class kat(object):
     def parse(self, *args, **kwargs):
         self.parseCommands(*args, **kwargs)
         
-    def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None):
+    def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None, exceptionOnReplace=False):
         if not isinstance(commands, six.string_types) and hasattr(commands, "__iter__"):
             for _ in commands:
                 self.parse(_, blocks, addToBlock, keepComments, preserveConstants, useConstants)
@@ -1593,6 +1599,9 @@ class kat(object):
             
                     if obj is not None and not isinstance(obj, six.string_types):
                         if self.hasNamedObject(obj.name):
+                            if exceptionOnReplace:
+                                raise pkex.BasePyKatException("An object with the name %s already exists" % obj.name)
+                                
                             getattr(self, obj.name).remove()
                             
                             if self.verbose:
@@ -1792,7 +1801,7 @@ class kat(object):
                                 param = comp._default_fsig()
                             else:
                                 for p in comp._params:
-                                    if p.canFsig and p.fsigName == param_name:
+                                    if p.canFsig and param_name in p.fsigNameOptions:
                                         param = p
                                         break
                     

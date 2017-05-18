@@ -145,7 +145,7 @@ class putter(object):
 @canFreeze
 class Param(putable, putter):
 
-    def __init__(self, name, owner, value, canFsig=False, fsig_name=None, isPutable=True, isPutter=True, isTunable=True, var_name=None, register=True):
+    def __init__(self, name, owner, value, canFsig=False, fsig_name=None, fsig_name_options=[], isPutable=True, isPutter=True, isTunable=True, var_name=None, register=True):
         self._unfreeze()
         self._name = name
         self._registered = register
@@ -162,10 +162,19 @@ class Param(putable, putter):
         if canFsig:
             self._canFsig = True
             
+            if not pykat.isContainer(fsig_name_options):
+                raise pkex.BasePyKatException("fsig name options should be a list of names")
+            
             if fsig_name is None:
                 raise pkex.BasePyKatException("If parameter is a possible fsig target the fsig_name argument must be set")
                 
             self.__fsig_name = fsig_name
+        
+            self.__fsig_name_options = list(fsig_name_options)
+            
+            if fsig_name not in self.__fsig_name_options:
+                self.__fsig_name_options.append(fsig_name)
+            
         
         if isPutter:
             if var_name is None:
@@ -178,7 +187,10 @@ class Param(putable, putter):
         self.value = value
         
         self._freeze()
-        
+    
+    def __repr__(self):
+        return "<%s (%s.%s=%s) at %s>" % (self.__class__.__name__, self.owner.name, self._name, self.value, hex(id(self)))
+           
     @property
     def canFsig(self): return self._canFsig
     
@@ -190,6 +202,9 @@ class Param(putable, putter):
     
     @property
     def fsigName(self): return self.__fsig_name
+    
+    @property
+    def fsigNameOptions(self): return self.__fsig_name_options
     
     @property
     def name(self): return self._name
@@ -371,3 +386,4 @@ class AttrParam(Param):
         return rtn
 
     
+import pykat

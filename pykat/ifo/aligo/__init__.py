@@ -217,10 +217,8 @@ class ALIGO_IFO(IFO):
             # Finding light power in AS port (mostly due to RF sidebands now)
             kat = _kat.deepcopy()
         
-            sigStr = kat.IFO.AS_DC.signal()
-            signame = kat.IFO.AS_DC.signal_name()
+            signame = kat.IFO.AS_DC.add_signal()
         
-            kat.parseCommands(sigStr)
             kat.noxaxis=True
         
             out = kat.run()
@@ -233,7 +231,7 @@ class ALIGO_IFO(IFO):
         
             #kat_lock = _kat.deepcopy()
         
-            find_DC_offset(_kat, 2*waste_light)
+            self.find_DC_offset(_kat, 2*waste_light)
         
         vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset / 360.0 * _kat.lambda0 ))
         vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
@@ -397,7 +395,7 @@ class ALIGO_IFO(IFO):
         
         return cmds
     
-    def add_REFL_gouy_telescope(self, gouy=0):
+    def add_REFL_gouy_telescope(self, loss=0, gouy_REFL_BS=0, gouy_A=0, gouy_B=90):
         """
         Adds in the gouy phase telescope for WFS detectors and the IFO port objects.
         Commands added into block "REFL_gouy_tele". This attaches to the
@@ -410,19 +408,24 @@ class ALIGO_IFO(IFO):
         
         These ports are associated with the block "REFL_gouy_tele".
         
-        gouy: gouy phase of A path, B path set to gouy + 90 deg
+        loss: Total loss accumulated along telescope up to the WFS BS [0 -> 1]
+        gouy_REFL_BS:  Gouy phase along path from isolator to WFS BS [deg]
+        gouy_A: Gouy phase along A path from BS to WFS [deg]
+        gouy_B: Gouy phase along B path from BS to WFS [deg]
         """
         
         self.kat.removeBlock("REFL_gouy_tele", False) # Remove old one
         
         self.kat.parseCommands("""
-        s  sFI_REFL_WFS   0.1 nREFL nREFL_WFS_BS1
+        s  sFI_REFL_WFS_LOSS 0 nREFL nREFL_loss1
+        m2 mREFL_WFS_loss 0 {} 0 nREFL_loss1 nREFL_loss2
+        s  sFI_REFL_WFS 0 nREFL_loss2 nREFL_WFS_BS1
         bs WFS_REFL_BS 0.5 0.5 0 0 nREFL_WFS_BS1 nREFL_WFS_BS2 nREFL_WFS_BS3 dump
-        s  sWFS_REFL_A  0 nREFL_WFS_BS3 nREFL_WFS_A #0.267 lengths from T1000247 if needed
-        s  sWFS_REFL_B  0 nREFL_WFS_BS2 nREFL_WFS_B #0.636
-        """.format(gouy, gouy+90), addToBlock="REFL_gouy_tele")
+        s  sWFS_REFL_A  0 nREFL_WFS_BS3 nREFL_WFS_A
+        s  sWFS_REFL_B  0 nREFL_WFS_BS2 nREFL_WFS_B
+        """.format(loss), addToBlock="REFL_gouy_tele", exceptionOnReplace=True)
         
-        self.set_REFL_gouy_telescope_phase(gouy)
+        self.set_REFL_gouy_telescope_phase(gouy_REFL_BS, gouy_A, gouy_B)
         
         self.kat.IFO.ASC_REFL9A   = Port(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A",  self.kat.IFO.f1, block="REFL_gouy_tele")
         self.kat.IFO.ASC_REFL9B   = Port(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B",  self.kat.IFO.f1, block="REFL_gouy_tele")
@@ -433,22 +436,50 @@ class ALIGO_IFO(IFO):
         self.kat.IFO.ASC_REFL36A  = Port(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  self.kat.IFO.f36M, block="REFL_gouy_tele")
         self.kat.IFO.ASC_REFL36B  = Port(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  self.kat.IFO.f36M, block="REFL_gouy_tele")
         
-    def set_REFL_gouy_telescope_phase(self, gouyA, gouyB=None):
+    def set_REFL_gouy_telescope_phase(self, gouy_REFL_BS, gouy_A, gouy_B):
         """
-        Sets the gouy phase of the REFL gouy phase telescope paths.
-        Can specify A and B phase separately, if A is set only then
-        gouyB = gouyA + 90.
+        Sets the gouy phase from the the FI to the REFL WFS BS, and then
+        the gouy on each path to the A and B detectors. Units all in degrees.
         """
         
         if "REFL_gouy_tele" in self.kat.getBlocks():
-            if gouyB is None:
-                gouyB = gouyA + 90
-                
-            self.kat.sWFS_REFL_A.gouy = gouyA
-            self.kat.sWFS_REFL_B.gouy = gouyB
+            self.kat.sFI_REFL_WFS.gouy = gouy_REFL_BS
+            self.kat.sWFS_REFL_A.gouy = gouy_A
+            self.kat.sWFS_REFL_B.gouy = gouy_B
         else:
-            raise pkex.BasePyKatException("\033[91mREFL Gouy phase telescope isn't in the kat object, use kat.IFO.add_REFL_gouy_telescope()\033[0m")
-
+            raise pkex.BasePyKatException("\033[91mREFL Gouy phase telescope isn't in the kat object, see kat.IFO.add_REFL_gouy_telescope()\033[0m")
+        
+    def scan_REFL_gouy_telescope_gouy_cmds(self, start, end, steps=20, xaxis=1, AB_gouy_diff=None, relative=False):
+        """
+        This will return commands to scan the REFL gouy telescope gouy phase of the A and B paths.
+        """
+        if "REFL_gouy_tele" not in self.kat.getBlocks():
+            raise pkex.BasePyKatException("\033[91mREFL Gouy phase telescope isn't in the kat object, see kat.IFO.add_REFL_gouy_telescope()\033[0m")
+        
+        if xaxis not in [1, 2]:
+            raise pkex.BasePyKatException("xaxis value must be 1 or 2")
+        elif xaxis == 1:
+            xaxis_cmd = "xaxis"
+        elif xaxis == 2:
+            xaxis_cmd = "x2axis"
+            
+        if AB_gouy_diff is None:
+            AB_gouy_diff = self.kat.sWFS_REFL_B.gouy - self.kat.sWFS_REFL_A.gouy
+            
+        if relative:
+            put = "put*"
+        else:
+            put = "put"
+            
+        cmds = ("var REFL_GOUY_SCAN 0\n"
+        "{xaxis} REFL_GOUY_SCAN re lin {start} {end} {steps}\n"
+        "{put} sWFS_REFL_A gx $x{axis}\n"
+        "{put} sWFS_REFL_A gy $x{axis}\n"
+        "func REFL_SCAN_B = $x{axis} + {AB_gouy_diff}\n"
+        "{put} sWFS_REFL_B gx $REFL_SCAN_B\n"
+        "{put} sWFS_REFL_B gy $REFL_SCAN_B\n").format(xaxis=xaxis_cmd, axis=xaxis, start=start, end=end, steps=steps, AB_gouy_diff=AB_gouy_diff, put=put)
+        
+        return cmds
         
 def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
@@ -467,6 +498,9 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
         - design_low_power: A file based on the design parameters for the final aLIGO setup.
           20W input, T_SRM = 35%. The higher SRM transmission mirror is used for low power
           operation. 20W input power from O1 observation.
+        
+        - design_with_IMC_HAM2: A file based on `design` but has the IMC and HAM2 blocks
+          which contain design parameter input optics
     
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
@@ -493,7 +527,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.rawBlocks = BlockedKatFile()
     
     if katfile:
-        kat.load(katfile)
+        kat.load(katfile, keepComments=keepComments, preserveConstants=preserveConstants)
         kat.IFO.rawBlocks.read(katfile)
     else:
         if name not in names:
@@ -565,6 +599,8 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0, sigtype="z")
     kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", 1, 1e2, sigtype="z")
     
+    kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM, kat.IFO.SRCL)
+    
     # Pitch DOfs
     # There is a difference in the way LIGO and Finesse define positive and negative
     # rotations of the cavity mirrors. For LIGO the rotational DOFs assume ITM + rotation
@@ -598,6 +634,13 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.SRC2_P  = DOF(kat.IFO, "SRC2_P" , None , None, ["SR2"], [1], 1, sigtype="pitch")
     kat.IFO.SRC3_P  = DOF(kat.IFO, "SRC3_P" , None , None, ["SR3"], [1], 1, sigtype="pitch")
     kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, ["BS", "BSAR1", "BSAR2"], [1,1,1], 1, sigtype="pitch")
+    
+    kat.IFO.ASC_P_DOFs = (kat.IFO.CHARD_P, kat.IFO.DHARD_P,
+                          kat.IFO.CSOFT_P, kat.IFO.DSOFT_P,
+                          kat.IFO.PRM_P, kat.IFO.PRC2_P,
+                          kat.IFO.PRC3_P, kat.IFO.SRM_P,
+                          kat.IFO.SRC2_P, kat.IFO.SRC3_P,
+                          kat.IFO.MICH_P)
     
     kat.IFO.DOFs = {}
     
