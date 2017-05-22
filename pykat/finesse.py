@@ -2250,8 +2250,21 @@ class kat(object):
             
             except pkex.BasePyKatException as ex:
                 pkex.PrintError("Error on removing object:", ex)
+    
+    def dumpify(self, prefix = "dump"):
+        """
+        Loops through and sets all undumped nodes back to dumped.
+        
+        The nodes will be renamed to dump if they are 'dump0', 'dump1', etc.
+        
+        Can specify the prefix to search for if required.
+        """
+        for c in self.components.values():
+            for n in c.nodes:
+                if n.name.startswith(prefix):
+                    self.nodes.replaceNode(c, n, self.nodes.createNode("dump"))
 
-    def undumpNodes(self, undumped_name_prefix = "dump"):
+    def undumpify(self, undumped_name_prefix = "dump"):
         """
         Loops through and removes all dump nodes. Required when running quantum noise
         calculations using qnoised as noise must be injected in where losses occur, such as power
