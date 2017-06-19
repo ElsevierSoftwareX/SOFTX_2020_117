@@ -14,7 +14,7 @@ class SensingMatrix(DataFrame):
     def _constructor(self):
         return SensingMatrix
         
-    def print(self):
+    def display(self):
         df = self
         from tabulate import tabulate
         keys = list(df.keys())
