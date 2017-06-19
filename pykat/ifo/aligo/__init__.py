@@ -24,8 +24,6 @@ import pykat.external.peakdetect as peak
 import pkg_resources
 
 from scipy.constants import c as clight
-
-
 from scipy.optimize import fmin
 
 class ALIGO_IFO(IFO):   
@@ -40,6 +38,29 @@ class ALIGO_IFO(IFO):
     The functions here should be those that update the kat with information
     from the IFO object or vice-versa.
     """
+    @property
+    def DCoffset(self):
+        if 'DCoffset' not in self.kat.data:
+            return 0
+        else:
+            return float(self.kat.data['DCoffset'])
+
+    @DCoffset.setter
+    def DCoffset(self, value):
+        self.kat.data['DCoffset'] = float(value)
+    
+    @property
+    def DCoffsetW(self):
+        if 'DCoffsetW' not in self.kat.data:
+            return 0
+        else:
+            return float(self.kat.data['DCoffsetW'])
+
+    @DCoffsetW.setter
+    def DCoffsetW(self, value):
+        self.kat.data['DCoffsetW'] = float(value)
+    
+    
     def compute_derived_resonances(self):
         clight
         self.fsrX = 0.5 * clight / float(self.kat.LX.L)
@@ -69,6 +90,18 @@ class ALIGO_IFO(IFO):
         self.lSchnupp = self.lx - self.ly
     
         self.compute_derived_resonances()
+    
+    def fix_mirrors(self, translation=True, rotation=True):
+        pass
+        
+    def suspend_mirrors(self, translation=True, rotation=True):
+        mass = 40
+        
+        self.kat.ETMX.mass = mass
+        self.kat.ETMY.mass = mass
+        
+        self.kat.ITMX.mass = mass
+        self.kat.ITMY.mass = mass
         
     def lengths_status(self):
         self.compute_derived_lengths()
@@ -312,12 +345,12 @@ class ALIGO_IFO(IFO):
             nameMICH = kat.IFO.MICH.signal_name()
             nameSRCL = kat.IFO.SRCL.signal_name()
         
-            code3 = """
-                    noplot {}
-                    noplot {}
-                    noplot {}
-                    noplot {}
-                    noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL).replace("  ","")
+            # code3 = """
+            #         noplot {}
+            #         noplot {}
+            #         noplot {}
+            #         noplot {}
+            #         noplot {}""".format(nameDARM, nameCARM, namePRCL, nameMICH, nameSRCL).replace("  ","")
                     
         cmds = "".join([code2, code3])
         kat.removeBlock("errsigs", False)
@@ -436,6 +469,8 @@ class ALIGO_IFO(IFO):
         self.kat.IFO.ASC_REFL36A  = Port(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  self.kat.IFO.f36M, block="REFL_gouy_tele")
         self.kat.IFO.ASC_REFL36B  = Port(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  self.kat.IFO.f36M, block="REFL_gouy_tele")
         
+        self.update()
+        
     def set_REFL_gouy_telescope_phase(self, gouy_REFL_BS, gouy_A, gouy_B):
         """
         Sets the gouy phase from the the FI to the REFL WFS BS, and then
@@ -480,7 +515,22 @@ class ALIGO_IFO(IFO):
         "{put} sWFS_REFL_B gy $REFL_SCAN_B\n").format(xaxis=xaxis_cmd, axis=xaxis, start=start, end=end, steps=steps, AB_gouy_diff=AB_gouy_diff, put=put)
         
         return cmds
+    
+    def update(self):
+        """
+        Iterates through the IFO and updates the DOFs and Ports dictionaries with the latest ports and DOFs that have
+        been added to the interferometer object.
+        """
+        self.DOFs = {}
+    
+        for _ in inspect.getmembers(self, lambda x: isinstance(x, DOF)):
+            self.DOFs[_[0]] = _[1]
         
+        self.Ports = {}
+    
+        for _ in inspect.getmembers(self, lambda x: isinstance(x, Port)):
+            self.Ports[_[0]] = _[1]
+            
 def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
@@ -511,7 +561,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
         kat = finesse.kat(tempdir=".",tempname="test")
     else:
         kat = finesse.kat()
-        
+    
     kat.verbose=verbose
     
     # Create empty object to just store whatever DOFs, port, variables in
@@ -537,11 +587,6 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
         
         kat.load(katkile, keepComments=keepComments, preserveConstants=preserveConstants)
         kat.IFO.rawBlocks.read(katkile)
-        
-    # ----------------------------------------------------------------------
-    # set variables to zero first
-    kat.IFO.DCoffset = 0.0
-    kat.IFO.DCoffsetW = 0.0
     
     # ----------------------------------------------------------------------
     # get and derive parameters from the kat file
@@ -642,15 +687,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
                           kat.IFO.SRC2_P, kat.IFO.SRC3_P,
                           kat.IFO.MICH_P)
     
-    kat.IFO.DOFs = {}
-    
-    for _ in inspect.getmembers(kat.IFO, lambda x: isinstance(x, DOF)):
-        kat.IFO.DOFs[_[0]] = _[1]
-        
-    kat.IFO.Ports = {}
-    
-    for _ in inspect.getmembers(kat.IFO, lambda x: isinstance(x, Port)):
-        kat.IFO.Ports[_[0]] = _[1]
+    kat.IFO.update()
 
     kat.IFO.lockNames = None
     

@@ -5,9 +5,64 @@ import numpy as np
 import inspect
 import math
 import six
+from copy import deepcopy
 
 from pandas import DataFrame
 
+class SensingMatrix(DataFrame):
+    @property
+    def _constructor(self):
+        return SensingMatrix
+        
+    def print(self):
+        df = self
+        from tabulate import tabulate
+        keys = list(df.keys())
+        keys.insert(0, "")
+        
+        print(tabulate(df.apply(np.abs), headers=keys, floatfmt=".3g"))
+        print()
+        
+        keys[0] = "[deg]"
+        print(tabulate(df.apply(lambda x: np.angle(x,True)), headers=keys, floatfmt=".3g"))
+    
+    def phase_reference(self, DOF):
+        ref = np.angle(self.loc[DOF])
+        return self.apply(lambda row: row * np.exp(-1j * ref), axis=1)
+    
+    def radar_plot(self, detector, _ax=None):
+        import matplotlib.pyplot as plt
+        import re 
+        
+        df = self
+        
+        A = df[detector]
+        
+        if _ax is None:
+            ax = plt.subplot(111, projection='polar')
+        else:
+            ax = _ax
+            
+        ax.set_theta_zero_location('E')
+
+        r_lim = (np.log10(np.abs(A)).min()-1, np.log10(np.abs(A)).max())
+
+        for _ in A.keys():
+            theta = np.angle(A[_])
+            r = np.log10(np.abs(A[_]))
+
+            ax.plot((theta,theta), (r_lim[0], r), label=re.sub("[\(\[].*?[\)\]]", "", _).strip(), lw=2)
+
+        ax.set_title(detector)
+        ax.set_ylim(r_lim[0], r_lim[1])
+        ax.legend(bbox_to_anchor=(0.5, -0.1), loc="upper center", ncol=3) #len(A.keys()))
+        ax.set_rticks(np.arange(*np.round(r_lim)))
+        ax.grid(True, alpha=0.5, zorder=-10)
+
+        if _ax is None:
+            plt.tight_layout()
+            plt.show()
+        
 def make_transparent(kat, _components):
     """
     Function to make certain mirror or beamsplitter objects transparent
@@ -254,26 +309,32 @@ def optical_gain(DOF_sig, DOF_det, f=1.0):
     else:
         raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
 
-def diff_DOF(DOF, deriv_h=1e-12):
+def diff_DOF(DOF, target, deriv_h=1e-12):
     """
     Returns commands to differentiate with respect to the DOF motion.
     
-    This is typically used to find the slope of error signals.
+    This is typically used to find the slope of error signals at DC.
     """
+    
+    if target == "z":
+        # As we can't target the z position of the component directly
+        # we need to target phi and scale things
+        pass
+        
     rtn = ("var x 0\n"
             "diff x re\n"
-            "deriv_h %g\n" 
+            "deriv_h {deriv_h}\n" 
             "set _dx x re\n"
-            "func DX = $_dx\n"
+            "func DX = ({scaling}) * $_dx\n"
             "noplot DX\n"
-            "func mDX = (-1) * $_dx\n"
-            "noplot mDX\n") % deriv_h
+            "func mDX = (-1 * {scaling}) * $_dx\n"
+            "noplot mDX\n").format(deriv_h=deriv_h, scaling=scaling)
     
     for o,f in zip(DOF.optics, DOF.factors):
         if f == 1:
-            rtn += "put %s ybeta $DX\n" % o
+            rtn += "put %s %s $DX\n" % (o,target)
         elif f == -1:
-            rtn += "put %s ybeta $mDX\n" % o
+            rtn += "put %s %s $mDX\n" % (o,target)
         else:
             raise pkex.BasePyKatException("Factor can only be -1 or 1 currently")
     
@@ -311,9 +372,9 @@ def scan_demod_phase_cmds(pd_detectors, demod_phase=1, relative=False, xaxis=1, 
         
     return rtn
     
-def optimise_demod_phase(_kat, DOF, pd_detectors):
+def optimise_demod_phase(_kat, DOF, ports, debug=False):
     """
-    This will optimise the demodulation phase of each detector to
+    This will optimise the demodulation phase at each port
     provide the largest slope in the detector outputs with respect
     to the DOF.
     
@@ -324,14 +385,34 @@ def optimise_demod_phase(_kat, DOF, pd_detectors):
     
     if isinstance(DOF, six.string_types):
         DOF = kat.IFO.DOFs[DOF]
+        
+    # Get a list of port objects even if user provided them in string names
+    _ports = []
+    for port in ports:
+        if isinstance(port, six.string_types):
+            _ports.append(kat.IFO.Ports[port])
+        else:
+            _ports.append(kat.IFO.Ports[port.name])
+            
+        if _ports[-1].f is None:
+            raise pkex.BasePyKatException("port %s cannot have its demodulation phase optimised as it isn't demodulated" % port.name)
     
-    pd_detectors = make_list_copy(pd_detectors)
+    ports = _ports
     
+    pd_detectors = []
+        
+    # Add in the signals
+    for port in ports:
+        pd_detectors.append(kat.IFO.Ports[port.name].add_signal("I", DOF.sigtype))
+    
+    if debug:
+        print("Optimising pds: %s" % pd_detectors)
+        
     kat.removeBlock("locks", False)
     kat.removeBlock("powers", False)
     
-    kat.parse( aligo.diff_DOF(DOF) )
-    kat.parse( aligo.scan_demod_phase_cmds(pd_detectors) )
+    kat.parse( aligo.diff_DOF(DOF, DOF.sigtype), addToBlock="OPTIMISE")
+    kat.parse( aligo.scan_demod_phase_cmds(pd_detectors), addToBlock="OPTIMISE")
     
     # Analyitcally we can find the phase which gives a maxmium
     # by solving for A and B in:
@@ -340,23 +421,119 @@ def optimise_demod_phase(_kat, DOF, pd_detectors):
     #   B = arctan(y2/y1)
     kat.xaxis.limits = (0, 90)
     kat.xaxis.steps = 1
+    
+    if debug:
+        print(kat & "OPTIMISE")
+        
     out = kat.run()
     
+    if debug:
+        print(out.y)
+        
     rtn = []
     
-    for _ in pd_detectors:
-        y1, y2 = out[_]
+    for pd, port in zip(pd_detectors, ports):
+        
+        y1, y2 = out[pd]
         x = np.deg2rad(out.x)
         R = np.sqrt(y1**2 + y2**2)
         phi = np.rad2deg(np.arctan2(y2,y1))
         
-        _kat.detectors[_].phase1 = phi
+        # All in I quadrature so no
+        _kat.IFO.Ports[port.name].phase = phi
         
         rtn.append(phi)
         
     
     return rtn
-          
+    
+def mismatch_cavities(base, node):
+    _kat = base.deepcopy()
+    
+    _kat.removeBlock("locks", False)
+    _kat.removeBlock("errsigs", False)
+
+    for _ in list(_kat.detectors.values()):
+        _.remove()
+
+    _kat.parse("bp qx x q "+node)
+    _kat.parse("bp qy y q "+node)
+    _kat.noxaxis = True
+    _kat.yaxis = "re:im"
+    _kat.maxtem = 0
+    
+    cavs = []
+    qxs = []
+    qys = []
+
+    for cav in _kat.getAll(pykat.commands.cavity):
+        # Switch off all cavities
+        for _ in _kat.getAll(pykat.commands.cavity):
+            _.enabled = False
+        # Then select one at a time
+        cav.enabled = True
+
+        out = _kat.run()
+
+        cavs.append(cav.name)
+        qxs.append(pykat.BeamParam(q=out['qx']))
+        qys.append(pykat.BeamParam(q=out['qy']))
+
+    mmx = DataFrame(index=cavs, columns=cavs)
+    mmy = DataFrame(index=cavs, columns=cavs)
+    
+    for c1, q1x, q1y in zip(cavs, qxs, qys):
+        for c2, q2x, q2y in zip(cavs, qxs, qys):
+            mmx[c1][c2] = pykat.BeamParam.overlap(q1x, q2x)
+            mmy[c1][c2] = pykat.BeamParam.overlap(q1y, q2y)
+            
+    return 1-mmx, 1-mmy, list(zip(cavs, qxs, qys))
+
+def mismatch_scan_RoC(base, node, mirror, lower, upper, steps):
+    _kat = base.deepcopy()
+    _kat.removeBlock("locks", False)
+    _kat.removeBlock("errsigs", False)
+
+    for _ in list(_kat.detectors.values()):
+        _.remove()
+
+    _kat.parse("bp qx x q "+node)
+    _kat.parse("bp qy y q "+node)
+    _kat.yaxis = "re:im"
+    _kat.maxtem = 0
+    _kat.parse("""
+    xaxis* {name} Rcx lin -1 1 10
+    put {name} Rcy $x1
+    """.format(name=mirror))
+    
+    _kat.xaxis.limits = (lower, upper)
+    _kat.xaxis.steps = steps
+
+    out = _kat.run()
+    return out['qx'], out['qy']
+
+def mismatch_scan_L(base, node, length, lower, upper, steps):
+    _kat = base.deepcopy()
+    _kat.removeBlock("locks", False)
+    _kat.removeBlock("errsigs", False)
+
+    for _ in list(_kat.detectors.values()):
+        _.remove()
+
+    _kat.parse("bp qx x q "+node)
+    _kat.parse("bp qy y q "+node)
+    _kat.yaxis = "re:im"
+    _kat.maxtem = 0
+    _kat.parse("""
+    xaxis* {name} L lin -1 1 10
+    """.format(name=length))
+    
+    _kat.xaxis.limits = (lower, upper)
+    _kat.xaxis.steps = steps
+
+    out = _kat.run()
+    return out['qx'], out['qy']
+    
 class IFO(object):
     """
     A generic object that contains various interferometer properties.
@@ -482,11 +659,26 @@ class IFO(object):
         
         return dofs
     
-    def sensing_matrix(self, DOFs, detectors):
+    def sensing_matrix(self, DOFs, detectors, frequency=1):
+        """
+        Computes a sensing matrix for a collection of DOFs and detectors at a particular signal frequency.
+        
+        The function returns an augmented Pandas DataFrame object. This function adds two methods to the
+        DataFrame:
+            sens = kat.IFO.sensing_matrix(DOFs, detectors, 1)
+            sens.print() # Will show an ascii table of the sensing matrix
+            sens.radar_plot(detector_name) # Will display sensing matrix in polar plot form
+        
+        DOFs: collection of DOF objects
+        detectors: list of detector names
+        frequency: frequency to compute sensing matrix at [Hz]
+        Returns: Pandas DataFrame
+        """
         self.requires_detectors(detectors)
         self.requires_DOFs(DOFs)
         
         if not isContainer(DOFs): DOFs = [DOFs]
+        if not isContainer(detectors): detectors = [detectors]
         
         data = []
 
@@ -499,58 +691,11 @@ class IFO(object):
             kat.removeBlock("powers", False)
             kat.removeBlock("errsigs", False)
     
-            kat.parse(self.DOFs[DOF].fsig() )
+            kat.parse(self.DOFs[DOF].fsig(fsig=frequency) )
     
             data.append(kat.run()[detectors])
-        
-        index = []
-        
-        for i in range(len(DOFs)):
-            if self.DOFs[DOF].sigtype == "z":
-                index.append(DOFs[i] + " [W/m]")
-            elif self.DOFs[DOF].sigtype in ["yaw","pitch"]:
-                index.append(DOFs[i] + " [W/rad]")
-        
-        df = DataFrame(data, columns=detectors, index=index)
-        
-        def _print(df):
-            from tabulate import tabulate
-            keys = list(df.keys())
-            keys.insert(0,"")
-            
-            print(tabulate(df.apply(np.abs), headers=keys, floatfmt=".3g"))
-            print()
-            keys[0] = "[deg]"
-            print(tabulate(df.apply(lambda x: np.rad2deg(np.angle(x))), headers=keys, floatfmt=".3g"))
     
-        def radar_plot(df, detector):
-            import matplotlib.pyplot as plt
-            
-            A = df[detector]
-            ax = plt.subplot(111, projection='polar')
-            ax.set_theta_zero_location('E')
-
-            r_lim = (np.log10(np.abs(A)).min()-1, np.log10(np.abs(A)).max())
-
-            for _ in A.keys():
-                theta = np.angle(A[_])
-                r = np.log10(np.abs(A[_]))
-
-                ax.plot((theta,theta), (r_lim[0], r), label=_, lw=2)
-
-            plt.title(detector)
-            plt.ylim(r_lim[0], r_lim[1])
-            plt.legend(bbox_to_anchor=(0.5, -0.1), loc="upper center", ncol=len(A.keys()))
-            ax.set_rticks(np.arange(*np.round(r_lim)))
-            ax.grid(True, alpha=0.5, zorder=-10)
-
-            plt.tight_layout()
-            plt.show()
-            
-        df.print = lambda: _print(df)
-        df.radar_plot = lambda x: radar_plot(df, x)
-        
-        return df
+        return SensingMatrix(data, columns=detectors, index=DOFs)
     
 class DOF(object):
     """
@@ -832,28 +977,35 @@ class Port(object):
         return phase
     
     def add_transfer(self, quad=None, sigtype="z"):
-        cmds = self.get_transfer_cmds(quad=quad)
+        cmds = self.get_transfer_cmds(quad=quad, sigtype=sigtype)
         self.__IFO.kat.parse(cmds, addToBlock=self._block)
         return self.get_transfer_name(quad, sigtype)
         
     def get_transfer_name(self, quad="I", sigtype="z"):
         name = self.name
         
-        if self.f!=None:
-            name = self.name+"_"+quad
+        # If we're demodulating add which quadrature we're using
+        if self.f is not None: name += "_" + quad
+        
+        if sigtype == "pitch":
+            name += "_P"
+        elif sigtype == "yaw":
+            name += "_Y"
             
         return name
         
-    def get_transfer_cmds(self, quad="I", phase2=None):
+    def get_transfer_cmds(self, quad="I", sigtype="z", phase2=None):
         self.check_nodeName()
         
-        name = self.get_transfer_name(quad=quad)
+        name = self.get_transfer_name(quad=quad, sigtype=sigtype)
+        
+        rtn = []
             
         if self.f is None:
             if phase2 is None:
-                return "pd1 {} {} {}".format(name, "$fs", self.nodeName)
+                rtn.append("pd1 {} {} {}".format(name, "$fs", self.nodeName))
             else:
-                return "pd1 {} {} {} {}".format(name, "$fs", phase2, self.nodeName)
+                rtn.append("pd1 {} {} {} {}".format(name, "$fs", phase2, self.nodeName))
         else:
             if quad not in ("I", "Q"):
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
@@ -861,8 +1013,11 @@ class Port(object):
             phase = self.IQ_phase(quad, self.phase)
             
             if phase2 is None:
-                return "pd2 {} {} {} {} {}".format(name, self.f , phase, "$fs", self.nodeName)
+                rtn.append("pd2 {} {} {} {} {}".format(name, self.f , phase, "$fs", self.nodeName))
             else:
-                return "pd2 {} {} {} {} {} {}".format(name, self.f, phase, "$fs", phase2, self.nodeName)
-                
+                rtn.append("pd2 {} {} {} {} {} {}".format(name, self.f, phase, "$fs", phase2, self.nodeName))
+        
+        rtn.extend(self._pdtype(name, sigtype))
+        
+        return rtn    
                 

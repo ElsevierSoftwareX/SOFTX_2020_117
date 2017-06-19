@@ -347,6 +347,12 @@ class NodeNetwork(object):
         return value in self.__nodes
     
     def __nodeSearch(self, fnode, currcomp, branches, tnode):
+        """
+        fnode: From node (Start)
+        currcomp: Current component
+        branches: List of branches not yet explored
+        tnode: To node (Goal)
+        """
         
         if fnode == tnode:
             branches[-1][0] = True
@@ -402,8 +408,18 @@ class NodeNetwork(object):
             
             return False
             
-        elif isinstance(currcomp, pykat.components.isolator):
-            print ("isol")
+        elif isinstance(currcomp, pykat.components.dbs):
+            if currcomp.nodes[0] == fnode:
+                nextnode = currcomp.nodes[2]
+            elif currcomp.nodes[1] == fnode:
+                nextnode = currcomp.nodes[0]
+            elif currcomp.nodes[2] == fnode:
+                nextnode = currcomp.nodes[3]
+            elif currcomp.nodes[3] == fnode:
+                nextnode = currcomp.nodes[1]
+            else:
+                raise pkex.BasePyKatException("Unexpeceted condition")
+            
         elif isinstance(currcomp, pykat.components.laser):
             # if we are at a laser then we can't go any further
             # and it isn;t this node as we checked before

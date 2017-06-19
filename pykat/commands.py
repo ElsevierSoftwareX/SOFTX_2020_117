@@ -363,77 +363,7 @@ class gauss(object):
             kat.nodes[node].setGauss(kat.components[component], gp)
         else:
             kat.nodes[node].setGauss(kat.components[component], gpx, gpy)
- 
-# class tf(Command):
-#
-#     class fQ(object):
-#         def __init__(self, f, Q, tf):
-#             assert(tf is not None)
-#             self._tf = tf
-#             self.__f = Param("f", self, None, canFsig=False, isPutable=True, isPutter=False, isTunable=True)
-#             self.__Q = Param("Q", self, None, canFsig=False, isPutable=True, isPutter=False, isTunable=True)
-#
-#         def _register_param(self, param):
-#             self._tf._params.append(param)
-#
-#         @property
-#         def f(self): return self.__f
-#         @f.setter
-#         def f(self,value): self.__f.value = SIfloat(value)
-#
-#         @property
-#         def Q(self): return self.__Q
-#         @Q.setter
-#         def Q(self,value): self.__Q.value = SIfloat(value)
-#
-#     def __init__(self, name):
-#         Command.__init__(self, name, False)
-#         self.zeros = []
-#         self.poles = []
-#         self.gain = 1
-#         self.phase = 0
-#         self._params = []
-#
-#     def addPole(self,f, Q):
-#         self.poles.append(tf.fQ(SIfloat(f), SIfloat(Q), self))
-#
-#     def addZero(self,f, Q):
-#         self.zeros.append(tf.fQ(SIfloat(f), SIfloat(Q), self))
-#
-#     @staticmethod
-#     def parseFinesseText(text):
-#         values = text.split()
-#
-#         if ((len(values)-4) % 3) != 0:
-#             raise pkex.BasePyKatException("Transfer function Finesse code format incorrect '{0}'".format(text))
-#
-#         _tf = tf(values[1])
-#
-#         _tf.gain = SIfloat(values[2])
-#         _tf.phase = SIfloat(values[3])
-#
-#         N = int((len(values)-4) / 3)
-#
-#         for i in range(1,N+1):
-#             if values[i*3+1] == 'p':
-#                 _tf.addPole(SIfloat(values[i*3+2]), SIfloat(values[i*3+3]))
-#             elif values[i*3+1] == 'z':
-#                 _tf.addZero(SIfloat(values[i*3+2]), SIfloat(values[i*3+3]))
-#             else:
-#                 raise pkex.BasePyKatException("Transfer function pole/zero Finesse code format incorrect '{0}'".format(text))
-#
-#         return _tf
-#
-#     def getFinesseText(self):
-#         rtn = "tf {name} {gain} {phase} ".format(name=self.name,gain=self.gain,phase=self.phase)
-#
-#         for p in self.poles:
-#             rtn += "p {f} {Q} ".format(f=p.f, Q=p.Q)
-#
-#         for z in self.zeros:
-#             rtn += "p {f} {Q} ".format(f=z.f, Q=z.Q)
-#
-#         return rtn
+
                    
 class tf(Command):
     
@@ -489,6 +419,55 @@ class tf(Command):
         
         for z in self.zeros:
             rtn += "p {f} {Q} ".format(f=z.f, Q=z.Q)
+        
+        return rtn
+        
+class tf2(Command):
+            
+    def __init__(self, name):
+        Command.__init__(self, name, False)
+        self.zeros = []
+        self.poles = []
+        self.gain = 1
+        self.phase = 0
+        self.precision = 4
+        self._freeze()
+    
+    def addPole(self, z):
+        self.poles.append(z)
+    
+    def addZero(self, z):
+        self.zeros.append(z)
+    
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split()
+        
+        if len(values) != 6:
+            raise pkex.BasePyKatException("Transfer function Finesse code format incorrect '{0}'".format(text))
+
+        _tf = tf2(values[1])
+        
+        _tf.gain = SIfloat(values[2])
+        _tf.phase = SIfloat(values[3])
+        
+        for _ in values[4].strip("{}").split(','):
+            _tf.poles.append(complex(_.replace('i','j')))
+        
+        for _ in values[5].strip("{}").split(','):
+            _tf.zeros.append(complex(_.replace('i','j')))
+        
+        return _tf
+        
+    def getFinesseText(self):
+        rtn = "tf2 {name} {gain} {phase} ".format(name=self.name,gain=self.gain,phase=self.phase)
+        
+        fmt = '{0:%i.%if}{1}{2:%i.%if}i'%((self.precision,)*4)
+        c2str = lambda n: fmt.format(n.real, '+' if n.imag>0 else '-', abs(n.imag   ))
+        
+        rtn += "{%s}" % ",".join([c2str(_) for _ in self.poles])
+        rtn += " {%s}" % ",".join([c2str(_) for _ in self.zeros])
         
         return rtn
         

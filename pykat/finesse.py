@@ -28,6 +28,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import traceback
 import warnings
 import codecs
 import uuid
@@ -652,6 +653,7 @@ class KatRun2D(object):
         self.x = None
         self.y = None
         self.z = None
+        self.yaxis = None
         self.xlabel = None
         self.ylabel = None
         self.zlabels = None
@@ -940,7 +942,7 @@ class kat(object):
             self.parse(kat_code)
         
         if kat_file != None:
-            self.loadKatFile(kat_file)
+            self.load(kat_file)
     
         self._freeze()
     
@@ -1280,7 +1282,7 @@ class kat(object):
     
     def getBlockString(self, name):
         if name not in self.__blocks:
-            pkex.PrintError("Error getting block:", pkex.BasePyKatException('Block "{0}" was not found'.format(name)))
+            raise pkex.BasePyKatException('Block "{0}" was not found'.format(name))
             
         return str(self.__blocks[name])
     
@@ -1288,8 +1290,7 @@ class kat(object):
         
         if name not in self.__blocks:
             if failOnBlockNotFound:
-                pkex.PrintError("Error removing block:", pkex.BasePyKatException('Block "{0}" was not found'.format(name)))
-                sys.exit(1)
+                raise pkex.BasePyKatException('Block "{0}" was not found'.format(name))
             else:
                 return
         
@@ -1481,6 +1482,8 @@ class kat(object):
                         obj = pykat.detectors.ad.parseFinesseText(line)
                     elif(first[0:2] == "xd"):
                         obj = pykat.detectors.xd.parseFinesseText(line)
+                    elif(first[0:3] == "tf2"):
+                        obj = pykat.commands.tf2.parseFinesseText(line)
                     elif(first[0:2] == "tf"):
                         obj = pykat.commands.tf.parseFinesseText(line)
                     elif(first[0:2] == "cp"):

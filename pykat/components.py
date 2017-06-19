@@ -675,6 +675,11 @@ class mirror(AbstractMirrorComponent):
             return ABCD.mirror_refl(n2, -Rc)
         else:
             raise pkex.BasePyKatException("Check nodes {} and {} are nodes of {}".format(from_node, to_node, self.name))
+    
+    def nodeConnections(self):
+        return (
+                   (self.nodes[0], self.nodes[1]),
+               )
 
 class beamSplitter(AbstractMirrorComponent):
     def __init__(self, name, node1, node2, node3, node4, R = None, T = None, L=None, phi = 0, alpha = 0, Rcx = None, Rcy = None, xbeta = None, ybeta = None, mass = None, r_ap = None):
@@ -853,6 +858,15 @@ class beamSplitter(AbstractMirrorComponent):
             return trans(n2, n1, -Rc, self.alpha.value)
         else:
             raise pkex.BasePyKatException("Check node combination {} and {} for {}".format(from_node, to_node, self.name))
+            
+    def nodeConnections(self):
+        return (
+                   (self.nodes[0], self.nodes[1]), # node 1 <-R> node 2
+                   (self.nodes[0], self.nodes[2]), # node 1 <-T> node 3
+                   (self.nodes[1], self.nodes[3]), # node 2 <-T> node 4
+                   (self.nodes[2], self.nodes[3]), # node 3 <-R> node 4
+               )
+        
 class space(Component):
     def __init__(self, name, node1, node2, L = 0, n = 1, gx = None, gy = None):
         Component.__init__(self, name)
@@ -977,6 +991,11 @@ class space(Component):
     def ABCD(self, from_node, to_node, direction="x"):
         return ABCD.space(self.n.value, self.L.value)
         
+    def nodeConnections(self):
+        return (
+                   (self.nodes[0], self.nodes[1]),
+               )
+               
 class grating(Component):
     def __init__(self, name, node1, node2, node3 = None, node4 = None, n = 2, d = 0, eta_0 = None, eta_1 = None, eta_2 = None, eta_3 = None, rho_0 = None, alpha = None): # TODO: implement Rcx, Rcy and Rc
         Component.__init__(self, name)
@@ -1193,7 +1212,10 @@ class isolator(Component):
         
         return self._svgItem
         
-        
+    def nodeConnections(self):
+        return (
+                   (self.nodes[0], self.nodes[1])
+               )
         
 class dbs(Component):
     def __init__(self, name, node1, node2, node3, node4):
@@ -1249,7 +1271,14 @@ class dbs(Component):
     def getQGraphicsItem(self):
         raise NotImplemented()    
         
-
+    def nodeConnections(self):
+        return (
+                   (self.nodes[0], self.nodes[2]),
+                   (self.nodes[1], self.nodes[0]),
+                   (self.nodes[2], self.nodes[3]),
+                   (self.nodes[3], self.nodes[1]),
+               )
+               
 class lens(Component):
     def __init__(self, name, node1, node2, f=1, p=None):
         Component.__init__(self, name)
@@ -1350,7 +1379,12 @@ class lens(Component):
             return ABCD.lens(self.f.value)
         else:
             return ABCD.lens(1/self.p.value)
-        
+    
+    def nodeConnections(self):
+        return (
+                   (self.nodes[0], self.nodes[1]),
+               )
+                   
 class modulator(Component):
     def __init__(self, name, node1, node2, f, midx, order, modulation_type='pm', phase=0):
         Component.__init__(self, name)
@@ -1470,7 +1504,12 @@ class modulator(Component):
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/modulator.svg", self ,[(-4,15,self.nodes[0]), (14,15,self.nodes[1])])
         
         return self._svgItem
-
+    
+    def nodeConnections(self):
+        return (
+                   (self.nodes[0], self.nodes[1]),
+               )
+               
 class laser(Component):
     def __init__(self, name, node, P=1, f=0, phase=0):
         Component.__init__(self,name)
@@ -1568,7 +1607,10 @@ class laser(Component):
             self._svgItem = pykat.gui.graphics.ComponentQGraphicsItem(":/resources/laser.svg", self, [(65,25,self.nodes[0])])
             
         return self._svgItem
-
+    
+    def nodeConnections(self):
+        return tuple()
+        
 class squeezer(Component):
     def __init__(self, name, node, f=0, db=0, angle=0, phase=0, entangled_carrier=False):
         Component.__init__(self,name)
@@ -1652,3 +1694,5 @@ class squeezer(Component):
             
         return self._svgItem
             
+    def nodeConnections(self):
+        return tuple()
