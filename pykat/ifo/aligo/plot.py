@@ -202,7 +202,7 @@ def cavity_modes(kat, node, ax=None, show=True):
     
     ax.set_xlabel('$z$')
     ax.set_ylabel('$z_r$')
-    ax.legend(loc=0, fontsize=10, bbox_to_anchor=(1.04,1), loc="upper left")
+    ax.legend(fontsize=10, bbox_to_anchor=(1.04,1), loc="upper left")
     
     plt.tight_layout()
     
