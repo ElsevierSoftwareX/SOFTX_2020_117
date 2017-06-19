@@ -119,7 +119,7 @@ class surfacemap(object):
         
         # Checking so new suggested "center" is within the the mirror surface
         if (x0new>0 and x0new<self.size[0]-1 and y0new>0 and y0new<self.size[1]-1 and
-            self.notNan[round(y0new), round(x0new)]):
+            self.notNan[int(round(y0new)), int(round(x0new))]):
             
             self.center = (x0new, y0new)
             self._xyOffset = (offset[0], offset[1])
@@ -870,7 +870,7 @@ class surfacemap(object):
         # z-value at centre of the data-grid. Serves as initial guess for deviation
         # from z=0, if no other first guess is given.
         if zOff is None:
-            zOff = self.data[round(self.center[1]), round(self.center[0])]
+            zOff = self.data[int(round(self.center[1])), int(round(self.center[0]))]
 
         # If fitting center of the sphere, four variables are fitted. Initial guess
         # of deviation from notNan-data-grid-center: (x0,y0) = (0,0).
@@ -1090,8 +1090,8 @@ class surfacemap(object):
             x0 = round(self.center[0])
             y0 = round(self.center[1])
 
-            self.data = self.data[y0-R:y0+R+1, x0-R:x0+R+1]
-            self.notNan = self.notNan[y0-R:y0+R+1, x0-R:x0+R+1]
+            self.data = self.data[int(y0-R):int(y0+R+1), int(x0-R):int(x0+R+1)]
+            self.notNan = self.notNan[int(y0-R):int(y0+R+1), int(x0-R):int(x0+R+1)]
 
         # Centering the new cropped map and restoring offset
         self.recenter()
