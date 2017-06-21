@@ -223,7 +223,6 @@ class Detector1(BaseDetector):
     def node(self, value):
         self._set_node(value, 0)      
         
-                
 class Detector2(BaseDetector):
     """
     A detector that attaches to two node.
@@ -585,6 +584,46 @@ class pd(Detector1):
         
         return result
 
+    def _get_fphi_str(self):
+        """
+        Will return the frequency phase pairs in a string for use
+        in making the finesse commands for various detectors
+        """
+        fphi_str = ""
+            
+        for n in range(1, 1+self.num_demods):
+            _f = self.__getattribute__("f"+str(n))
+            
+            if _f == "$fs":
+                fphi_str += " $fs"
+            else:
+                fphi_str += " {0}".format(_f)
+                
+            phi_val = self.__getattribute__("phase"+str(n))
+            
+            if phi_val != None:
+                if type(phi_val) == float:
+                    fphi_str += " {}".format(phi_val)
+                else:
+                    fphi_str += " {0}".format(phi_val)
+        
+        return fphi_str
+    
+    @staticmethod
+    def _parse_fphi(f, phs):
+        dict = {}
+        
+        for i in range(len(f)):
+            dict['f{0}'.format(i+1)] = SIfloat(f[i])
+            
+        for i in range(len(phs)):
+            if phs[i] == "max":
+                dict['phase{0}'.format(i+1)] = "max"
+            else:
+                dict['phase{0}'.format(i+1)] = SIfloat(phs[i])
+        
+        return dict
+    
     def __init__(self, name=None, num_demods=1, node_name=None, senstype=None, alternate_beam=False, pdtype=None, **kwargs):
         BaseDetector.__init__(self, name, node_name)
         
@@ -742,16 +781,8 @@ class pd(Detector1):
         
         f = values[2:len(values)-1:2]    
         phs = values[3:len(values)-1:2]
-        
-        dict = {}
-        
-        for i in range(len(f)):
-            dict['f{0}'.format(i+1)] = SIfloat(f[i])
-        for i in range(len(phs)):
-            if phs[i] == "max":
-                dict['phase{0}'.format(i+1)] = "max"
-            else:
-                dict['phase{0}'.format(i+1)] = SIfloat(phs[i])
+                
+        dict = pd._parse_fphi(f, phs)
             
         node = values[-1]
         alt_beam = node[-1] == '*'
@@ -767,26 +798,11 @@ class pd(Detector1):
         
         if self.enabled:
             alt_str = ""
-            fphi_str = ""
             
             if self.alternate_beam:
                 alt_str = "*"
-                
-            for n in range(1, 1+self.num_demods):
-                _f = self.__getattribute__("f"+str(n))
-                
-                if _f == "$fs":
-                    fphi_str += " $fs"
-                else:
-                    fphi_str += " {0}".format(_f)
-                    
-                phi_val = self.__getattribute__("phase"+str(n))
-                
-                if phi_val != None:
-                    if type(phi_val) == float:
-                        fphi_str += " {}".format(phi_val)
-                    else:
-                        fphi_str += " {0}".format(phi_val)
+            
+            fphi_str = self._get_fphi_str()
             
             senstype = self.senstype
             
@@ -856,12 +872,7 @@ class qnoised(pd):
         f = values[3:len(values)-1:2]    
         phs = values[4:len(values)-1:2]
         
-        dict = {}
-        
-        for i in range(len(f)):
-            dict['f{0}'.format(i+1)] = f[i]
-        for i in range(len(phs)):
-            dict['phase{0}'.format(i+1)] = phs[i]
+        dict = pd._parse_fphi(f, phs)
             
         node = values[-1]
         alt_beam = node[-1] == '*'
@@ -883,26 +894,10 @@ class qnoised(pd):
         
         if self.enabled:
             alt_str = ""
-            fphi_str = ""
+            fphi_str = fphi_str = self._get_fphi_str()
             
             if self.alternate_beam:
                 alt_str = "*"
-            
-            for n in range(1, 1+self.num_demods):
-                _f = self.__getattribute__("f"+str(n))
-                
-                if _f == "$fs":
-                    fphi_str += " $fs"
-                else:
-                    fphi_str += " {0:.16g}".format(float(_f))
-                    
-                phi_val = self.__getattribute__("phase"+str(n))
-                
-                if phi_val != None:
-                    if type(phi_val) == float:
-                        fphi_str += " {0:.16g}".format(float(phi_val))
-                    else:
-                        fphi_str += " " + str(phi_val)
             
             senstype = self.senstype
             
@@ -954,12 +949,7 @@ class qshot(pd):
         f = values[3:len(values)-1:2]    
         phs = values[4:len(values)-1:2]
         
-        dict = {}
-        
-        for i in range(len(f)):
-            dict['f{0}'.format(i+1)] = f[i]
-        for i in range(len(phs)):
-            dict['phase{0}'.format(i+1)] = phs[i]
+        dict = pd._parse_fphi(f, phs)
             
         node = values[-1]
         alt_beam = node[-1] == '*'
@@ -981,27 +971,11 @@ class qshot(pd):
         
         if self.enabled:
             alt_str = ""
-            fphi_str = ""
+            fphi_str = fphi_str = self._get_fphi_str()
             
             if self.alternate_beam:
                 alt_str = "*"
-                
-            for n in range(1, 1+self.num_demods):
-                _f = self.__getattribute__("f"+str(n))
-                
-                if _f == "$fs":
-                    fphi_str += " $fs"
-                else:
-                    fphi_str += " {0:.16g}".format(float(_f))
-                    
-                phi_val = self.__getattribute__("phase"+str(n))
-                
-                if phi_val != None:
-                    if type(phi_val) == float:
-                        fphi_str += " {0:.16g}".format(float(phi_val))
-                    else:
-                        fphi_str += " " + str(phi_val)
-            
+             
             senstype = self.senstype
             
             if senstype is None:

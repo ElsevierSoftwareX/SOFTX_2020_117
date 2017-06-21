@@ -1144,7 +1144,6 @@ class isolator(Component):
         self._requested_node_names.append(node1)
         self._requested_node_names.append(node2)
         self._svgItem = None
-        self._option = option
         
         self.__S = Param("S",self,SIfloat(S))
 
