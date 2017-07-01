@@ -76,6 +76,19 @@
 #		- changed PR2 node4 name from dump11 to nAPOP (auxilliary POP)
 #
 #
+# - 01.07.2017, Daniel Toyra
+# 
+#       Based on design file at the time. Adding in OMC and OMCpath from old aligo 
+#       kat files. Simplified the OMC to single surface mirrors. Replaced the path 
+#       between the SRM and the OMCpath with equivalent pure vacuum propagation.
+#       Added in ideal Faraday isolator (dbs-component). 
+#      
+#       Documents used:
+#           *
+#       Notes:
+#           * 
+#       TODO:
+#           * Correct detector nodes. Check parameters for OMC and OMCpath. 
 #--------------------------------------------------------------------------
 %%% FTend header
 
