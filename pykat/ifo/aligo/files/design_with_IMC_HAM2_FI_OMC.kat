@@ -310,9 +310,11 @@ attr SRM Rc -5.6938
 ###########################################################################
 %%% FTend SRC
 
-
-%%% FTblock Isolator
+%%% FTblock OMCpath
 ###########################################################################
+
+# (Loctions and angles based on the solid work file D1000342-v14 give ~5% 
+# mismatch. Thus lom1, lom3omc have been adjusted to get ~99.7% overlap at the OMC)
 
 # Distance SRM --> Faraday Isolator (FI)
 
@@ -328,19 +330,6 @@ s l_srm_fi 0.7278 nSRM2 nFI2a
 # nFI2d (Unused) --> nFI2b (SQZ)
 
 dbs FI2 nFI2a nFI2b nFI2c nFI2d
-
-###########################################################################
-%%% FTend Isolator
-
-%%% FTblock OMCpath
-###########################################################################
-
-# Text from someone else. 
-# ----
-# (Loctions and angles based on the solid work file D1000342-v14 give ~5% 
-# mismatch. Thus lom1, lom3omc have been adjusted to get ~99.7% overlap at the OMC)
-# (lom1=2.6334,lom3omc=0.24.8 give 99% overlap at OMC)
-# ----
 
 # Distance FI2 --> OM1  
 s lom1 2.9339 nFI2c nOM1a
