@@ -157,7 +157,29 @@ class ALIGO_IFO(IFO):
         if removeHAM2:
             self.kat.removeBlock("HAM2")
             self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
-     
+
+
+    def remove_FI_OMC(self, removeFI, removeOMC):
+        """
+        
+        """
+        if removeFI and not removeOMC:
+            raise pkex.BasePyKatException("Must remove OMC if removing FI")
+
+        if removeFI:
+            self.kat.removeBlock('FI')
+            self.kat.removeBlock('OMC')
+            self.kat.cavOMC.remove()
+            self.kat.nodes.createNode('nAS')
+            self.kat.nodes.replaceNode(self.kat.SRMAR, 'nSRM2', 'nAS')
+            # self.kat.nodes.replaceNode(self.kat.SRMAR, 'nSRM2', 'nAS')
+        elif removeOMC:
+            self.kat.removeBlock('OMC')
+            self.kat.cavOMC.remove()
+            self.kat.nodes.createNode('nAS')
+            self.kat.nodes.replaceNode(self.kat.OM3, 'nOM3b', 'nAS')
+            # self.kat.nodes.replaceNode(self.kat.OM3, 'nOM3b', 'nAS')
+
     def adjust_PRC_length(self, verbose=False):
         """
         Adjust PRC length so that it fulfils the requirement
@@ -555,7 +577,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['design', 'design_low_power', 'design_with_IMC_HAM2']
+    names = ['design', 'design_low_power', 'design_with_IMC_HAM2', 'design_with_IMC_HAM2_FI_OMC']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")

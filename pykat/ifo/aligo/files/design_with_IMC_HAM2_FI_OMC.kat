@@ -78,10 +78,10 @@
 #
 # - 01.07.2017, Daniel Toyra
 # 
-#       Based on design file at the time. Adding in OMC and OMCpath from old aligo 
-#       kat files. Simplified the OMC to single surface mirrors. Replaced the path 
-#       between the SRM and the OMCpath with equivalent pure vacuum propagation.
-#       Added in ideal Faraday isolator (dbs-component). 
+#       Adding in OMC and OMCpath from old aligo kat files. Simplified the OMC 
+#       to single surface mirrors. Replaced the path between the SRM and the 
+#       OMCpath with equivalent pure vacuum propagation. Added an ideal Faraday 
+#       isolator (dbs-component). 
 #      
 #       Documents used:
 #           *
@@ -310,7 +310,7 @@ attr SRM Rc -5.6938
 ###########################################################################
 %%% FTend SRC
 
-%%% FTblock OMCpath
+%%% FTblock FI
 ###########################################################################
 
 # (Loctions and angles based on the solid work file D1000342-v14 give ~5% 
@@ -342,25 +342,22 @@ attr OM1 Rc 4.6
 s lom2 1.395 nOM1b nOM2a 
 
 # OM2
-bs1 OM2 10u $Mloss 0 4.399 nOM2a nOM2b dump23 dump24  # T is a guess
+bs1 OM2 10u $Mloss 0 4.399 nOM2a nOM2b nOM2c nOM2d  # T is a guess
 attr OM2 Rc 1.7058
 
 # Distance OM2 --> OM3
 s lom3 0.631 nOM2b nOM3a 
-bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3trans dump25 # T is a guess
-
-# Distance OM3 --> OMC input coupler IC (AR side)
-s lom3omc 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
-
-#  Distance in transmission to OM3 used for testing
-#s lomOM3trans 0.1 nOM3trans nOMC_ARIC2_in
+bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3c nOM3d # T is a guess
 
 ###########################################################################
-%%% FTend OMCpath 
+%%% FTend FI
 
 %%% FTblock OMC
 ###########################################################################
 # OMC (as built parameters: D1300507-v1)
+
+# Distance OM3 --> OMC input coupler IC
+s lom3omc 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
 
 # Input Coupler IC (flat mirror)
 bs1 OMC_IC 0.0076 10u 0 2.7609 nOMC_ICa nOMC_ICb nOMC_ICc nOMC_ICd
@@ -369,7 +366,7 @@ bs1 OMC_IC 0.0076 10u 0 2.7609 nOMC_ICa nOMC_ICb nOMC_ICc nOMC_ICd
 s lIC_OC 0.2815 1 nOMC_ICc nOMC_OCa
 
 # Output Coupler OC (flat mirror)
-bs1 OMC_OC 0.0075 10u 0 4.004 nOMC_OCa nOMC_OCb nOMC_OCc nOMC_OCd
+bs1 OMC_OC 0.0075 10u 0 4.004 nOMC_OCa nOMC_OCb nAS nOMC_OCd
 
 # Distance from OC to CM1
 s lOC_CM1 0.2842 1 nOMC_OCb nOMC_CM1a
@@ -392,13 +389,6 @@ s lCM2_IC 0.2842 1 nOMC_CM2b nOMC_ICd
 %%% FTend OMC
 
 
-
-
-
-
-
-
-
 %%% FTblock cavities
 ###########################################################################
 cav cavIMC MC2 nMC2in MC2 nMC2refl 
@@ -409,8 +399,6 @@ cav cavPRY PRM nPRM2 ITMY nITMYs2
 cav cavSRX SRM nSRM1 ITMX nITMXs2
 cav cavSRY SRM nSRM1 ITMY nITMYs2
 cav cavOMC OMC_IC nOMC_ICc OMC_IC nOMC_ICd
-
-# removed OMC
 
 ###########################################################################
 %%% FTend cavities
