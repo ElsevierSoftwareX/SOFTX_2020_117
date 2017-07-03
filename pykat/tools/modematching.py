@@ -241,7 +241,7 @@ def modematch2(q1, q2, D, c1, c2, c3):
     By Daniel Toyra (dtoyra@star.sr.bham.ac.uk)
     '''
 
-    print '  Modematching...'
+    print( '  Modematching...')
     
     # Controller
     # -----------------------------------------------------
@@ -288,22 +288,22 @@ def modematch2(q1, q2, D, c1, c2, c3):
 
         isMM = True
 
-        print '  Match found!'
-        print '  res = ' + str(res)
-        print '  d1 = ' + str(d1) + ' m'
-        print '  d2 = ' + str(d2) + ' m'
-        print '  d3 = ' + str(d3) + ' m'
-        print '  f1 = ' + str(f1) + ' m'
-        print '  f2 = ' + str(f2) + ' m'
-        print '  D_tot = ' + str(d1+d2+d3) + ' m'
+        print ('  Match found!')
+        print ('  res = ' + str(res))
+        print ('  d1 = ' + str(d1) + ' m')
+        print ('  d2 = ' + str(d2) + ' m')
+        print ('  d3 = ' + str(d3) + ' m')
+        print ('  f1 = ' + str(f1) + ' m')
+        print ('  f2 = ' + str(f2) + ' m')
+        print ('  D_tot = ' + str(d1+d2+d3) + ' m')
 
     else:
         isMM = False
-        print '  No match found. Unphysical solution...'
-        print d1
-        print d2
-        print d3
-        print res
+        print ('  No match found. Unphysical solution...')
+        print (d1)
+        print (d2)
+        print (d3)
+        print (res)
 
     
     return f1, f2, d1, d2, d3, res, isMM

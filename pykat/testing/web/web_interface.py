@@ -30,7 +30,7 @@ watcher = None
 enabled_suites = ["physics","random"]
 commit_check_seconds = 300
 
-print "Starting up database"
+print( "Starting up database")
         
 DB_PATH = os.path.join(app.instance_path,"db")
 
@@ -38,10 +38,10 @@ db = ThreadSafeDatabase(DB_PATH)
 
 if db.exists():
     db.open()
-    print db.get_db_details()
-    print "Reindexing..."
+    print( db.get_db_details())
+    print( "Reindexing...")
     db.reindex()
-    print "Done reindexing"
+    print( "Done reindexing")
     
     # update the test_id from the previous tests that have been run
     for a in db.all('testid'):
@@ -49,7 +49,7 @@ if db.exists():
         if key > test_id:
             test_id = key
            
-    print "Current test_id: " + str(test_id)
+    print( "Current test_id: " + str(test_id))
     
 else:
     db.create()
@@ -66,7 +66,7 @@ utils.git(["checkout","develop"], cwd=SRC_PATH)
 latest_data = utils.git(["log","-" + str(prev_commits),'--pretty=format:"%H"'], cwd=SRC_PATH)
 latest_commit_id_tested = latest_data[0].split("\n")[prev_commits-1].replace('"',"").replace("\\","")
 
-print "loading web interface"
+print( "loading web interface")
 
 # should be called with the correct locks already
 # applied
@@ -75,14 +75,14 @@ def __run_new(test):
     # check if anything is running and if it
     # isn't start this test off
     if current_test is None:
-        print "running test"
+        print( "running test")
         current_test = test
         # create watcher thread which will start the test
         watcher = FinesseProcessWatcher()
         watcher.setProcessToWatch(test)
         watcher.start()
     else:
-        print "queuing test"
+        print( "queuing test")
         scheduled_tests.append(test)
 
 class FinesseProcessWatcher(Thread):
@@ -92,7 +92,7 @@ class FinesseProcessWatcher(Thread):
         Thread.__init__(self)
     
     def setProcessToWatch(self, process):
-        print type(process)
+        print( type(process))
         #if type(self.process_to_watch) is not finesse_test.FinesseTestProcess:
         #    raise Exception("Tried to watch something which wasn't a FinesseTestProcess")
     
@@ -228,12 +228,12 @@ class FinesseProcessWatcher(Thread):
             utils.runcmd(["rm","-rf","lib"],cwd=BUILD_PATH)
             
         except RecordNotFound:
-            print "Could not find database records for test id " + str(self.process_to_watch.test_id)
+            print( "Could not find database records for test id " + str(self.process_to_watch.test_id))
             pass
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
            
-            print "*** Exception for test_id = " + str(self.process_to_watch.test_id)
+            print( "*** Exception for test_id = " + str(self.process_to_watch.test_id))
             traceback.print_exception(exc_type, exc_value, exc_traceback,
                                       limit=5, file=sys.stdout)
         finally:
@@ -242,13 +242,13 @@ class FinesseProcessWatcher(Thread):
                 schedule_lock.acquire()
             
                 if len(scheduled_tests) > 0:
-                    print "Watcher starting next test"
+                    print( "Watcher starting next test")
                     current_test = scheduled_tests.pop(0)
                     watcher = FinesseProcessWatcher()
                     watcher.setProcessToWatch(current_test)
                     watcher.start()
                 else:
-                    print "Watcher found no more tests to run"
+                    print( "Watcher found no more tests to run")
                     current_test = None
                     watcher = None
             finally:
@@ -257,11 +257,11 @@ class FinesseProcessWatcher(Thread):
 
 @app.route('/finesse/cancel_test_<id>', methods=["POST"])
 def finesse_cancel_test(id):
-    print id
+    print( id)
     
     if int(id) >= 0:
         id = int(id)
-        print "Cancelling " + str(id)
+        print( "Cancelling " + str(id))
         
         try:
             # get lock here so that watcher doesn't interfere
@@ -407,7 +407,7 @@ def __finesse_start_test(git_commit, kats, nobuild=False):
                 KAT_INI = os.path.join(app.instance_path, "kat_store", "kat.ini_" + str(git_commit))
                 
                 if os.path.exists(KAT_EXE):
-                    print "using existing kat file " + KAT_EXE
+                    print( "using existing kat file " + KAT_EXE)
                     os.mkdir(TEST_BUILD_PATH)
                     
                     KAT_NEW_EXE = os.path.join(TEST_BUILD_PATH,"kat" + EXE)
@@ -483,7 +483,7 @@ def finesse_get_branches():
     try:
         [out,err] = utils.git(["branch","-a"],cwd = SRC_PATH)
     except Exception as ex:
-        print "git branch error : " + str(ex)
+        print( "git branch error : " + str(ex))
     
     branches = list()
     
@@ -505,7 +505,7 @@ def finesse_get_log(count,branch):
         [out,err] = utils.git(["checkout", branch],cwd = SRC_PATH)
         [out,err] = utils.git(["pull"],cwd = SRC_PATH)
     except Exception as ex:
-        print "git pull error : " + str(ex)
+        print( "git pull error : " + str(ex))
     
     [out,err] = utils.git(["log","--no-merges","--max-count={0}".format(count),"--pretty=oneline"],cwd = SRC_PATH)
     
@@ -755,7 +755,7 @@ def finesse_view_exception(view_test_id,suite,kat):
             if run["kat"] == kat:
                 response = make_response("\n\n".join(str(run["runexception"])))
     else:
-        print "NOTHING"
+        print( "NOTHING")
     
     if response is None:
         response = make_response("No error message")
@@ -835,7 +835,7 @@ def finesse_get_kats():
     
     return jsonify(kats=kats, values=values)
     
-print "Starting commit watch from most recent commit: " + latest_commit_id_tested
+print( "Starting commit watch from most recent commit: " + latest_commit_id_tested)
    
 def setInterval(interval):
     def decorator(function):
@@ -908,14 +908,14 @@ def checkLatestCommits():
             __finesse_start_test(commits_not_tested,kats)
                 
     except utils.RunException as ex:
-        print "stderr", ex.err
+        print( "stderr", ex.err)
         pass
         
     except Exception as ex:
         
         exc_type, exc_value, exc_traceback = sys.exc_info()
         
-        print "*** Exception in commit checker"
+        print( "*** Exception in commit checker")
         traceback.print_exception(exc_type, exc_value, exc_traceback,
                                   limit=5, file=sys.stdout)
         
