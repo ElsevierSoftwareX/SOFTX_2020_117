@@ -229,7 +229,8 @@ s ls1 15.7586 nSR2a nSRM1
 m1 SRM 0.20 8.7u $phi_SRM nSRM1 nSRMs1
 s SRMsub 0.0749 $nsilica nSRMs1 nSRMs2
 m2 SRMAR 0 50n 0 nSRMs2 nSRM2
-#bs2 SRMAR 50n 0 0 0 nSRMs2 nSRMAR1 nSRM2 nSRMAR2
+s sAS 0 nSRM2 nAS
+
 attr SRM Rc -5.6938
 
 ###########################################################################
@@ -276,7 +277,7 @@ const phi_BS 0
 
 %%% FTblock powers
 ###########################################################################
-pd P_DC_AS  nSRM2
+pd P_DC_AS nAS
 pd PIMCtrans nREFL*
 pd Px nITMX2
 pd Py nITMY2
@@ -322,14 +323,12 @@ set PRCL_err POP_f1_I  re
 set MICH_err POP_f2_Q  re
 set CARM_err REFL_f1_I re
 set SRCL_err REFL_f2_I re
-set AS_f2_I_re AS_f2_I re
-
-func DARM_err = $AS_f2_I_re - 0.728491141201167
+set DARM_err AS_f2_I re
 
 lock PRCL_lock $PRCL_err -2.769589345492097 10u
 lock MICH_lock $MICH_err 12.029218280984777 10u
 lock CARM_lock $CARM_err 0.0001193478133584417 10u
-lock DARM_lock $DARM_err -0.002325573315055089 10u
+lock DARM_lock $DARM_err -0.002325573315055089 10u -0.728491141201167
 lock SRCL_lock $SRCL_err -4.886172716885925 10u
 
 func mMICH_lock = 0 - $MICH_lock

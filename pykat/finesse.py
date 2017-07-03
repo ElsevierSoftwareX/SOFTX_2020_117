@@ -1861,14 +1861,10 @@ class kat(object):
 
         out, err = p.communicate()
         
-        print(out, err)
-        
         if err is not None:
             raise pkex.BasePyKatException("Error getting version: " + str(err))
         
         vals = str(out).split()
-        
-        print(vals)
         
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017    
         

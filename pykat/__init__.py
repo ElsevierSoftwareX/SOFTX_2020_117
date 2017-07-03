@@ -40,7 +40,6 @@ from pykat.plotting import init_pykat_plotting
 
 from .SIfloat import SIfloat
 
-
 kat = finesse.kat()
 v = kat.finesse_version()
 
