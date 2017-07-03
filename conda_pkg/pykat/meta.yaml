@@ -1,17 +1,24 @@
 package: 
   name: pykat
-  version: 1.0.19
+  version: {{ GIT_DESCRIBE_TAG }}
 
 source:
   git_rev: {{ environ.get('CONDA_BUILD_VERSION', 'master') }}
   git_url: https://git.ligo.org/finesse/pykat.git
     
 build:
+  noarch: python
   number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
-  string: {{ environ.get('GIT_BUILD_STR', '') }}
-  script: python setup.py install
       
 requirements:
+  run:
+    - python
+    - numpy
+    - six
+    - scipy
+    - matplotlib
+    - flask >=0.10.1
+    - finesse >=2.2
   build:
     - python
     - numpy
