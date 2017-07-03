@@ -1,14 +1,14 @@
 package: 
   name: pykat
-  version: 1.1 #{{ GIT_DESCRIBE_TAG }}
+  version: {{ environ['CONDA_PYKAT_VERSION'] }}
 
 source:
-  git_rev: 1.1 #{{ environ.get('CONDA_BUILD_VERSION', 'master') }}
+  git_rev: {{ CONDA_BUILD_VERSION }}
   git_url: https://git.ligo.org/finesse/pykat.git
     
 build:
   noarch: python
-  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
+  #number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
       
 requirements:
   run:
