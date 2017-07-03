@@ -21,6 +21,6 @@ setup(
     description='Python interface and tools for FINESSE',
     long_description=open('README.rst').read(),
     install_requires=REQUIREMENTS,
-    package_data={'': ['optics/greedypoints/*.txt']},
+    package_data={'': ['optics/greedypoints/*.txt', 'ifo/aligo/files/*.kat']},
     include_package_data=True
 )
