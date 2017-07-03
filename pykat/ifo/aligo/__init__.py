@@ -231,7 +231,7 @@ class ALIGO_IFO(IFO):
             self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
 
 
-    def remove_FI_OMC(self, removeFI=False, removeOMC=True):
+    def remove_FI_OMC(self, removeFI=True, removeOMC=True):
         """
         Method for removing the OMC and the FI blocks in kat-objects having these
         included. The FI block contains an ideal Faraday isolator as well as the
