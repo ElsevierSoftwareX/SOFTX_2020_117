@@ -304,7 +304,6 @@ s ls1 15.7586 nSR2a nSRM1
 m1 SRM 0.20 8.7u $phi_SRM nSRM1 nSRMs1
 s SRMsub 0.0749 $nsilica nSRMs1 nSRMs2
 m2 SRMAR 0 50n 0 nSRMs2 nSRM2
-#bs2 SRMAR 50n 0 0 0 nSRMs2 nSRMAR1 nSRM2 nSRMAR2
 attr SRM Rc -5.6938
 
 ###########################################################################
@@ -314,11 +313,11 @@ attr SRM Rc -5.6938
 ###########################################################################
 
 # (Loctions and angles based on the solid work file D1000342-v14 give ~5% 
-# mismatch. Thus lom1, lom3omc have been adjusted to get ~99.7% overlap at the OMC)
+# mismatch. Thus s_SRM_FI, sOM3_OMC have been adjusted to get ~99.7% overlap at the OMC)
 
 # Distance SRM --> Faraday Isolator (FI)
 
-s l_srm_fi 0.7278 nSRM2 nFI2a
+s s_SRM_FI 0.7278 nSRM2 nFI2a
 
 # Directional beam splitter (ideal Faraday Isolator with 4 ports)
 # ----------------------------------------------------------------
@@ -332,21 +331,22 @@ s l_srm_fi 0.7278 nSRM2 nFI2a
 dbs FI2 nFI2a nFI2b nFI2c nFI2d
 
 # Distance FI2 --> OM1  
-s lom1 2.9339 nFI2c nOM1a
+s s_FI2_OM1 2.9339 nFI2c nOM1a
 
 # OM1
 bs1 OM1 800u $Mloss 0 2.251 nOM1a nOM1b dump21 dump22 # T is set for high power; Loss is a guess
 attr OM1 Rc 4.6
 
 # Distance OM1 --> OM2
-s lom2 1.395 nOM1b nOM2a 
+s s_OM1_OM2 1.395 nOM1b nOM2a 
 
 # OM2
 bs1 OM2 10u $Mloss 0 4.399 nOM2a nOM2b nOM2c nOM2d  # T is a guess
 attr OM2 Rc 1.7058
 
 # Distance OM2 --> OM3
-s lom3 0.631 nOM2b nOM3a 
+s sOM2_OM3 0.631 nOM2b nOM3a 
+
 bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3c nOM3d # T is a guess
 
 ###########################################################################
@@ -357,33 +357,33 @@ bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3c nOM3d # T is a guess
 # OMC (as built parameters: D1300507-v1)
 
 # Distance OM3 --> OMC input coupler IC
-s lom3omc 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
+s sOM3_OMC 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
 
 # Input Coupler IC (flat mirror)
 bs1 OMC_IC 0.0076 10u 0 2.7609 nOMC_ICa nOMC_ICb nOMC_ICc nOMC_ICd
 
 # Distance from IC to OC  
-s lIC_OC 0.2815 1 nOMC_ICc nOMC_OCa
+s sIC_OC 0.2815 1 nOMC_ICc nOMC_OCa
 
 # Output Coupler OC (flat mirror)
 bs1 OMC_OC 0.0075 10u 0 4.004 nOMC_OCa nOMC_OCb nAS nOMC_OCd
 
 # Distance from OC to CM1
-s lOC_CM1 0.2842 1 nOMC_OCb nOMC_CM1a
+s sOC_CM1 0.2842 1 nOMC_OCb nOMC_CM1a
 
 # Curved Mirror CM1
 bs1 OMC_CM1 36u 10u 0 4.004 nOMC_CM1a nOMC_CM1b nOMC_CM1c nOMC_CM1d
 attr OMC_CM1 Rc 2.57321
 
 # Distance from CM1 to CM2 
-s lCM1_CM2 0.2815 1 nOMC_CM1b nOMC_CM2a
+s sCM1_CM2 0.2815 1 nOMC_CM1b nOMC_CM2a
 
 # Curved Mirror CM2
 bs1 OMC_CM2 35.9u 10u 0 4.004 nOMC_CM2a nOMC_CM2b nOMC_CM2c nOMC_CM2d
 attr OMC_CM2 Rc 2.57369
 
 # Distance from CM2 to IC
-s lCM2_IC 0.2842 1 nOMC_CM2b nOMC_ICd
+s sCM2_IC 0.2842 1 nOMC_CM2b nOMC_ICd
 
 ###########################################################################
 %%% FTend OMC
@@ -430,7 +430,7 @@ const phi_BS 0
 
 %%% FTblock powers
 ###########################################################################
-pd P_DC_AS nSRM2
+pd P_DC_AS nAS
 pd PIMCtrans nREFL*
 pd Px nITMX2
 pd Py nITMY2
@@ -476,14 +476,12 @@ set PRCL_err POP_f1_I  re
 set MICH_err POP_f2_Q  re
 set CARM_err REFL_f1_I re
 set SRCL_err REFL_f2_I re
-set AS_f2_I_re AS_f2_I re
-
-func DARM_err = $AS_f2_I_re - 0.728491141201167
+set DARM_err AS_f2_I re
 
 lock PRCL_lock $PRCL_err -2.769589345492097 10u
 lock MICH_lock $MICH_err 12.029218280984777 10u
 lock CARM_lock $CARM_err 0.0001193478133584417 10u
-lock DARM_lock $DARM_err -0.002325573315055089 10u
+lock DARM_lock $DARM_err -0.002325573315055089 10u - 0.728491141201167
 lock SRCL_lock $SRCL_err -4.886172716885925 10u
 
 func mMICH_lock = 0 - $MICH_lock
