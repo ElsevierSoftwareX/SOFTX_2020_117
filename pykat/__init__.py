@@ -3,7 +3,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__version__ = "1.0.19"
+__version__ = "1.1.0"
+__min_req_finesse__ = 2.2
 
 # This flag is used to switch on the gui features in pkat at import time
 USE_GUI = False
@@ -40,6 +41,13 @@ from pykat.plotting import init_pykat_plotting
 from .SIfloat import SIfloat
 
 
+kat = finesse.kat()
+v = kat.finesse_version()
+
+if float(v.split('-')[0]) < __min_req_finesse__:
+    raise pkex.BasePyKatException("Pykat %s requires Finesse version %s or higher. You have have %s" % (__version__ ,
+                                                                                              str(__min_req_finesse__),
+                                                                                              v))
 
 SI = {'yocto': 1E-24,  # yocto
     'zepto': 1E-21,  # zepto

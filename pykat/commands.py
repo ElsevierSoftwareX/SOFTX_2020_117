@@ -99,6 +99,8 @@ class Command(object):
     
     @property
     def removed(self): return self.__removed
+    
+    def __str__(self): return self.name
 
 class Constant(Command):
     def __init__(self, name, value):
@@ -197,12 +199,15 @@ class func(Command):
             
 
 class lock(Command):
-    def __init__(self, name, variable, gain, accuracy, singleLock=False):
+    def __init__(self, name, variable, gain, accuracy, offset=None, singleLock=False):
         Command.__init__(self, name, False)
-        
+
+        self.__params = []
         self.__variable = variable
         self.__gain = gain
         self.__accuracy = accuracy
+        self.__offset = Param("offset", self, SIfloat(offset))
+        
         self.singleLock = singleLock
         self.enabled = True
         self.noplot = False
@@ -211,15 +216,24 @@ class lock(Command):
         self._putters.append(self.output)
 
         self._freeze()
+
+    def _register_param(self, param):
+        self.__params.append(param)
         
+    @property
+    def offset(self): return self.__offset
+    
     @staticmethod
     def parseFinesseText(line, kat):
         v = line.split()
         
-        if len(v) != 5:
+        if len(v) not in (5,6):
             raise pkex.BasePyKatException("'{0}' not a valid Finesse lock command".format(line))
-            
-        return lock(v[1], v[2], SIfloat(v[3]), SIfloat(v[4]), "*" in v[0])
+        
+        if len(v) == 5:
+            return lock(v[1], v[2], SIfloat(v[3]), SIfloat(v[4]), singleLock="*" in v[0])
+        else:
+            return lock(v[1], v[2], SIfloat(v[3]), SIfloat(v[4]), SIfloat(v[5]), singleLock="*" in v[0])
 
 
     def getFinesseText(self):
@@ -230,12 +244,18 @@ class lock(Command):
                                                             gain=str(self.gain),
                                                             accuracy=str(self.accuracy))
             
+            if self.offset.value is not None:
+                cmds += " %s" % str(self.offset)
+                
             if self.singleLock:
                 rtn.append("lock* %s" % cmds)
             else:
                 rtn.append("lock %s" % cmds)
             
             rtn.extend(self.output._getPutFinesseText())
+            
+            for p in self.__params:
+                rtn.extend(p.getFinesseText())
             
             return rtn
         else:
@@ -270,7 +290,7 @@ class cavity(Command):
         self.enabled = True
 
         self._freeze()
-        
+    
     def getFinesseText(self):
         if self.enabled:
             return 'cav {0} {1} {2} {3} {4}'.format(self.name, self.__c1.name, self.__n1.name, self.__c2.name, self.__n2.name);

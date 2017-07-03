@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from . import assert_aligo_ifo_kat
 from .. import scan_optics_string
 
+from pykat.ifo.plot import *
+
 import pykat.ifo
 import numpy as np
 
@@ -188,22 +190,3 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     
     if fig is None:
         plt.show(block=block)
-        
-def cavity_modes(kat, node, ax=None, show=True):
-    mmx, mmy, qs = pykat.ifo.mismatch_cavities(kat, node)
-    
-    if ax is None:
-        plt.figure()
-        ax = plt.subplot(111)
-    
-    for c, qx, qy in qs:
-        ax.scatter(qx.z, qx.zr, label=c+" (x)")
-        ax.scatter(qy.z, qy.zr, marker='+', label=c+" (y)")
-    
-    ax.set_xlabel('$z$')
-    ax.set_ylabel('$z_r$')
-    ax.legend(fontsize=10, bbox_to_anchor=(1.04,1), loc="upper left")
-    
-    plt.tight_layout()
-    
-    if show: plt.show()
