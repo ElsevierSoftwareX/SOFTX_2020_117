@@ -4,9 +4,14 @@ Created on Sun Jan 27 09:43:16 2013
 
 @author: Daniel
 """
-from pykat import __version__ as version
+#from pykat import __version__ as version
 from distutils.core import setup
 import os
+
+import subprocess as sub
+
+out, err = sub.Popen(['git','describe','--long'], stdout=sub.PIPE).communicate()
+version = ".".join(out.decode('utf8').split('-')[:2])
 
 REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
