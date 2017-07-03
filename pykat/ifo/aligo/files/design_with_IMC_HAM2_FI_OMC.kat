@@ -307,6 +307,8 @@ m2 SRMAR 0 50n 0 nSRMs2 nSRM2
 #bs2 SRMAR 50n 0 0 0 nSRMs2 nSRMAR1 nSRM2 nSRMAR2
 attr SRM Rc -5.6938
 
+s lSRM_FI 0.7278 nSRM2 nFI2a
+
 ###########################################################################
 %%% FTend SRC
 
@@ -318,7 +320,6 @@ attr SRM Rc -5.6938
 
 # Distance SRM --> Faraday Isolator (FI)
 
-s l_srm_fi 0.7278 nSRM2 nFI2a
 
 # Directional beam splitter (ideal Faraday Isolator with 4 ports)
 # ----------------------------------------------------------------
@@ -349,15 +350,15 @@ attr OM2 Rc 1.7058
 s lom3 0.631 nOM2b nOM3a 
 bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3c nOM3d # T is a guess
 
+# Distance OM3 --> OMC input coupler IC
+s lOM3_OMC 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
+
 ###########################################################################
 %%% FTend FI
 
 %%% FTblock OMC
 ###########################################################################
 # OMC (as built parameters: D1300507-v1)
-
-# Distance OM3 --> OMC input coupler IC
-s lom3omc 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
 
 # Input Coupler IC (flat mirror)
 bs1 OMC_IC 0.0076 10u 0 2.7609 nOMC_ICa nOMC_ICb nOMC_ICc nOMC_ICd

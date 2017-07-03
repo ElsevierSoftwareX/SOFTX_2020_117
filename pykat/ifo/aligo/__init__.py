@@ -159,26 +159,34 @@ class ALIGO_IFO(IFO):
             self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
 
 
-    def remove_FI_OMC(self, removeFI, removeOMC):
+    def remove_FI_OMC(self, removeFI=False, removeOMC=True):
+        """
+        Method for removing the OMC and the FI blocks in kat-objects having these
+        included. The FI block contains an ideal Faraday isolator as well as the
+        path from the isolator to the OMC, which is used to mode match the OMC to
+        the interferometer. The node nAS is re-set such that it always corresponds
+        to the "last" node of the output path (dark port, asymmetric port, etc). 
+
+        Parameters
+        ----------
+        removeFI  : Boolean
+                    If True, the Faraday isolator is removed along with the path
+                    to the OMC.
+        removeOMC : Boolean
+                    If True, the OMC is removed. Must be True if removeFI = True.
         """
         
-        """
         if removeFI and not removeOMC:
             raise pkex.BasePyKatException("Must remove OMC if removing FI")
-
         if removeFI:
+            self.kat.nodes.replaceNode(self.kat.lSRM_FI, 'nFI2a', 'nAS')
             self.kat.removeBlock('FI')
             self.kat.removeBlock('OMC')
             self.kat.cavOMC.remove()
-            self.kat.nodes.createNode('nAS')
-            self.kat.nodes.replaceNode(self.kat.SRMAR, 'nSRM2', 'nAS')
-            # self.kat.nodes.replaceNode(self.kat.SRMAR, 'nSRM2', 'nAS')
         elif removeOMC:
+            self.kat.nodes.replaceNode(self.kat.lOM3_OMC, 'nOMC_ICa', 'nAS')
             self.kat.removeBlock('OMC')
             self.kat.cavOMC.remove()
-            self.kat.nodes.createNode('nAS')
-            self.kat.nodes.replaceNode(self.kat.OM3, 'nOM3b', 'nAS')
-            # self.kat.nodes.replaceNode(self.kat.OM3, 'nOM3b', 'nAS')
 
     def adjust_PRC_length(self, verbose=False):
         """
