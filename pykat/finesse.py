@@ -391,7 +391,7 @@ class KatRun(object):
     def plot(self, detectors=None, filename=None, show=True,
                    yaxis=None, legend=True, loc=0, title=None, styles=None,
                    ylabel=None, y2label=None, xlabel=None, x2label=None,
-                   xlim=None, x2lim=None, ylim=None, y2lim=None):
+                   xlim=None, x2lim=None, ylim=None, y2lim=None, return_fig=False):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
@@ -595,7 +595,8 @@ class KatRun(object):
             pyplot.show(fig)
             pyplot.ion()
         
-        return fig
+        if return_fig:
+            return fig
         
     def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
@@ -1287,6 +1288,9 @@ class kat(object):
         return str(self.__blocks[name])
     
     def removeBlock(self, name, failOnBlockNotFound=True):
+        """
+        This will remove a block from the kat object.
+        """
         
         if name not in self.__blocks:
             if failOnBlockNotFound:
@@ -1298,7 +1302,7 @@ class kat(object):
             self.remove(o)
         
         del self.__blocks[name]
-    
+        
     def __str__(self):
          return "".join(self.generateKatScript())
          
@@ -1823,6 +1827,47 @@ class kat(object):
             pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
             sys.exit(1)
     
+    def _finesse_exec(self):
+        if len(self.__katdir) == 0:
+            # Get the environment variable for where Finesse is stored
+            self.__finesse_dir = os.environ.get('FINESSE_DIR')
+            
+            if self.__finesse_dir is None :
+                raise pkex.MissingFinesseEnvVar()
+        else:
+            self.__finesse_dir = self.__katdir
+            
+        if len(self.__katname) == 0:
+            katexe = "kat"
+            
+            if os.sys.platform == "win32":
+                katexe += ".exe"
+        else:
+            katexe = self.__katname
+        
+        kat_exec = os.path.join(self.__finesse_dir, katexe) 
+        
+        # check if kat file exists and it is executable by user        
+        if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
+            raise pkex.MissingFinesse()
+        
+        return kat_exec
+        
+    def finesse_version(self):
+        """
+        Returns the full number version.
+        """
+        p = Popen([self._finesse_exec(), '-v'], stdout=PIPE)
+
+        out, err = p.communicate()
+        
+        if err is not None:
+            raise pkex.BasePyKatException("Error getting version: " + str(err))
+        
+        vals = str(out).split()
+        
+        return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017    
+        
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False, usePipe=True):
         """ 
         Runs the current simulation setup that has been built thus far.
@@ -1849,30 +1894,9 @@ class kat(object):
         try:        
             if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
                 raise pkex.BasePyKatException("No xaxis was defined")
-            
-            if len(self.__katdir) == 0:
-                # Get the environment variable for where Finesse is stored
-                self.__finesse_dir = os.environ.get('FINESSE_DIR')
                 
-                if self.__finesse_dir is None :
-                    raise pkex.MissingFinesseEnvVar()
-            else:
-                self.__finesse_dir = self.__katdir
-                
-            if len(self.__katname) == 0:
-                katexe = "kat"
-                
-                if os.sys.platform == "win32":
-                    katexe += ".exe"
-            else:
-                katexe = self.__katname
-            
-            kat_exec = os.path.join(self.__finesse_dir, katexe) 
-            
-            # check if kat file exists and it is executable by user        
-            if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
-                raise pkex.MissingFinesse()
-                
+            kat_exec = self._finesse_exec()
+                            
             if self.verbose: print ("--------------------------------------------------------------")
             if self.verbose: print ("Running kat - Started at " + str(datetime.datetime.fromtimestamp(start)))
             

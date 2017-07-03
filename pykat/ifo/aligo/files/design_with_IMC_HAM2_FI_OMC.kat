@@ -307,7 +307,7 @@ m2 SRMAR 0 50n 0 nSRMs2 nSRM2
 #bs2 SRMAR 50n 0 0 0 nSRMs2 nSRMAR1 nSRM2 nSRMAR2
 attr SRM Rc -5.6938
 
-s lSRM_FI 0.7278 nSRM2 nFI2a
+s sSRM_FI 0.7278 nSRM2 nFI2a
 
 ###########################################################################
 %%% FTend SRC
@@ -333,25 +333,27 @@ s lSRM_FI 0.7278 nSRM2 nFI2a
 dbs FI2 nFI2a nFI2b nFI2c nFI2d
 
 # Distance FI2 --> OM1  
-s lom1 2.9339 nFI2c nOM1a
+s sFI_OM1 2.9339 nFI2c nOM1a
 
 # OM1
 bs1 OM1 800u $Mloss 0 2.251 nOM1a nOM1b dump21 dump22 # T is set for high power; Loss is a guess
 attr OM1 Rc 4.6
 
 # Distance OM1 --> OM2
-s lom2 1.395 nOM1b nOM2a 
+s sOM1_OM2 1.395 nOM1b nOM2a 
 
 # OM2
 bs1 OM2 10u $Mloss 0 4.399 nOM2a nOM2b nOM2c nOM2d  # T is a guess
 attr OM2 Rc 1.7058
 
 # Distance OM2 --> OM3
-s lom3 0.631 nOM2b nOM3a 
+
+
+s sOM2_OM3 0.631 nOM2b nOM3a 
 bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3c nOM3d # T is a guess
 
 # Distance OM3 --> OMC input coupler IC
-s lOM3_OMC 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
+s sOM3_OMC 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
 
 ###########################################################################
 %%% FTend FI

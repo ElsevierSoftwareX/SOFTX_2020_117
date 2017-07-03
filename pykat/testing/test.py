@@ -42,7 +42,7 @@ def run_kat_file(item):
         exp = None
         
         if item["run_fast"] and ('map ' in open(kat).read()):
-            print "skipping " + kat			
+            print ("skipping " + kat)
         else:
             
             #try:
@@ -76,7 +76,7 @@ def run_kat_file(item):
             #    return [time.time()-start, suite, kat, exp]
                     
     except Exception as e:
-        print "main error in kat call"
+        print ("main error in kat call")
         exp = None
     finally:
         # Annoyingly it seems that exceptions can't be returned
@@ -198,7 +198,7 @@ class FinesseTestProcess(Thread):
         else:
             EXE = ""
         
-        print "Using", self.pool_size, "processes..."
+        print ("Using", self.pool_size, "processes...")
         
         self.built = False
 
@@ -208,19 +208,19 @@ class FinesseTestProcess(Thread):
         if not self.nobuild:
             
             if os.path.exists(self.BASE_DIR):
-                print "Deleting previous base_dir " + self.BASE_DIR
+                print ("Deleting previous base_dir " + self.BASE_DIR)
                 shutil.rmtree(self.BASE_DIR)
             
             os.mkdir(self.BASE_DIR)
             
-            print "deleting build dir..." + BUILD_PATH
+            print ("deleting build dir..." + BUILD_PATH)
             if os.path.exists(BUILD_PATH):
                 shutil.rmtree(BUILD_PATH)
 
-            print "Checking out finesse base..."
+            print ("Checking out finesse base...")
             utils.git(["clone","%s/finesse.git" % repo_url, BUILD_PATH])
 
-            print "Checking out and building develop version of finesse " + self.git_commit
+            print ("Checking out and building develop version of finesse " + self.git_commit)
             
             SRC_PATH = os.path.join(BUILD_PATH,"src")
             
@@ -238,7 +238,7 @@ class FinesseTestProcess(Thread):
                 self.cancelCheck()
                           
         FINESSE_EXE = os.path.join(self.BASE_DIR,"build","kat" + EXE)
-        print "NOBUILD",self.nobuild
+        print ("NOBUILD",self.nobuild)
         # check if kat runs
         if not os.path.exists(FINESSE_EXE):
             raise Exception("Kat file was not found in " + FINESSE_EXE)
@@ -246,7 +246,7 @@ class FinesseTestProcess(Thread):
         
         if not os.access(FINESSE_EXE, os.X_OK):
             if sys.platform != "win32":
-                print "Trying to chmod " + FINESSE_EXE
+                print ("Trying to chmod " + FINESSE_EXE)
                 os.chmod(FINESSE_EXE, stat.S_IRWXU)
         
         out = None
@@ -267,12 +267,12 @@ class FinesseTestProcess(Thread):
         
         self.built = True
         
-        print "kat file found in " + FINESSE_EXE
+        print ("kat file found in " + FINESSE_EXE)
         
         OUTPUTS_DIR = os.path.join(self.BASE_DIR,"outputs")
         
         if os.path.isdir(OUTPUTS_DIR):
-            print "deleting outputs dir..."
+            print ("deleting outputs dir...")
             shutil.rmtree(OUTPUTS_DIR)
             
         os.mkdir(OUTPUTS_DIR)
@@ -281,12 +281,12 @@ class FinesseTestProcess(Thread):
         
         self.cancelCheck()
         # Clean up and pull latest test repository
-        print "Cleaning test repository..."
+        print ("Cleaning test repository...")
         utils.git(["clean","-xdf"], cwd=self.TEST_DIR)
         self.cancelCheck()
         utils.git(["reset","--hard"], cwd=self.TEST_DIR)
         self.cancelCheck()
-        print "Pulling latest test..."
+        print ("Pulling latest test...")
         utils.git(["pull"],cwd=self.TEST_DIR)
         self.cancelCheck()
     
@@ -295,7 +295,7 @@ class FinesseTestProcess(Thread):
         # create dictionary structures
         # and count up total number of files to process
         for suite in self.kats_to_run.keys():
-            print "RUNNING SUITES", suite
+            print ("RUNNING SUITES", suite)
             
             self.kat_run_exceptions[suite] = {}
             self.output_differences[suite] = {}
@@ -310,7 +310,7 @@ class FinesseTestProcess(Thread):
         
         for suite in self.kats_to_run.keys():
             self.cancelCheck()
-            print "Queuing up suite: " + suite + "..."
+            print ("Queuing up suite: " + suite + "...")
             kats = self.kats_to_run[suite]
             SUITE_PATH = os.path.join(self.TEST_DIR,"kat_test",suite)
 
@@ -322,7 +322,7 @@ class FinesseTestProcess(Thread):
         
         self.pool = Pool(initializer=initProcess,initargs=(self.done_kats,) ,processes = self.pool_size)    
         results = self.pool.imap_unordered(run_kat_file, runs, 1)
-        print "Finsihed running pool of kats"
+        print ("Finsihed running pool of kats")
         self.pool.close()
         
         for result in results:
@@ -337,16 +337,16 @@ class FinesseTestProcess(Thread):
         
         for suite in self.kats_to_run.keys():
             if len(self.kat_run_exceptions[suite].keys()) > 0:
-                print "Could not run the following kats:\n" + "\n".join(self.kat_run_exceptions[suite].keys()) + " in " + suite
+                print ("Could not run the following kats:\n" + "\n".join(self.kat_run_exceptions[suite].keys()) + " in " + suite)
             else:
-                print "No exceptions whilst running: " + suite
+                print ("No exceptions whilst running: " + suite)
 
         self.diffing = True
         
         # Now we have generated the output files compare them to the references
         for suite in self.kats_to_run.keys():
             self.cancelCheck()
-            print "Diffing suite: " + suite + "..."
+            print ("Diffing suite: " + suite + "...")
 
             outs = []
             SUITE_PATH = os.path.join(OUTPUTS_DIR, suite)
@@ -411,7 +411,7 @@ class FinesseTestProcess(Thread):
                     f_out.close()
                     f_in.close()
                 
-                    print "removing out file ", out_file
+                    print ("removing out file ", out_file)
                     os.remove(out_file)
                     
                 except DiffException as ex:
@@ -421,7 +421,7 @@ class FinesseTestProcess(Thread):
                 
                 self.done_kats.value += 1
         
-        print "Finished diffing..."
+        print ("Finished diffing...")
         
         REPORT_PATH = os.path.join(self.BASE_DIR,"reports")
         
@@ -430,7 +430,7 @@ class FinesseTestProcess(Thread):
 
         today = datetime.utcnow()
         reportname = os.path.join(REPORT_PATH,"report.log") #today.strftime('%d%m%y')
-        print "Writing report to " + reportname
+        print ("Writing report to " + reportname)
         
         f = open(reportname,'w')
         f.write("Python Nightly Test\n")
@@ -499,7 +499,7 @@ class FinesseTestProcess(Thread):
                 self.errorOccurred["stdout"] = ex.out
                 self.errorOccurred["stderr"] = ex.err
                 
-            print "*** Exception for test_id = " + str(self.test_id)
+            print ("*** Exception for test_id = " + str(self.test_id))
             traceback.print_exception(exc_type, exc_value, exc_traceback,
                                       limit=5, file=sys.stdout)
         finally:
@@ -523,11 +523,11 @@ if __name__ == "__main__":
     options, args = parser.parse_args()
 
     if options.test_dir is None:
-        print "--test-dir argument is missing"
+        print ("--test-dir argument is missing")
         exit()
         
     if options.test_commit is None:
-        print "--test-commit argument is missing"
+        print ("--test-commit argument is missing")
         exit()
     
     if options.base_dir is None:

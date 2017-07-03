@@ -6,7 +6,7 @@ try:
 except:
     GIT_BIN = "/usr/bin/git"
 
-print "GIT_BIN = " + GIT_BIN
+print ("GIT_BIN = " + GIT_BIN)
     
 class RunException(Exception):
 	def __init__(self, returncode, args, err, out):
@@ -20,8 +20,8 @@ def runcmd(args, cwd="."):
     out, err = p.communicate()
     
     if p.returncode != 0:
-        print "STDERR: " + err
-        print "STDOUT: " + out
+        print ("STDERR: " + err)
+        print ("STDOUT: " + out)
         raise RunException(p.returncode, args, err, out)
 
     return [out,err]
@@ -31,7 +31,7 @@ def git(args, git_bin=GIT_BIN, cwd="."):
 
     if type(args) is not list:
         if type(args) is not str:
-            print type(args)
+            print (type(args))
             raise Exception("arg for utils.git must be a list or string")
     
     if type(args) is str:

@@ -51,7 +51,8 @@ class SensingMatrix(DataFrame):
             theta = np.angle(A[_])
             r = np.log10(np.abs(A[_]))
 
-            ax.plot((theta,theta), (r_lim[0], r), label=re.sub("[\(\[].*?[\)\]]", "", _).strip(), lw=2)
+            #ax.plot((theta,theta), (r_lim[0], r), label=re.sub("[\(\[].*?[\)\]]", "", _).strip(), lw=2)
+            ax.plot((theta,theta), (r_lim[0], r), lw=2)
 
         ax.set_title(detector)
         ax.set_ylim(r_lim[0], r_lim[1])
@@ -226,7 +227,24 @@ def scan_optics_string(_optics, _factors, _varName, target="phi", linlog="lin", 
     _tuneStr += _putStr
         
     return _tuneStr
+
+def scan_f_cmds(DOF, linlog="lin", lower=10, upper=5000, steps=100):
+    name = "_%s" % DOF.name
+    cmds = DOF.fsig(name, 1)
     
+    cmds += "\nxaxis {0} f {1} {2} {3} {4}\n".format(name, linlog, lower, upper, steps)
+    
+    return cmds
+
+def scan_f(kat, DOF, linlog="lin", lower=10, upper=5000, steps=100, verbose=False):
+    kat = kat.deepcopy()
+    kat.parse(scan_f_cmds(DOF, linlog, lower, upper, steps))
+    kat.verbose = verbose
+    
+    if DOF.port is not None:
+        kat.parse(DOF.transfer())
+        
+    return kat.run(cmd_args=["-cr=on"])
     
 def scan_DOF_cmds(DOF, xlimits=[-100, 100], steps=200, relative=False):    
     return scan_optics_string(DOF.optics, 
@@ -309,7 +327,7 @@ def optical_gain(DOF_sig, DOF_det, f=1.0):
     else:
         raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
 
-def diff_DOF(DOF, target, deriv_h=1e-12):
+def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
     """
     Returns commands to differentiate with respect to the DOF motion.
     
@@ -390,9 +408,9 @@ def optimise_demod_phase(_kat, DOF, ports, debug=False):
     _ports = []
     for port in ports:
         if isinstance(port, six.string_types):
-            _ports.append(kat.IFO.Ports[port])
+            _ports.append(kat.IFO.Outputs[port])
         else:
-            _ports.append(kat.IFO.Ports[port.name])
+            _ports.append(kat.IFO.Outputs[port.name])
             
         if _ports[-1].f is None:
             raise pkex.BasePyKatException("port %s cannot have its demodulation phase optimised as it isn't demodulated" % port.name)
@@ -403,7 +421,7 @@ def optimise_demod_phase(_kat, DOF, ports, debug=False):
         
     # Add in the signals
     for port in ports:
-        pd_detectors.append(kat.IFO.Ports[port.name].add_signal("I", DOF.sigtype))
+        pd_detectors.append(kat.IFO.Outputs[port.name].add_signal("I", DOF.sigtype))
     
     if debug:
         print("Optimising pds: %s" % pd_detectors)
@@ -440,7 +458,7 @@ def optimise_demod_phase(_kat, DOF, ports, debug=False):
         phi = np.rad2deg(np.arctan2(y2,y1))
         
         # All in I quadrature so no
-        _kat.IFO.Ports[port.name].phase = phi
+        _kat.IFO.Outputs[port.name].phase = phi
         
         rtn.append(phi)
         
@@ -746,6 +764,14 @@ class DOF(object):
         """
         return scan_DOF(self.__IFO.kat, self, **kwargs)
         
+    def scan_f(self, *args, **kwargs):
+        """
+        Runs an fsig simulation scaning this DOF
+        
+        See `scan_f` for keyword arguments options.
+        """
+        return scan_f(self.__IFO.kat, self, *args, **kwargs)
+        
     def apply_tuning(self, phi, add=False):
         for idx, o in enumerate(self.optics):
             if add:
@@ -804,9 +830,9 @@ class DOF(object):
             
         return _fsigStr
 
-class Port(object):
+class Output(object):
     """
-    This object defines a location in an interferometer where detectors are places and demodulated at a particular
+    This object defines a location in an interferometer where detectors are placed and demodulated at a particular
     modulation frequency or DC. It does not specify any detectors in particular.
     However, using this object you can add the following detectors to the associated kat object:
 
@@ -820,13 +846,12 @@ class Port(object):
     You can add many detectors at a given port, which readout different quadratures or types of transfer functions
     or signals.
     """
-    def __init__(self, IFO, _portName, _nodeNames, f=None, phase=0, block=None):
+    def __init__(self, IFO, name, nodeNames, f=None, phase=0, block=None):
         self.__IFO = IFO
-        self.portName = _portName
-        self.nodeNames = make_list_copy(_nodeNames)
+        self.name = name
+        self.nodeNames = make_list_copy(nodeNames)
         self.f = f            # demodulation frequency, float
         self.phase = phase    # demodulation phase for I quadrature, float
-        self.name = self.portName            
         self._block = block
 
     @property
@@ -882,7 +907,7 @@ class Port(object):
         specify which demodulation quadrature and type of signal to
         detect.
         
-        quad: "I" or "Q", Demodoulation quadrature relative to the Port's `phase` value.
+        quad: "I" or "Q", Demodoulation quadrature relative to the Output's `phase` value.
         sigtype: "z","pitch" or "yaw", type of signal to detect
         
         Returns: Name of added detector
@@ -923,7 +948,7 @@ class Port(object):
         Optionally keyword arguments can be used for manually picking quadrature
         and signal type (overrides any DOF object setting):
         
-        quad: "I" or "Q", Demodoulation quadrature relative to the Port's `phase` value.
+        quad: "I" or "Q", Demodoulation quadrature relative to the Output's `phase` value.
         sigtype: "z","pitch" or "yaw", type of signal to detect
         
         Returns: List of commands
