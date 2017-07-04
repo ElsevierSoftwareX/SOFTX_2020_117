@@ -3,7 +3,7 @@ package:
   version: {{ environ['CONDA_PYKAT_VERSION'] }}
 
 source:
-  git_rev: {{ CONDA_BUILD_VERSION }}
+  git_rev: {{ environ['CONDA_BUILD_VERSION'] }}
   git_url: https://git.ligo.org/finesse/pykat.git
     
 build:

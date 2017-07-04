@@ -28,18 +28,21 @@ with open(version_py, 'w') as fh:
 print("!!!! Printing version to:", version_py)
 
 REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
+try:
+    setup(
+        name='PyKat',
+        version=version_git,
+        author='Daniel Brown',
+        author_email='ddb@star.sr.bham.ac.uk',
+        packages=[x[0].replace("/",".") for x in os.walk("pykat") if "__" not in x[0]],
+        url='http://pypi.python.org/pypi/PyKat/',
+        license='GPL v2',
+        description='Python interface and tools for FINESSE',
+        long_description=open('README.rst').read(),
+        install_requires=REQUIREMENTS,
+        package_data={'': ['optics/greedypoints/*.txt', 'ifo/aligo/files/*.kat']},
+        include_package_data=True
+    )
+finally:
+    os.remove(version_py)
 
-setup(
-    name='PyKat',
-    version=version_git,
-    author='Daniel Brown',
-    author_email='ddb@star.sr.bham.ac.uk',
-    packages=[x[0].replace("/",".") for x in os.walk("pykat") if "__" not in x[0]],
-    url='http://pypi.python.org/pypi/PyKat/',
-    license='GPL v2',
-    description='Python interface and tools for FINESSE',
-    long_description=open('README.rst').read(),
-    install_requires=REQUIREMENTS,
-    package_data={'': ['optics/greedypoints/*.txt', 'ifo/aligo/files/*.kat']},
-    include_package_data=True
-)
