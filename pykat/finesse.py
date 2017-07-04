@@ -1830,12 +1830,12 @@ class kat(object):
     def _finesse_exec(self):
         if len(self.__katdir) == 0:
             # Get the environment variable for where Finesse is stored
-            self.__finesse_dir = os.environ.get('FINESSE_DIR')
+            self.__finesse_dir = os.environ.get('FINESSE_DIR').strip()
             
             if self.__finesse_dir is None :
                 raise pkex.MissingFinesseEnvVar()
         else:
-            self.__finesse_dir = self.__katdir
+            self.__finesse_dir = self.__katdir.strip()
             
         if len(self.__katname) == 0:
             katexe = "kat"
@@ -1843,7 +1843,7 @@ class kat(object):
             if os.sys.platform == "win32":
                 katexe += ".exe"
         else:
-            katexe = self.__katname
+            katexe = self.__katname.strip()
         
         kat_exec = os.path.join(self.__finesse_dir, katexe) 
         
