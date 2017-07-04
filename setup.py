@@ -5,9 +5,12 @@ Created on Sun Jan 27 09:43:16 2013
 @author: Daniel
 """
 #from pykat import __version__ as version
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+    
 import os
-
 import subprocess
 
 # Fetch version from git tags, and write to version.py.

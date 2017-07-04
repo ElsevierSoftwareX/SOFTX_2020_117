@@ -4,7 +4,7 @@ package:
 
 source:
   git_rev: {{ environ['CONDA_BUILD_VERSION'] }}
-  git_url: https://git.ligo.org/finesse/pykat.git
+  git_url: ../../
     
 build:
   noarch: python
@@ -21,6 +21,7 @@ requirements:
     - finesse >=2.2
   build:
     - python
+    - wheel
     - numpy
     - six
     - scipy
