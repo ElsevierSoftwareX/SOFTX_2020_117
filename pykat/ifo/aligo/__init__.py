@@ -783,8 +783,9 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     CHARD_factors   = np.array([ 1, 1, 1, 1,-1,-1,-1,-1])
     DHARD_factors   = np.array([ 1, 1,-1,-1,-1,-1, 1, 1])
     CSOFT_factors   = np.array([-1,-1,-1,-1,-1,-1,-1,-1])
-    DSOFT_factors   = np.array([-1,-1, 1, 1, 1, 1,-1,-1])
-
+    # DSOFT_factors   = np.array([-1,-1, 1, 1, 1, 1,-1,-1])   # Wrong!
+    DSOFT_factors   = np.array([-1,-1, 1, 1,-1,-1, 1, 1])
+    
     # Finesse definitions
     # negative for ITM rotations
     ITMS = np.in1d(cav_mirrors, np.array(["ITMX", "ITMXAR", "ITMY", "ITMYAR"]))
