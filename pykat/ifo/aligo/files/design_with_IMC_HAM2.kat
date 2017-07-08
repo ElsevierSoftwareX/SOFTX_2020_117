@@ -29,7 +29,20 @@
 #
 # Changes since 12/2016:
 #
-# - 09.05.2017, Daniel Brown, adding input isolator component 
+# - 09.05.2017, Daniel Brown
+#       Based on design file at the time. Adding in IMC and HAM2 from old aligo kat files.
+#       Simplified the IMC/HAM2 parameters.
+#
+#       Documents used:
+#           * D0902838-v5 - Design values and layout for IMC/HAM2
+#           * T1000247-v3 - Values for IM mirror distances
+#       Notes:
+#           * Input FI is just placed inbetween IM2 and IM3 halfway. From D0902838
+#             this then separates the beam that is then reflected from IM2 again
+#             and off another mirror? This extra path isn't included nREFL is just
+#             at the FI output
+#           * As no design lengths are specfied for HAM2 distances I used LHO values
+#             from T1000247. 
 #
 # - 06.12.2016, initial corrections compared to previous files, Anna and Andreas
 #
@@ -72,25 +85,74 @@
 # Laser and input optics
 l L0 125 0 n0
 s lmod1 1 n0 n1
+
 # modulators for core interferometer sensing - Advanced LIGO, CQG, 2015 
 # http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
 # 9MHz (CARM, PRC, SRC loops)
 const f1 9099471
 const f2 45497355
+
 mod mod1 $f1 0.18 1 pm n1 n2
 s lmod2 1 n2 n3
+
 # 45MHz (MICH, SRC loops)
 mod mod2 $f2 0.18 1 pm n3 nLaserOut
 ###########################################################################
 %%% FTend laser
 
+%%% FTblock IMC
+#####################################################################################
+s sIMCin 0 nLaserOut nMC1in
+
+bs1 MC1 6000u 0 0 44.59 nMC1in nMC1refl nMC1trans nMC1fromMC3
+s sMC1_MC2 16.24057 nMC1trans nMC2in
+
+bs1 MC2 0 0u 0 0.82 nMC2in nMC2refl nMC2trans dump
+s sMC2_MC3 16.24057 nMC2refl nMC3in
+attr MC2 Rc 27.24
+
+bs1 MC3 6000u 0 0 44.59 nMC3in nMC3refl nMC3trans nMCreturn_refl
+s sMC3substrate 0.0845 $nsilica nMC3trans nMC3ARin
+bs2 MC3AR 0 0 0 28.9661 nMC3ARin dump nIMCout dump
+
+s sMC3_MC1 0.465 nMC3refl nMC1fromMC3
+#####################################################################################
+%%% FTend IMC
+
+%%% FTblock HAM2
+#####################################################################################
+s sHAM2in 0.4282 nIMCout nIM11
+
+# IM1 a.k.a. SM1
+bs1 IM1 0 0 0 53 nIM11 nIM12 dump dump
+
+s sIM1_IM2 1.2938 nIM12 nIM21
+
+# IM2 a.k.a. PMMT1
+bs1 IM2 0 0 0 7 nIM21 nIM22 dump dump
+attr IM2 Rc 12.8
+
+s sIM2_FI 0.260 nIM22 nFI1
+
+# Input faraday isolator
+dbs FI nFI1 nFI2 nFI3 nREFL
+
+s sFI_IM3 0.910 nFI3 nIM31
+
+# IM3 a.k.a PMMT2
+bs1 IM3 0 0 0 7.1 nIM31 nIM32 dump dump
+attr IM3 Rc -6.24
+
+s sIM3_IM4 1.210 nIM32 nIM41
+
+# a.k.a SM2
+bs1 IM4 0 0 0 45 nIM41 nHAM2out dump dump
+#####################################################################################
+%%% FTend HAM2
+
 %%% FTblock PRC
 ###########################################################################
-s sLaser_PRC 0 nLaserOut nFI1
-
-# Isolator component
-dbs FI nFI1 nFI2 nFI3 nREFL
-s sFI_PRM 0 nFI3 nPRM1
+s sPRCin 0.4135 nHAM2out nPRM1
 
 # PRM
 # AR surface
@@ -104,11 +166,11 @@ attr PRM Rc 11.009
 s lp1 16.6107 nPRM2 nPR2a
 # PR2
 bs1 PR2 250u $Mloss 0 -0.79 nPR2a nPR2b nPOP nAPOP
-attr PR2 Rc -4.545
+attr PR2 Rc -4.545 
 # Distance from PR2 to PR3
 s lp2 16.1647 nPR2b nPR3a
 # PR3
-bs1 PR3 0 $Mloss 0 0.615 nPR3a nPR3b dump12 dump13
+bs1 PR3 0 $Mloss 0 0.615 nPR3a nPR3b dump dump
 attr PR3 Rc 36.027
 # Distance from PR3
 s lp3 19.5381 nPR3b nPRBS
@@ -216,12 +278,12 @@ attr ITMX mass 40
 # Distance to SR3
 s ls3 19.3661 nSRBS nSR3b
 # SR3
-bs1 SR3 0 $Mloss 0 0.785 nSR3b nSR3a dump17 dump18
+bs1 SR3 0 $Mloss 0 0.785 nSR3b nSR3a dump dump
 attr SR3 Rc 35.972841
 # Distance from SR3 to SR2
 s ls2 15.4435 nSR3a nSR2b
 # SR2
-bs1 SR2 0 $Mloss 0 -0.87 nSR2b nSR2a dump19 dump20
+bs1 SR2 0 $Mloss 0 -0.87 nSR2b nSR2a dump dump
 attr SR2 Rc -6.406
 # Distance from SR2 to SRM
 s ls1 15.7586 nSR2a nSRM1
@@ -229,8 +291,7 @@ s ls1 15.7586 nSR2a nSRM1
 m1 SRM 0.20 8.7u $phi_SRM nSRM1 nSRMs1
 s SRMsub 0.0749 $nsilica nSRMs1 nSRMs2
 m2 SRMAR 0 50n 0 nSRMs2 nSRM2
-s sAS 0 nSRM2 nAS
-
+#bs2 SRMAR 50n 0 0 0 nSRMs2 nSRMAR1 nSRM2 nSRMAR2
 attr SRM Rc -5.6938
 
 ###########################################################################
@@ -238,7 +299,7 @@ attr SRM Rc -5.6938
 
 %%% FTblock cavities
 ###########################################################################
-#cav cavIMC MC2 nMC2in MC2 nMC2refl 
+cav cavIMC MC2 nMC2in MC2 nMC2refl 
 cav cavXARM ITMX nITMX2 ETMX nETMX1
 cav cavYARM ITMY nITMY2 ETMY nETMY1
 cav cavPRX PRM nPRM2 ITMX nITMXs2
@@ -277,7 +338,7 @@ const phi_BS 0
 
 %%% FTblock powers
 ###########################################################################
-pd P_DC_AS nAS
+pd P_DC_AS  nSRM2
 pd PIMCtrans nREFL*
 pd Px nITMX2
 pd Py nITMY2
@@ -323,12 +384,14 @@ set PRCL_err POP_f1_I  re
 set MICH_err POP_f2_Q  re
 set CARM_err REFL_f1_I re
 set SRCL_err REFL_f2_I re
-set DARM_err AS_f2_I re
+set AS_f2_I_re AS_f2_I re
+
+func DARM_err = $AS_f2_I_re - 0.728491141201167
 
 lock PRCL_lock $PRCL_err -2.769589345492097 10u
 lock MICH_lock $MICH_err 12.029218280984777 10u
 lock CARM_lock $CARM_err 0.0001193478133584417 10u
-lock DARM_lock $DARM_err -0.002325573315055089 10u -0.728491141201167
+lock DARM_lock $DARM_err -0.002325573315055089 10u
 lock SRCL_lock $SRCL_err -4.886172716885925 10u
 
 func mMICH_lock = 0 - $MICH_lock
@@ -360,7 +423,6 @@ noplot CARM_lock
 noplot mMICH_lock
 noplot ETMX_lock
 noplot ETMY_lock
-
 
 ###########################################################################
 %%% FTend locks

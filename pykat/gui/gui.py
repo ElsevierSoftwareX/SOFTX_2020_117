@@ -271,7 +271,7 @@ class pyKatGraphicsView(QGraphicsView):
         
         item = self.scene().itemAt(pt.x(),pt.y())
         
-        print pt.x(),pt.y(),item
+        print( pt.x(),pt.y(),item)
         
         if item is not None :
             if isinstance(item, ComponentQGraphicsItem):           

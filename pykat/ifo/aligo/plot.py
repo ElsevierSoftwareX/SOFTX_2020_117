@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 from . import assert_aligo_ifo_kat
 from .. import scan_optics_string
 
+from pykat.ifo.plot import *
+
+import pykat.ifo
 import numpy as np
 
 def f1_PRC_resonance(_kat, ax=None, show=True):
@@ -75,7 +78,7 @@ def pretuning_powers(self, _kat, xlimits=[-10,10]):
     plt.show(block=0)
     
 def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
-                            replaceDOFSignals=False, block=True, fig=None, legend=None):
+                            replaceDOFSignals=False, block=True, fig=None, legend=None, steps=100):
     """
     Displays error signals for a given kat file. Can also be used to plot multiple
     DOF's error signals against each other for visualising any cross coupling.
@@ -106,11 +109,12 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     kat = _kat.deepcopy()
     kat.verbose = False
     kat.noxaxis = True
+    kat.removeBlock("locks", False)
     
     if DOFs is None:
         dofs = [kat.IFO.DARM, kat.IFO.CARM, kat.IFO.PRCL, kat.IFO.SRCL, kat.IFO.MICH]
     else:
-        dofs = kat.IFO.strToDOFs(DOFs)
+        dofs = kat.IFO.strsToDOFs(DOFs)
     
     # add in signals for those DOF to plot
     for _ in dofs:
@@ -148,9 +152,11 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
         kat.removeBlock("SCAN", False)
         
         scan_cmd = scan_optics_string(d.optics, d.factors, "scan", linlog="lin",
-                                        xlimits=np.multiply(d.scale, xlimits), steps=200,
+                                        xlimits=np.multiply(d.scale, xlimits), steps=steps,
                                         axis=1, relative=True)
+                                  
         kat.parseCommands(scan_cmd, addToBlock="SCAN")
+        
         out = kat.run()
         
         if d.name == "DARM":

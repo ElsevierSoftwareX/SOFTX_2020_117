@@ -1,0 +1,47 @@
+package: 
+  name: pykat
+  version: {{ environ['CONDA_PYKAT_VERSION'] }}
+
+source:
+  git_rev: {{ environ['CONDA_BUILD_VERSION'] }}
+  git_url: https://git.ligo.org/finesse/pykat.git
+    
+build:
+  noarch: python
+  #number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
+      
+requirements:
+  run:
+    - python
+    - numpy
+    - six
+    - scipy
+    - matplotlib
+    - flask >=0.10.1
+    - finesse >=2.2
+  build:
+    - python
+    - numpy
+    - six
+    - scipy
+    - matplotlib
+    - flask >=0.10.1
+    - finesse >=2.2
+    
+test:
+  requires:
+    - finesse >=2.2
+    - six
+    - python
+    - numpy
+    - six
+    - scipy
+    - matplotlib
+    
+  imports:
+    - pykat
+    
+about:
+  home: www.gwoptics.org/pykat
+  license: GPL2
+  license_file: LICENSE.txt

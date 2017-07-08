@@ -28,6 +28,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import traceback
 import warnings
 import codecs
 import uuid
@@ -80,11 +81,11 @@ from pykat.SIfloat import *
 from pykat.param import Param, AttrParam
 from pykat.external import progressbar
 from pykat.freeze import canFreeze
-import pykat.external.six as six
 
+import pykat.external.six as six
 import pykat.exceptions as pkex
 
-from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException
+from pykat import USE_GUI, HAS_OPTIVIS, NoGUIException, isContainer
 
 if HAS_OPTIVIS:
     from optivis.bench.labels import Label as optivis_label
@@ -109,7 +110,6 @@ cav_trace = namedtuple("cav_trace", ['isStable','gx','gy','qx','qy','finesse','l
          
 lkat_location = ctypes.util.find_library("kat")
 
-isContainer = lambda c: (not isinstance(c, six.string_types)) and hasattr(c, "__iter__")
 
 def f__lkat_process(callback, cmd, kwargs):
     """
@@ -391,7 +391,7 @@ class KatRun(object):
     def plot(self, detectors=None, filename=None, show=True,
                    yaxis=None, legend=True, loc=0, title=None, styles=None,
                    ylabel=None, y2label=None, xlabel=None, x2label=None,
-                   xlim=None, x2lim=None, ylim=None, y2lim=None):
+                   xlim=None, x2lim=None, ylim=None, y2lim=None, return_fig=False):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
@@ -595,7 +595,8 @@ class KatRun(object):
             pyplot.show(fig)
             pyplot.ion()
         
-        return fig
+        if return_fig:
+            return fig
         
     def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
@@ -609,32 +610,39 @@ class KatRun(object):
     def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
-        out = None
-        
-        if len(idx) > 0:
-            #out = self.y[:, idx]
-            
-            if len(idx) == 1:
-                if "abs:deg" in self.yaxis:
-                    out = self.y[:, idx[0]]
-                elif "re:im" in self.yaxis:
-                    out = self.y[:, idx[0]]
-            else: 
-                if "abs:deg" in self.yaxis:
-                    out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
-                elif "re:im" in self.yaxis :
-                    out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
-
-            if out is None:
-                out = self.y[:, idx]
-
-            if out.size == 1:
-                return out[0].squeeze()
-            else:
-                return out.squeeze()
+        if isContainer(value):
+            results = []
+            for _ in value:
+                results.append(self[_])
+                
+            return np.array(results).squeeze()
         else:
-            raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
+            idx = [i for i in range(len(self.ylabels)) if self.ylabels[i].split()[0] == str(value)]
+            out = None
+        
+            if len(idx) > 0:
+                #out = self.y[:, idx]
+            
+                if len(idx) == 1:
+                    if "abs:deg" in self.yaxis:
+                        out = self.y[:, idx[0]]
+                    elif "re:im" in self.yaxis:
+                        out = self.y[:, idx[0]]
+                else: 
+                    if "abs:deg" in self.yaxis:
+                        out = self.y[:, idx[0]] * np.exp(1j*math.pi*self.y[:, idx[1]]/180.0)
+                    elif "re:im" in self.yaxis :
+                        out = self.y[:, idx[0]] + 1j*self.y[:, idx[1]]
+
+                if out is None:
+                    out = self.y[:, idx]
+
+                if out.size == 1:
+                    return out[0].squeeze()
+                else:
+                    return out.squeeze()
+            else:
+                raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
             
 @canFreeze 
 class KatRun2D(object):
@@ -646,6 +654,7 @@ class KatRun2D(object):
         self.x = None
         self.y = None
         self.z = None
+        self.yaxis = None
         self.xlabel = None
         self.ylabel = None
         self.zlabels = None
@@ -934,7 +943,7 @@ class kat(object):
             self.parse(kat_code)
         
         if kat_file != None:
-            self.loadKatFile(kat_file)
+            self.load(kat_file)
     
         self._freeze()
     
@@ -1274,16 +1283,18 @@ class kat(object):
     
     def getBlockString(self, name):
         if name not in self.__blocks:
-            pkex.PrintError("Error getting block:", pkex.BasePyKatException('Block "{0}" was not found'.format(name)))
+            raise pkex.BasePyKatException('Block "{0}" was not found'.format(name))
             
         return str(self.__blocks[name])
     
     def removeBlock(self, name, failOnBlockNotFound=True):
+        """
+        This will remove a block from the kat object.
+        """
         
         if name not in self.__blocks:
             if failOnBlockNotFound:
-                pkex.PrintError("Error removing block:", pkex.BasePyKatException('Block "{0}" was not found'.format(name)))
-                sys.exit(1)
+                raise pkex.BasePyKatException('Block "{0}" was not found'.format(name))
             else:
                 return
         
@@ -1291,7 +1302,7 @@ class kat(object):
             self.remove(o)
         
         del self.__blocks[name]
-    
+        
     def __str__(self):
          return "".join(self.generateKatScript())
          
@@ -1323,7 +1334,7 @@ class kat(object):
     def parse(self, *args, **kwargs):
         self.parseCommands(*args, **kwargs)
         
-    def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None):
+    def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None, exceptionOnReplace=False):
         if not isinstance(commands, six.string_types) and hasattr(commands, "__iter__"):
             for _ in commands:
                 self.parse(_, blocks, addToBlock, keepComments, preserveConstants, useConstants)
@@ -1475,6 +1486,8 @@ class kat(object):
                         obj = pykat.detectors.ad.parseFinesseText(line)
                     elif(first[0:2] == "xd"):
                         obj = pykat.detectors.xd.parseFinesseText(line)
+                    elif(first[0:3] == "tf2"):
+                        obj = pykat.commands.tf2.parseFinesseText(line)
                     elif(first[0:2] == "tf"):
                         obj = pykat.commands.tf.parseFinesseText(line)
                     elif(first[0:2] == "cp"):
@@ -1593,6 +1606,9 @@ class kat(object):
             
                     if obj is not None and not isinstance(obj, six.string_types):
                         if self.hasNamedObject(obj.name):
+                            if exceptionOnReplace:
+                                raise pkex.BasePyKatException("An object with the name %s already exists" % obj.name)
+                                
                             getattr(self, obj.name).remove()
                             
                             if self.verbose:
@@ -1792,7 +1808,7 @@ class kat(object):
                                 param = comp._default_fsig()
                             else:
                                 for p in comp._params:
-                                    if p.canFsig and p.fsigName == param_name:
+                                    if p.canFsig and param_name in p.fsigNameOptions:
                                         param = p
                                         break
                     
@@ -1811,6 +1827,47 @@ class kat(object):
             pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
             sys.exit(1)
     
+    def _finesse_exec(self):
+        if len(self.__katdir) == 0:
+            # Get the environment variable for where Finesse is stored
+            self.__finesse_dir = os.environ.get('FINESSE_DIR').strip()
+            
+            if self.__finesse_dir is None :
+                raise pkex.MissingFinesseEnvVar()
+        else:
+            self.__finesse_dir = self.__katdir.strip()
+            
+        if len(self.__katname) == 0:
+            katexe = "kat"
+            
+            if os.sys.platform == "win32":
+                katexe += ".exe"
+        else:
+            katexe = self.__katname.strip()
+        
+        kat_exec = os.path.join(self.__finesse_dir, katexe) 
+        
+        # check if kat file exists and it is executable by user        
+        if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
+            raise pkex.MissingFinesse()
+        
+        return kat_exec
+        
+    def finesse_version(self):
+        """
+        Returns the full number version.
+        """
+        p = Popen([self._finesse_exec(), '-v'], stdout=PIPE)
+
+        out, err = p.communicate()
+        
+        if err is not None:
+            raise pkex.BasePyKatException("Error getting version: " + str(err))
+        
+        vals = str(out).split()
+        
+        return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017    
+        
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False, usePipe=True):
         """ 
         Runs the current simulation setup that has been built thus far.
@@ -1837,30 +1894,9 @@ class kat(object):
         try:        
             if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
                 raise pkex.BasePyKatException("No xaxis was defined")
-            
-            if len(self.__katdir) == 0:
-                # Get the environment variable for where Finesse is stored
-                self.__finesse_dir = os.environ.get('FINESSE_DIR')
                 
-                if self.__finesse_dir is None :
-                    raise pkex.MissingFinesseEnvVar()
-            else:
-                self.__finesse_dir = self.__katdir
-                
-            if len(self.__katname) == 0:
-                katexe = "kat"
-                
-                if os.sys.platform == "win32":
-                    katexe += ".exe"
-            else:
-                katexe = self.__katname
-            
-            kat_exec = os.path.join(self.__finesse_dir, katexe) 
-            
-            # check if kat file exists and it is executable by user        
-            if not (os.path.isfile(kat_exec) and os.access(kat_exec, os.X_OK)):
-                raise pkex.MissingFinesse()
-                
+            kat_exec = self._finesse_exec()
+                            
             if self.verbose: print ("--------------------------------------------------------------")
             if self.verbose: print ("Running kat - Started at " + str(datetime.datetime.fromtimestamp(start)))
             
@@ -2241,8 +2277,21 @@ class kat(object):
             
             except pkex.BasePyKatException as ex:
                 pkex.PrintError("Error on removing object:", ex)
+    
+    def dumpify(self, prefix = "dump"):
+        """
+        Loops through and sets all undumped nodes back to dumped.
+        
+        The nodes will be renamed to dump if they are 'dump0', 'dump1', etc.
+        
+        Can specify the prefix to search for if required.
+        """
+        for c in self.components.values():
+            for n in c.nodes:
+                if n.name.startswith(prefix):
+                    self.nodes.replaceNode(c, n, self.nodes.createNode("dump"))
 
-    def undumpNodes(self, undumped_name_prefix = "dump"):
+    def undumpify(self, undumped_name_prefix = "dump"):
         """
         Loops through and removes all dump nodes. Required when running quantum noise
         calculations using qnoised as noise must be injected in where losses occur, such as power
@@ -2997,6 +3046,163 @@ class kat(object):
         
         
         return commands
+        
+    class BeamTrace(object):
+        def print(self):
+            from tabulate import tabulate
+            comp_w = lambda comp: self.data[self.data['nodes'][self.data['components'].index(comp)][0]]['q'].w/1e-3
+            
+            data = [[_,
+                    int(self.data[_]['z']/1e-3),
+                    self.data[_]['gouy'],
+                    comp_w(_)] for _ in self.data['components'] if not self.data[_]['is_space']]
+            
+            last_node = self.data['nodes'][-1][-1]
+            data.append([last_node, int(self.data[last_node]['z']/1e-3), self.data[last_node]['gouy'], self.data[last_node]['q'].w/1e-3])
+            
+            print (tabulate(data
+                , ["Name", "z (mm)", "Acc. Gouy [deg]", "Beam size (mm)"]
+                , tablefmt='psql'))
+            
+        def plot(self, filename=None, show=True, w_scale="milli", markers=[]):
+            import matplotlib.pyplot as plt
+            data = self.data
+            fig = plt.figure()
+            ax1 = plt.subplot(211)
+            ax2 = plt.subplot(212)
+
+            w_max = 0
+            g_max = 0
+            gouy  = 0
+        
+            for comp, (from_node, to_node) in zip(data['components'], data['nodes']):
+                gouy = data[comp]['gouy_i']
+                gouy_ref = data[comp]['gouy_ref']
+
+                if data[comp]['is_space']:
+                    L = data[comp]['L']
+                    q = data[from_node]['q']
+                    z = data[from_node]['z']
+                    _z = np.linspace(0, L, 1000)                
+                    g = np.rad2deg(q.gouy(_z+q.z))
+                            
+                    # want to plot accumulated gouy phase so need to use
+                    # a reference from where it started
+                    _g = gouy + np.rad2deg(q.gouy(_z + q.z)) - gouy_ref
+                    w  = q.beamsize(_z + q.z)/pykat.SI[w_scale]
+                
+                    w_max = max(w_max, w.max())
+                    g_max = max(g_max, _g.max())
+                
+                    ax1.plot(z+_z, w, c='r')
+                    ax2.plot(z+_z, _g, c='r')
+                else:
+                    z = data[comp]['z']
+                    ax1.scatter(z, 0, marker='x', color='k')
+                    ax1.text(z, 0, comp+"\n", ha="center", va='bottom',zorder=100)
+                
+                    ax2.scatter(z, 0, marker='x', color='k')
+                    ax2.text(z, 0, comp+"\n", ha="center", va='bottom',zorder=100)
+        
+            for _, z in markers:
+                ax1.scatter(z, 0, marker='x', color='r')
+                ax1.text(z, 0, _+"\n", ha="center", va='bottom',zorder=100)
+        
+                ax2.scatter(z, 0, marker='x', color='r')
+                ax2.text(z, 0, _+"\n", ha="center", va='bottom',zorder=100)
+            
+            ax1.grid(True, zorder=-10)
+            ax1.set_xlim(0, None)
+
+            if w_scale is None:
+                ax1.set_ylabel("Beam size [m]")
+            else:
+                ax1.set_ylabel("Beam size [%sm]"%pykat.SIlabel[w_scale])
+            
+            ax1.set_xlabel("Distance [m]")
+            ax1.set_ylim(0, w_max)
+        
+            ax2.set_xlim(0, None)
+            ax2.grid(True, zorder=-10)
+            ax2.set_ylabel("Gouy phase [deg]")
+            ax2.set_xlabel("Distance [m]")
+            ax2.set_ylim(0, g_max)
+        
+            plt.tight_layout()
+        
+            if filename is not None:
+                plt.savefig(filename)
+            
+            if show: plt.show()
+    
+    def beamTrace(self, q_in, from_node, to_node):
+        """
+        This function is separate from the Finesse tracing algorithm. It is purely 
+        python based. From a given node to another this function will find the 
+        components between each node and trace a beam along it. 
+        
+        Returns a dictionary data structure that contains the beam parameter, lengths
+        and gouy phases at each node and component between the paths.
+        """
+        from .optics.ABCD import apply as apply_ABCD
+        
+        # Get a list of components and the nodes in order between from and to nodes
+        path_A, nodes_A = self.nodes.getComponentsBetween(from_node, to_node, True)
+
+        qxs = [q_in] # track the q values as we go
+
+        L = 0 # length from first node
+        gouy = 0 # Accumulated gouy from previous 
+        gouy_ref = None # Gouy phase always accumulates from this reference value
+        _g = [0] # Array of gouy phase values over a space, initialised to 0 here
+        
+        data = OrderedDict()
+        data['components'] = [_.name for _ in path_A]
+        data['nodes'] = [(_.name, __.name) for _,__ in nodes_A]
+        
+        for comp, (from_node, to_node) in zip(path_A, nodes_A):
+            Mabcd = comp.ABCD(from_node, to_node)
+            qnew = apply_ABCD(Mabcd, qxs[-1].q, from_node.n, to_node.n )
+
+            if Mabcd[1,0] != 0:
+                # The beam has been lensed so we need to make a new reference
+                # point for the gouy phase accumulation
+                gouy = _g[-1] # The most recent gouy phase value
+                gouy_ref = None # get a new reference
+
+            if isinstance(comp, pykat.components.space):
+                q = qxs[-1]
+                z = np.linspace(0, comp.L.value, 1000)                
+                g = np.rad2deg(q.gouy(z+q.z))
+
+                if gouy_ref is None:
+                    # set new reference value
+                    gouy_ref = g[0]
+            
+                # want to plot accumulated gouy phase so need to use
+                # a reference from where it started
+                _g = gouy + np.rad2deg(q.gouy(z+q.z))-gouy_ref
+            
+                data[from_node.name] = {"q": qxs[-1], "z": L, "gouy": _g[0]}
+                data[to_node.name] = {"q": qnew, "z": L+comp.L.value, "gouy": _g[-1]}
+
+                L += comp.L.value
+
+            else:
+                data[from_node.name] = {"q": qxs[-1], "L": L, "gouy": _g[-1]}
+                data[to_node.name] = {"q": qnew, "L": L, "gouy": _g[-1]}
+
+            qxs.append( qnew )
+
+            data[comp.name] = {"z": L, "gouy": _g[-1], "gouy_i":gouy, "gouy_ref": gouy_ref, "is_space": isinstance(comp, pykat.components.space)}
+            
+            if isinstance(comp, pykat.components.space):
+                data[comp.name]['L'] = comp.L.value
+        
+        bt = kat.BeamTrace()
+        bt.data = data
+        
+        return bt
 
 # printing pykat logo on first input
 kat.logo()

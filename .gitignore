@@ -21,3 +21,7 @@ build
 dist
 bin
 MANIFEST
+
+_version.py
+conda_pkg/packages
+conda_pkg/.index.json
