@@ -2018,8 +2018,8 @@ class kat(object):
 			
             (stdout, stderr) = p.communicate()
 
-            r.stdout = stdout.decode('utf-8')
-            r.stderr = stderr.decode('utf-8')
+            r.stdout = stdout.decode('utf-8', 'replace')
+            r.stderr = stderr.decode('utf-8', 'replace')
             
             k = r.stdout.rfind('computation time:')
             
