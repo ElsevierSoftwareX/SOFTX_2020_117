@@ -465,6 +465,7 @@ class tf2(Command):
         values = text.split()
         
         if len(values) != 6:
+            print(values)
             raise pkex.BasePyKatException("Transfer function Finesse code format incorrect '{0}'".format(text))
 
         _tf = tf2(values[1])
@@ -473,10 +474,14 @@ class tf2(Command):
         _tf.phase = SIfloat(values[3])
         
         for _ in values[4].strip("{}").split(','):
-            _tf.poles.append(complex(_.replace('i','j')))
+            _ = _.strip()
+            if len(_) > 0:
+                _tf.poles.append(complex(_.replace('i','j')))
         
         for _ in values[5].strip("{}").split(','):
-            _tf.zeros.append(complex(_.replace('i','j')))
+            _ = _.strip()
+            if len(_) > 0:
+                _tf.zeros.append(complex(_.replace('i','j')))
         
         return _tf
         
