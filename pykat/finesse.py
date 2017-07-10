@@ -1972,14 +1972,14 @@ class kat(object):
 
             _start_kat = time.time()
             
-            duration = 2 # Duration for searching for open pipe
+            duration = 5 # Duration for searching for open pipe
             
             try:
                 if usePipe == True:
                     while fifo is None:
                         try:
                             if time.time() < _start_kat + duration:
-                                time.sleep(0.1)
+                                time.sleep(0.001)
                                 fifo = codecs.open(pipe_name, "r", "utf-8")
                                 self.__looking = False
                             else:
@@ -1987,7 +1987,6 @@ class kat(object):
                         except FileNotFoundError as ex:
                             if self.verbose:
                                 if not self.__looking:
-                                    pkex.printWarning("Looking for pykat pipe...")
                                     self.__looking = True
                 
                 if fifo is not None:
