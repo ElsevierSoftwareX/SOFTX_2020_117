@@ -38,6 +38,14 @@ class ALIGO_IFO(IFO):
     The functions here should be those that update the kat with information
     from the IFO object or vice-versa.
     """
+
+    def __init__(self, kat, tuning_keys_list, tunings_components_list):
+        IFO.__init__(self, kat, tuning_keys_list, tunings_components_list)
+        self._f1 = np.nan
+        self._f2 = np.nan
+        self._f3 = np.nan
+        self._f36M = np.nan
+    
     @property
     def DCoffset(self):
         if 'DCoffset' not in self.kat.data:
@@ -59,7 +67,67 @@ class ALIGO_IFO(IFO):
     @DCoffsetW.setter
     def DCoffsetW(self, value):
         self.kat.data['DCoffsetW'] = float(value)
-    
+
+    @property
+    def f1(self):
+        return self._f1
+    @f1.setter
+    def f1(self, value):
+        self._f1 = float(value)
+        self.f36M = self.f2 - self.f1
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f1':
+                    a.port.f = self.f1
+                
+    @property
+    def f2(self):
+        return self._f2
+    @f2.setter
+    def f2(self, value):
+        self._f2 = float(value)
+        self.f36M = self.f2 - self.f1
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f2':
+                    a.port.f = self.f2
+        
+    @property
+    def f3(self):
+        return self._f3
+    @f3.setter
+    def f3(self, value):
+        self._f3 = float(value)
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f3':
+                    a.port.f = self.f3
+        
+    @property
+    def f36M(self):
+        return self._f36M
+    @f36M.setter
+    def f36M(self, value):
+        self._f36M = float(value)
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-4:] == 'f36M':
+                    a.port.f = self.f36M
+        
+    def createPorts(self):
+        # useful ports
+        self.POP_f1  = Output(self, "POP_f1",  "nPOP",  self.f1, phase=101)
+        self.POP_f2  = Output(self, "POP_f2",  "nPOP",  self.f2, phase=13)
+        self.REFL_f1 = Output(self, "REFL_f1", "nREFL", self.f1, phase=101)
+        self.REFL_f2 = Output(self, "REFL_f2", "nREFL", self.f2, phase=14)
+        self.AS_DC   = Output(self, "AS_DC", "nAS")
+        self.POW_BS  = Output(self, "PowBS", "nPRBS*")
+        self.POW_X   = Output(self, "PowX",  "nITMX2")
+        self.POW_Y   = Output(self, "PowY",  "nITMY2")
     
     def compute_derived_resonances(self):
         clight
@@ -650,6 +718,7 @@ class ALIGO_IFO(IFO):
     
         for _ in inspect.getmembers(self, lambda x: isinstance(x, DOF)):
             self.DOFs[_[0]] = _[1]
+            print(self.DOFs[_[0]])
         
         self.Outputs = {}
     
@@ -750,11 +819,11 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  kat.IFO.f2, phase=13)
     kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", kat.IFO.f1, phase=101)
     kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", kat.IFO.f2, phase=14)
-    kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nSRM2")
+    kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nITMX2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nITMY2")
-
+    
     # pretune LSC DOF
     kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
     kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
