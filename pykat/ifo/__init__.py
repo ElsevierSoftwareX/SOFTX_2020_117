@@ -299,35 +299,45 @@ def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps
 
     return kat.run(cmd_args="-cr=on")
 
-def optical_gain(DOF_sig, DOF_det, f=1.0):
+def optical_gain(DOF_sig, DOF_det, f=.1, useDiff=False):
     """
     Returns W/rad for length sensing. Will throw an exception if it can't convert the
     units into W/rad.
     """
-    
+
     kat = DOF_sig.kat.deepcopy()
     kat.removeBlock('locks', False)
-     
-    _fsigStr = DOF_sig.fsig("sig1", fsig=f)
-    _detStr  = DOF_det.transfer()
+
+    if useDiff:
+        _sigStr = DOF_sig.dcsig()
+        _detStr = DOF_det.signal()
+    else:
+        _sigStr = DOF_sig.fsig("sig1", fsig=f)
+        _detStr  = DOF_det.transfer()
     _detName = DOF_det.transfer_name()
     
-    kat.parse(_fsigStr)
+    kat.parse(_sigStr)
     kat.parse(_detStr)
     kat.noxaxis = True
-    kat.parse("yaxis lin abs:deg")
+    if useDiff:
+        kat.parse("yaxis lin abs")
+    else:
+        kat.parse("yaxis lin abs:deg")
     
     out = kat.run()
-    
-    if DOF_sig.sigtype == "phase":
-        return float(np.real(out[_detName])) # W/rad
-    elif DOF_sig.sigtype == "z":
-        k = 2*np.pi/kat.lambda0
-        return float(np.real(out[_detName])) / k # W/(m*k) = W/rad
-    else:
-        raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
 
-def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
+    if useDiff:
+        return float(out[_detName])*180/np.pi # W/rad
+    else:
+        if DOF_sig.sigtype == "phase":
+            return float(np.real(out[_detName])) # W/rad
+        elif DOF_sig.sigtype == "z":
+            k = 2*np.pi/kat.lambda0
+            return float(np.real(out[_detName])) / k # W/(m*k) = W/rad
+        else:
+            raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
+
+def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1, isRel=False):
     """
     Returns commands to differentiate with respect to the DOF motion.
     
@@ -350,9 +360,15 @@ def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
     
     for o,f in zip(DOF.optics, DOF.factors):
         if f == 1:
-            rtn += "put %s %s $DX\n" % (o,target)
+            if isRel:
+                rtn += "put* %s %s $DX\n" % (o,target)
+            else:
+                rtn += "put %s %s $DX\n" % (o,target)
         elif f == -1:
-            rtn += "put %s %s $mDX\n" % (o,target)
+            if isRel:
+                rtn += "put* %s %s $mDX\n" % (o,target)
+            else:
+                rtn += "put %s %s $mDX\n" % (o,target)
         else:
             raise pkex.BasePyKatException("Factor can only be -1 or 1 currently")
     
@@ -830,6 +846,45 @@ class DOF(object):
             
         return _fsigStr
 
+    def diff(self):
+        '''
+        Does the same as the method signal() I think, thus remove when sure. 
+        '''
+        if self.port is None:
+            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
+        return self.port.get_diff_cmds(self.quad)
+    
+    def dcsig(self, deriv_h=1e-8):
+        '''
+        Returns Finesse code for computing the DC slope of the error signal by
+        using the Finesse command diff. 
+        '''
+        return diff_DOF(self, 'phi', deriv_h=deriv_h, isRel=True)
+
+
+class PRCL(DOF):
+    # Class for handling PRCL. Not sure if it's a good idea yet.
+    
+    def __init__(self, IFO, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z", 
+                 mirror_dic = {'ITMX_HR': 'ITMX', 'ITMX_AR': 'ITMXAR',
+                               'ITMY_HR': 'ITMY', 'ITMY_AR': 'ITMYAR',
+                               'ETMX_HR': 'ETMX', 'ETMX_AR': 'ETMXAR',
+                               'ETMY_HR': 'ETMY', 'ETMY_AR': 'ETMYAR',
+                               'PRM_HR': 'PRM', 'PRM_AR': 'PRMAR',
+                               'SRM_HR': 'SRM', 'SRM_AR': 'SRMAR'}):
+        
+        DOF.__init__(self, IFO, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z")
+        self.m = mirror_dic
+
+    def value(self):
+        # Minus sign as negative ITM tuning gives longer PRCL
+        # (assuming n1 of ITM is the node closer to the PRM)
+        return (self.kat.components[self.m['PRM_HR']].phi.value -
+                (self.kat.components[self.m['ITMX_HR']].phi.value +
+                 self.kat.components[self.m['ITMY_HR']].phi.value)/2.0)
+
+    
+        
 class Output(object):
     """
     This object defines a location in an interferometer where detectors are placed and demodulated at a particular
@@ -1046,3 +1101,25 @@ class Output(object):
         
         return rtn    
                 
+    def get_diff_cmds(self, quad='I', sigtype='z'):
+        '''
+        Generates code for a detector to be used for computing slope of an error signal using the
+        diff command in Finesse. Might be unnecessary method, other ways to generate this detector.
+        Does the same as port.get_signal_cmds() I think, thus remove when sure. 
+        '''
+        self.check_nodeName()
+        name = self.get_transfer_name(quad=quad, sigtype=sigtype)
+        rtn = []
+        if self.f is None:
+            rtn.append("pd {} {}".format(name, self.nodeName))
+        else:
+            if quad not in ("I", "Q"):
+                raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
+                
+            phase = self.IQ_phase(quad, self.phase)
+            
+            rtn.append("pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName))
+
+        rtn.extend(self._pdtype(name, sigtype))
+                
+        return rtn            
