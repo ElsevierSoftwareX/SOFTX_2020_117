@@ -4,8 +4,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 try:
-    from ._version import __version__
-except ModuleNotFoundError as ex:
+    try:
+        from ._version import __version__
+    except ModuleNotFoundError as ex:
+        __version__ = "develop"
+except (NameError, ImportError) as ex:
     __version__ = "develop"
 
 __min_req_finesse__ = 2.2
