@@ -187,7 +187,7 @@ def find_peak(out, detector, minmax='max', debug=False):
     return X_out, stepsize
 
 
-def scan_optics_string(_optics, _factors, _varName, target="phi", linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
+def scan_optics_string(_optics, _factors, _varName='scan', target="phi", linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
     optics=make_list_copy(_optics)
     factors=make_list_copy(_factors)
     
@@ -198,34 +198,33 @@ def scan_optics_string(_optics, _factors, _varName, target="phi", linlog="lin", 
         raise pkex.BasePyKatException("linlog must be 'lin' or 'log'")
         
     _tuneStr  = "var {} 0\n".format(_varName)
+    _tuneStr += "set {0}1 {0} re\n".format(_varName)
     
     if axis==1:
-        _tuneStr += "xaxis {} {} {} {} {} {}".format(_varName, target, linlog, xlimits[0], xlimits[1], steps)
+        _tuneStr += "xaxis {} {} {} {} {} {}\n".format(_varName, 're', linlog, xlimits[0], xlimits[1], steps)
     elif (axis==2 or axis==3): 
-        _tuneStr += "x{}axis {} {} {} {} {} {}".format(axis, _varName, target, linlog, xlimits[0], xlimits[1], steps)
+        _tuneStr += "x{}axis {} {} {} {} {} {}\n".format(axis, _varName, 're', linlog, xlimits[0], xlimits[1], steps)
     else:
         raise pkex.BasePyKatException("axis must be 1, 2 or 3")
-        
+
     _putStr = ""
     
     for idx, o in enumerate(optics):
-        
-        if factors[idx] == 1:
-            _xStr="$x"
-        elif factors[idx] == -1:
-            _xStr="$mx"
-        else:
-            raise pkex.BasePyKatException("optics factors must be 1 or -1")
+
+        _putStr += "func sc{0} = ({1})*({2})*${3}1\n".format(o,np.abs(factors[idx]),np.sign(factors[idx]),_varName)
             
         if (relative):
             _putCmd = "put*"
         else:
             _putCmd = "put"
-                
-        _putStr = "\n".join([_putStr, "{} {} {} {}{}".format(_putCmd, o, target, _xStr, axis)])            
+            
+        _putStr += "{0} {1} {2} $sc{1}\n".format(_putCmd, o, target)
+        # _putStr = "\n".join([_putStr, "{} {} {} {}{}".format(_putCmd, o, target, _xStr, axis)])            
         
     _tuneStr += _putStr
-        
+
+    #print(_tuneStr)
+    #print()
     return _tuneStr
 
 def scan_f_cmds(DOF, linlog="lin", lower=10, upper=5000, steps=100):
@@ -299,33 +298,43 @@ def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps
 
     return kat.run(cmd_args="-cr=on")
 
-def optical_gain(DOF_sig, DOF_det, f=1.0):
+def optical_gain(DOF_sig, DOF_det, f=1, useDiff=True, deriv_h=1.0e-8):
     """
     Returns W/rad for length sensing. Will throw an exception if it can't convert the
     units into W/rad.
     """
-    
+
     kat = DOF_sig.kat.deepcopy()
     kat.removeBlock('locks', False)
-     
-    _fsigStr = DOF_sig.fsig("sig1", fsig=f)
-    _detStr  = DOF_det.transfer()
+
+    if useDiff:
+        _sigStr = DOF_sig.dcsig(deriv_h)
+        _detStr = DOF_det.signal()
+    else:
+        _sigStr = DOF_sig.fsig("sig1", fsig=f)
+        _detStr  = DOF_det.transfer()
     _detName = DOF_det.transfer_name()
     
-    kat.parse(_fsigStr)
+    kat.parse(_sigStr)
     kat.parse(_detStr)
     kat.noxaxis = True
-    kat.parse("yaxis lin abs:deg")
+    if useDiff:
+        kat.parse("yaxis lin abs")
+    else:
+        kat.parse("yaxis lin abs:deg")
     
     out = kat.run()
-    
-    if DOF_sig.sigtype == "phase":
-        return float(np.real(out[_detName])) # W/rad
-    elif DOF_sig.sigtype == "z":
-        k = 2*np.pi/kat.lambda0
-        return float(np.real(out[_detName])) / k # W/(m*k) = W/rad
+
+    if useDiff:
+        return float(out[_detName])*180/np.pi # W/rad
     else:
-        raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
+        if DOF_sig.sigtype == "phase":
+            return float(np.real(out[_detName])) # W/rad
+        elif DOF_sig.sigtype == "z":
+            k = 2*np.pi/kat.lambda0
+            return float(np.real(out[_detName])) / k # W/(m*k) = W/rad
+        else:
+            raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
 
 def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
     """
@@ -342,20 +351,12 @@ def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
     rtn = ("var x 0\n"
             "diff x re\n"
             "deriv_h {deriv_h}\n" 
-            "set _dx x re\n"
-            "func DX = ({scaling}) * $_dx\n"
-            "noplot DX\n"
-            "func mDX = (-1 * {scaling}) * $_dx\n"
-            "noplot mDX\n").format(deriv_h=deriv_h, scaling=scaling)
+            "set _dx x re\n").format(deriv_h=deriv_h)
     
     for o,f in zip(DOF.optics, DOF.factors):
-        if f == 1:
-            rtn += "put %s %s $DX\n" % (o,target)
-        elif f == -1:
-            rtn += "put %s %s $mDX\n" % (o,target)
-        else:
-            raise pkex.BasePyKatException("Factor can only be -1 or 1 currently")
-    
+        rtn += "func sc{0} = ({1})*({2})*({3})*$_dx\n".format(o,np.abs(f),np.sign(f),scaling)
+        rtn += "put* {0} {1} $sc{0}\n".format(o,target)
+        
     return rtn
     
 def scan_demod_phase_cmds(pd_detectors, demod_phase=1, relative=False, xaxis=1, steps=100, xlimits=(-180, 180)):
@@ -830,6 +831,36 @@ class DOF(object):
             
         return _fsigStr
 
+    def dcsig(self, deriv_h=1e-8):
+        '''
+        Returns Finesse code for computing the DC slope of the error signal by
+        using the Finesse command diff. 
+        '''
+        return diff_DOF(self, self._mirror_target(), deriv_h=deriv_h)
+
+
+class PRCL(DOF):
+    # Class for handling PRCL. Not sure if it's a good idea yet.
+    
+    def __init__(self, IFO, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z", 
+                 mirror_dic = {'ITMX_HR': 'ITMX', 'ITMX_AR': 'ITMXAR',
+                               'ITMY_HR': 'ITMY', 'ITMY_AR': 'ITMYAR',
+                               'ETMX_HR': 'ETMX', 'ETMX_AR': 'ETMXAR',
+                               'ETMY_HR': 'ETMY', 'ETMY_AR': 'ETMYAR',
+                               'PRM_HR': 'PRM', 'PRM_AR': 'PRMAR',
+                               'SRM_HR': 'SRM', 'SRM_AR': 'SRMAR'}):
+        
+        DOF.__init__(self, IFO, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z")
+        self.m = mirror_dic
+
+    def value(self):
+        # Minus sign as negative ITM tuning gives longer PRCL
+        # (assuming n1 of ITM is the node closer to the PRM)
+        return (self.kat.components[self.m['PRM_HR']].phi.value -
+                (self.kat.components[self.m['ITMX_HR']].phi.value +
+                 self.kat.components[self.m['ITMY_HR']].phi.value)/2.0)
+
+
 class Output(object):
     """
     This object defines a location in an interferometer where detectors are placed and demodulated at a particular
@@ -1046,3 +1077,25 @@ class Output(object):
         
         return rtn    
                 
+    def get_diff_cmds(self, quad='I', sigtype='z'):
+        '''
+        Generates code for a detector to be used for computing slope of an error signal using the
+        diff command in Finesse. Might be unnecessary method, other ways to generate this detector.
+        Does the same as port.get_signal_cmds() I think, thus remove when sure. 
+        '''
+        self.check_nodeName()
+        name = self.get_transfer_name(quad=quad, sigtype=sigtype)
+        rtn = []
+        if self.f is None:
+            rtn.append("pd {} {}".format(name, self.nodeName))
+        else:
+            if quad not in ("I", "Q"):
+                raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
+                
+            phase = self.IQ_phase(quad, self.phase)
+            
+            rtn.append("pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName))
+
+        rtn.extend(self._pdtype(name, sigtype))
+                
+        return rtn            
