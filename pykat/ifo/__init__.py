@@ -198,7 +198,7 @@ def scan_optics_string(_optics, _factors, _varName='scan', target="phi", linlog=
         raise pkex.BasePyKatException("linlog must be 'lin' or 'log'")
         
     _tuneStr  = "var {} 0\n".format(_varName)
-    _tuneStr += "set {0}1 {0} re\n".format(_varName)
+    _tuneStr += "set {0}re {0} re\n".format(_varName)
     
     if axis==1:
         _tuneStr += "xaxis {} {} {} {} {} {}\n".format(_varName, 're', linlog, xlimits[0], xlimits[1], steps)
@@ -211,7 +211,8 @@ def scan_optics_string(_optics, _factors, _varName='scan', target="phi", linlog=
     
     for idx, o in enumerate(optics):
 
-        _putStr += "func sc{0} = ({1})*({2})*${3}1\n".format(o,np.abs(factors[idx]),np.sign(factors[idx]),_varName)
+        _putStr += "func sc{0} = ({1}) * ({2}) * ${3}re\n".format(o,np.abs(factors[idx]),np.sign(factors[idx]),_varName)
+        _putStr += "noplot sc{}".format(o)
             
         if (relative):
             _putCmd = "put*"
@@ -349,12 +350,13 @@ def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
         pass
         
     rtn = ("var x 0\n"
-            "diff x re\n"
-            "deriv_h {deriv_h}\n" 
-            "set _dx x re\n").format(deriv_h=deriv_h)
+           "diff x re\n"
+           "deriv_h {deriv_h}\n"
+           "set _dx x re\n").format(deriv_h=deriv_h)
     
     for o,f in zip(DOF.optics, DOF.factors):
-        rtn += "func sc{0} = ({1})*({2})*({3})*$_dx\n".format(o,np.abs(f),np.sign(f),scaling)
+        rtn += "func sc{0} = ({1}) * ({2}) * ({3}) * $_dx\n".format(o,np.abs(f),np.sign(f),scaling)
+        rtn += "noplot sc{}".format(o)
         rtn += "put* {0} {1} $sc{0}\n".format(o,target)
         
     return rtn
