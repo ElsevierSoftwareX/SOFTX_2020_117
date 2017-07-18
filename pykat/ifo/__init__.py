@@ -212,7 +212,7 @@ def scan_optics_string(_optics, _factors, _varName='scan', target="phi", linlog=
     for idx, o in enumerate(optics):
 
         _putStr += "func sc{0} = ({1}) * ({2}) * ${3}re\n".format(o,np.abs(factors[idx]),np.sign(factors[idx]),_varName)
-        _putStr += "noplot sc{}".format(o)
+        _putStr += "noplot sc{}\n".format(o)
             
         if (relative):
             _putCmd = "put*"
@@ -356,7 +356,7 @@ def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
     
     for o,f in zip(DOF.optics, DOF.factors):
         rtn += "func sc{0} = ({1}) * ({2}) * ({3}) * $_dx\n".format(o,np.abs(f),np.sign(f),scaling)
-        rtn += "noplot sc{}".format(o)
+        rtn += "noplot sc{}\n".format(o)
         rtn += "put* {0} {1} $sc{0}\n".format(o,target)
         
     return rtn
