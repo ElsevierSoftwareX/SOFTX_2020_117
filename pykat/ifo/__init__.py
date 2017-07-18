@@ -187,7 +187,7 @@ def find_peak(out, detector, minmax='max', debug=False):
     return X_out, stepsize
 
 
-def scan_optics_string(_optics, _factors, _varName, target="phi", linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
+def scan_optics_string(_optics, _factors, _varName='scan', target="phi", linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
     optics=make_list_copy(_optics)
     factors=make_list_copy(_factors)
     
@@ -198,34 +198,33 @@ def scan_optics_string(_optics, _factors, _varName, target="phi", linlog="lin", 
         raise pkex.BasePyKatException("linlog must be 'lin' or 'log'")
         
     _tuneStr  = "var {} 0\n".format(_varName)
+    _tuneStr += "set {0}1 {0} re\n".format(_varName)
     
     if axis==1:
-        _tuneStr += "xaxis {} {} {} {} {} {}".format(_varName, target, linlog, xlimits[0], xlimits[1], steps)
+        _tuneStr += "xaxis {} {} {} {} {} {}\n".format(_varName, 're', linlog, xlimits[0], xlimits[1], steps)
     elif (axis==2 or axis==3): 
-        _tuneStr += "x{}axis {} {} {} {} {} {}".format(axis, _varName, target, linlog, xlimits[0], xlimits[1], steps)
+        _tuneStr += "x{}axis {} {} {} {} {} {}\n".format(axis, _varName, 're', linlog, xlimits[0], xlimits[1], steps)
     else:
         raise pkex.BasePyKatException("axis must be 1, 2 or 3")
-        
+
     _putStr = ""
     
     for idx, o in enumerate(optics):
-        
-        if factors[idx] == 1:
-            _xStr="$x"
-        elif factors[idx] == -1:
-            _xStr="$mx"
-        else:
-            raise pkex.BasePyKatException("optics factors must be 1 or -1")
+
+        _putStr += "func sc{0} = ({1})*({2})*${3}1\n".format(o,np.abs(factors[idx]),np.sign(factors[idx]),_varName)
             
         if (relative):
             _putCmd = "put*"
         else:
             _putCmd = "put"
-                
-        _putStr = "\n".join([_putStr, "{} {} {} {}{}".format(_putCmd, o, target, _xStr, axis)])            
+            
+        _putStr += "{0} {1} {2} $sc{1}\n".format(_putCmd, o, target)
+        # _putStr = "\n".join([_putStr, "{} {} {} {}{}".format(_putCmd, o, target, _xStr, axis)])            
         
     _tuneStr += _putStr
-        
+
+    #print(_tuneStr)
+    #print()
     return _tuneStr
 
 def scan_f_cmds(DOF, linlog="lin", lower=10, upper=5000, steps=100):
@@ -299,7 +298,7 @@ def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps
 
     return kat.run(cmd_args="-cr=on")
 
-def optical_gain(DOF_sig, DOF_det, f=.1, useDiff=False):
+def optical_gain(DOF_sig, DOF_det, f=1, useDiff=True, deriv_h=1.0e-8):
     """
     Returns W/rad for length sensing. Will throw an exception if it can't convert the
     units into W/rad.
@@ -309,7 +308,7 @@ def optical_gain(DOF_sig, DOF_det, f=.1, useDiff=False):
     kat.removeBlock('locks', False)
 
     if useDiff:
-        _sigStr = DOF_sig.dcsig()
+        _sigStr = DOF_sig.dcsig(deriv_h)
         _detStr = DOF_det.signal()
     else:
         _sigStr = DOF_sig.fsig("sig1", fsig=f)
@@ -337,7 +336,7 @@ def optical_gain(DOF_sig, DOF_det, f=.1, useDiff=False):
         else:
             raise pkex.BasePyKatException("Not handling requested sigtype for unit conversion")
 
-def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1, isRel=False):
+def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
     """
     Returns commands to differentiate with respect to the DOF motion.
     
@@ -352,26 +351,12 @@ def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1, isRel=False):
     rtn = ("var x 0\n"
             "diff x re\n"
             "deriv_h {deriv_h}\n" 
-            "set _dx x re\n"
-            "func DX = ({scaling}) * $_dx\n"
-            "noplot DX\n"
-            "func mDX = (-1 * {scaling}) * $_dx\n"
-            "noplot mDX\n").format(deriv_h=deriv_h, scaling=scaling)
+            "set _dx x re\n").format(deriv_h=deriv_h)
     
     for o,f in zip(DOF.optics, DOF.factors):
-        if f == 1:
-            if isRel:
-                rtn += "put* %s %s $DX\n" % (o,target)
-            else:
-                rtn += "put %s %s $DX\n" % (o,target)
-        elif f == -1:
-            if isRel:
-                rtn += "put* %s %s $mDX\n" % (o,target)
-            else:
-                rtn += "put %s %s $mDX\n" % (o,target)
-        else:
-            raise pkex.BasePyKatException("Factor can only be -1 or 1 currently")
-    
+        rtn += "func sc{0} = ({1})*({2})*({3})*$_dx\n".format(o,np.abs(f),np.sign(f),scaling)
+        rtn += "put* {0} {1} $sc{0}\n".format(o,target)
+        
     return rtn
     
 def scan_demod_phase_cmds(pd_detectors, demod_phase=1, relative=False, xaxis=1, steps=100, xlimits=(-180, 180)):
@@ -846,20 +831,12 @@ class DOF(object):
             
         return _fsigStr
 
-    def diff(self):
-        '''
-        Does the same as the method signal() I think, thus remove when sure. 
-        '''
-        if self.port is None:
-            raise pkex.BasePyKatException("No port is associated with {}".format(self.name))
-        return self.port.get_diff_cmds(self.quad)
-    
     def dcsig(self, deriv_h=1e-8):
         '''
         Returns Finesse code for computing the DC slope of the error signal by
         using the Finesse command diff. 
         '''
-        return diff_DOF(self, 'phi', deriv_h=deriv_h, isRel=True)
+        return diff_DOF(self, self._mirror_target(), deriv_h=deriv_h)
 
 
 class PRCL(DOF):
@@ -883,8 +860,7 @@ class PRCL(DOF):
                 (self.kat.components[self.m['ITMX_HR']].phi.value +
                  self.kat.components[self.m['ITMY_HR']].phi.value)/2.0)
 
-    
-        
+
 class Output(object):
     """
     This object defines a location in an interferometer where detectors are placed and demodulated at a particular
