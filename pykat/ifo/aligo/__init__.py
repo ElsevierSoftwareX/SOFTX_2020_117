@@ -587,7 +587,8 @@ class ALIGO_IFO(IFO):
                  "lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}\n"
                  ).format(*chain.from_iterable(zip(gains, accuracies)),
                           DC=-self.kat.IFO.DCoffsetW)
-            
+
+        # TODO: Use DOF optics and factors to define this. 
         code3 = ("func ETMX_lock = (-1.0) * $CARM_lock - 0.5 * $MICH_lock - $DARM_lock\n"
                  "func ETMY_lock = (-1.0) * $CARM_lock + 0.5 * $MICH_lock + $DARM_lock\n"
                  "func ITMX_lock = (-0.5) * $MICH_lock\n"
