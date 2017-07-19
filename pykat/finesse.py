@@ -709,7 +709,7 @@ class Signals(object):
         
         def __deepcopy__(self, memo):
             # Here we need to update the params with new owners
-            result = self.__class__.__new__()
+            result = self.__class__.__new__(self.__class__)
             memo[id(self)] = result
             result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
