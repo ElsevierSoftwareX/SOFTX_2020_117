@@ -993,11 +993,19 @@ class Output(object):
             if dof.quad is not None: quad = dof.quad
             if dof.sigtype is not None: sigtype = dof.sigtype
             
-        if "quad"    in kwargs: quad    = kwargs['quad']
-        if "sigtype" in kwargs: sigtype = kwargs['sigtype']
+        if "quad" in kwargs:
+            quad = kwargs['quad']
+        else:
+            quad = None
+        if "sigtype" in kwargs:
+            sigtype = kwargs['sigtype']
+            if sigtype is None:
+                sigtype = 'z'
+        else:
+            sigtype = 'z'
             
-        if self.f is not None and quad is None: raise pkex.BasePyKatException("No quadrature value specified")
-        if sigtype is None: sigtype = "z"
+        if self.f is not None and quad is None:
+            raise pkex.BasePyKatException("No quadrature value specified")
         
         rtn = []
         

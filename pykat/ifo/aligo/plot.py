@@ -272,3 +272,84 @@ def amps_vs_dofs(kat, f, n=None, m=None, xaxis = [-1,1,100]):
         ax.grid()
         ax.legend(loc=3, fontsize=LS)
     plt.show(fig)
+
+
+
+def pows_vs_dof(kat, DoF, xaxis = [-10,10,100], noplot=False):
+
+    '''
+    Plotting amplitude vs tuning for one LSC DoF.
+
+    DoF    - Degree of freedom to sweep.
+    xaxis  - range to plot over [min, max, steps]
+    '''
+    
+    _kat = kat.deepcopy()
+    # Adding detectors
+    code = ""
+    names = []
+    for o in _kat.IFO.CAV_POWs:
+        code += "{}\n".format(o.get_signal_cmds()[0])
+        names.append(o.get_signal_name())
+        
+    # Adding simulation instructions
+    code += pykat.ifo.scan_DOF_cmds(DoF, xlimits=[xaxis[0], xaxis[1]], steps=xaxis[2], relative=True)
+    
+    _kat.parse(code)
+    out = _kat.run()
+    
+    if noplot:
+        rtn = {'x': out.x}
+        for n in names:
+            rtn[n] = out[n]
+        return rtn
+    else:
+        FS = 13
+        LS = 12
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for n in names:
+            ax.semilogy(out.x, out[n], label = n)
+            
+        ax.set_ylabel('$\mathrm{Power\ [W]}$', fontsize=FS)
+        ax.set_xlabel('$\mathrm{{ {}\ tuning\ [deg] }} $'.format(DoF.name), fontsize=FS)
+        ax.set_xlim(out.x.min(), out.x.max())
+        ax.grid()
+        ax.legend(loc=3, fontsize=LS)
+        plt.show(fig)
+        
+        return fig, ax
+
+
+
+def pows_vs_dofs(kat, xaxis = [-1,1,100]):
+    '''
+    Plotting amplitude vs tuning for all LSC DoFs.
+
+    xaxis  - range to plot over [min, max, steps]
+    '''
+
+    dic = {}
+    for d in kat.IFO.LSC_DOFs:
+        xax = [d.scale*xaxis[0], d.scale*xaxis[1], xaxis[2]]
+        dic[d.name] = pows_vs_dof(kat, d, xaxis = xax, noplot=True)
+
+    N = len(dic)
+        
+    FS = 13
+    LS = 11
+    
+    fig = plt.figure(figsize=(17,8))
+    axs = []
+    for k in range(N):
+        axs.append(fig.add_subplot(2,3,k+1))
+    for ax, v in zip(axs,dic.keys()):
+        for n in dic[v].keys():
+            if n != 'x':
+                ax.semilogy(dic[v]['x'], dic[v][n], label = n)
+        ax.set_ylabel('$\mathrm{Power\ [W]}$', fontsize=FS)
+        ax.set_xlabel('$\mathrm{{ {}\ tuning\ [deg] }} $'.format(v), fontsize=FS)
+        ax.set_xlim(dic[v]['x'].min(), dic[v]['x'].max())
+        ax.grid()
+        ax.legend(loc=3, fontsize=LS)
+    plt.show(fig)
