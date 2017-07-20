@@ -204,6 +204,8 @@ def amps_vs_dof(kat, DoF, f, n=None, m=None, xaxis = [-10,10,100], noplot=False)
     '''
     
     _kat = kat.deepcopy()
+    if isinstance(DoF, six.string_types):
+        DoF = _kat.IFO.DOFs[DoF]
     # Adding detectors
     code = ""
     names = []
@@ -283,8 +285,10 @@ def pows_vs_dof(kat, DoF, xaxis = [-10,10,100], noplot=False):
     DoF    - Degree of freedom to sweep.
     xaxis  - range to plot over [min, max, steps]
     '''
-    
     _kat = kat.deepcopy()
+    if isinstance(DoF, six.string_types):
+        DoF = _kat.IFO.DOFs[DoF]
+        
     # Adding detectors
     code = ""
     names = []
