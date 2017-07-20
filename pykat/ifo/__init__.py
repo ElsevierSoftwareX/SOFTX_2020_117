@@ -840,29 +840,6 @@ class DOF(object):
         '''
         return diff_DOF(self, self._mirror_target(), deriv_h=deriv_h)
 
-
-class PRCL(DOF):
-    # Class for handling PRCL. Not sure if it's a good idea yet.
-    
-    def __init__(self, IFO, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z", 
-                 mirror_dic = {'ITMX_HR': 'ITMX', 'ITMX_AR': 'ITMXAR',
-                               'ITMY_HR': 'ITMY', 'ITMY_AR': 'ITMYAR',
-                               'ETMX_HR': 'ETMX', 'ETMX_AR': 'ETMXAR',
-                               'ETMY_HR': 'ETMY', 'ETMY_AR': 'ETMYAR',
-                               'PRM_HR': 'PRM', 'PRM_AR': 'PRMAR',
-                               'SRM_HR': 'SRM', 'SRM_AR': 'SRMAR'}):
-        
-        DOF.__init__(self, IFO, _DOFName, _port, _quad, _optics, _factors, _scale, sigtype="z")
-        self.m = mirror_dic
-
-    def value(self):
-        # Minus sign as negative ITM tuning gives longer PRCL
-        # (assuming n1 of ITM is the node closer to the PRM)
-        return (self.kat.components[self.m['PRM_HR']].phi.value -
-                (self.kat.components[self.m['ITMX_HR']].phi.value +
-                 self.kat.components[self.m['ITMY_HR']].phi.value)/2.0)
-
-
 class Output(object):
     """
     This object defines a location in an interferometer where detectors are placed and demodulated at a particular
@@ -907,15 +884,35 @@ class Output(object):
         if self.nodeName==None:
             raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name,self.nodeNames))
 
-    def get_amplitude_name(self):
-        return self.name + "_ad"
+    def get_amplitude_name(self, f, n=None, m=None):
+        ''''
+        Returning name of amplitude detector
+        '''
+        if round(abs(f)) < 1e3:
+            fstr = "{}".format(round(f))
+        elif round(abs(f)) < 1e6:
+            fstr = "{}k".format(round(f/1e3))
+        elif round(abs(f)) < 1e9:
+            fstr = "{}M".format(round(f/1e6))
+        elif round(abs(f)) < 1e12:
+            fstr = "{}G".format(round(f/1e9))
+        elif round(abs(f)) < 1e15:
+            fstr = "{}T".format(round(f/1e12))
+        else:
+            fstr = "{:.0e}".format(f)
+            
+        if n is None or m is None:
+            rtn = "{}_{}_ad".format(self.name,fstr)
+        else:
+            rtn = "{}_{}_{}{}_ad".format(self.name,fstr,n,m)
+        return rtn
     
     def get_amplitude_cmds(self, f, n=None, m=None):
         rtn = []
         
         self.check_nodeName()
         
-        name = self.amplitude_name(f, n=n, m=m)
+        name = self.get_amplitude_name(f, n=n, m=m)
         
         if n==None and m==None:
             rtn.append("ad {} {} {}".format(name, f, self.nodeName))
