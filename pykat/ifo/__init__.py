@@ -311,14 +311,17 @@ def optical_gain(DOF_sig, DOF_det, f=1, useDiff=True, deriv_h=1.0e-8):
     if useDiff:
         _sigStr = DOF_sig.dcsig(deriv_h)
         _detStr = DOF_det.signal()
+        _detName = DOF_det.signal_name()
     else:
         _sigStr = DOF_sig.fsig("sig1", fsig=f)
         _detStr  = DOF_det.transfer()
-    _detName = DOF_det.transfer_name()
+        _detName = DOF_det.transfer_name()
     
     kat.parse(_sigStr)
     kat.parse(_detStr)
+    
     kat.noxaxis = True
+    
     if useDiff:
         kat.parse("yaxis lin abs")
     else:
@@ -763,7 +766,7 @@ class DOF(object):
         """
         Convenience method for calling `scan_DOF` for this particular DOF and associated kat object.
         
-        See `scan_DOF` for keyword arguments options.
+        See `pykat.ifo.scan_DOF` for keyword arguments options.
         """
         return scan_DOF(self.__IFO.kat, self, **kwargs)
         
@@ -771,7 +774,7 @@ class DOF(object):
         """
         Runs an fsig simulation scaning this DOF
         
-        See `scan_f` for keyword arguments options.
+        See `pykat.ifo.scan_f` for keyword arguments options.
         """
         return scan_f(self.__IFO.kat, self, *args, **kwargs)
         
@@ -1050,7 +1053,7 @@ class Output(object):
         elif sigtype == "yaw":
             name += "_Y"
             
-        return name
+        return name + "_TF"
         
     def get_transfer_cmds(self, quad="I", sigtype="z", phase2=None):
         self.check_nodeName()
