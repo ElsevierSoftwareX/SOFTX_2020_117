@@ -588,23 +588,34 @@ class ALIGO_IFO(IFO):
                  ).format(*chain.from_iterable(zip(gains, accuracies)),
                           DC=-self.kat.IFO.DCoffsetW)
 
-        code3 = ("noplot ITMY_lock\n"
-                 "func ITMY_lock = (-1.0) * $MICH_lock\n"
-                 "func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock\n"
-                 "func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock\n"
-                 "put* PRM     phi     $PRCL_lock\n"
-                 "put* ITMX    phi     $MICH_lock\n"
+        # TODO: Use DOF optics and factors to define this. 
+        code3 = ("func ETMX_lock = (-1.0) * $CARM_lock - 0.5 * $MICH_lock - $DARM_lock\n"
+                 "func ETMY_lock = (-1.0) * $CARM_lock + 0.5 * $MICH_lock + $DARM_lock\n"
+                 "func ITMX_lock = (-0.5) * $MICH_lock\n"
+                 "func ITMY_lock = 0.5 * $MICH_lock\n"
+                 "func PRM_lock = 1.0 * $PRCL_lock\n"
+                 "func SRM_lock = (-1.0) * $SRCL_lock\n"
+
+                 "put* PRM     phi     $PRM_lock\n"
+                 "put* ITMX    phi     $ITMX_lock\n"
                  "put* ITMY    phi     $ITMY_lock\n"
                  "put* ETMX    phi     $ETMX_lock\n"
                  "put* ETMY    phi     $ETMY_lock\n"
-                 "put* SRM     phi     $SRCL_lock\n"
+                 "put* SRM     phi     $SRM_lock\n"
+                 "put* PRM     phi     $PRM_lock\n"
+
                  "noplot PRCL_lock\n"
                  "noplot SRCL_lock\n"
                  "noplot MICH_lock\n"
                  "noplot DARM_lock\n"
                  "noplot CARM_lock\n"
                  "noplot ETMX_lock\n"
-                 "noplot ETMY_lock\n")
+                 "noplot ETMY_lock\n"
+                 "noplot ITMX_lock\n"
+                 "noplot ITMY_lock\n"
+                 "noplot PRM_lock\n"
+                 "noplot SRM_lock\n"
+                 )
 
         if verbose:
             print(" .--------------------------------------------------.")
@@ -822,7 +833,8 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nITMX2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nITMY2")
-    
+    # kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nSRM1")
+
     # pretune LSC DOF
     kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
     kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
@@ -832,14 +844,14 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     
     # control scheme as in [1] Table C.1. Due to Finesse conventions, the overall factor for all but PRCL are multiplied by -1
     # compared to the LIGO defintion, to match the same defintion. 
-    kat.IFO.PRCL =  PRCL(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
+    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
     kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
-    #kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [-1,-1,1,1], 100.0, sigtype="z") 
     kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [-1, -1], 1.5, sigtype="z")
     kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
     kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", -1, 1e2, sigtype="z")
-    
+
     kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM, kat.IFO.SRCL)
+    kat.IFO.CAV_POWs = (kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.POW_BS)
     
     # Pitch DOfs
     # There is a difference in the way LIGO and Finesse define positive and negative
