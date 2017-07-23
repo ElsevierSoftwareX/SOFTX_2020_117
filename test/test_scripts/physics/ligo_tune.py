@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import pykat
 import json
 #import matplotlib.pyplot as plt
