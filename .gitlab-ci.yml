@@ -1,32 +1,11 @@
-before_script:
-    - export CWD=$(pwd)
-    - export PYTHONPATH=$PYTHONPATH:$CWD
-    # - cd /finesse
-    # - rm kat
-    # - git reset --hard
-    # - git checkout develop
-    # - git pull
-    # - echo "Building Finesse..."
-    # - ./finesse.sh --build > /dev/null 2>&1
-    # - echo "Sucessfuly built Finesse"
-    - cd $CWD
-    
-python_3:
-    script:
-        - source /setup.sh
-        - echo $PYTHONIOENCODING
-        - kat -v
-        - which python3
-        - python3 --version
-        - cd test
-        - python3 run_tests.py
-        
-python_2:
-    script:
-        - source /setup.sh
-        - echo $PYTHONIOENCODING
-        - kat -v
-        - which python2.7
-        - python2.7 --version
-        - cd test
-        - python2.7 run_tests.py
+Physics2.7:
+  script:
+    - python brumsofttest.py http://agentx20.sr.bham.ac.uk:9555/ 1 8 $CI_COMMIT_SHA
+  tags:
+    - best
+
+Physics3.5:
+  script:
+    - python brumsofttest.py http://agentx20.sr.bham.ac.uk:9555/ 1 7 $CI_COMMIT_SHA
+  tags:
+    - best
