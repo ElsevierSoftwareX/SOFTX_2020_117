@@ -8,19 +8,17 @@ setups.
 
 Source code is hosted at https://git.ligo.org/finesse/pykat
 
-Please cite using pykat with:
+Please cite pykat when used with:
 
-```
-@Misc{Pykat,
-  Title                    = {Pykat},
-  Author                   = {Brown, Daniel David and Freise, Andreas},
-  Month                    = July,
-  Note                     = {{\url{http://www.gwoptics.org/pykat}}},
-  Year                     = {2017},
-  Doi                      = {10.5281/zenodo.821389},
-  Url                      = {http://www.gwoptics.org/pykat}
-}
-```
+    @Misc{Pykat,
+      Title                    = {Pykat},
+      Author                   = {Brown, Daniel David and Freise, Andreas},
+      Month                    = July,
+      Note                     = {{\url{http://www.gwoptics.org/pykat}}},
+      Year                     = {2017},
+      Doi                      = {10.5281/zenodo.821389},
+      Url                      = {http://www.gwoptics.org/pykat}
+    }
 
 Installation
 -------------
