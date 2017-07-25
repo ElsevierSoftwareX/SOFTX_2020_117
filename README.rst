@@ -8,7 +8,7 @@ setups.
 
 Source code is hosted at https://git.ligo.org/finesse/pykat
 
-Please cite pykat when used with:
+Please cite pykat when used with::
 
     @Misc{Pykat,
       Title                    = {Pykat},
