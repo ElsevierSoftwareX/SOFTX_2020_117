@@ -13,7 +13,7 @@ Please cite pykat when used with::
     @Misc{Pykat,
       Title                    = {Pykat},
       Author                   = {Brown, Daniel David and Freise, Andreas},
-      Month                    = July,
+      Month                    = {July},
       Note                     = {{\url{http://www.gwoptics.org/pykat}}},
       Year                     = {2017},
       Doi                      = {10.5281/zenodo.821389},
