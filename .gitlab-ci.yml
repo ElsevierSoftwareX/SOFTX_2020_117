@@ -1,11 +1,7 @@
 Physics2.7:
   script:
-    - python brumsofttest.py http://agentx20.sr.bham.ac.uk:9555/ 1 8 $CI_COMMIT_SHA
-  tags:
-    - best
+    - ./brumsofttest.sh -s http://agentx20.sr.bham.ac.uk:9555/ -u 1 -t 8 -g $CI_COMMIT_SHA
 
 Physics3.5:
   script:
-    - python brumsofttest.py http://agentx20.sr.bham.ac.uk:9555/ 1 7 $CI_COMMIT_SHA
-  tags:
-    - best
+    - ./brumsofttest.sh -s http://agentx20.sr.bham.ac.uk:9555/ -u 1 -t 7 -g $CI_COMMIT_SHA
