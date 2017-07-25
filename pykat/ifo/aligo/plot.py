@@ -7,6 +7,7 @@ from pykat.ifo.plot import *
 
 import pykat.ifo
 import numpy as np
+import six 
 
 def f1_PRC_resonance(_kat, ax=None, show=True):
     """
@@ -357,3 +358,7 @@ def pows_vs_dofs(kat, xaxis = [-1,1,100]):
         ax.grid()
         ax.legend(loc=3, fontsize=LS)
     plt.show(fig)
+
+    return fig, axs
+
+

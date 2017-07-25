@@ -350,7 +350,7 @@ def diff_DOF(DOF, target, deriv_h=1e-12, scaling=1):
     if target == "z":
         # As we can't target the z position of the component directly
         # we need to target phi and scale things
-        pass
+        target = 'phi'
         
     rtn = ("var x 0\n"
            "diff x re\n"
