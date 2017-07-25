@@ -1892,7 +1892,9 @@ class kat(object):
         
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017    
         
-    def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False, usePipe=True):
+    def run(self, plot=None, save_output=False, save_kat=False,
+            kat_name=None, cmd_args=None, getTraceData=False,
+            rethrowExceptions=False, usePipe=True, step_func=None):
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
@@ -1980,7 +1982,7 @@ class kat(object):
             	# Pipes in windows need to be prefixed with a hidden location.
             	pipe_name = "\\\\.\\pipe\\" + pipe_name
 
-            p = Popen(cmd, stderr=PIPE, stdout=PIPE)
+            p = Popen(cmd, stderr=PIPE, stdout=PIPE, stdin=PIPE)
 
             if self.verbose:
                 if self.noxaxis:
@@ -2003,7 +2005,7 @@ class kat(object):
                     while fifo is None:
                         try:
                             if time.time() < _start_kat + duration:
-                                time.sleep(0.001)
+                                #time.sleep(0.001)
                                 fifo = codecs.open(pipe_name, "r", "utf-8")
                                 self.__looking = False
                             else:
@@ -2012,13 +2014,12 @@ class kat(object):
                             if self.verbose:
                                 if not self.__looking:
                                     self.__looking = True
-                
+                                    
                 if fifo is not None:
+                    print(3)
                     for line in fifo:
-                    
-                        #if (sys.version_info < (3, 0)):
-                        #    line = line.decode("utf8") # Make sure we're using unicode encoding
-                    
+                        print(line)
+                        
                         v = line.split(u":", 1)
                     
                         if len(v) != 2:
@@ -2035,6 +2036,15 @@ class kat(object):
                             	pb.currval = int(var[1])
                             	pb.widgets[-1] = var[0] + " " + var[2][:-1]
                             	pb.update()
+                        elif tag == "step":
+                            print("step:",line)
+                            
+                            if step_func is None:
+                                raise pkex.BasePyKatException("Expecting input but no step_func defined")
+                            
+                            a = step_func(line)
+                            p.stdin.write((str(a) + "\n").encode())
+                            
             finally:
             	if fifo is not None:
             		fifo.close()

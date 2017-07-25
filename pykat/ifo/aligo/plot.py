@@ -78,7 +78,8 @@ def pretuning_powers(self, _kat, xlimits=[-10,10]):
     plt.show(block=0)
     
 def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
-                            replaceDOFSignals=False, block=True, fig=None, legend=None, steps=100):
+                  replaceDOFSignals=False, block=True, fig=None,
+                  legend=None, steps=100):
     """
     Displays error signals for a given kat file. Can also be used to plot multiple
     DOF's error signals against each other for visualising any cross coupling.
@@ -156,7 +157,6 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
                                         axis=1, relative=True)
                                   
         kat.parseCommands(scan_cmd, addToBlock="SCAN")
-        
         out = kat.run()
         
         if d.name == "DARM":
