@@ -5,8 +5,8 @@ before_script:
 
 Physics2.7:
   script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 8 -g $CI_COMMIT_SHA
+    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 12 -g $CI_COMMIT_SHA
 
 Physics3.5:
   script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 7 -g $CI_COMMIT_SHA
+    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 15 -g $CI_COMMIT_SHA
