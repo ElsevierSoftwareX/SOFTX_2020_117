@@ -1,0 +1,13 @@
+name: pykat_test
+channels:
+- gwoptics
+- defaults
+dependencies:
+- numpy>=1.12
+- flask>=0.10.1
+- scipy
+- six
+- h5py
+- pandas
+- matplotlib
+- finesse=2.2
