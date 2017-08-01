@@ -52,6 +52,7 @@ import ctypes.util
 import collections
 import re
 import copy
+import struct
 
 from subprocess import Popen, PIPE
 
@@ -1982,7 +1983,8 @@ class kat(object):
             	# Pipes in windows need to be prefixed with a hidden location.
             	pipe_name = "\\\\.\\pipe\\" + pipe_name
 
-            p = Popen(cmd, stderr=PIPE, stdout=PIPE, stdin=PIPE)
+            p = Popen(cmd, stderr=PIPE, stdout=PIPE)
+            #p = Popen(cmd) # use for debugging
 
             if self.verbose:
                 if self.noxaxis:
@@ -1994,7 +1996,8 @@ class kat(object):
                 
                 pb = progressbar.ProgressBar(widgets=widgets, maxval = maxval)
 
-            fifo = None
+            fifo_r = None
+            fifo_w = None
 
             _start_kat = time.time()
             
@@ -2002,52 +2005,60 @@ class kat(object):
             
             try:
                 if usePipe == True:
-                    while fifo is None:
+                    while fifo_r is None or fifo_w is None:
                         try:
                             if time.time() < _start_kat + duration:
-                                #time.sleep(0.001)
-                                fifo = codecs.open(pipe_name, "r", "utf-8")
+                                if fifo_w is None:
+                                    fifo_w = open(pipe_name+".pf", "wb")
+                                
+                                if fifo_r is None:
+                                    fifo_r = open(pipe_name+".fp", "rb")
+                                    
                                 self.__looking = False
                             else:
                                 raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0. Or set usePipe=False when making kat object.".format(duration))
+                                
                         except FileNotFoundError as ex:
+                            sys.stdout.flush()
                             if self.verbose:
                                 if not self.__looking:
                                     self.__looking = True
-                                    
-                if fifo is not None:
-                    print(3)
-                    for line in fifo:
-                        print(line)
+                
+                s_size_t = struct.calcsize('@n')
+                
+                if fifo_r is not None:
+                    for line in fifo_r:
+                        cmd = line.decode('ascii')
+                        print(cmd)
                         
-                        v = line.split(u":", 1)
-                    
-                        if len(v) != 2:
-                            continue    
+                        b = fifo_r.read(s_size_t)
+                        data_size = struct.unpack('@n', b)[0]
+                        data = fifo_r.read(data_size)
                         
-                        (tag, line) = v
-                    
-                        if tag == "version":
-                            r.katVersion = line
-                        elif tag == "progress" and self.verbose:
+                        print(data_size, data)
+                        
+                        if cmd == "version":
+                            r.katVersion = data.decode('ascii')
+                        elif cmd == "progress" and self.verbose:
                             var = line.split("\t")
                         
                             if len(var) == 3:
                             	pb.currval = int(var[1])
                             	pb.widgets[-1] = var[0] + " " + var[2][:-1]
                             	pb.update()
-                        elif tag == "step":
-                            print("step:",line)
+                        elif cmd == "step":
                             
                             if step_func is None:
                                 raise pkex.BasePyKatException("Expecting input but no step_func defined")
                             
                             a = step_func(line)
-                            p.stdin.write((str(a) + "\n").encode())
+                        elif cmd == "data":
+                            l,d = line.split(":",1)
+                            
                             
             finally:
-            	if fifo is not None:
-            		fifo.close()
+            	if fifo_r is not None: fifo_r.close()
+            	if fifo_w is not None: fifo_w.close()
 			
             (stdout, stderr) = p.communicate()
 
