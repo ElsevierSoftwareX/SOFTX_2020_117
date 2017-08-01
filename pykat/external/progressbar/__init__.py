@@ -50,6 +50,7 @@ import signal
 import sys
 import time
 from datetime import date
+import six
 
 try:
     from fcntl import ioctl
@@ -319,11 +320,14 @@ class ProgressBar(object):
         self.seconds_elapsed = now - self.start_time
         self.next_update = self.currval + self.update_interval
         
-        enc = self.fd.encoding
+        if six.PY2:
+            enc = self.fd.encoding
+            if enc is None: enc = sys.getfilesystemencoding()
         
-        if enc is None: enc = sys.getfilesystemencoding()
-        
-        self.fd.write('\r' + self._format_line().encode(enc, 'replace'))
+            self.fd.write('\r' + self._format_line().encode(enc, 'replace'))
+        else:
+            self.fd.write('\r' + self._format_line())
+            
         self.last_update_time = now
 
     def start(self):
