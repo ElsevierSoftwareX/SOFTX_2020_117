@@ -3,22 +3,14 @@ before_script:
   - wget https://agentx20.sr.bham.ac.uk:8080/static/scripts/brumsofttest.sh
   - chmod +x brumsofttest.sh
 
-Physics2.7:
+python_2.7:
   script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 12 -g $CI_COMMIT_SHA
-Random2.7:
-  script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 13 -g $CI_COMMIT_SHA
-Structural2.7:
-  script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 14 -g $CI_COMMIT_SHA
+    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 18 -g $CI_COMMIT_SHA
 
-Physics3.5:
+python_3.5:
   script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 15 -g $CI_COMMIT_SHA
-Random3.5:
+    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 20 -g $CI_COMMIT_SHA
+
+python_3.6:
   script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 16 -g $CI_COMMIT_SHA
-Structural3.5:
-  script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 17 -g $CI_COMMIT_SHA 
+    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 19 -g $CI_COMMIT_SHA
