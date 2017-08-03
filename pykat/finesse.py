@@ -2024,21 +2024,39 @@ class kat(object):
                                 if not self.__looking:
                                     self.__looking = True
                 
+                def send_test():
+                    if fifo_w is not None:
+                        data = [1.2, 3.4, 7]
+                        bdata = struct.pack('ddi', *data)
+                        
+                        fifo_w.write("<test>".encode())
+                        fifo_w.write(struct.pack('b', len(bdata)))
+                        fifo_w.flush()
+                        time.sleep(1e-6)
+                        
+                        fifo_w.write(struct.pack('ddi', *data))
+                        fifo_w.flush()
+                
+                send_test()
+                time.sleep(10e-6)
+                send_test()
+                
+                # Size of size_t array on system
                 s_size_t = struct.calcsize('@n')
                 
                 if fifo_r is not None:
                     for line in fifo_r:
                         cmd = line.decode('ascii')
-                        print(cmd)
                         
                         b = fifo_r.read(s_size_t)
                         data_size = struct.unpack('@n', b)[0]
                         data = fifo_r.read(data_size)
                         
-                        print(data_size, data)
+                        print(cmd, data_size, data)
                         
                         if cmd == "version":
                             r.katVersion = data.decode('ascii')
+                            
                         elif cmd == "progress" and self.verbose:
                             var = line.split("\t")
                         
