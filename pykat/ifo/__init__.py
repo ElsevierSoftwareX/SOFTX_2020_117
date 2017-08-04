@@ -52,7 +52,7 @@ class SensingMatrix(DataFrame):
             r = np.log10(np.abs(A[_]))
 
             #ax.plot((theta,theta), (r_lim[0], r), label=re.sub("[\(\[].*?[\)\]]", "", _).strip(), lw=2)
-            ax.plot((theta,theta), (r_lim[0], r), lw=2)
+            ax.plot((theta,theta), (r_lim[0], r), lw=2, label=_)
 
         ax.set_title(detector)
         ax.set_ylim(r_lim[0], r_lim[1])
