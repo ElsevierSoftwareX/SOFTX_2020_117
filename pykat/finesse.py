@@ -2009,10 +2009,10 @@ class kat(object):
                         try:
                             if time.time() < _start_kat + duration:
                                 if fifo_w is None:
-                                    fifo_w = open(pipe_name+".pf", "wb")
+                                    fifo_w = open(pipe_name+".pf", "wb", 0)
                                 
                                 if fifo_r is None:
-                                    fifo_r = open(pipe_name+".fp", "rb")
+                                    fifo_r = open(pipe_name+".fp", "rb", 0)
                                     
                                 self.__looking = False
                             else:
@@ -2024,22 +2024,17 @@ class kat(object):
                                 if not self.__looking:
                                     self.__looking = True
                 
-                def send_test():
+                def send_test(cmd, a,b,c):
                     if fifo_w is not None:
-                        data = [1.2, 3.4, 7]
+                        data = [a,b,c]
                         bdata = struct.pack('ddi', *data)
                         
-                        fifo_w.write("<test>".encode())
+                        fifo_w.write(("<%s>"%cmd).encode())
                         fifo_w.write(struct.pack('b', len(bdata)))
-                        fifo_w.flush()
-                        time.sleep(1e-6)
-                        
-                        fifo_w.write(struct.pack('ddi', *data))
-                        fifo_w.flush()
+                        fifo_w.write(bdata)
                 
-                send_test()
-                time.sleep(10e-6)
-                send_test()
+                send_test("test1", 1.2,3.4,5)
+                send_test("test2", 1.2,3.4,5)
                 
                 # Size of size_t array on system
                 s_size_t = struct.calcsize('@n')
