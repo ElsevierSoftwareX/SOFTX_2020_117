@@ -978,7 +978,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0)
+    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision = 10)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,4)-90.0
     
