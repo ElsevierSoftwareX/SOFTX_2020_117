@@ -55,6 +55,7 @@ import copy
 import struct
 
 from subprocess import Popen, PIPE
+from .pipe_comm import *
 
 try:
     # Python 2
@@ -939,7 +940,6 @@ class kat(object):
         self.__variables = {}
         self.IFO = None
         self.mf = []
-        
         self.data = {}
         
         # initialise default block
@@ -1002,7 +1002,17 @@ class kat(object):
             raise pkex.BasePyKatException("Data object is not a dictionary")
              
         self.data.update(dic)
-        
+    
+    @property
+    def paxes(self):
+        """
+        All the paxis elements in this kat object
+        """
+        __paxes = self.getAll(pykat.commands.paxis)
+        fields = [paxis.name for paxis in __paxes]
+        _paxis = namedtuple('paxis', fields)
+        return _paxis(*__paxes)
+       
     @property
     def binaryDirectory(self):
         """
@@ -1529,14 +1539,17 @@ class kat(object):
                         obj = pykat.detectors.qshot.parseFinesseText(line)
                     elif(first == "qnoised" or first == "qnoisedS" or first == "qnoisedN"):
                         obj = pykat.detectors.qnoised.parseFinesseText(line)
-                    elif(first == "xaxis" or first == "xaxis*"):
-                        self.noxaxis = False
-                        obj = pykat.commands.xaxis.parseFinesseText(line)
                     elif(first[0:2] == "hd"):
                         obj = pykat.detectors.hd.parseFinesseText(line)
                     elif(first.startswith("qhd")):
                         obj = pykat.detectors.qhd.parseFinesseText(line)
+                    elif(first == "paxis"):
+                        obj = pykat.commands.paxis.parseFinesseText(line)
+                    elif(first == "xaxis" or first == "xaxis*"):
+                        self.noxaxis = False
+                        obj = pykat.commands.xaxis.parseFinesseText(line)
                     elif(first == "x2axis" or first == "x2axis*"):
+                        self.noxaxis = False
                         obj = pykat.commands.x2axis.parseFinesseText(line)
                     elif(first == "gauss" or first == "gauss*" or first == "gauss**"):
                         after_process[0].append((line, self.__currentTag))
@@ -1895,7 +1908,8 @@ class kat(object):
         
     def run(self, plot=None, save_output=False, save_kat=False,
             kat_name=None, cmd_args=None, getTraceData=False,
-            rethrowExceptions=False, usePipe=True, step_func=None):
+            rethrowExceptions=False, usePipe=True,
+            pre_step=None, on_recv=None, on_output=None):
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
@@ -1919,8 +1933,8 @@ class kat(object):
         start = time.time()
         
         try:        
-            if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
-                raise pkex.BasePyKatException("No xaxis was defined")
+            if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False and len(self.paxes) == 0:
+                raise pkex.BasePyKatException("No xaxis or paxis was defined")
                 
             kat_exec = self._finesse_exec()
                             
@@ -1995,84 +2009,88 @@ class kat(object):
                 widgets = [progressbar.Percentage(), ' | ', progressbar.ETA(), ' | ', 'Status']
                 
                 pb = progressbar.ProgressBar(widgets=widgets, maxval = maxval)
-
-            fifo_r = None
-            fifo_w = None
-
-            _start_kat = time.time()
             
             duration = 5 # Duration for searching for open pipe
             
-            try:
-                if usePipe == True:
-                    while fifo_r is None or fifo_w is None:
+            if usePipe == True:
+                fifo_r = None
+                fifo_w = None
+                step = 0
+                
+                try:    
+                    fifo_r, fifo_w = open_pipes(pipe_name, time.time(), duration)
+                    
+                    # Size of size_t array on system
+                    s_size_t = struct.calcsize('@n')
+                    s_i = struct.calcsize("i")
+                    
+                    def _do_step(step):
+                        rtn = False
+                        
                         try:
-                            if time.time() < _start_kat + duration:
-                                if fifo_w is None:
-                                    fifo_w = open(pipe_name+".pf", "wb", 0)
+                            rtn = pre_step(step, fifo_w)
+                        except TypeError:
+                            rtn = pre_step(step)
+                        
+                        if rtn is False:
+                            send_finished(fifo_w)
+                        else:
+                            send_do_step(fifo_w)
+                            
+                    _do_step(step) # Do an initial pre-step
+                
+                    if fifo_r is not None:
+                        for line in fifo_r:
+                            cmd = line.decode('ascii').strip()
+                        
+                            b = fifo_r.read(s_size_t)
+                            data_size = struct.unpack('@n', b)[0]
+                            data = fifo_r.read(data_size)
+                        
+                            if on_recv is not None:
+                                on_recv(cmd, data)
+                        
+                            if cmd == "version":
+                                r.katVersion = data.decode('ascii')
+                            elif cmd == "test_recv":
+                                print("Finesse recv", struct.unpack('ddi', data))
+                            elif cmd == "progress" and self.verbose:
+                                var = line.split("\t")
+                                if len(var) == 3:
+                                    pb.currval = int(var[1])
+                                    pb.widgets[-1] = var[0] + " " + var[2][:-1]
+                                    pb.update()
+                                   
+                            elif cmd == "step":
+                                pass
+                            elif cmd == "data":
+                                l,d = line.split(":",1)
+                            elif cmd == "output":
+                                vals = struct.unpack('i', data[:struct.calcsize('i')])
+                                bodata = data[struct.calcsize('i'):]
                                 
-                                if fifo_r is None:
-                                    fifo_r = open(pipe_name+".fp", "rb", 0)
-                                    
-                                self.__looking = False
+                                odata = np.frombuffer(bodata, dtype=np.complex128)
+                                
+                                on_output(step, odata)
+                                
+                                step = vals[0]
+                                _do_step(step)
+                            elif cmd in ("recv", "test_str_recv", "progress"):
+                                pass
                             else:
-                                raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0. Or set usePipe=False when making kat object.".format(duration))
+                                raise pkex.BasePyKatException("Did not handle command type %s" % cmd)
                                 
-                        except FileNotFoundError as ex:
-                            sys.stdout.flush()
-                            if self.verbose:
-                                if not self.__looking:
-                                    self.__looking = True
-                
-                def send_test(cmd, a,b,c):
+                except KeyboardInterrupt as ex:
+                    pkex.printWarning("Keyboard interrupt caught, trying to close pipe connection")
+                    raise ex
+                finally:
                     if fifo_w is not None:
-                        data = [a,b,c]
-                        bdata = struct.pack('ddi', *data)
+                        send_finished(fifo_w)
+                        fifo_w.close()
+                    
+                    if fifo_r is not None:
+                        fifo_r.close()
                         
-                        fifo_w.write(("<%s>"%cmd).encode())
-                        fifo_w.write(struct.pack('b', len(bdata)))
-                        fifo_w.write(bdata)
-                
-                send_test("test1", 1.2,3.4,5)
-                send_test("test2", 1.2,3.4,5)
-                
-                # Size of size_t array on system
-                s_size_t = struct.calcsize('@n')
-                
-                if fifo_r is not None:
-                    for line in fifo_r:
-                        cmd = line.decode('ascii')
-                        
-                        b = fifo_r.read(s_size_t)
-                        data_size = struct.unpack('@n', b)[0]
-                        data = fifo_r.read(data_size)
-                        
-                        print(cmd, data_size, data)
-                        
-                        if cmd == "version":
-                            r.katVersion = data.decode('ascii')
-                            
-                        elif cmd == "progress" and self.verbose:
-                            var = line.split("\t")
-                        
-                            if len(var) == 3:
-                            	pb.currval = int(var[1])
-                            	pb.widgets[-1] = var[0] + " " + var[2][:-1]
-                            	pb.update()
-                        elif cmd == "step":
-                            
-                            if step_func is None:
-                                raise pkex.BasePyKatException("Expecting input but no step_func defined")
-                            
-                            a = step_func(line)
-                        elif cmd == "data":
-                            l,d = line.split(":",1)
-                            
-                            
-            finally:
-            	if fifo_r is not None: fifo_r.close()
-            	if fifo_w is not None: fifo_w.close()
-			
             (stdout, stderr) = p.communicate()
 
             r.stdout = stdout.decode('utf-8', 'replace')
@@ -2101,7 +2119,10 @@ class kat(object):
 
             # If Finesse returned an error, just print that and exit!
             if p.returncode != 0:
-                raise pkex.FinesseRunError(r.stderr, katfile.name)
+                if len(r.stderr.strip()):
+                    raise pkex.FinesseRunError(r.stderr, katfile.name)
+                else:
+                    raise pkex.FinesseRunError("Binary fault, return code=%i"%p.returncode, katfile.name)
             
             self.__prevrunfilename = katfile.name
             
@@ -2184,19 +2205,20 @@ class kat(object):
             # not parsed as pykat objects are used
             #if len(self.detectors.keys()) > 0: 
             
-            if hasattr(self, "x2axis") and self.noxaxis == False:
-                [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
+            if not usePipe:
+                if hasattr(self, "x2axis") and self.noxaxis == False:
+                    [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
             
-                r.xlabel = hdr[0]
-                r.ylabel = hdr[1]
-                r.zlabels = [s.strip() for s in hdr[2:]]
-                #r.zlabels = map(str.strip, hdr[2:])
-            else:
-                [r.x, r.y, hdr] = self.readOutFile(outfile)
+                    r.xlabel = hdr[0]
+                    r.ylabel = hdr[1]
+                    r.zlabels = [s.strip() for s in hdr[2:]]
+                    #r.zlabels = map(str.strip, hdr[2:])
+                else:
+                    [r.x, r.y, hdr] = self.readOutFile(outfile)
                 
-                r.xlabel = hdr[0]
-                r.ylabels = [s.strip() for s in hdr[1:]]
-                #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
+                    r.xlabel = hdr[0]
+                    r.ylabels = [s.strip() for s in hdr[1:]]
+                    #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
                     
             if save_kat:
                 if kat_name is None:
@@ -2239,6 +2261,7 @@ class kat(object):
                 return rtn
         except KeyboardInterrupt as ex:
             pkex.printWarning("Keyboard interrupt caught, stopped simulation.")
+            raise ex
         except pkex.FinesseRunError as ex:
             if rethrowExceptions:
                 raise ex 

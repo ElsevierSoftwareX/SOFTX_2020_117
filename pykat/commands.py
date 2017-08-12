@@ -496,6 +496,69 @@ class tf2(Command):
         rtn += " {%s}" % ",".join([c2str(_) for _ in self.zeros])
         
         return rtn
+
+class paxis(Command):
+    def __init__(self, name, param, comp=None):
+        Command.__init__(self, name, False)
+        
+        self._set_variables()
+        
+        if isinstance(param, six.string_types):
+            self.__param = param
+            if comp is None:
+                raise pkex.BasePyKatException("If parameter is set with a string, the comp argument must set the component name")
+                
+            self.__comp = comp
+        elif not isinstance(param, Param) :
+            raise pkex.BasePyKatException("param argument is not of type Param")
+        else:
+            self.__param = param
+            self.__comp = param._owner()
+
+        self._freeze()
+    
+    def _set_variables(self):
+        self.x = putter(self.name, self)
+        self.mx = putter("m"+self.name, self)
+
+        self._putters.append(self.x)
+        self._putters.append(self.mx)
+    
+    @property
+    def param(self): return self.__param
+    @param.setter
+    def param(self, value):
+        if not isinstance(value, Param):
+            raise pkex.BasePyKatException("param argument is not of type Param")
+        else:
+            self.__param = value
+            self.__comp = value._owner()
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split()
+
+        if values[0] != "paxis":
+            raise pkex.BasePyKatException("'{0}' not a valid Finesse paxis command".format(text))
+
+        values.pop(0) # remove initial value
+
+        if len(values) != 3:
+            raise pkex.BasePyKatException("paxis Finesse code format incorrect '{0}'".format(text))
+
+        return paxis(values[0], values[2], comp=values[1])
+
+    def getFinesseText(self):
+        # store either the component name of the string provided
+        comp_name = self.__comp.name if hasattr(self.__comp, "name") else self.__comp
+        param_name = self.__param.name if isinstance(self.__param, Param) else self.__param
+        
+        rtn =   ['paxis {0} {1} {2}'.format(self.name, comp_name, param_name)]
+            
+        rtn.extend(self.x._getPutFinesseText())
+        rtn.extend(self.mx._getPutFinesseText())
+        
+        return rtn
         
 class xaxis(Command):
     """
