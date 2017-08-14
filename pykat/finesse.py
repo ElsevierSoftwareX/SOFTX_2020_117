@@ -53,6 +53,8 @@ import collections
 import re
 import copy
 import struct
+import inspect
+import threading
 
 from subprocess import Popen, PIPE
 from .pipe_comm import *
@@ -1004,6 +1006,9 @@ class kat(object):
         self.data.update(dic)
     
     @property
+    def temp_name_dir(self): return (self.__tempname, self.__tempdir)
+    
+    @property
     def paxes(self):
         """
         All the paxis elements in this kat object
@@ -1908,8 +1913,7 @@ class kat(object):
         
     def run(self, plot=None, save_output=False, save_kat=False,
             kat_name=None, cmd_args=None, getTraceData=False,
-            rethrowExceptions=False, usePipe=True,
-            pre_step=None, on_recv=None, on_output=None):
+            rethrowExceptions=False):
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
@@ -1924,17 +1928,14 @@ class kat(object):
         that Finesse performs, the keys are the node names and the values
         are the x and y beam parameters. If no tracing is done a None
         is returned.
-        
-        usePipe           - Version of Finesse 2.1 allow piping between kat and pykat for transfer data an progress.
-                            Switching this off means some data and variables won't be populated, but it will work with
-                            older versions of Finesse.
-        rethrowExceptions - if true exceptions will be thrown again rather than being excepted and calling sys.exit()
+        rethrowExceptions - if true exceptions will be thrown again rather than
+                            being excepted and calling sys.exit()
         """
         start = time.time()
         
         try:        
-            if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False and len(self.paxes) == 0:
-                raise pkex.BasePyKatException("No xaxis or paxis was defined")
+            if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
+                raise pkex.BasePyKatException("No xaxis was defined")
                 
             kat_exec = self._finesse_exec()
                             
@@ -1969,20 +1970,17 @@ class kat(object):
             katfile.writelines(r.katScript)
             
             katfile.flush()
-
+            
             pipe_name = katfile.name + str(uuid.uuid4())
             
-            if usePipe:
-                cmd=[kat_exec, "--pykat=" + pipe_name]
-            else:
-                cmd=[kat_exec, "--perl1"]
+            cmd=[kat_exec,]
             
             if self.__time_code:
                 cmd.append('--perf-timing')
             
             if cmd_args != None:
                 cmd.extend(cmd_args)
-
+            
             if getTraceData:
                 cmd.append('--trace')
                 
@@ -1990,123 +1988,25 @@ class kat(object):
             # set default format so that less repeated numbers are printed to the
             # output file, should speed up running and parsing of output files
             cmd.append('-format=%.15g')
-
+            
             cmd.append(katfile.name)
             
-            if sys.platform == "win32" or sys.platform == "cygwin":
-            	# Pipes in windows need to be prefixed with a hidden location.
-            	pipe_name = "\\\\.\\pipe\\" + pipe_name
-
             p = Popen(cmd, stderr=PIPE, stdout=PIPE)
             #p = Popen(cmd) # use for debugging
-
-            if self.verbose:
-                if self.noxaxis:
-                    maxval = 1
-                else:
-                    maxval = 100
-                    
-                widgets = [progressbar.Percentage(), ' | ', progressbar.ETA(), ' | ', 'Status']
-                
-                pb = progressbar.ProgressBar(widgets=widgets, maxval = maxval)
             
-            duration = 5 # Duration for searching for open pipe
-            
-            if usePipe == True:
-                fifo_r = None
-                fifo_w = None
-                step = 0
-                
-                try:    
-                    fifo_r, fifo_w = open_pipes(pipe_name, time.time(), duration)
-                    
-                    # Size of size_t array on system
-                    s_size_t = struct.calcsize('@n')
-                    s_i = struct.calcsize("i")
-                    
-                    def _do_step(step):
-                        rtn = False
-                        
-                        try:
-                            rtn = pre_step(step, fifo_w)
-                        except TypeError:
-                            rtn = pre_step(step)
-                        
-                        if rtn is False:
-                            send_finished(fifo_w)
-                        else:
-                            send_do_step(fifo_w)
-                            
-                    _do_step(step) # Do an initial pre-step
-                
-                    if fifo_r is not None:
-                        for line in fifo_r:
-                            cmd = line.decode('ascii').strip()
-                        
-                            b = fifo_r.read(s_size_t)
-                            data_size = struct.unpack('@n', b)[0]
-                            data = fifo_r.read(data_size)
-                        
-                            if on_recv is not None:
-                                on_recv(cmd, data)
-                        
-                            if cmd == "version":
-                                r.katVersion = data.decode('ascii')
-                            elif cmd == "test_recv":
-                                print("Finesse recv", struct.unpack('ddi', data))
-                            elif cmd == "progress" and self.verbose:
-                                var = line.split("\t")
-                                if len(var) == 3:
-                                    pb.currval = int(var[1])
-                                    pb.widgets[-1] = var[0] + " " + var[2][:-1]
-                                    pb.update()
-                                   
-                            elif cmd == "step":
-                                pass
-                            elif cmd == "data":
-                                l,d = line.split(":",1)
-                            elif cmd == "output":
-                                vals = struct.unpack('i', data[:struct.calcsize('i')])
-                                bodata = data[struct.calcsize('i'):]
-                                
-                                odata = np.frombuffer(bodata, dtype=np.complex128)
-                                
-                                on_output(step, odata)
-                                
-                                step = vals[0]
-                                _do_step(step)
-                            elif cmd in ("recv", "test_str_recv", "progress"):
-                                pass
-                            else:
-                                raise pkex.BasePyKatException("Did not handle command type %s" % cmd)
-                                
-                except KeyboardInterrupt as ex:
-                    pkex.printWarning("Keyboard interrupt caught, trying to close pipe connection")
-                    raise ex
-                finally:
-                    if fifo_w is not None:
-                        send_finished(fifo_w)
-                        fifo_w.close()
-                    
-                    if fifo_r is not None:
-                        fifo_r.close()
-                        
             (stdout, stderr) = p.communicate()
-
             r.stdout = stdout.decode('utf-8', 'replace')
             r.stderr = stderr.decode('utf-8', 'replace')
             
             k = r.stdout.rfind('computation time:')
             
-            if usePipe == False:
-                # Set version if not using pipe information
-                s = r.stdout.find('(build ') + 7
-                e = r.stdout[s:].find(')')
-                
-                if s == -1 or e == -1:
-                    r.katVersion = "Couldn't get version number"
-                else:
-                    r.katVersion = r.stdout[s:(s+e)]
+            s = r.stdout.find('(build ') + 7
+            e = r.stdout[s:].find(')')
+            
+            if s == -1 or e == -1:
+                r.katVersion = "Couldn't get version number"
+            else:
+                r.katVersion = r.stdout[s:(s+e)]
                 
             if k > 0:
                 try:
@@ -2205,20 +2105,19 @@ class kat(object):
             # not parsed as pykat objects are used
             #if len(self.detectors.keys()) > 0: 
             
-            if not usePipe:
-                if hasattr(self, "x2axis") and self.noxaxis == False:
-                    [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
+            if hasattr(self, "x2axis") and self.noxaxis == False:
+                [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
+        
+                r.xlabel = hdr[0]
+                r.ylabel = hdr[1]
+                r.zlabels = [s.strip() for s in hdr[2:]]
+                #r.zlabels = map(str.strip, hdr[2:])
+            else:
+                [r.x, r.y, hdr] = self.readOutFile(outfile)
             
-                    r.xlabel = hdr[0]
-                    r.ylabel = hdr[1]
-                    r.zlabels = [s.strip() for s in hdr[2:]]
-                    #r.zlabels = map(str.strip, hdr[2:])
-                else:
-                    [r.x, r.y, hdr] = self.readOutFile(outfile)
-                
-                    r.xlabel = hdr[0]
-                    r.ylabels = [s.strip() for s in hdr[1:]]
-                    #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
+                r.xlabel = hdr[0]
+                r.ylabels = [s.strip() for s in hdr[1:]]
+                #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf 
                     
             if save_kat:
                 if kat_name is None:
@@ -2277,6 +2176,321 @@ class kat(object):
             if self.verbose:
                 print ("")
                 print ("Finished in {0:g} seconds".format(float(time.time() - start)))
+
+    def create(self, cmd_args=None):
+        
+        class SimulationPipe(object):
+            
+            def __init__(self, kat, on_recv=None):
+                self.__pipe_r = None
+                self.__pipe_w = None
+                self.__kat = kat.deepcopy()
+                self.__open = False
+                self.__on_recv = on_recv
+                
+                self.__paxis_indices = {}
+                self.__version = None
+                self.__progress = None
+                
+                self.__output_ready = threading.Condition()
+                self.__output_data = None
+                self.__stop_event = threading.Event()
+                self.__ready_event = threading.Event()
+                
+            @property
+            def version(self): return self.__version
+                
+            @property
+            def progress(self): return self.__progress
+            
+            def __read_pipe(self):
+                
+                # Size of size_t array on system
+                s_size_t = struct.calcsize('@n')
+                s_i = struct.calcsize("i")
+                
+                for line in self.__pipe_r:
+                    if self.__stop_event.is_set():
+                        return None
+                        
+                    cmd = line.decode('ascii').strip()
+                    
+                    b = self.__pipe_r.read(s_size_t)
+                    data_size = struct.unpack('@n', b)[0]
+                    data = self.__pipe_r.read(data_size)
+                    
+                    if self.__on_recv is not None:
+                        self.__on_recv(cmd, data)
+                
+                    if cmd == "version":
+                        self.__version = data.decode('ascii')
+                    elif cmd == "paxis":
+                        index, = struct.unpack('i', data[:struct.calcsize('i')])
+                        name = data[struct.calcsize('i'):].decode('utf8')
+                        self.__paxis_indices[name] = index
+                          
+                    elif cmd == "ready":
+                        self.__ready_event.set()
+                        
+                    elif cmd == "test_recv":
+                        print("Finesse recv", struct.unpack('ddi', data))
+                        
+                    elif cmd == "progress":
+                        #self.__progress = line.split("\t")
+                        pass
+                        
+                    elif cmd == "output":
+                        self.__ready_event.wait()
+                        
+                        vals = struct.unpack('i', data[:struct.calcsize('i')])
+                        bodata = data[struct.calcsize('i'):]
+                        
+                        self.__output_ready.acquire()
+                        self.__output_data = np.frombuffer(bodata, dtype=np.complex128)
+                        self.__output_ready.notify()
+                        self.__output_ready.release()
+                        
+                    elif cmd in ("recv", "test_str_recv", "progress"):
+                        pass
+                    else:
+                        raise pkex.BasePyKatException("Did not handle command type %s" % cmd)
+                
+            
+            def open(self, timeout=5):
+                if self.__open:
+                    raise pkex.BasePyKatException("Simulation pipe already open")
+                    
+                if len(self.__kat.paxes) == 0:
+                    raise pkex.BasePyKatException("No paxis was defined")
+                
+                kat_exec = self.__kat._finesse_exec()
+                tmpname, tmpdir = self.__kat.temp_name_dir
+                
+                # create a kat file which we will write the script into
+                if tmpname is None:
+                    katfile = tempfile.NamedTemporaryFile(mode ='w', suffix=".kat", dir=tmpdir, delete=False)
+                else:
+                    filepath =os.path.join(tmpdir, tmpname+".kat" )
+                    katfile = open( filepath, 'w' ) 
+                
+                katfile.writelines("".join(self.__kat.generateKatScript()))
+            
+                katfile.flush()
+                katfile.close()
+            
+                pipe_name = katfile.name + str(uuid.uuid4())
+                cmd=[kat_exec, "--pykat=" + pipe_name]
+            
+                if cmd_args is not None:
+                    cmd.extend(cmd_args)
+                                
+                cmd.append('--no-backspace')
+                # set default format so that less repeated numbers are printed to the
+                # output file, should speed up running and parsing of output files
+                cmd.append('-format=%.15g')
+
+                cmd.append(katfile.name)
+            
+                if sys.platform == "win32" or sys.platform == "cygwin":
+                	# Pipes in windows need to be prefixed with a hidden location.
+                	pipe_name = "\\\\.\\pipe\\" + pipe_name
+                
+                self._process = Popen(cmd, stderr=PIPE, stdout=PIPE)
+                
+                self.__pipe_r, self.__pipe_w = open_pipes(pipe_name, time.time(), timeout)
+                
+                self.__open = True
+                
+                self.__read_thread = threading.Thread(target=self.__read_pipe)
+                self.__read_thread.start()
+                
+            def update(self, paxis_name, value):
+                if self.__stop_event.is_set():
+                    raise pkex.BasePyKatException("Simulation pipe is closing")
+                if not self.__open:
+                    raise pkex.BasePyKatException("Simulation pipe is not open")
+                    
+                self.__ready_event.wait()
+                
+                if paxis_name not in self.__paxis_indices:
+                    raise pkex.BasePyKatException("Paxis called `%s` does not exist" % paxis_name)
+                    
+                send_update(self.__pipe_w, self.__paxis_indices[paxis_name], np.float64(value))
+                
+            def compute(self):
+                if self.__stop_event.is_set():
+                    raise pkex.BasePyKatException("Simulation pipe is closing")
+                if not self.__open:
+                    raise pkex.BasePyKatException("Simulation pipe is not open")
+                
+                self.__ready_event.wait()
+                    
+                send_do_step(self.__pipe_w)
+                
+                # wait for output
+                self.__output_ready.acquire()
+                self.__output_ready.wait()
+                out = self.__output_data.copy()
+                self.__output_ready.release()
+                
+                return out
+                
+            def close(self):
+                try:
+                    if self.__stop_event.is_set():
+                        raise pkex.BasePyKatException("Simulation pipe is closing")
+                    if not self.__open:
+                        raise pkex.BasePyKatException("Simulation pipe is not open")
+                    
+                    if self.__pipe_w is not None:
+                        send_finished(self.__pipe_w)
+                        
+                    self.__stop_event.set()
+                    self.__read_thread.join()
+                    
+                finally:
+                    if self.__pipe_w is not None:
+                        self.__pipe_w.close()
+                
+                    if self.__pipe_r is not None:
+                        self.__pipe_r.close()
+                    
+                    self.__open = False
+                
+        return SimulationPipe(self)
+        
+    def run_pipe_funcs(self, pre_step=None, on_recv=None, on_output=None, cmd_args=None):
+        try:        
+            if len(self.paxes) == 0:
+                raise pkex.BasePyKatException("No paxis was defined")
+                
+            kat_exec = self._finesse_exec()
+            
+            # create a kat file which we will write the script into
+            if self.__tempname is None:
+                katfile = tempfile.NamedTemporaryFile(mode ='w', suffix=".kat", dir=self.__tempdir, delete=False)
+            else:
+                filepath =os.path.join(self.__tempdir, self.__tempname+".kat" )
+                katfile = open( filepath, 'w' ) 
+                
+            katfile.writelines("".join(self.generateKatScript()))
+            
+            katfile.flush()
+            katfile.close()
+            
+            pipe_name = katfile.name + str(uuid.uuid4())
+            cmd=[kat_exec, "--pykat=" + pipe_name]
+            
+            if self.__time_code:
+                cmd.append('--perf-timing')
+            
+            if cmd_args is not None:
+                cmd.extend(cmd_args)
+                                
+            cmd.append('--no-backspace')
+            # set default format so that less repeated numbers are printed to the
+            # output file, should speed up running and parsing of output files
+            cmd.append('-format=%.15g')
+
+            cmd.append(katfile.name)
+            
+            if sys.platform == "win32" or sys.platform == "cygwin":
+            	# Pipes in windows need to be prefixed with a hidden location.
+            	pipe_name = "\\\\.\\pipe\\" + pipe_name
+                
+            p = Popen(cmd, stderr=PIPE, stdout=PIPE)
+            #p = Popen(cmd) # use for debugging
+                        
+            duration = 5 # Duration for searching for open pipe
+            fifo_r = None
+            fifo_w = None
+            step = 0
+            
+            try:    
+                fifo_r, fifo_w = open_pipes(pipe_name, time.time(), duration)
+                
+                # Size of size_t array on system
+                s_size_t = struct.calcsize('@n')
+                s_i = struct.calcsize("i")
+                
+                if fifo_r is not None:
+                    for line in fifo_r:
+                        cmd = line.decode('ascii').strip()
+                    
+                        b = fifo_r.read(s_size_t)
+                        data_size = struct.unpack('@n', b)[0]
+                        data = fifo_r.read(data_size)
+                    
+                        if on_recv is not None:
+                            on_recv(cmd, data)
+                    
+                        if cmd == "version":
+                            katVersion = data.decode('ascii')
+                        elif cmd == "test_recv":
+                            print("Finesse recv", struct.unpack('ddi', data))
+                        elif cmd == "progress" and self.verbose:
+                            var = line.split("\t")
+                               
+                        elif cmd == "step":
+                            pass
+                        elif cmd == "data":
+                            l,d = line.split(":",1)
+                        elif cmd == "output":
+                            vals = struct.unpack('i', data[:struct.calcsize('i')])
+                            bodata = data[struct.calcsize('i'):]
+                            
+                            odata = np.frombuffer(bodata, dtype=np.complex128)
+                            
+                            on_output(step, odata)
+                            
+                            step = vals[0]
+                            _do_step(step)
+                        elif cmd in ("recv", "test_str_recv", "progress"):
+                            pass
+                        else:
+                            raise pkex.BasePyKatException("Did not handle command type %s" % cmd)
+                            
+            except KeyboardInterrupt as ex:
+                pkex.printWarning("Keyboard interrupt caught, trying to close pipe connection")
+                raise ex
+            finally:
+                if fifo_w is not None:
+                    send_finished(fifo_w)
+                    fifo_w.close()
+                
+                if fifo_r is not None:
+                    fifo_r.close()
+                        
+            (stdout, stderr) = p.communicate()
+            
+            # If Finesse returned an error, just print that and exit!
+            if p.returncode != 0:
+                if len(stderr.strip()):
+                    raise pkex.FinesseRunError(r.stderr, katfile.name)
+                else:
+                    raise pkex.FinesseRunError("Binary fault, return code=%i"%p.returncode, katfile.name)
+            
+        except KeyboardInterrupt as ex:
+            pkex.printWarning("Keyboard interrupt caught, stopped simulation.")
+            raise ex
+        except pkex.FinesseRunError as ex:
+            if rethrowExceptions:
+                raise ex 
+            else:
+                pkex.PrintError("Error from Finesse:", ex)
+                
+        except pkex.BasePyKatException as ex:
+            if rethrowExceptions:
+                raise ex 
+            else:
+                pkex.PrintError("Error from pykat:", ex)
+        finally:
+            pass
+
+
+
+
+
 
     def __isObjectFromName(self, name):
         """
