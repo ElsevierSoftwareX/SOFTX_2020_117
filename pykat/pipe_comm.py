@@ -1,6 +1,8 @@
 import time
 import sys
 import struct
+import pykat.exceptions as pkex
+import os
 
 def open_pipes(pipe_name, start_kat, duration):
     fifo_r = None
@@ -9,10 +11,10 @@ def open_pipes(pipe_name, start_kat, duration):
     while fifo_r is None or fifo_w is None:
         try:
             if time.time() < start_kat + duration:
-                if fifo_w is None:
+                if fifo_w is None and os.path.exists(pipe_name+".pf"):
                     fifo_w = open(pipe_name+".pf", "wb", 0)
                 
-                if fifo_r is None:
+                if fifo_r is None and os.path.exists(pipe_name+".fp"):
                     fifo_r = open(pipe_name+".fp", "rb", 0)
             else:
                 raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0. Or set usePipe=False when making kat object.".format(duration))
