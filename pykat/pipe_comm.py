@@ -4,6 +4,8 @@ import struct
 import pykat.exceptions as pkex
 import os
 
+from struct import calcsize as cs
+
 def open_pipes(pipe_name, start_kat, duration):
     fifo_r = None
     fifo_w = None
@@ -55,6 +57,16 @@ def send_do_step(fifo_w):
     if fifo_w is not None:
         fifo_w.write(("<do_step>").encode())
         fifo_w.write(struct.pack('b', 0))
+        fifo_w.flush()
+        
+def send_do_axis(fifo_w, idx, _from, to, N):
+    if fifo_w is not None:
+        fifo_w.write(("<do_axis>").encode())
+        fifo_w.write(struct.pack('b', cs('i') + cs('d') + cs('d') + cs('i')))
+        fifo_w.write(struct.pack('i', idx))
+        fifo_w.write(struct.pack('d', _from))
+        fifo_w.write(struct.pack('d', to))
+        fifo_w.write(struct.pack('I', N))
         fifo_w.flush()
         
 def send_update(fifo_w, idx, value):
