@@ -112,6 +112,7 @@ class BaseDetector(object) :
         # of this one, otherwise we're making a copy of a copy of a copy...
         result = self.__class__.__new__(self.__class__.__base__)
         result._unfreeze()
+        memo[id(self)] = result
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
         result._freeze()

@@ -5,6 +5,11 @@ import pykat
 
 import subprocess
 
+branch = subprocess.check_output(["git","rev-parse","--abbrev-ref","HEAD"]).decode('utf8').rstrip()
+
+if branch != 'master':
+    raise Exception("Trying to push non master branch!!")
+
 version_git_1 = subprocess.check_output(["git", "describe","--long"]).decode('utf8').rstrip()
 version_git = ".".join(version_git_1.split('-')[:2])
     

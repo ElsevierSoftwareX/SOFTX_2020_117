@@ -8,6 +8,18 @@ setups.
 
 Source code is hosted at https://git.ligo.org/finesse/pykat
 
+Please cite pykat when used with::
+
+    @Misc{Pykat,
+      Title                    = {Pykat},
+      Author                   = {Brown, Daniel David and Freise, Andreas},
+      Month                    = {July},
+      Note                     = {{\url{http://www.gwoptics.org/pykat}}},
+      Year                     = {2017},
+      Doi                      = {10.5281/zenodo.821389},
+      Url                      = {http://www.gwoptics.org/pykat}
+    }
+
 Installation
 -------------
 
@@ -43,9 +55,9 @@ Usage
 ------
 
 This does not detail how to use FINESSE itself, just PyKat. FINESSE related queries should
-be directed at the FINESSE manual or the forum http://kvasir.sr.bham.ac.uk/redmine/projects/finesse/boards.
+be directed at the FINESSE manual or the mailing list finesse@star.sr.bham.ac.uk
 
-We highly recommend running PyKat with IPython, it has so far provided the best way to explore the various PyKat objects and output data.
+We highly recommend running PyKat with IPython or Jupyter Notebooks, it has so far provided the best way to explore the various PyKat objects and output data.
 Also of use is IPythons interactive matplotlib mode - or pylab mode - which makes displaying and interacting with multiple plots easy.
 You can start pylab mode from a terminal using::
 
@@ -65,7 +77,7 @@ the scope of this readme. FINESSE commands can be entered in many ways: reading 
 file, creating pykat objects representing the various FINESSE commands or by writing blocks of FINESSE code 
 as shown next::
 
-    import pylab as pl
+    import matplotlib.pyplot as plt
 
     # Here we write out any FINESSE commands we want to process
     code = """
@@ -87,7 +99,7 @@ as shown next::
     
     # Currently the kat object is empty. We can fill it using a block
     # string of normal FINESSE commands by parsing them.
-    kat.parseCommands(code)
+    kat.parse(code)
     
     # Once we have some simulation built up we can run it simply by calling...
     out = kat.run()
@@ -101,12 +113,12 @@ as shown next::
     out2 = kat.run()
     
     # We can plot the output simply enough using pylab plotting.
-    pl.figure()
-    pl.plot(out.x, out["pd_cav"])
-    pl.xlabel(out.xlabel)
-    pl.ylabel("Intensity [W]")
-    pl.legend(out.ylabels)
-    pl.show()
+    plt.figure()
+    plt.plot(out.x, out["pd_cav"])
+    plt.xlabel(out.xlabel)
+    plt.ylabel("Intensity [W]")
+    plt.legend(out.ylabels)
+    plt.show()
 
 The above demonstates a way of packaging up a FINESSE simulation - simple or complex - and 
 including any post-processing and plotting in one Python script file. Or you can create
@@ -117,7 +129,7 @@ To load in a separate FINESSE .kat file we can use the commands::
     
     kat = finesse.kat()
     # load in a separate file in the same directory...
-    kat.loadKatFile('test.kat')
+    kat.load('test.kat')
     # the kat object has now parsed all the commands in this file.
     
     # We can alter and objects in there, e.g. if there was a mirror called m1
@@ -125,25 +137,3 @@ To load in a separate FINESSE .kat file we can use the commands::
     
     out = kat.run()
     
-
-    
-
-    
-    
-Finesse Test Server
-----------------------
-
-A Flask based website that runs the Finesse test suites is included in PyKat. This can be hosted in Apache or run as a development server for quick testing on a system. This is a developer tool for testing FINESSE against a selection of known test cases.
-
-Prerequistes:
-    Flask
-    Numpy
-    CodernityDB
-    
-Command to start server:
-
-.. code:: bash
-
-  python -m pykat.testing.web_server --path=[path to create website] --port=[HTTP port] --git-bin=[path to git binary]
-
-The website can then be accessed in a web browser at the address: localhost:[port]

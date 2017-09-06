@@ -48,6 +48,7 @@ class Command(object):
         cls = self.__class__
         result = cls.__new__(cls)
         result._unfreeze()
+        memo[id(self)] = result
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
         for _ in result._putters:

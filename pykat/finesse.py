@@ -706,6 +706,17 @@ class Signals(object):
             # and then based on the parameter specfied get the name
             if not param.canFsig:
                 raise  pkex.BasePyKatException("Cannot fsig parameter {1} on component {0}".format(str(param._owner().name), param.name))
+        
+        def __deepcopy__(self, memo):
+            # Here we need to update the params with new owners
+            result = self.__class__.__new__(self.__class__)
+            memo[id(self)] = result
+            result.__dict__ = copy.deepcopy(self.__dict__, memo)
+        
+            for _ in result._params:
+                _._updateOwner(result)
+            
+            return result
             
         def _register_param(self, param):
             self._params.append(param)
@@ -744,6 +755,7 @@ class Signals(object):
         @property
         def owner(self): return self.__target._owner().name
     
+        
         def getFinesseText(self):
             rtn = []
     
@@ -751,8 +763,27 @@ class Signals(object):
                 rtn.extend(p.getFinesseText())
         
             return rtn
+            
+    def __init__(self, kat):
+        self._unfreeze()
+        self._default_name = "fsignal"
+        self.targets = []
+        self._params = []
+        self.__f = Param("f", self, None)
+        self._kat = kat
+        self._freeze()
     
+    def __deepcopy__(self, memo):
+        # Here we need to update the params with new owners
+        result = self.__class__.__new__(self.__class__)
+        memo[id(self)] = result
+        result.__dict__ = copy.deepcopy(self.__dict__, memo)
     
+        for _ in result._params:
+            _._updateOwner(result)
+        
+        return result
+        
     @property
     def name(self):
         # if we don't have any signals yet then use a dummy name
@@ -777,6 +808,7 @@ class Signals(object):
         
     @property
     def f(self): return self.__f
+    
     @f.setter
     def f(self,value):
         if value is None:
@@ -789,15 +821,6 @@ class Signals(object):
             raise pkex.BasePyKatException("Signal frequency must be greater than 0.")
             
         self.__f.value = SIfloat(value)
-        
-    def __init__(self, kat):
-        self._unfreeze()
-        self._default_name = "fsignal"
-        self.targets = []
-        self._params = []
-        self.__f = Param("f", self, None)
-        self._kat = kat
-        self._freeze()
         
     def _register_param(self, param):
         self._params.append(param)
@@ -1038,6 +1061,7 @@ class kat(object):
             if isinstance(x[1], property):
                 setattr(result.__class__, x[0], x[1])
     
+        result._kat__signals = copy.deepcopy(self.signals, memo)
         result.nodes._NodeNetwork__update_nodes_properties()
                 
         # Update any weakrefs

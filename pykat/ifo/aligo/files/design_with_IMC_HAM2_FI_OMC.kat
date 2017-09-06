@@ -229,9 +229,9 @@ bs2 BSAR2 50u 0 0 29.195 nBSi4 dump15 nSRBS dump16
 s ly1 5.0126 nYBS nITMY1a
 
 # Thermal lens correction
-lens ITMY_therm $th_f nITMY1a nITM_th1
+lens ITMY_therm $TLY_f nITMY1a nITM_th1
 s ITMY_th1 0 nITM_th1 nITM_th2
-lens ITMY_lens inf nITM_th2 nITM_th3
+lens ITMY_lens $SLY_f nITM_th2 nITM_th3
 s ITMY_th2 0 nITM_th3 nITMY1
 
 # Y arm input mirror
@@ -261,9 +261,9 @@ attr ITMY mass 40
 s lx1 4.993 nXBS nITMX1a
 
 # Thermal lens correction
-lens ITMX_therm $th_f nITMX1a nITMX_th1
+lens ITMX_therm $TLX_f nITMX1a nITMX_th1
 s ITMX_th1 0 nITMX_th1 nITMX_th2
-lens ITMX_lens inf nITMX_th2 nITMX_th3
+lens ITMX_lens $SLX_f nITMX_th2 nITMX_th3
 s ITMX_th2 0 nITMX_th3 nITMX1
 
 # X arm input mirror
@@ -415,6 +415,10 @@ const Mloss 37.5u
 const Larm 3994.4692
 const fM 36.397884M
 const fP 54.596826M
+const TLY_f 34.5k         # Thermal lens ITMY
+const TLX_f 34.5k         # Thermal lens ITMX
+const SLY_f inf           # Substrate lens ITMY
+const SLX_f inf           # Substrate lens ITMX
 const th_f 34.5k
 ###########################################################################
 %%% FTend constants

@@ -38,6 +38,14 @@ class ALIGO_IFO(IFO):
     The functions here should be those that update the kat with information
     from the IFO object or vice-versa.
     """
+
+    def __init__(self, kat, tuning_keys_list, tunings_components_list):
+        IFO.__init__(self, kat, tuning_keys_list, tunings_components_list)
+        self._f1 = np.nan
+        self._f2 = np.nan
+        self._f3 = np.nan
+        self._f36M = np.nan
+    
     @property
     def DCoffset(self):
         if 'DCoffset' not in self.kat.data:
@@ -59,7 +67,67 @@ class ALIGO_IFO(IFO):
     @DCoffsetW.setter
     def DCoffsetW(self, value):
         self.kat.data['DCoffsetW'] = float(value)
-    
+
+    @property
+    def f1(self):
+        return self._f1
+    @f1.setter
+    def f1(self, value):
+        self._f1 = float(value)
+        self.f36M = self.f2 - self.f1
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f1':
+                    a.port.f = self.f1
+                
+    @property
+    def f2(self):
+        return self._f2
+    @f2.setter
+    def f2(self, value):
+        self._f2 = float(value)
+        self.f36M = self.f2 - self.f1
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f2':
+                    a.port.f = self.f2
+        
+    @property
+    def f3(self):
+        return self._f3
+    @f3.setter
+    def f3(self, value):
+        self._f3 = float(value)
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f3':
+                    a.port.f = self.f3
+        
+    @property
+    def f36M(self):
+        return self._f36M
+    @f36M.setter
+    def f36M(self, value):
+        self._f36M = float(value)
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-4:] == 'f36M':
+                    a.port.f = self.f36M
+        
+    def createPorts(self):
+        # useful ports
+        self.POP_f1  = Output(self, "POP_f1",  "nPOP",  self.f1, phase=101)
+        self.POP_f2  = Output(self, "POP_f2",  "nPOP",  self.f2, phase=13)
+        self.REFL_f1 = Output(self, "REFL_f1", "nREFL", self.f1, phase=101)
+        self.REFL_f2 = Output(self, "REFL_f2", "nREFL", self.f2, phase=14)
+        self.AS_DC   = Output(self, "AS_DC", "nAS")
+        self.POW_BS  = Output(self, "PowBS", "nPRBS*")
+        self.POW_X   = Output(self, "PowX",  "nITMX2")
+        self.POW_Y   = Output(self, "PowY",  "nITMY2")
     
     def compute_derived_resonances(self):
         clight
@@ -520,23 +588,34 @@ class ALIGO_IFO(IFO):
                  ).format(*chain.from_iterable(zip(gains, accuracies)),
                           DC=-self.kat.IFO.DCoffsetW)
 
-        code3 = ("noplot ITMY_lock\n"
-                 "func ITMY_lock = (-1.0) * $MICH_lock\n"
-                 "func ETMX_lock = $CARM_lock + $MICH_lock + $DARM_lock\n"
-                 "func ETMY_lock = $CARM_lock - $MICH_lock - $DARM_lock\n"
-                 "put* PRM     phi     $PRCL_lock\n"
-                 "put* ITMX    phi     $MICH_lock\n"
+        # TODO: Use DOF optics and factors to define this. 
+        code3 = ("func ETMX_lock = (-1.0) * $CARM_lock - 0.5 * $MICH_lock - $DARM_lock\n"
+                 "func ETMY_lock = (-1.0) * $CARM_lock + 0.5 * $MICH_lock + $DARM_lock\n"
+                 "func ITMX_lock = (-0.5) * $MICH_lock\n"
+                 "func ITMY_lock = 0.5 * $MICH_lock\n"
+                 "func PRM_lock = 1.0 * $PRCL_lock\n"
+                 "func SRM_lock = (-1.0) * $SRCL_lock\n"
+
+                 "put* PRM     phi     $PRM_lock\n"
+                 "put* ITMX    phi     $ITMX_lock\n"
                  "put* ITMY    phi     $ITMY_lock\n"
                  "put* ETMX    phi     $ETMX_lock\n"
                  "put* ETMY    phi     $ETMY_lock\n"
-                 "put* SRM     phi     $SRCL_lock\n"
+                 "put* SRM     phi     $SRM_lock\n"
+                 "put* PRM     phi     $PRM_lock\n"
+
                  "noplot PRCL_lock\n"
                  "noplot SRCL_lock\n"
                  "noplot MICH_lock\n"
                  "noplot DARM_lock\n"
                  "noplot CARM_lock\n"
                  "noplot ETMX_lock\n"
-                 "noplot ETMY_lock\n")
+                 "noplot ETMY_lock\n"
+                 "noplot ITMX_lock\n"
+                 "noplot ITMY_lock\n"
+                 "noplot PRM_lock\n"
+                 "noplot SRM_lock\n"
+                 )
 
         if verbose:
             print(" .--------------------------------------------------.")
@@ -754,6 +833,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nITMX2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nITMY2")
+    # kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nSRM1")
 
     # pretune LSC DOF
     kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
@@ -762,14 +842,16 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PRM",  1, 10.0, sigtype="z")
     kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0, sigtype="z")
     
-    # control scheme as in [1] Table C.1  
+    # control scheme as in [1] Table C.1. Due to Finesse conventions, the overall factor for all but PRCL are multiplied by -1
+    # compared to the LIGO defintion, to match the same defintion. 
     kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
-    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 100.0, sigtype="z")
-    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [1, 1], 1.5, sigtype="z")
-    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [1,-1], 1.0, sigtype="z")
-    kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", 1, 1e2, sigtype="z")
-    
+    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
+    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [-1, -1], 1.5, sigtype="z")
+    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
+    kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", -1, 1e2, sigtype="z")
+
     kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM, kat.IFO.SRCL)
+    kat.IFO.CAV_POWs = (kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.POW_BS)
     
     # Pitch DOfs
     # There is a difference in the way LIGO and Finesse define positive and negative
@@ -896,7 +978,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0)
+    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision = 10)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,4)-90.0
     
@@ -990,11 +1072,13 @@ def power_ratios(_kat):
 
 def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
                     gains=None, accuracies=None,
-                    rms=[1e-13, 1e-13, 1e-12, 1e-11, 50e-11], verbose=True):
+                    rms=[1e-13, 1e-13, 1e-12, 1e-11, 50e-11], verbose=True,
+                    useDiff = True):
     """
     gainsAdjustment: factors to apply to loop gains computed from optical gains
     gains:           override loop gain [W per deg]
     accuracies:      overwrite error signal threshold [W]
+    useDiff:         use diff command instead of fsig to compute optical gains
                     
     rms: loop accuracies in meters (manually tuned for the loops to work
          with the default file)
@@ -1008,11 +1092,11 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
         
     # optical gains in W/rad
     
-    ogDARM = optical_gain(kat.IFO.DARM, kat.IFO.DARM)
-    ogCARM = optical_gain(kat.IFO.CARM, kat.IFO.CARM)
-    ogPRCL = optical_gain(kat.IFO.PRCL, kat.IFO.PRCL)
-    ogMICH = optical_gain(kat.IFO.MICH, kat.IFO.MICH)
-    ogSRCL = optical_gain(kat.IFO.SRCL, kat.IFO.SRCL)
+    ogDARM = optical_gain(kat.IFO.DARM, kat.IFO.DARM, useDiff=useDiff)
+    ogCARM = optical_gain(kat.IFO.CARM, kat.IFO.CARM, useDiff=useDiff)
+    ogPRCL = optical_gain(kat.IFO.PRCL, kat.IFO.PRCL, useDiff=useDiff)
+    ogMICH = optical_gain(kat.IFO.MICH, kat.IFO.MICH, useDiff=useDiff)
+    ogSRCL = optical_gain(kat.IFO.SRCL, kat.IFO.SRCL, useDiff=useDiff)
 
     if gains is None:            
         # manually tuning relative gains
