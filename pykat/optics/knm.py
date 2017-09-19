@@ -580,7 +580,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         x = surface_map.x
         y = surface_map.y
     
-    K = np.zeros((couplings.size/4,), dtype=np.complex128)
+    K = np.zeros((int(couplings.size/4),), dtype=np.complex128)
     
     #it = np.nditer(couplings, flags=['refs_ok','f_index'])
     
@@ -625,8 +625,6 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
 
         if profile:
             t0 = time.time()
-                
-        
         
         if method == "riemann":
             K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache, delta=delta)
