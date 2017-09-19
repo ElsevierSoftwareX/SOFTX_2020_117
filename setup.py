@@ -41,7 +41,7 @@ try:
         url='http://pypi.python.org/pypi/PyKat/',
         license='GPL v2',
         description='Python interface and tools for FINESSE',
-        long_description=open('README.rst').read(),
+        long_description=open('README.md').read(),
         install_requires=REQUIREMENTS,
         package_data={'': ['optics/greedypoints/*.txt', 'ifo/aligo/files/*.kat']},
         include_package_data=True
