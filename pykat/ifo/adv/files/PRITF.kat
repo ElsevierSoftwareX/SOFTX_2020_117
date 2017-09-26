@@ -10,8 +10,6 @@ Daniel Toyra
 dtoyra@star.sr.bham.ac.uk  
 */
 
-
-
 %%% FTblock Laser
 ###########################################################################
 
@@ -30,17 +28,18 @@ l i1 $P_laser 0 0 nin
 
 # With EOMs
 # ---------
-s s0 1m nin nEO1
-mod eom1 $f1 $mod_index_6M 2 pm 0 nEO1 nsEO2
-s s_eom1 0.1 nsEO2 nEO2
-mod eom2 $f2 $mod_index_56M 2 pm 0 nEO2 nsEO3
-s s_eom2 0.1 nsEO3 nEO3
-mod eom3 $f3 $mod_index_8M 2 pm 0 nEO3 nsEO4
-s s_eom3 0.1 nsEO4 nEO4
-mod eom4 $f4b $mod_index_132M 2 pm 0 nEO4 nsEO5
-s s_eom4 1f nsEO5 nEO5 
-mod eom5 $f4 $mod_index_119M 2 pm 0 nEO5 nEO6
-s s1 0 nEO6 nInj
+s s0 1m nin nEOM1a
+mod EOM1 $f1 $mod_index_6M 2 pm 0 nEOM1a nEOM1b
+s sEOM1 0.1 nEOM1b nEOM2a
+mod EOM2 $f2 $mod_index_56M 2 pm 0 nEOM2a nEOM2b
+s sEOM2 0.1 nEOM2b nEOM3a
+mod EOM3 $f3 $mod_index_8M 2 pm 0 nEOM3a nEOM3b
+s sEOM3 0.1 nEOM3b nEOM4a
+mod EOM4 $f4 $mod_index_119M 2 pm 0 nEOM4a nEOM4b
+# s sEOM4 0 nEOM4b nEOM5a
+# mod EOM5 $f4b $mod_index_132M 2 pm 0 nEOM5a nEOM5b
+
+s s1 0 nEOM4b nInj
 # ---------
 
 ###########################################################################
@@ -52,7 +51,7 @@ bs Inj 1 0 0 0 nInj nS_MPR1 dump dump
 ###########################################################################
 
 s sInj_PR 0.1 nS_MPR1 nMPR1
-m MPR_AR $R_PR_AR 0.99984 $PRARphi nMPR1 nMPR2
+m2 MPR_AR 0 160u $PRARphi nMPR1 nMPR2
 s sPR 0.1003 $nsilica nMPR2 nMPR3
 m1 MPR $T_PR $L_PR $PRphi nMPR3 nMPR4
 attr MPR Rc $ROC_PR
@@ -90,6 +89,8 @@ bs2 BSAR2 $R_BS_AR 0 0 -29.1950549837 nBSi4 dump nBSe dump
 #bs2 BSAR1 $R_BS_AR 0 0 -29.1922 nBSi2 dump nBSn nBSAR       
 #bs2 BSAR2 $R_BS_AR 0 0 -29.1922 nBSi4 dump nBSe dump
 
+s sOut 0 nBSe nAS
+
 ###########################################################################
 %%% FTend BS
 
@@ -117,7 +118,7 @@ s sNl $l_arm nMNI2 nMNE1
 m1 MNE $T_NE $L_NE  $NEphi nMNE1 nMNEi1
 #s sMNE 0.289926 $nsilica nMNEi1 nMNEi2
 s sMNE .2 $nsilica nMNEi1 nMNEi2
-m2 MNEAR $R_NE_AR 0 $NEARphi nMNEi2 nMNE2
+m2 MNEAR 0 133u $NEARphi nMNEi2 nMNE2
 attr MNE Rc $ROC_NE
 
 ###########################################################################
@@ -146,7 +147,7 @@ s sWl $l_arm nMWI2 nMWE1
 m1 MWE $T_WE $L_WE $WEphi nMWE1 nMWEi1
 #s sMWE 0.289926 $nsilica nMWEi1 nMWEi2
 s sMWE .2 $nsilica nMWEi1 nMWEi2
-m2 MWEAR $R_NE_AR 0 $WEARphi nMWEi2 nMWE2
+m2 MWEAR 0 133u $WEARphi nMWEi2 nMWE2
 attr MWE Rc $ROC_WE
 
 ###########################################################################
