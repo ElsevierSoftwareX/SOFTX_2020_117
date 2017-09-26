@@ -243,7 +243,7 @@ class BeamParam(object):
     def __pow__(self, q):
         return BeamParam(self.__lambda, self.__nr, self.__q**q)
 
-    def __neg__(self, q):
+    def __neg__(self):
         return BeamParam(self.__lambda, self.__nr, -self.__q)
         
     def __eq__(self, q):
