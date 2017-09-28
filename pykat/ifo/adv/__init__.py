@@ -253,30 +253,30 @@ class ADV_IFO(IFO):
         self.compute_derived_lengths()
         
         print(" .--------------------------------------------------.")
-        print("| - arm length:                                     |")
-        print("| Lx   = {:11.7}m, Ly   = {:11.7}m          |".format(float(self.kat.sNl.L), float(self.kat.sWl.L)))
-        print("| - small MI and recycling lengths:                 | ")
-        print("| lx   = {:11.7}m, ly   = {:11.7}m          |".format(self.lx, self.ly))
+        print("| - arm lengths [m]:                                |")
+        print("| Ln   = {:<11.7} Lw       = {:<11.7}         |".format(float(self.kat.sNl.L), float(self.kat.sWl.L)))
+        print("| - small MI and recycling lengths [m]:             | ")
+        print("| ln   = {:<11.7} lw       = {:<11.7}         |".format(self.lx, self.ly))
         if self.lsr is None:
-            print("| lpr  = {:11.7}m {:20}          |".format(self.lpr, ""))
+            print("| lpr  = {:<11.7} {:20}           |".format(self.lpr, ""))
         else:
-            print("| lpr  = {:11.7}m, lsr  = {:11.7}m          |".format(self.lpr, self.lsr))
+            print("| lpr  = {:<11.7}  lsr  = {:<11.7}           |".format(self.lpr, self.lsr))
 
-        print("| lMI  = {:11.7}m, lSchnupp = {:11.5}m      |".format(self.lMI, self.lSchnupp))
+        print("| lMI  = {:<11.7} lSchnupp = {:<11.5}         |".format(self.lMI, self.lSchnupp))
         if self.lSRC is None:
-            print("| lPRC = {:11.7}m {:20}          |".format(self.lPRC, ""))
+            print("| lPRC = {:<11.7} {:20}           |".format(self.lPRC, ""))
         else:
-            print("| lPRC = {:11.7}m, lSRC = {:11.7}m          |".format(self.lPRC, self.lSRC))
+            print("| lPRC = {:<11.7}  lSRC = {:<11.7}           |".format(self.lPRC, self.lSRC))
         print("+---------------------------------------------------+")
         print("| - associated cavity frequencies [Hz]:             |")
-        print("| fsrx   = {:11.8}, fsry   = {:11.8}        |".format(self.fsrX, self.fsrY))
+        print("| fsrx   = {:<11.5e},    fsry = {:<11.5e}       |".format(self.fsrX, self.fsrY))
         if self.fsrSRC is None:
-            print("| fsrPRC = {:11.8} {:20}       |".format(self.fsrPRC, ""))
+            print("| fsrPRC = {:<13.8e} {:19}       |".format(self.fsrPRC, ""))
         else:
-            print("| fsrPRC = {:11.8}, fsrSRC = {:11.8}        |".format(self.fsrPRC, self.fsrSRC))
+            print("| fsrPRC = {:<13.8e}, fsrSRC = {:<11.8e}        |".format(self.fsrPRC, self.fsrSRC))
         # print("| f1_PRC = {:11.8}                             |".format(self.f1_PRC))
-        print("| f1     = {:11.8}, f2     = {:11.9}        |".format(self.f1, self.f2))
-        print("| f3     = {:11.8}, f4     = {:11.9}        |".format(self.f3, self.f4))
+        print("| f1     = {:<12.6e},   f2   = {:<12.7e}     |".format(self.f1, self.f2))
+        print("| f3     = {:<12.6e},   f4   = {:<12.8e}    |".format(self.f3, self.f4))
 
         print(" `--------------------------------------------------'")
     
@@ -286,12 +286,12 @@ class ADV_IFO(IFO):
         
         This function alters the kat object directly.
         """
-        self.kat.s1.L = (self.kat.s1.L + self.kat.s0.L.value + self.kat.s_eom1.L.value + self.kat.s_eom2.L.value +
-                         self.kat.s_eom3.L.value + self.kat.s_eom4.L.value)
+        self.kat.s1.L = (self.kat.s1.L + self.kat.s0.L.value + self.kat.sEOM1.L.value +
+                         self.kat.sEOM2.L.value + self.kat.sEOM3.L.value)
         
-        self.kat.remove("s0", "eom1", "s_eom1", "eom2", "s_eom2", 'eom3','s_eom3', 'eom4', 's_eom4', 'eom5') # Remove modulators
+        self.kat.remove("s0", "EOM1", "sEOM1", "EOM2", "sEOM2", 'EOM3','sEOM3', 'EOM4') # Remove modulators
         # Set output node of laser block to be on the laser
-        self.kat.nodes.replaceNode(self.kat.i1, 'nin', 'nEO6')
+        self.kat.nodes.replaceNode(self.kat.i1, 'nin', 'nEOM4b')
         
     def remove_IMC_HAM2(self, removeIMC, removeHAM2):
         """
@@ -469,12 +469,11 @@ class ADV_IFO(IFO):
             print("-- adjusting DCoffset based on light in dark port:")
         
             waste_light = round(float(out[signame]),1)
-        
             print("   waste light in AS port of {:2} W".format(waste_light))
         
             #kat_lock = _kat.deepcopy()
         
-            self.find_DC_offset(_kat, 2*waste_light)
+            self.find_DC_offset(5*waste_light)
         
         vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset / 360.0 * _kat.lambda0 ))
         vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
@@ -756,7 +755,7 @@ class ADV_IFO(IFO):
         for _ in inspect.getmembers(self, lambda x: isinstance(x, Output)):
             self.Outputs[_[0]] = _[1]
             
-def assert_aligo_ifo_kat(kat):
+def assert_adv_ifo_kat(kat):
 
     #print(ADV_IFO)
     #print(kat.IFO)
@@ -873,7 +872,7 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  kat.IFO.f2, phase=13)
     kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", kat.IFO.f1, phase=101)
     kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", kat.IFO.f2, phase=14)
-    kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nBSe")
+    kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nBSs*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nMNI2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nMWI2")
@@ -946,7 +945,7 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
 
     
 def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
-    assert_aligo_ifo_kat(kat)
+    assert_adv_ifo_kat(kat)
     
     while precision > pretune_precision * DOF.scale:
         out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
@@ -956,7 +955,7 @@ def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precis
     
     
 def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
-    assert_aligo_ifo_kat(_kat)
+    assert_adv_ifo_kat(_kat)
     
     # This function needs to apply a bunch of pretunings to the original
     # kat and associated IFO object passed in
@@ -1032,7 +1031,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
 
 
 def pretune_status(_kat):
-    assert_aligo_ifo_kat(_kat)
+    assert_adv_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     kat.verbose = False
@@ -1087,7 +1086,7 @@ def pretune_status(_kat):
 
 # probably extra and can be removed
 def power_ratios(_kat):
-    assert_aligo_ifo_kat(_kat)
+    assert_adv_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     kat.verbose = False
@@ -1130,7 +1129,7 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
                     
     NOTE: gainsAdjustment, gains, accuracies and rms are specified in the order of DARM, CARM, PRCL, MICH, SRCL.
     """
-    assert_aligo_ifo_kat(kat)
+    assert_adv_ifo_kat(kat)
         
     # optical gains in W/rad
     
