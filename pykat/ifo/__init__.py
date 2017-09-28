@@ -535,6 +535,36 @@ def mismatch_scan_RoC(base, node, mirror, lower, upper, steps):
 
     out = _kat.run()
     return out['qx'], out['qy']
+    
+def mismatch_scan_RoC_2D(base, node, mirror1, lower1, upper1, steps1, mirror2, lower2, upper2, steps2):
+    _kat = base.deepcopy()
+    _kat.removeBlock("locks", False)
+    _kat.removeBlock("errsigs", False)
+
+    for _ in list(_kat.detectors.values()):
+        _.remove()
+
+    _kat.parse("bp qx x q "+node)
+    _kat.parse("bp qy y q "+node)
+    _kat.yaxis = "re:im"
+    _kat.maxtem = 0 # don't need any maxtem as we are just tracing
+    _kat.parse("""
+    xaxis* {name1} Rcx lin 0 1 10
+    x2axis* {name2} Rcx lin 0 1 10
+    put {name1} Rcy $x1
+    put {name2} Rcy $x2
+    """.format(name1=mirror1, name2=mirror2))
+    
+    _kat.xaxis.limits = (lower1, upper1)
+    _kat.xaxis.steps = steps1
+    
+    _kat.x2axis.limits = (lower2, upper2)
+    _kat.x2axis.steps = steps2
+    _kat.retrace = "force"
+    
+    out = _kat.run()
+    
+    return out['qx'], out['qy']
 
 def mismatch_scan_L(base, node, length, lower, upper, steps):
     _kat = base.deepcopy()

@@ -1,10 +1,11 @@
-import pykat
-import matplotlib.pyplot as plt
-import numpy as np
-
-from . import mismatch_scan_RoC
 
 def cavity_mode_comparison(kat, node, ax=None, show=True, reference=None, scaling=None, ppm=None):
+    import pykat
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    from . import mismatch_scan_RoC
+    
     mmx, mmy, qs = pykat.ifo.mismatch_cavities(kat, node)
     
     if ax is None:
@@ -110,7 +111,7 @@ def cavity_mode_comparison(kat, node, ax=None, show=True, reference=None, scalin
     
     if show: plt.show()
     
-def roc_vs_cavity_overlap(base, cav1, cav2, node, mirror, lower, upper, steps, plot=True):
+def roc_vs_cavity_overlap(base, cav1, cav2, node, mirror, lower, upper, steps, plot=True, getData=False):
     """
     This function should be used to find the optimum cavity overlap between two cavities
     by varying the radius of curvture of a mirror. From this you can visually see
@@ -130,8 +131,14 @@ def roc_vs_cavity_overlap(base, cav1, cav2, node, mirror, lower, upper, steps, p
     steps: number of points to compute
     plot: Set whether to plot or not
     
-    return: (overlap_min_RoC, overlap_max_RoC)
+    return: (x_min_overlap_RoC, y_min_overlap_RoC)
     """
+    import pykat
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    from . import mismatch_scan_RoC
+    
     _kat = base.deepcopy()
     
     # User could pass pykat object or string names in, here we convert to string to get
@@ -158,19 +165,19 @@ def roc_vs_cavity_overlap(base, cav1, cav2, node, mirror, lower, upper, steps, p
         qys.append(qy)
     
     x = np.linspace(lower, upper, steps+1)
-    y = 1 - pykat.BeamParam.overlap(qxs[0], qxs[1])
+    y1 = 1 - pykat.BeamParam.overlap(qxs[0], qxs[1])
     
     if plot:
         plt.figure()
-        plt.semilogy(x, y, label='X')
+        plt.semilogy(x, y1, label='X')
     
-    qx_min = x[y.argmin()]
+    qx_min = x[y1.argmin()]
 
-    y = 1 - pykat.BeamParam.overlap(qys[0], qys[1])
+    y2 = 1 - pykat.BeamParam.overlap(qys[0], qys[1])
     
-    if plot: plt.semilogy(x, y, label='Y')
+    if plot: plt.semilogy(x, y2, label='Y')
     
-    qy_min = x[y.argmin()]
+    qy_min = x[y2.argmin()]
     
     if plot:
         plt.title(mirror + ": "+ " vs ".join(cavs))
@@ -179,5 +186,103 @@ def roc_vs_cavity_overlap(base, cav1, cav2, node, mirror, lower, upper, steps, p
         plt.ylabel('Overlap')
         plt.tight_layout()
         plt.show()
+    
+    if getData:
+        return x, y1, y2
+    else:
+        return qx_min, qy_min
         
-    return qx_min, qy_min
+def roc_vs_cavity_overlap_2D(base, cav1, cav2, node, mirror1, lower1, upper1, steps1,
+                             mirror2, lower2, upper2, steps2, plot=True, getData=False):
+    """
+    This function should be used to find the optimum cavity overlap between two cavities
+    by varying the radius of curvture of two mirrors. From this you can visually see
+    if a minimum is found. The function returns the radii of curvature that give the minimum
+    overlap in both the X and Y directions.
+    
+    Function will alter the current curvature between -lower and +upper for number of steps
+    provided.
+    
+    base: kat object
+    cav1: cavity for comparison (str or cavity object)
+    cav2: cavity for comparison (str or cavity object)
+    node: node to trace beam parameter to (str or node object)
+    mirror[1/2]: mirror or beamsplitter to vary curvature of (name str or object)
+    lower[1/2]: lower change in radii of curvature
+    upper[1/2]: upper change in radii of curvature
+    steps[1/2]: number of points to compute
+    plot: Set whether to plot or not
+    getData: If true returns the data rather than min mismatch RoCs
+                             
+    return: ((x_min_RoC1, x_min_RoC2), (y_min_RoC1, y_min_RoC2)
+    
+    if getData=True
+    
+    return: ((x_min_RoC1, x_min_RoC2), (y_min_RoC1, y_min_RoC2), dRoC1, dRoc2, overlap_x, overlap_y
+    """
+    import pykat
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.colors import LogNorm
+    
+    from pykat.ifo import mismatch_scan_RoC_2D
+    
+    _kat = base.deepcopy()
+    
+    # User could pass pykat object or string names in, here we convert to string to get
+    # name of object to use to select new deepcopied version
+    cav1 = _kat.commands[str(cav1)]
+    cav2 = _kat.commands[str(cav2)]
+    node = str(node)
+    mirror1 = str(mirror1)
+    mirror2 = str(mirror2)
+    
+    qxs = []
+    qys = []
+    cavs = []
+    
+    for cav in [cav1, cav2]:
+        for _ in _kat.getAll(pykat.commands.cavity):
+            _.enabled = False
+            
+        cav.enabled = True
+        
+        qx, qy = mismatch_scan_RoC_2D(_kat, node, mirror1, lower1, upper1, steps1, mirror2, lower2, upper2, steps2)
+
+        
+        cavs.append(cav.name)
+        qxs.append(qx)
+        qys.append(qy)
+    
+    x = np.linspace(lower1, upper1, steps1+1)
+    y = np.linspace(lower2, upper2, steps2+1)
+    
+    zx = 1 - pykat.BeamParam.overlap(qxs[0], qxs[1])
+    zy = 1 - pykat.BeamParam.overlap(qys[0], qys[1])
+    
+    if plot:
+        norm = LogNorm(vmin=min((zx.min(), zy.min())), vmax=max((zx.max(), zy.max())))
+        plt.figure()
+        plt.subplot(121)
+        plt.pcolormesh(x, y, zx, norm=norm)
+        plt.xlabel("dRoC %s [m]" % mirror1, fontsize=10)
+        plt.ylabel("dRoC %s [m]" % mirror2, fontsize=10)
+        plt.title("X", fontsize=10)
+        plt.colorbar()
+        plt.subplot(122)
+        plt.pcolormesh(x, y, zy, norm=norm)
+        plt.xlabel("dRoC %s [m]" % mirror1, fontsize=10)
+        plt.ylabel("dRoC %s [m]" % mirror2, fontsize=10)
+        plt.title("Y", fontsize=10)
+        cb = plt.colorbar()
+        cb.set_label("1-Overlap(%s,%s)"% (cav1.name, cav2.name))
+        plt.tight_layout()
+        plt.show()
+    
+    xa,xb = np.unravel_index(zx.argmin(), zx.shape)
+    ya,yb = np.unravel_index(zy.argmin(), zy.shape)
+    
+    if getData:
+        return ((x[xa],y[xb]), (x[ya],y[yb])), x,y,zx,zy
+    else:
+        return ((x[xa],y[xb]), (x[ya],y[yb]))
