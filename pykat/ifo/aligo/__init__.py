@@ -546,7 +546,7 @@ class ALIGO_IFO(IFO):
                     
         cmds = "".join([code2, code3])
         kat.removeBlock("errsigs", False)
-        kat.parseCommands(cmds, addToBlock="errsigs")
+        kat.parse(cmds, addToBlock="errsigs")
         
         return cmds
         
@@ -628,7 +628,7 @@ class ALIGO_IFO(IFO):
         cmds = "".join([code1, code2, code3])
         
         self.kat.removeBlock("locks", False) # Remove existing block if exists
-        self.kat.parseCommands(cmds, addToBlock="locks")
+        self.kat.parse(cmds, addToBlock="locks")
         
         return cmds
     
@@ -653,7 +653,7 @@ class ALIGO_IFO(IFO):
         
         self.kat.removeBlock("REFL_gouy_tele", False) # Remove old one
         
-        self.kat.parseCommands("""
+        self.kat.parse("""
         s  sFI_REFL_WFS_LOSS 0 nREFL nREFL_loss1
         m2 mREFL_WFS_loss 0 {} 0 nREFL_loss1 nREFL_loss2
         s  sFI_REFL_WFS 0 nREFL_loss2 nREFL_WFS_BS1
@@ -1058,7 +1058,7 @@ def power_ratios(_kat):
         _sigStr = p.signal(kat)
         _detStr = "\n".join([_detStr, _sigStr])
     
-    kat.parseCommands(_detStr)
+    kat.parse(_detStr)
     
     out = kat.run()
     

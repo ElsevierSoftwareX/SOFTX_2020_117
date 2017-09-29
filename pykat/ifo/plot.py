@@ -183,7 +183,7 @@ def roc_vs_cavity_overlap(base, cav1, cav2, node, mirror, lower, upper, steps, p
         plt.title(mirror + ": "+ " vs ".join(cavs))
         plt.legend(loc=0)
         plt.xlabel(mirror + ' dRoC [m]')
-        plt.ylabel('Overlap')
+        plt.ylabel('1-Overlap')
         plt.tight_layout()
         plt.show()
     
@@ -248,7 +248,6 @@ def roc_vs_cavity_overlap_2D(base, cav1, cav2, node, mirror1, lower1, upper1, st
         cav.enabled = True
         
         qx, qy = mismatch_scan_RoC_2D(_kat, node, mirror1, lower1, upper1, steps1, mirror2, lower2, upper2, steps2)
-
         
         cavs.append(cav.name)
         qxs.append(qx)
@@ -264,23 +263,29 @@ def roc_vs_cavity_overlap_2D(base, cav1, cav2, node, mirror1, lower1, upper1, st
         norm = LogNorm(vmin=min((zx.min(), zy.min())), vmax=max((zx.max(), zy.max())))
         plt.figure()
         plt.subplot(121)
-        plt.pcolormesh(x, y, zx, norm=norm)
+        p = plt.pcolormesh(x, y, zx, norm=norm)
+        p.set_rasterized(True)
         plt.xlabel("dRoC %s [m]" % mirror1, fontsize=10)
         plt.ylabel("dRoC %s [m]" % mirror2, fontsize=10)
         plt.title("X", fontsize=10)
-        plt.colorbar()
+        cb = plt.colorbar()
+        cb.solids.set_rasterized(True) 
+        
         plt.subplot(122)
-        plt.pcolormesh(x, y, zy, norm=norm)
+        p = plt.pcolormesh(x, y, zy, norm=norm)
+        p.set_rasterized(True)
         plt.xlabel("dRoC %s [m]" % mirror1, fontsize=10)
         plt.ylabel("dRoC %s [m]" % mirror2, fontsize=10)
         plt.title("Y", fontsize=10)
         cb = plt.colorbar()
+        cb.solids.set_rasterized(True) 
+        
         cb.set_label("1-Overlap(%s,%s)"% (cav1.name, cav2.name))
         plt.tight_layout()
         plt.show()
     
-    xa,xb = np.unravel_index(zx.argmin(), zx.shape)
-    ya,yb = np.unravel_index(zy.argmin(), zy.shape)
+    xb,xa = np.unravel_index(zx.argmin(), zx.shape)
+    yb,ya = np.unravel_index(zy.argmin(), zy.shape)
     
     if getData:
         return ((x[xa],y[xb]), (x[ya],y[yb])), x,y,zx,zy
