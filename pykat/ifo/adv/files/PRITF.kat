@@ -39,32 +39,38 @@ mod EOM4 $f4 $mod_index_119M 2 pm 0 nEOM4a nEOM4b
 # s sEOM4 0 nEOM4b nEOM5a
 # mod EOM5 $f4b $mod_index_132M 2 pm 0 nEOM5a nEOM5b
 
-s s1 0 nEOM4b nInj
+s s1 0 nEOM4b nInj1
 # ---------
 
 ###########################################################################
 %%% FTend EOMs
 
-bs Inj 1 0 0 0 nInj nS_MPR1 dump dump
+bs Inj 1 0 0 0 nInj1 nInj2 nInj3 nInj4
+
+s sInj_FI 0.1 nInj2 nFI1
+
+# Input faraday isolator
+dbs FI nFI1 nFI2 nFI3 nB2
+
+s sFI_MPR 0 nFI3 nMPR1
 
 %%% FTblock PRC
 ###########################################################################
 
-s sInj_PR 0.1 nS_MPR1 nMPR1
-m2 MPR_AR 0 160u $PRARphi nMPR1 nMPR2
-s sPR 0.1003 $nsilica nMPR2 nMPR3
-m1 MPR $T_PR $L_PR $PRphi nMPR3 nMPR4
+m2 MPR_AR 0 160u $PRARphi nMPR1 nMPRsub1
+s sMPRsub 0.1003 $nsilica nMPRsub1 nMPRsub2
+m1 MPR $T_PR $L_PR $PRphi nMPRsub2 nMPR2
 attr MPR Rc $ROC_PR
 
 # Space between PR and POP
-s sPR_POP 0.06 1 nMPR4 nPOP1 #correct one
+s lMPR_POP 0.06 1 nMPR2 nPOP1 #correct one
 
 # Optical path through POP with n=$nsilica
-m M_POP_s1 0 1 0 nPOP1 nPOP2
-s sPOP 0.03549 $nsilica nPOP2 nPOP3
-bs2 M_POP_s2 $R_POP 0 0 0 nPOP3 dump nPOP4 nB4
+m POP_AR 0 1 0 nPOP1 nPOPsub1
+s sPOPsub 0.03549 $nsilica nPOPsub1 nPOPsub2a
+bs2 POP $R_POP 0 0 0 nPOPsub2a nPOPsub2b nPOP2 nB4
 
-s sPRCL $l_BS_POP nPOP4 nBSs
+s lPOP_BS $l_BS_POP nPOP2 nBSs
 
 ###########################################################################
 %%% FTend PRC
@@ -89,7 +95,7 @@ bs2 BSAR2 $R_BS_AR 0 0 -29.1950549837 nBSi4 dump nBSe dump
 #bs2 BSAR1 $R_BS_AR 0 0 -29.1922 nBSi2 dump nBSn nBSAR       
 #bs2 BSAR2 $R_BS_AR 0 0 -29.1922 nBSi4 dump nBSe dump
 
-s sOut 0 nBSe nAS
+s sOut 0 nBSe nB1
 
 ###########################################################################
 %%% FTend BS
@@ -161,8 +167,8 @@ cav WC MWI nMWI2 MWE nMWE1
 cav NC MNI nMNI2 MNE nMNE1
 
 # PRC
-cav cavPRW MPR nMPR4 MWI nMWIi2
-cav cavPRN MPR nMPR4 MNI nMNIi2
+cav cavPRW MPR nMPR2 MWI nMWIi2
+cav cavPRN MPR nMPR2 MNI nMNIi2
 
 ###########################################################################
 %%% FTend HOMs

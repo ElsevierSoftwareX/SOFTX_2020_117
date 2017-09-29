@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from . import assert_aligo_ifo_kat
+from . import assert_adv_ifo_kat
 from .. import scan_optics_string
 
 from pykat.ifo.plot import *
@@ -113,7 +113,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     kat.removeBlock("locks", False)
     
     if DOFs is None:
-        dofs = [kat.IFO.DARM, kat.IFO.CARM, kat.IFO.PRCL, kat.IFO.SRCL, kat.IFO.MICH]
+        dofs = kat.IFO.LSC_DOFs
     else:
         dofs = kat.IFO.strsToDOFs(DOFs)
     
@@ -324,8 +324,6 @@ def pows_vs_dof(kat, DoF, xaxis = [-10,10,100], noplot=False):
         plt.show(fig)
         
         return fig, ax
-
-
 
 def pows_vs_dofs(kat, xaxis = [-1,1,100]):
     '''

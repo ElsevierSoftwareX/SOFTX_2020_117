@@ -120,11 +120,11 @@ class ADV_IFO(IFO):
         
     def createPorts(self):
         # useful ports
-        self.POP_f1  = Output(self, "POP_f1",  "nPOP",  self.f1, phase=101)
-        self.POP_f2  = Output(self, "POP_f2",  "nPOP",  self.f2, phase=13)
-        self.REFL_f1 = Output(self, "REFL_f1", "nREFL", self.f1, phase=101)
-        self.REFL_f2 = Output(self, "REFL_f2", "nREFL", self.f2, phase=14)
-        self.AS_DC   = Output(self, "AS_DC", "nAS")
+        self.B4_f1  = Output(self, "B4_f1",  "nB4",  self.f1, phase=101)
+        self.B4_f2  = Output(self, "B4_f2",  "nB4",  self.f2, phase=13)
+        self.B2_f1 = Output(self, "B2_f1", "nB2", self.f1, phase=101)
+        self.B2_f2 = Output(self, "B2_f2", "nB2", self.f2, phase=14)
+        self.B1   = Output(self, "B1", "nB1")
         self.POW_BS  = Output(self, "PowBS", "nPRBS*")
         self.POW_X   = Output(self, "PowX",  "nMNI2")
         self.POW_Y   = Output(self, "PowY",  "nITMY2")
@@ -148,7 +148,7 @@ class ADV_IFO(IFO):
         SRC: Ls1 15.7586, Ls2 15.4435, Ls3 19.3661
         """
         # distances between HR surfaces:
-        self.lpr = self.kat.sPR_POP.L + self.kat.sPOP.L*self.kat.sPOP.n + self.kat.sPRCL.L
+        self.lpr = self.kat.lMPR_POP.L + self.kat.sPOPsub.L*self.kat.sPOPsub.n + self.kat.lPOP_BS.L
         self.lx = (self.kat.sNs.L + self.kat.sBS1.L * self.kat.sBS1.n + self.kat.sMNI1.L * self.kat.sMNI1.n +
                    self.kat.sCP_N.L*self.kat.sCP_N.n + self.kat.sCP_NI.L)
         self.ly = (self.kat.sWs.L + self.kat.sMWI1.L * self.kat.sMWI1.n +
@@ -449,7 +449,7 @@ class ADV_IFO(IFO):
             # Compute the DC offset powers
             kat = _kat.deepcopy()
         
-            signame = kat.IFO.AS_DC.add_signal()
+            signame = kat.IFO.B1.add_signal()
         
             kat.noxaxis=True
         
@@ -460,7 +460,7 @@ class ADV_IFO(IFO):
             # Finding light power in AS port (mostly due to RF sidebands now)
             kat = _kat.deepcopy()
         
-            signame = kat.IFO.AS_DC.add_signal()
+            signame = kat.IFO.B1.add_signal()
         
             kat.noxaxis=True
         
@@ -495,7 +495,7 @@ class ADV_IFO(IFO):
         kat.removeBlock("locks", False)
         kat.removeBlock("errsigs", False)
         
-        kat.IFO.AS_DC.add_signal()
+        kat.IFO.B1.add_signal()
     
         Xphi = float(kat.MNE.phi)
         Yphi = float(kat.MWE.phi)
@@ -505,15 +505,15 @@ class ADV_IFO(IFO):
             kat.MNE.phi = Xphi - phi
         
             out = kat.run()
-            print("   ! ", out[self.AS_DC.get_signal_name()], phi)
+            print("   ! ", out[self.B1.get_signal_name()], phi)
             
-            return np.abs(out[self.AS_DC.get_signal_name()] - AS_power)
+            return np.abs(out[self.B1.get_signal_name()] - AS_power)
 
         vprint(verbose, "   starting peak search...")
         out = fmin(powerDiff, 0, xtol=precision, ftol=1e-3, disp=verbose)
     
         vprint(verbose, "   ... done")
-        vprint(verbose, "   DC offset for AS_DC={} W is: {}".format(AS_power, out[0]))
+        vprint(verbose, "   DC offset for B1={} W is: {}".format(AS_power, out[0]))
     
         self.DCoffset = round(out[0], 6)
         self.DCoffsetW = AS_power
@@ -537,16 +537,21 @@ class ADV_IFO(IFO):
         """
         kat = self.kat
         
-        sigDARM = kat.IFO.DARM.signal()
-        sigCARM = kat.IFO.CARM.signal()
-        sigPRCL = kat.IFO.PRCL.signal()
-        sigMICH = kat.IFO.MICH.signal()
-        sigSRCL = kat.IFO.SRCL.signal()
-    
-        code2 = ""
-        for _ in [sigDARM, sigCARM, sigPRCL, sigMICH, sigSRCL]:
-            code2 += "\n".join(_) + "\n"
+        #sigDARM = kat.IFO.DARM.signal()
+        #sigCARM = kat.IFO.CARM.signal()
+        #sigPRCL = kat.IFO.PRCL.signal()
+        #sigMICH = kat.IFO.MICH.signal()
+        #print(self.isSRC)
+        #if self.isSRC:
+        #    sigSRCL = kat.IFO.SRCL.signal()
 
+        #sigs = []
+        code2 = ""
+        for dof in kat.IFO.LSC_DOFs:
+            code2 += "\n".join(dof.signal()) + "\n"
+
+        #for _ in [sigDARM, sigCARM, sigPRCL, sigMICH]:
+        #    code2 += "\n".join(_) + "\n"
         
         code3= ""
     
@@ -555,7 +560,8 @@ class ADV_IFO(IFO):
             nameCARM = kat.IFO.CARM.signal_name()
             namePRCL = kat.IFO.PRCL.signal_name()
             nameMICH = kat.IFO.MICH.signal_name()
-            nameSRCL = kat.IFO.SRCL.signal_name()
+            if self.isSRC:
+                nameSRCL = kat.IFO.SRCL.signal_name()
         
             # code3 = """
             #         noplot {}
@@ -656,7 +662,7 @@ class ADV_IFO(IFO):
         """
         Adds in the gouy phase telescope for WFS detectors and the IFO port objects.
         Commands added into block "REFL_gouy_tele". This attaches to the
-        nREFL node which should be from an isolator on the input path.
+        nB2 node which should be from an isolator on the input path.
         
         Also adds the relevant IFO port objects for generating detectors:
             * ASC_REFL9A, ASC_REFL9B
@@ -674,24 +680,24 @@ class ADV_IFO(IFO):
         self.kat.removeBlock("REFL_gouy_tele", False) # Remove old one
         
         self.kat.parseCommands("""
-        s  sFI_REFL_WFS_LOSS 0 nREFL nREFL_loss1
-        m2 mREFL_WFS_loss 0 {} 0 nREFL_loss1 nREFL_loss2
-        s  sFI_REFL_WFS 0 nREFL_loss2 nREFL_WFS_BS1
-        bs WFS_REFL_BS 0.5 0.5 0 0 nREFL_WFS_BS1 nREFL_WFS_BS2 nREFL_WFS_BS3 dump
-        s  sWFS_REFL_A  0 nREFL_WFS_BS3 nREFL_WFS_A
-        s  sWFS_REFL_B  0 nREFL_WFS_BS2 nREFL_WFS_B
+        s  sFI_REFL_WFS_LOSS 0 nB2 nB2_loss1
+        m2 mREFL_WFS_loss 0 {} 0 nB2_loss1 nB2_loss2
+        s  sFI_REFL_WFS 0 nB2_loss2 nB2_WFS_BS1
+        bs WFS_REFL_BS 0.5 0.5 0 0 nB2_WFS_BS1 nB2_WFS_BS2 nB2_WFS_BS3 dump
+        s  sWFS_REFL_A  0 nB2_WFS_BS3 nB2_WFS_A
+        s  sWFS_REFL_B  0 nB2_WFS_BS2 nB2_WFS_B
         """.format(loss), addToBlock="REFL_gouy_tele", exceptionOnReplace=True)
         
         self.set_REFL_gouy_telescope_phase(gouy_REFL_BS, gouy_A, gouy_B)
         
-        self.kat.IFO.ASC_REFL9A   = Output(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A",  self.kat.IFO.f1, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL9B   = Output(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B",  self.kat.IFO.f1, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL9A   = Output(self.kat.IFO, "ASC_REFL9A",  "nB2_WFS_A",  self.kat.IFO.f1, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL9B   = Output(self.kat.IFO, "ASC_REFL9B",  "nB2_WFS_B",  self.kat.IFO.f1, block="REFL_gouy_tele")
 
-        self.kat.IFO.ASC_REFL45A  = Output(self.kat.IFO, "ASC_REFL45A",  "nREFL_WFS_A",  self.kat.IFO.f2, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL45B  = Output(self.kat.IFO, "ASC_REFL45B",  "nREFL_WFS_B",  self.kat.IFO.f2, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL45A  = Output(self.kat.IFO, "ASC_REFL45A",  "nB2_WFS_A",  self.kat.IFO.f2, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL45B  = Output(self.kat.IFO, "ASC_REFL45B",  "nB2_WFS_B",  self.kat.IFO.f2, block="REFL_gouy_tele")
         
-        self.kat.IFO.ASC_REFL36A  = Output(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  self.kat.IFO.f36M, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL36B  = Output(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  self.kat.IFO.f36M, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL36A  = Output(self.kat.IFO, "ASC_REFL36A",  "nB2_WFS_A",  self.kat.IFO.f36M, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL36B  = Output(self.kat.IFO, "ASC_REFL36B",  "nB2_WFS_B",  self.kat.IFO.f36M, block="REFL_gouy_tele")
         
         self.update()
         
@@ -792,13 +798,21 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     
     kat.verbose=verbose
     
+    # Define which mirrors create the tuning description
+    tunings_components_list = ["MPR", "MNI", "MNE", "MWI", "MWE", "BS", "MSR"]
+    # Removing MSR if it's not in the file
+    isSRC = True
+    if not 'MSR' in kat.components:
+        isSRC = False
+        tunings_components_list.pop(tunings_components_list.index('MSR'))
+    
+    # Define which keys are used for a tuning description
+    tuning_keys_list = ["maxtem", "phase"]
     # Create empty object to just store whatever DOFs, port, variables in
     # that will be used by processing functions
-    kat.IFO = ADV_IFO(kat,
-                        # Define which keys are used for a tuning description
-                        ["maxtem", "phase"],
-                        # Define which mirrors create the tuning description
-                        ["MPR", "MNI", "MNE", "MWI", "MWE", "BS"])
+    kat.IFO = ADV_IFO(kat, tuning_keys_list, tunings_components_list)
+
+    kat.IFO.isSRC = isSRC
     
     kat.IFO._data_path=pkg_resources.resource_filename('pykat.ifo', os.path.join('adv','files'))
 
@@ -815,6 +829,15 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
         
         kat.load(katkile, keepComments=keepComments, preserveConstants=preserveConstants)
         kat.IFO.rawBlocks.read(katkile)
+
+    # Checking if mirrors are in the kat-object
+    for m in tunings_components_list:
+        if m in kat.components:
+            if not ( isinstance(kat.components[m], pykat.components.mirror) or
+                     isinstance(kat.components[m], pykat.components.beamSplitter) ):
+                raise pkex.BasePyKatException('{} is not a mirror or beam splitter'.format(m))
+        else:
+            raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(m))
     
     # ----------------------------------------------------------------------
     # get and derive parameters from the kat file
@@ -868,33 +891,45 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     # define ports and signals 
     
     # useful ports
-    kat.IFO.POP_f1  = Output(kat.IFO, "POP_f1",  "nPOP",  kat.IFO.f1, phase=101)
-    kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  kat.IFO.f2, phase=13)
-    kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", kat.IFO.f1, phase=101)
-    kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", kat.IFO.f2, phase=14)
-    kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
+    kat.IFO.B4_f1  = Output(kat.IFO, "B4_f1",  "nB4",  kat.IFO.f1, phase=0)
+    kat.IFO.B4_f2  = Output(kat.IFO, "B4_f2",  "nB4",  kat.IFO.f2, phase=0)
+    kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", kat.IFO.f1, phase=0)
+    kat.IFO.B2_f2 = Output(kat.IFO, "B2_f2", "nB2", kat.IFO.f2, phase=0)
+    kat.IFO.B2_f3 = Output(kat.IFO, "B2_f3", "nB2", kat.IFO.f3, phase=0)
+    kat.IFO.B2_f4 = Output(kat.IFO, "B2_f4", "nB2", kat.IFO.f4, phase=0)
+    kat.IFO.B1   = Output(kat.IFO, "B1", "nB1")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nBSs*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nMNI2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nMWI2")
-    # kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nSRM1")
+    if isSRC:
+        kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nMSR1")
 
     # pretune LSC DOF
     kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "MNE", 1, 1.0, sigtype="z")
     kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "MWE", 1, 1.0, sigtype="z")
-    kat.IFO.preMICH =  DOF(kat.IFO, "AS"  , kat.IFO.AS_DC,   "", ["MNI", "MNE", "MWI", "MWE"], [1,1,-1,-1], 6.0, sigtype="z")
+    kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", ["MNI", "MNE", "MWI", "MWE"], [1,1,-1,-1], 6.0, sigtype="z")
     kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "MPR",  1, 10.0, sigtype="z")
-    # kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0, sigtype="z")
+    kat.IFO.preDARM = DOF(kat.IFO, "DARM", kat.IFO.POW_X, "", ["MNE", "MWE"], [-1,1], 1.0, sigtype="z")
+    kat.IFO.preCARM = DOF(kat.IFO, "CARM", kat.IFO.POW_X, "", ["MNE", "MWE"], [-1,-1], 1.0, sigtype="z")
+
+    if isSRC:
+        kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.POW_S,   "", "MSR",  1, 10.0, sigtype="z")
     
     # control scheme as in [1] Table C.1. Due to Finesse conventions, the overall factor for all but PRCL are multiplied by -1
     # compared to the LIGO defintion, to match the same defintion. 
-    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "MPR", 1, 100.0, sigtype="z")
-    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["MNI", "MNE", "MWI", "MWE"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
-    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["MNE", "MWE"], [-1, -1], 1.5, sigtype="z")
-    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["MNE", "MWE"], [-1,1], 1.0, sigtype="z")
-    # kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", -1, 1e2, sigtype="z")
+    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3,  "I", "MPR", 1, 100.0, sigtype="z")
+    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B4_f1,  "Q", ["MNI", "MNE", "MWI", "MWE"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
+    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.B2_f1, "I", ["MNE", "MWE"], [-1, -1], 1.5, sigtype="z")
+    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.B1,   "",  ["MNE", "MWE"], [-1,1], 1.0, sigtype="z")
+    if isSRC:
+        kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "MSR", -1, 1e2, sigtype="z")
 
     kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM)
     kat.IFO.CAV_POWs = (kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.POW_BS)
+
+    if isSRC:
+        kat.IFO.LSC_DOFs = kat.IFO.LSC_DOFs + (kat.IFO.SRCL,)
+        kat.IFO.CAV_POWs = kat.IFO.CAV_POWs + (kat.IFO.POW_S,)
     
     # Pitch DOfs
     # There is a difference in the way LIGO and Finesse define positive and negative
@@ -926,7 +961,8 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     kat.IFO.MPR_P   = DOF(kat.IFO, "MPR_P"  , None , None, ["MPR", "MPRAR"], [1,1], 1, sigtype="pitch")
     kat.IFO.PRC2_P  = DOF(kat.IFO, "PRC2_P" , None , None, ["PR2"], [1], 1, sigtype="pitch")
     kat.IFO.PRC3_P  = DOF(kat.IFO, "PRC3_P" , None , None, ["PR3"], [1], 1, sigtype="pitch")
-    # kat.IFO.SRM_P   = DOF(kat.IFO, "SRM_P"  , None , None, ["SRM", "SRMAR"], [1,1], 1, sigtype="pitch")
+    if isSRC:
+        kat.IFO.MSR_P = DOF(kat.IFO, "MSR_P"  , None , None, ["MSR", "MSRAR"], [1,1], 1, sigtype="pitch")
     kat.IFO.SRC2_P  = DOF(kat.IFO, "SRC2_P" , None , None, ["SR2"], [1], 1, sigtype="pitch")
     kat.IFO.SRC3_P  = DOF(kat.IFO, "SRC3_P" , None , None, ["SR3"], [1], 1, sigtype="pitch")
     kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, ["BS", "BSAR1", "BSAR2"], [1,1,1], 1, sigtype="pitch")
@@ -935,6 +971,8 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
                           kat.IFO.CSOFT_P, kat.IFO.DSOFT_P,
                           kat.IFO.MPR_P, kat.IFO.PRC2_P,
                           kat.IFO.PRC3_P, kat.IFO.MICH_P)
+    if isSRC:
+        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.MSR_P,)
     
     kat.IFO.update()
 
@@ -1092,7 +1130,7 @@ def power_ratios(_kat):
     kat.verbose = False
     kat.noxaxis = True
 
-    ports = [kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.AS_DC, kat.IFO.POW_BS]
+    ports = [kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.B1, kat.IFO.POW_BS]
     _detStr = ""
     
     for p in ports:

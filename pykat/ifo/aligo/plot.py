@@ -157,7 +157,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
                                         axis=1, relative=True)
                                   
         kat.parseCommands(scan_cmd, addToBlock="SCAN")
-        
+                
         out = kat.run()
         
         if d.name == "DARM":
@@ -361,4 +361,10 @@ def pows_vs_dofs(kat, xaxis = [-1,1,100]):
 
     return fig, axs
 
-
+def pow_lsc(kat,xaxis = [-1,1,100]):
+    '''
+    Plotting cavity powers and error signals in the same figures. Can be used
+    to see if error signal zero crossings coincide with power peaks.
+    '''
+    pass
+    
