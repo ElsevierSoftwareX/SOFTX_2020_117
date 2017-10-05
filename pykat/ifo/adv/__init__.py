@@ -44,6 +44,8 @@ class ADV_IFO(IFO):
         self._f1 = np.nan
         self._f2 = np.nan
         self._f3 = np.nan
+        self._f4 = np.nan
+        
         self._f36M = np.nan
     
     @property
@@ -105,6 +107,18 @@ class ADV_IFO(IFO):
             for a in self.LSC_DOFs:
                 if a.port.name[-2:] == 'f3':
                     a.port.f = self.f3
+
+    @property
+    def f4(self):
+        return self._f3
+    @f4.setter
+    def f4(self, value):
+        self._f4 = float(value)
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f4':
+                    a.port.f = self.f4
         
     @property
     def f36M(self):
@@ -572,7 +586,7 @@ class ADV_IFO(IFO):
                     
         cmds = "".join([code2, code3])
         kat.removeBlock("errsigs", False)
-        kat.parseCommands(cmds, addToBlock="errsigs")
+        kat.parse(cmds, addToBlock="errsigs")
         
         return cmds
         
@@ -594,55 +608,50 @@ class ADV_IFO(IFO):
         Returns the commands added for reference.
         """
         
-        DOFs = ["DARM", "CARM", "PRCL", "MICH", "SRCL"]
+        DOFs = ["DARM", "CARM", "PRCL", "MICH"]
+        if self.isSRC:
+            DOFs.append('SRCL')
         
         names = [getattr(self, _).signal_name() for _ in DOFs]
         accuracies = [lock_data[_]['accuracy'] for _ in DOFs]
         gains = [lock_data[_]['gain'] for _ in DOFs]
-        
-        code1 = ("set DARM_err {} re\n"
-                 "set CARM_err {} re\n"
-                 "set PRCL_err {} re\n"
-                 "set MICH_err {} re\n"
-                 "set SRCL_err {} re\n").format(*names)
 
-        code2 = ("lock DARM_lock $DARM_err {:8.2} {:8.2} {DC}\n"
-                 "lock CARM_lock $CARM_err {:8.2g} {:8.2g}\n"
-                 "lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}\n"
-                 "lock MICH_lock $MICH_err {:8.2g} {:8.2g}\n"
-                 "lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}\n"
-                 ).format(*chain.from_iterable(zip(gains, accuracies)),
-                          DC=-self.kat.IFO.DCoffsetW)
+        # Set commands
+        code1 = ""
+        for dof,name in zip(DOFs,names):
+            code1 += "set {}_err {} re\n".format(dof,name)
 
-        # TODO: Use DOF optics and factors to define this. 
-        code3 = ("func MNE_lock = (-1.0) * $CARM_lock - 0.5 * $MICH_lock - $DARM_lock\n"
-                 "func MWE_lock = (-1.0) * $CARM_lock + 0.5 * $MICH_lock + $DARM_lock\n"
-                 "func MNI_lock = (-0.5) * $MICH_lock\n"
-                 "func MWI_lock = 0.5 * $MICH_lock\n"
-                 "func MPR_lock = 1.0 * $PRCL_lock\n"
-                 "# func SRM_lock = (-1.0) * $SRCL_lock\n"
-
-                 "put* MPR     phi     $MPR_lock\n"
-                 "put* MNI    phi     $MNI_lock\n"
-                 "put* MWI    phi     $MWI_lock\n"
-                 "put* MNE    phi     $MNE_lock\n"
-                 "put* MWE    phi     $MWE_lock\n"
-                 "# put* SRM     phi     $SRM_lock\n"
-                 "put* MPR     phi     $MPR_lock\n"
-
-                 "noplot PRCL_lock\n"
-                 "# noplot SRCL_lock\n"
-                 "noplot MICH_lock\n"
-                 "noplot DARM_lock\n"
-                 "noplot CARM_lock\n"
-                 "noplot MNE_lock\n"
-                 "noplot MWE_lock\n"
-                 "noplot MNI_lock\n"
-                 "noplot MWI_lock\n"
-                 "noplot MPR_lock\n"
-                 "# noplot SRM_lock\n"
-                 )
-
+        # Lock commands
+        code2 = ""
+        # Noplot commands
+        code3 = ""
+        for k,dof in enumerate(DOFs):
+            if k==0:
+                code2 += "lock {0}_lock ${0}_err {1:8.2} {2:8.2} {3}\n".format(dof, gains[k], accuracies[k], -self.kat.IFO.DCoffsetW)
+            else:
+                code2 += "lock {0}_lock ${0}_err {1:8.2} {2:8.2}\n".format(dof,gains[k],accuracies[k])
+            code3 += "noplot {}_lock\n".format(dof)
+            
+        # TODO: Use DOF optics and factors to define this.
+        # Func commands
+        code4 = ""
+        # Put commands
+        code5 = ""
+        for m in self.get_tuning_comps():
+            code_tmp = "func {}_lock =".format(m)
+            k = 0
+            for dof in DOFs:
+                if m in self.DOFs[dof].optics:
+                    factor = self.DOFs[dof].factors[self.DOFs[dof].optics.index(m)]
+                    if k>0:
+                        code_tmp += " +"
+                    code_tmp += " ({}) * ${}_lock".format(factor,dof)
+                    k += 1
+            if not code_tmp[-1] == "=":
+                code4 += code_tmp + "\n"
+                code5 += "put* {0} phi ${0}_lock\n".format(m)
+                code3 += "noplot {}_lock\n".format(m)
+    
         if verbose:
             print(" .--------------------------------------------------.")
             print(" | Lock commands used:                              |")
@@ -651,10 +660,10 @@ class ADV_IFO(IFO):
                 print (" | {:49}|".format(l))
             print(" `--------------------------------------------------'")
 
-        cmds = "".join([code1, code2, code3])
+        cmds = "".join([code1, code2, code4, code5, code3])
         
         self.kat.removeBlock("locks", False) # Remove existing block if exists
-        self.kat.parseCommands(cmds, addToBlock="locks")
+        self.kat.parse(cmds, addToBlock="locks")
         
         return cmds
     
@@ -679,7 +688,7 @@ class ADV_IFO(IFO):
         
         self.kat.removeBlock("REFL_gouy_tele", False) # Remove old one
         
-        self.kat.parseCommands("""
+        self.kat.parse("""
         s  sFI_REFL_WFS_LOSS 0 nB2 nB2_loss1
         m2 mREFL_WFS_loss 0 {} 0 nB2_loss1 nB2_loss2
         s  sFI_REFL_WFS 0 nB2_loss2 nB2_WFS_BS1
@@ -846,8 +855,8 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     #f1 = 6270777            # fmod1 in TDR
     #f3 = 8361036            # 4 / 3 * f1, fmod3 in TDR
     #f2 = 56436993           # 9 * f1, fmod2 in TDR
-    #f4b = 131686317         # 21 * f1, fmod4 in TDR. Old f4.
     #f4 = 119144763.0        # 19 * f1, new f4.
+    #f4b = 131686317         # 21 * f1, fmod4 in TDR. Old f4.
     
     # get main frequencies
     if "f1" in kat.constants.keys():
@@ -891,13 +900,16 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     # define ports and signals 
     
     # useful ports
-    kat.IFO.B4_f1  = Output(kat.IFO, "B4_f1",  "nB4",  kat.IFO.f1, phase=0)
-    kat.IFO.B4_f2  = Output(kat.IFO, "B4_f2",  "nB4",  kat.IFO.f2, phase=0)
-    kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", kat.IFO.f1, phase=0)
-    kat.IFO.B2_f2 = Output(kat.IFO, "B2_f2", "nB2", kat.IFO.f2, phase=0)
-    kat.IFO.B2_f3 = Output(kat.IFO, "B2_f3", "nB2", kat.IFO.f3, phase=0)
-    kat.IFO.B2_f4 = Output(kat.IFO, "B2_f4", "nB2", kat.IFO.f4, phase=0)
     kat.IFO.B1   = Output(kat.IFO, "B1", "nB1")
+
+    kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", kat.IFO.f1, phase = 174.76)
+    kat.IFO.B2_f2 = Output(kat.IFO, "B2_f2", "nB2", kat.IFO.f2, phase = 49.94)
+    kat.IFO.B2_f3 = Output(kat.IFO, "B2_f3", "nB2", kat.IFO.f3, phase = -2.46)
+    kat.IFO.B2_f4 = Output(kat.IFO, "B2_f4", "nB2", kat.IFO.f4, phase = 0)
+    
+    kat.IFO.B4_f1  = Output(kat.IFO, "B4_f1",  "nB4",  kat.IFO.f1, phase = 177.49)
+    kat.IFO.B4_f2  = Output(kat.IFO, "B4_f2",  "nB4",  kat.IFO.f2, phase = 156.95)
+    
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nBSs*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nMNI2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nMWI2")
@@ -918,7 +930,7 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     # control scheme as in [1] Table C.1. Due to Finesse conventions, the overall factor for all but PRCL are multiplied by -1
     # compared to the LIGO defintion, to match the same defintion. 
     kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3,  "I", "MPR", 1, 100.0, sigtype="z")
-    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B4_f1,  "Q", ["MNI", "MNE", "MWI", "MWE"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
+    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B2_f1,  "Q", ["MNI", "MNE", "MWI", "MWE"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
     kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.B2_f1, "I", ["MNE", "MWE"], [-1, -1], 1.5, sigtype="z")
     kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.B1,   "",  ["MNE", "MWE"], [-1,1], 1.0, sigtype="z")
     if isSRC:
@@ -1137,7 +1149,7 @@ def power_ratios(_kat):
         _sigStr = p.signal(kat)
         _detStr = "\n".join([_detStr, _sigStr])
     
-    kat.parseCommands(_detStr)
+    kat.parse(_detStr)
     
     out = kat.run()
     
@@ -1149,9 +1161,9 @@ def power_ratios(_kat):
         print(" {0:6} = {1:8.3g} W ({0:6}/Pin = {2:8.2g})" .format(p.name, float(out[p.name]), float(out[p.name])/Pin))
 
 
-def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
+def generate_locks(kat, gainsAdjustment = [0.1, 0.9, 0.9, 0.001, 0.02],
                     gains=None, accuracies=None,
-                    rms=[1e-13, 1e-13, 1e-12, 1e-11, 50e-11], verbose=True,
+                    rms=[1e-14, 1e-14, 1e-12, 1e-11, 50e-11], verbose=True,
                     useDiff = True):
     """
     gainsAdjustment: factors to apply to loop gains computed from optical gains
@@ -1175,7 +1187,8 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
     ogCARM = optical_gain(kat.IFO.CARM, kat.IFO.CARM, useDiff=useDiff)
     ogPRCL = optical_gain(kat.IFO.PRCL, kat.IFO.PRCL, useDiff=useDiff)
     ogMICH = optical_gain(kat.IFO.MICH, kat.IFO.MICH, useDiff=useDiff)
-    ogSRCL = optical_gain(kat.IFO.SRCL, kat.IFO.SRCL, useDiff=useDiff)
+    if kat.IFO.isSRC:
+        ogSRCL = optical_gain(kat.IFO.SRCL, kat.IFO.SRCL, useDiff=useDiff)
 
     if gains is None:            
         # manually tuning relative gains
@@ -1185,9 +1198,10 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
         gainCARM = round_to_n(gainsAdjustment[1] * factor / ogCARM, 2) # factor 0.005 for better gain hirarchy with DARM
         gainPRCL = round_to_n(gainsAdjustment[2] * factor / ogPRCL, 2) # manually tuned
         gainMICH = round_to_n(gainsAdjustment[3] * factor / ogMICH, 2) # manually tuned
-        gainSRCL = round_to_n(gainsAdjustment[4] * factor / ogSRCL, 2) # gain hirarchy with MICH
-        
-        gains = [ gainDARM, gainCARM, gainPRCL, gainMICH, gainSRCL]
+        gains = [ gainDARM, gainCARM, gainPRCL, gainMICH]
+        if kat.IFO.isSRC:
+            gainSRCL = round_to_n(gainsAdjustment[4] * factor / ogSRCL, 2) # gain hirarchy with MICH
+            gains.append(gainSRCL)
     
     if accuracies is None:
         factor = 2.0 * math.pi / kat.lambda0 # convert from m to radians
@@ -1196,10 +1210,11 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
         accCARM = round_to_n(np.abs(factor * rms[1] * ogCARM), 2)
         accPRCL = round_to_n(np.abs(factor * rms[2] * ogPRCL), 2)
         accMICH = round_to_n(np.abs(factor * rms[3] * ogMICH), 2)
-        accSRCL = round_to_n(np.abs(factor * rms[4] * ogSRCL), 2)
-
-        accuracies = [accDARM, accCARM, accPRCL, accMICH, accSRCL]
-        
+        accuracies = [accDARM, accCARM, accPRCL, accMICH]
+        if kat.IFO.isSRC:
+            accSRCL = round_to_n(np.abs(factor * rms[4] * ogSRCL), 2)
+            accuracies.append(accSRCL)
+            
     factor1 = 2.0 * math.pi / 360.0 
     factor2 = 2.0 * math.pi / kat.lambda0 
     factor3 = 360.0  / kat.lambda0
@@ -1214,29 +1229,33 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
         print(" | CARM: {:12.5}, {:12.5}, {:12.5}   |".format(ogCARM, ogCARM*factor1, ogCARM*factor2))
         print(" | PRCL: {:12.5}, {:12.5}, {:12.5}   |".format(ogPRCL, ogPRCL*factor1, ogPRCL*factor2))
         print(" | MICH: {:12.5}, {:12.5}, {:12.5}   |".format(ogMICH, ogMICH*factor1, ogMICH*factor2))
-        print(" | SRCL: {:12.5}, {:12.5}, {:12.5}   |".format(ogSRCL, ogSRCL*factor1, ogSRCL*factor2))
+        if kat.IFO.isSRC:
+            print(" | SRCL: {:12.5}, {:12.5}, {:12.5}   |".format(ogSRCL, ogSRCL*factor1, ogSRCL*factor2))
         print(" +--------------------------------------------------+")
         print(" | -- defult loop accuracies [deg], [m] and [W]:    |")
         print(" | DARM: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[0], rms[0], np.abs(rms[0]*ogDARM*factor2)))
         print(" | CARM: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[1], rms[1], np.abs(rms[1]*ogCARM*factor2)))
         print(" | PRCL: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[2], rms[2], np.abs(rms[2]*ogPRCL*factor2)))
         print(" | MICH: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[3], rms[3], np.abs(rms[3]*ogMICH*factor2)))
-        print(" | SRCL: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[4], rms[4], np.abs(rms[4]*ogSRCL*factor2)))
+        if kat.IFO.isSRC:
+            print(" | SRCL: {:12.6}, {:12.6}, {:12.6}   |".format(factor3*rms[4], rms[4], np.abs(rms[4]*ogSRCL*factor2)))
         print(" +--------------------------------------------------+")
         print(" | -- extra gain factors (factor * 1/optical_gain): |")
         print(" | DARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[0],factor4/ogDARM, gainsAdjustment[0]*factor4/ogDARM))
         print(" | CARM: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[1],factor4/ogCARM, gainsAdjustment[1]*factor4/ogCARM))
         print(" | PRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[2],factor4/ogPRCL, gainsAdjustment[2]*factor4/ogPRCL))
         print(" | MICH: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[3],factor4/ogMICH, gainsAdjustment[3]*factor4/ogMICH))
-        print(" | SRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[4],factor4/ogSRCL, gainsAdjustment[4]*factor4/ogSRCL))
+        if kat.IFO.isSRC:
+            print(" | SRCL: {:5.4} * {:12.6} = {:12.6}        |".format(gainsAdjustment[4],factor4/ogSRCL, gainsAdjustment[4]*factor4/ogSRCL))
         print(" `--------------------------------------------------'")
         
     data = {
         "DARM": {"accuracy": accuracies[0], "gain": gains[0]},
         "CARM": {"accuracy": accuracies[1], "gain": gains[1]},
         "PRCL": {"accuracy": accuracies[2], "gain": gains[2]},
-        "MICH": {"accuracy": accuracies[3], "gain": gains[3]},
-        "SRCL": {"accuracy": accuracies[4], "gain": gains[4]},
-    }
+        "MICH": {"accuracy": accuracies[3], "gain": gains[3]}
+        }
+    if kat.IFO.isSRC:
+        data['SRCL'] = {"accuracy": accuracies[4], "gain": gains[4]}
     
     return data

@@ -644,6 +644,7 @@ def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=Fal
         xbounds = np.array([x[0],x[-1]])
     xscale = xbounds[-1]-xbounds[0]
     xn = x/xscale
+    xbounds = xbounds/xscale
     
     # Function to optimise
     def max_og(phi):
@@ -674,7 +675,7 @@ def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=Fal
     min_phase = -180
     max_phase = 180
     step = 1
-    demod_phase_bounds = slice(min_phase, max_phase, 1)
+    demod_phase_bounds = slice(min_phase, max_phase, step)
     phase_bounds = (demod_phase_bounds,)
     # Searching for optimal demodulation phase.
     sol = brute(max_og, ranges=phase_bounds, full_output=True, finish=fmin, disp=False)
@@ -965,7 +966,7 @@ class IFO(object):
             for _ in args:
                 if _ not in self.DOFs:
                     raise pkex.BasePyKatException("DOF `%s` was not found in the IFO object" % _)
-                    
+
     def _tuning_key(self, **kwargs):
         if set(kwargs.keys()) != self.__tuning_keys:
             raise pkex.BasePyKatException("input keyword arguments should be: %s" % ", ".join(self.__tuning_keys))
@@ -976,6 +977,10 @@ class IFO(object):
             vals.append(str(kwargs[key]))
         
         return "-".join(vals)
+
+    def get_tuning_comps(self):
+        return self.__tuning_comps
+
             
     def get_tunings(self):
         """
