@@ -798,7 +798,7 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['PRITF', 'design_low_power', 'design_with_IMC_HAM2', 'design_with_IMC_HAM2_FI_OMC']
+    names = ['PRITF']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")

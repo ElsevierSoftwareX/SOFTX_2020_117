@@ -645,10 +645,12 @@ def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=Fal
     xscale = xbounds[-1]-xbounds[0]
     xn = x/xscale
     xbounds = xbounds/xscale
+    yscale = 2*np.abs(cdata).max()
+    cdatan = cdata/yscale
     
     # Function to optimise
     def max_og(phi):
-        err = c2r_errsig(cdata, phi)
+        err = c2r_errsig(cdatan, phi)
         dErr = np.gradient(err, xn[1]-xn[0])
         f = interp1d(xn, err, kind='linear')
         df = interp1d(xn, dErr, kind='quadratic')
@@ -681,7 +683,7 @@ def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=Fal
     sol = brute(max_og, ranges=phase_bounds, full_output=True, finish=fmin, disp=False)
     # Reading out results
     demod_phase = sol[0][0]
-    optical_gain = -sol[1]/xscale
+    optical_gain = -sol[1]*yscale/xscale
 
 
     if optical_gain<=0:
@@ -747,7 +749,7 @@ def ASC_demod_phase(kat, asc_dof, output, xaxis=[-1e-6, 1e-6, 50], err_tol = 1e-
     return demod_phase, og
     
 
-def LSC_demod_phase(kat, lsc_dof, xaxis=[-.1, .1, 50], err_tol = 1e-5, pwr_dof=None,
+def LSC_demod_phase(lsc_dof, xaxis=[-.1, .1, 50], err_tol = 1e-5, pwr_dof=None,
                     P_tol = 1e-5, xatol = 1e-9, isMax = True, isplot=False, verbose=False):
     '''
     Finding the demodulation phase of a LSC DOF that generates the maximum slope of the error signal.
@@ -776,7 +778,7 @@ def LSC_demod_phase(kat, lsc_dof, xaxis=[-.1, .1, 50], err_tol = 1e-5, pwr_dof=N
     '''
     # THE PLOTTING OPTION WILL BE REMOVED
 
-    _kat = kat.deepcopy()
+    _kat = lsc_dof.kat.deepcopy()
 
     # Scan instructions
     scstr = pykat.ifo.scan_DOF_cmds(lsc_dof, xlimits=[xaxis[0], xaxis[1]], steps=xaxis[2], relative=True)
