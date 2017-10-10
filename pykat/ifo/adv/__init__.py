@@ -778,7 +778,7 @@ def assert_adv_ifo_kat(kat):
     if not isinstance(kat.IFO, ADV_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ADV_IFO compatiable kat\033[0m")
               
-def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
+def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
@@ -798,7 +798,7 @@ def make_kat(name="PRITF", katfile=None, verbose = False, debug=False, keepComme
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['PRITF']
+    names = ['PRITF', 'design_PR']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
