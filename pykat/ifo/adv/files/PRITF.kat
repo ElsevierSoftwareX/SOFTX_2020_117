@@ -534,13 +534,8 @@ const L_WE 37.5u
 ###########################################################################
 %%% FTend Reflectivities
 
-%%% FTblock Constants
+%%% FTblock ROCs
 ###########################################################################
-
-const P_laser 125 # Laser power in W
-
-const nsilica 1.44963
-const f1_3f 18812331
 
 const ROC_NE 1683
 const ROC_SR 1430
@@ -581,6 +576,17 @@ const NIARRC -1427.07
 const WIARRC -1427.23        # From optimal modematching
 # -----------------------------------------------------------------
 
+###########################################################################
+%%% FTend ROCs
+
+%%% FTblock Constants
+###########################################################################
+
+const P_laser 125 # Laser power in W
+
+const nsilica 1.44963
+const f1_3f 18812331
+
 # modulation frequencies [TDR, tab 2.3, pp 24]
 const f1 6270777            # fmod1 in TDR   
 const f3 8361036            # 4 / 3 * f1, fmod3 in TDR
@@ -604,7 +610,7 @@ const speed_of_light 299792458
 ###########################################################################
 
 phase 2
-maxtem 0
+maxtem 2
 
 ###########################################################################
 %%% FTend commands
@@ -625,7 +631,12 @@ func l_IMC = 3*$speed_of_light / $f1 # assuming a linear cavity
 %%% FTend Functions
 
 
+%%% FTblock Mass
+###########################################################################
 attr MNI M 43
 attr MNE M 43
 attr MWI M 43
 attr MWE M 43
+###########################################################################
+%%% FTend Mass
+
