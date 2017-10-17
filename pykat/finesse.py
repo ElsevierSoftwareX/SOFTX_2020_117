@@ -711,7 +711,7 @@ class KatRun2D(object):
                         out = self.z[idx[0], :, :] + 1j*self.z[idx[1], :, :]
 
                 if out is None:
-                    out = self.y[:, idx]
+                    out = self.z[idx]
 
                 if out.size == 1:
                     return out[0].squeeze()
