@@ -162,8 +162,8 @@ m2 WEAR 0 $L_WEAR $WEAR_phi nWEsub2 nWE2
 ###########################################################################
 
 # Arms
-cav WC WI nWI2 WE nWE1
-cav NC NI nNI2 NE nNE1
+cav cavW WI nWI2 WE nWE1
+cav cavN NI nNI2 NE nNE1
 
 # PRC
 cav cavPRW PR nPR2 WI nWIsub2
@@ -275,16 +275,23 @@ const RoC_WE 1696      # Measured WE RoC [VIR-0270A-15]
 const RoC_NE 1695      # Measured NE RoC [VIR-0269A-15]
 const RoC_PR -1477     # Measured PR RoC [VIR-0029A-15]
 # AR-surfaces
-const RoC_WIAR -1420   # Designed WI AR RoC [TDR, table 2.6]
-const RoC_NIAR -1420   # Designed NI AR RoC [TDR, table 2.6]
-const RoC_PRAR -3.62    # Measured PR AR RoC [VIR-0029A-15]
+#const RoC_WIAR -1420    # Designed WI AR RoC [TDR, table 2.6]
+#const RoC_NIAR -1420    # Designed NI AR RoC [TDR, table 2.6]
+const RoC_WIAR -1423.95  # Approximately the same as measured HR surface,
+                         # and slightly adjusted so that mode matched file
+                         # model can be obtained with equal CP thermal 
+                         # lensing.
+const RoC_NIAR -1424.6   # Approximately the same as measured HR surface
+const RoC_PRAR -3.62     # Measured PR AR RoC [VIR-0029A-15]
+
 # -------------------------------------------------------------------------
 
 # Lenses
 # -------------------------------------------------------------------------
 # Compensation plate thermal lenses
-const f_CPN_TL 54k       # North 
-const f_CPW_TL 54k       # West
+const f_CPN_TL 50890       # North 
+const f_CPW_TL 50890       # West
+
 # -------------------------------------------------------------------------
 
 # Lengths
