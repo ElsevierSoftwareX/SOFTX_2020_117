@@ -448,9 +448,16 @@ class ADV_IFO(IFO):
     
     def set_DC_offset(self, DCoffset=None, offset_type = 'DARM', verbose=False):
         """
-        Sets the DC offset for this inteferometer.
-        
+        Sets the DC offset for this inteferometer. It can be set to DARM or MICH. 
         This function directly alters the tunings of the associated kat object.
+        If no DCoffset is specified, the function finds the DC offset that yields
+        5 times the current dark port power.
+
+        Parameters
+        ----------
+        DCoffset     - Offset to apply to the chosen degree of freedom [degrees]
+        offset_type  - String specifying the degree of freedom to apply the DC
+                       offset to. Must be DARM or MICH.
         """
 
         # Checking if DARM or MICH is used
