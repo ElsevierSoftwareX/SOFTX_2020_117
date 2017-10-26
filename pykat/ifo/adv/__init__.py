@@ -49,15 +49,26 @@ class ADV_IFO(IFO):
         self._f36M = np.nan
     
     @property
-    def DCoffset(self):
-        if 'DCoffset' not in self.kat.data:
+    def DARMoffset(self):
+        if 'DARMoffset' not in self.kat.data:
             return 0
         else:
-            return float(self.kat.data['DCoffset'])
+            return float(self.kat.data['DARMoffset'])
 
-    @DCoffset.setter
-    def DCoffset(self, value):
-        self.kat.data['DCoffset'] = float(value)
+    @DARMoffset.setter
+    def DARMoffset(self, value):
+        self.kat.data['DARMoffset'] = float(value)
+
+    @property
+    def MICHoffset(self):
+        if 'MICHoffset' not in self.kat.data:
+            return 0
+        else:
+            return float(self.kat.data['MICHoffset'])
+
+    @MICHoffset.setter
+    def MICHoffset(self, value):
+        self.kat.data['MICHoffset'] = float(value)
     
     @property
     def DCoffsetW(self):
@@ -110,7 +121,7 @@ class ADV_IFO(IFO):
 
     @property
     def f4(self):
-        return self._f3
+        return self._f4
     @f4.setter
     def f4(self, value):
         self._f4 = float(value)
@@ -260,30 +271,30 @@ class ADV_IFO(IFO):
         
     def lengths_status(self):
         self.compute_derived_lengths()
-        
         print(" .--------------------------------------------------.")
-        print("| - arm lengths [m]:                                |")
-        print("| Ln   = {:<11.7} Lw       = {:<11.7}         |".format(float(self.kat.LN.L), float(self.kat.LW.L)))
-        print("| - small MI and recycling lengths [m]:             | ")
-        print("| ln   = {:<11.7} lw       = {:<11.7}         |".format(self.lx, self.ly))
+        print("| - Arm lengths [m]:                                |")
+        print("| Ln   = {:<11.4f} Lw       = {:<11.4f}         |".format(float(self.kat.LN.L), float(self.kat.LW.L)))
+        print("| - Michelson and recycling lengths [m]:            | ")
+        print("| ln   = {:<11.4f} lw       = {:<11.4f}         |".format(self.lx, self.ly))
         if self.lsr is None:
-            print("| lpr  = {:<11.7} {:20}           |".format(self.lpr, ""))
+            print("| lpr  = {:<11.4f} {:20}           |".format(self.lpr, ""))
         else:
-            print("| lpr  = {:<11.7}  lsr  = {:<11.7}           |".format(self.lpr, self.lsr))
+            print("| lpr  = {:<11.4f}  lsr  = {:<11.4f}           |".format(self.lpr, self.lsr))
 
-        print("| lMI  = {:<11.7} lSchnupp = {:<11.5}         |".format(self.lMI, self.lSchnupp))
+        print("| lMI  = {:<11.4f} lSchnupp = {:<11.4f}         |".format(self.lMI, self.lSchnupp))
         if self.lSRC is None:
-            print("| lPRC = {:<11.7} {:20}           |".format(self.lPRC, ""))
+            print("| lPRC = {:<11.4f} {:20}           |".format(self.lPRC, ""))
         else:
-            print("| lPRC = {:<11.7}  lSRC = {:<11.7}           |".format(self.lPRC, self.lSRC))
+            print("| lPRC = {:<11.4f}  lSRC = {:<11.4f}           |".format(self.lPRC, self.lSRC))
         print("+---------------------------------------------------+")
-        print("| - associated cavity frequencies [Hz]:             |")
+        print("| - Associated cavity frequencies [Hz]:             |")
         print("| fsrx   = {:<11.5e},    fsry = {:<11.5e}       |".format(self.fsrX, self.fsrY))
         if self.fsrSRC is None:
             print("| fsrPRC = {:<13.8e} {:19}       |".format(self.fsrPRC, ""))
         else:
             print("| fsrPRC = {:<13.8e}, fsrSRC = {:<11.8e}        |".format(self.fsrPRC, self.fsrSRC))
         # print("| f1_PRC = {:11.8}                             |".format(self.f1_PRC))
+        print("| - Modulation sideband frequencies [Hz]:           |")
         print("| f1     = {:<12.6e},   f2   = {:<12.7e}     |".format(self.f1, self.f2))
         print("| f3     = {:<12.6e},   f4   = {:<12.8e}    |".format(self.f3, self.f4))
 
@@ -435,26 +446,40 @@ class ADV_IFO(IFO):
         # 
         self.kat.IFO.apply_tunings(tuning)
     
-    def set_DC_offset(self, DCoffset=None, verbose=False):
+    def set_DC_offset(self, DCoffset=None, offset_type = 'DARM', verbose=False):
         """
         Sets the DC offset for this inteferometer.
         
         This function directly alters the tunings of the associated kat object.
         """
+
+        # Checking if DARM or MICH is used
+        if offset_type == 'DARM' or offset_type == 'darm':
+            isDARM = True
+        elif offset_type == 'MICH' or offset_type == 'mich':
+            isDARM = False
+        else:
+            raise pkex.BasePyKatException("\033[91m offset_type must be DARM or MICH. \033[0m")
+
+        print("-- applying user-defined DC offset to {}:".format(offset_type))
+
         _kat = self.kat
-        
         if DCoffset:
-            self.DCoffset = DCoffset
-        
-            print("-- applying user-defined DC offset:")
-        
-            tunings = self.get_tunings()
-        
-            tunings["WE"] += self.DCoffset
-            tunings["NE"] -= self.DCoffset
-        
+            if isDARM:
+                self.DARMoffset = DCoffset
+                tunings = self.get_tunings()
+                tunings["WE"] += self.DARMoffset
+                tunings["NE"] -= self.DARMoffset
+            else:
+                self.MICHoffset = DCoffset
+                tunings = self.get_tunings()
+                tunings["WI"] += self.MICHoffset
+                tunings["WE"] += self.MICHoffset
+                tunings["NI"] -= self.MICHoffset
+                tunings["NE"] -= self.MICHoffset
+                
             self.apply_tunings(tunings)        
-        
+            
             # Compute the DC offset powers
             kat = _kat.deepcopy()
         
@@ -464,7 +489,7 @@ class ADV_IFO(IFO):
         
             out = kat.run(cmd_args=["-cr=on"])
         
-            _kat.IFO.DCoffsetW = float(out[signame])
+            self.kat.IFO.DCoffsetW = float(out[signame])
         else:
             # Finding light power in AS port (mostly due to RF sidebands now)
             kat = _kat.deepcopy()
@@ -475,25 +500,33 @@ class ADV_IFO(IFO):
         
             out = kat.run()
         
-            print("-- adjusting DCoffset based on light in dark port:")
+            print("-- adjusting {} DCoffset based on light in dark port:".format(offset_type))
         
             waste_light = round(float(out[signame]),1)
             print("   waste light in AS port of {:2} W".format(waste_light))
         
             #kat_lock = _kat.deepcopy()
         
-            self.find_DC_offset(5*waste_light)
-        
-        vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset / 360.0 * _kat.lambda0 ))
+            DCoffset = self.find_DC_offset(5*waste_light, offset_type, verbose=verbose)
+            
+        vprint(verbose, "   {} DCoffset = {:6.4} deg ({:6.4}m)".format(offset_type, DCoffset, DCoffset / 360.0 * _kat.lambda0 ))
         vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
 
-    def find_DC_offset(self, AS_power, precision=1e-4, verbose=False):
+    def find_DC_offset(self, AS_power, offset_type = 'DARM', precision=1e-4, verbose=False):
         """
-        Returns the DC offset of DARM that corresponds to the specified power in the AS power.
+        Returns the DC offset of DARM or MICH that corresponds to the specified power in the AS power.
         
         This function directly alters the tunings of the associated kat object.
         """
-        vprint(verbose, "   finding DC offset for AS power of {:3g} W".format(AS_power))
+
+        if offset_type == 'DARM' or offset_type == 'darm':
+            isDARM = True
+        elif offset_type == 'MICH' or offset_type == 'mich':
+            isDARM = False
+        else:
+            raise pkex.BasePyKatException("\033[91m offset_type must be DARM or MICH. \033[0m")
+
+        vprint(verbose, "   finding {} DC offset for AS power of {:3g} W".format(offset_type, AS_power))
     
         _kat = self.kat
         
@@ -505,14 +538,22 @@ class ADV_IFO(IFO):
         kat.removeBlock("errsigs", False)
         
         kat.IFO.B1.add_signal()
-    
-        Xphi = float(kat.NE.phi)
-        Yphi = float(kat.WE.phi)
+        
+        if isDARM:
+            EXphi = float(kat.NE.phi)
+            EYphi = float(kat.WE.phi)
+        else:
+            EXphi = float(kat.NE.phi)
+            EYphi = float(kat.WE.phi)
+            IXphi = float(kat.NI.phi)
+            IYphi = float(kat.WI.phi)
 
         def powerDiff(phi):
-            kat.WE.phi = Yphi + phi
-            kat.NE.phi = Xphi - phi
-        
+            kat.WE.phi = EYphi + phi
+            kat.NE.phi = EXphi - phi
+            if not isDARM:
+                kat.WI.phi = IYphi + phi
+                kat.NI.phi = IXphi - phi
             out = kat.run()
             print("   ! ", out[self.B1.get_signal_name()], phi)
             
@@ -522,18 +563,28 @@ class ADV_IFO(IFO):
         out = fmin(powerDiff, 0, xtol=precision, ftol=1e-3, disp=verbose)
     
         vprint(verbose, "   ... done")
-        vprint(verbose, "   DC offset for B1={} W is: {}".format(AS_power, out[0]))
-    
-        self.DCoffset = round(out[0], 6)
-        self.DCoffsetW = AS_power
-    
+        vprint(verbose, "   DC offset for B1 = {} W is: {:.3e} deg".format(AS_power, out[0]))
+        
         tunings = self.get_tunings()
-        tunings["WE"] += self.DCoffset
-        tunings["NE"] -= self.DCoffset
-    
+
+        self.DCoffsetW = AS_power
+
+        if isDARM:
+            self.DARMoffset = round(out[0], 6)
+            DCoffset  = self.DARMoffset
+            tunings["WE"] += DCoffset
+            tunings["NE"] -= DCoffset
+        else:
+            self.MICHoffset = round(out[0], 6)
+            DCoffset  = self.MICHoffset
+            tunings["WE"] += DCoffset
+            tunings["WI"] += DCoffset
+            tunings["NE"] -= DCoffset
+            tunings["NI"] -= DCoffset
+            
         self.apply_tunings(tunings)
         
-        return self.DCoffset
+        return DCoffset
 
     def add_errsigs_block(self, noplot=True):
         """
