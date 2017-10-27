@@ -547,7 +547,9 @@ def square_aperture_HG_knm(mode_in, mode_out, q, R):
 
 
 
-def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann", verbose=False, profile=False, gamma=(0,0), delta=(0,0), params={}):
+def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann",
+          verbose=False, profile=False, gamma=(0,0), delta=(0,0), **kwargs):
+          
     if q1y is None:
         q1y = q1
         
@@ -580,7 +582,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         x = surface_map.x
         y = surface_map.y
     
-    K = np.zeros((couplings.size/4,), dtype=np.complex128)
+    K = np.zeros((int(couplings.size/4),), dtype=np.complex128)
     
     #it = np.nditer(couplings, flags=['refs_ok','f_index'])
     
@@ -625,8 +627,6 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
 
         if profile:
             t0 = time.time()
-                
-        
         
         if method == "riemann":
             K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache, delta=delta)
@@ -635,7 +635,11 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         elif method == "bayerhelms":
             K[i] = bayerhelms_HG_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, gamma=gamma)
         elif method == "adaptive":
-            K[i] = adaptive_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, smap=surface_map, delta=delta, params=params)
+            K[i] = adaptive_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, smap=surface_map, delta=delta, params=kwargs)
+        elif method == "tilt_modulation":
+            
+        elif method == "q_modulation":
+            
         else:
             raise BasePyKatException("method value '%s' not accepted" % method)
         

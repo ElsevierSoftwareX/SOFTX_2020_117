@@ -348,7 +348,6 @@ attr OM2 Rc 1.7058
 
 # Distance OM2 --> OM3
 
-
 s sOM2_OM3 0.631 nOM2b nOM3a 
 bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3c nOM3d # T is a guess
 
@@ -397,10 +396,10 @@ s lCM2_IC 0.2842 1 nOMC_CM2b nOMC_ICd
 cav cavIMC MC2 nMC2in MC2 nMC2refl 
 cav cavXARM ITMX nITMX2 ETMX nETMX1
 cav cavYARM ITMY nITMY2 ETMY nETMY1
-cav cavPRX PRM nPRM2 ITMX nITMXs2
-cav cavPRY PRM nPRM2 ITMY nITMYs2
 cav cavSRX SRM nSRM1 ITMX nITMXs2
 cav cavSRY SRM nSRM1 ITMY nITMYs2
+cav cavPRX PRM nPRM2 ITMX nITMXs2
+cav cavPRY PRM nPRM2 ITMY nITMYs2
 cav cavOMC OMC_IC nOMC_ICc OMC_IC nOMC_ICd
 
 ###########################################################################

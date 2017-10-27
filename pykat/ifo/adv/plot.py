@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from . import assert_aligo_ifo_kat
+from . import assert_adv_ifo_kat
 from .. import scan_optics_string
 
 from pykat.ifo.plot import *
@@ -42,7 +42,7 @@ def f1_PRC_resonance(_kat, ax=None, show=True):
             put f1m f $mx1 
             """.format(nmStr, kat.IFO.f1, startf, stopf)
             
-    kat.parseCommands(code)
+    kat.parse(code)
     
     out = kat.run()
     
@@ -113,14 +113,14 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     kat.removeBlock("locks", False)
     
     if DOFs is None:
-        dofs = [kat.IFO.DARM, kat.IFO.CARM, kat.IFO.PRCL, kat.IFO.SRCL, kat.IFO.MICH]
+        dofs = kat.IFO.LSC_DOFs
     else:
         dofs = kat.IFO.strsToDOFs(DOFs)
     
     # add in signals for those DOF to plot
     for _ in dofs:
         if not (not replaceDOFSignals and hasattr(kat, _.signal_name())):
-            kat.parseCommands(_.signal())
+            kat.parse(_.signal())
             
     toShow = None
     
@@ -130,7 +130,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
         # Check if other DOF signals we need to include for plotting
         for _ in toShow:
             if not (not replaceDOFSignals and hasattr(kat, _.signal_name())):
-                kat.parseCommands(_.signal())
+                kat.parse(_.signal())
                 
     if fig is not None:
         _fig = fig
@@ -156,7 +156,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
                                         xlimits=np.multiply(d.scale, xlimits), steps=steps,
                                         axis=1, relative=True)
                                   
-        kat.parseCommands(scan_cmd, addToBlock="SCAN")
+        kat.parse(scan_cmd, addToBlock="SCAN")
                 
         out = kat.run()
         
@@ -324,8 +324,6 @@ def pows_vs_dof(kat, DoF, xaxis = [-10,10,100], noplot=False):
         plt.show(fig)
         
         return fig, ax
-
-
 
 def pows_vs_dofs(kat, xaxis = [-1,1,100]):
     '''

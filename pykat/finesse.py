@@ -673,16 +673,53 @@ class KatRun2D(object):
         with open(filename,'r') as infile:
             return pickle.load(infile)
     
-    def get(self, value): return self[value].squeeze()
+    # def get(self, value): return self[value].squeeze()
+    #
+    # def __getitem__(self, value):
+    #     idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split()[0] == str(value)]
+    #
+    #     if len(idx) > 0:
+    #         return self.z[idx].squeeze()
+    #     else:
+    #         raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
+    
+    def get(self, value): return self[value]
     
     def __getitem__(self, value):
-        idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split()[0] == str(value)]
-        
-        if len(idx) > 0:
-            return self.z[idx].squeeze()
+        if isContainer(value):
+            results = []
+            for _ in value:
+                results.append(self[_])
+                
+            return np.array(results).squeeze()
         else:
-            raise  pkex.BasePyKatException("No output by the name {0} found".format(str(value)))
-    
+            idx = [i for i in range(len(self.zlabels)) if self.zlabels[i].split()[0] == str(value)]
+            out = None
+            
+            if len(idx) > 0:
+                #out = self.y[:, idx]
+            
+                if len(idx) == 1:
+                    if "abs:deg" in self.yaxis:
+                        out = self.z[idx[0], :, :]
+                    elif "re:im" in self.yaxis:
+                        out = self.z[idx[0], :, :]
+                else: 
+                    if "abs:deg" in self.yaxis:
+                        out = self.z[idx[0], :, :] * np.exp(1j*math.pi*self.z[idx[1], :, :]/180.0)
+                    elif "re:im" in self.yaxis :
+                        out = self.z[idx[0], :, :] + 1j*self.z[idx[1], :, :]
+
+                if out is None:
+                    out = self.z[idx]
+
+                if out.size == 1:
+                    return out[0].squeeze()
+                else:
+                    return out.squeeze()
+            else:
+                raise  pkex.BasePyKatException("No output by the name '{0}' found in the output".format(str(value)))
+                
 @canFreeze    
 class Signals(object):
     
@@ -1180,6 +1217,9 @@ class kat(object):
             katfile.flush()
             
     def saveScript(self, filename=None):
+        """
+        saveScript has been depreciated see kat.save
+        """
         warnings.warn('saveScript() depreciated, use save(...).', stacklevel=2)
         self.save(filename=filename)
         
@@ -1198,10 +1238,16 @@ class kat(object):
                             preserveConstants=preserveConstants, useConstants=useConstants)
         
     def loadKatFile(self, katfile, blocks=None):
+        """
+        loadKatCode has been depreciated see kat.load
+        """
         warnings.warn('loadKatFile() depreciated, use load(...).', stacklevel=2)
         self.load(katfile, blocks=blocks)
     
     def parseKatCode(self, code, blocks=None):
+        """
+        parseKatCode has been depreciated see kat.parse
+        """
         warnings.warn('parseKatCode depreciated, use parse.', stacklevel=2)
         self.parse(code, blocks=blocks)
 
@@ -1355,11 +1401,37 @@ class kat(object):
         for key in self.__variables:
             print("$" + key, "::::", "owner =", self.__variables[key].owner.name, ", use count =", self.__variables[key].putCount)
     
-    def parse(self, *args, **kwargs):
-        self.parseCommands(*args, **kwargs)
+    def parseCommands(self, *args, **kwargs):
+        """
+        parseCommands has been depreciated see kat.parse instead.
+        """
+        warnings.warn('parseCommands depreciated, use parse.', stacklevel=2)
+        self.parse(*args, **kwargs)
         
-    def parseCommands(self, commands, blocks=None, addToBlock=None, keepComments=False, preserveConstants=False, useConstants=None, exceptionOnReplace=False):
+    def parse(self, commands, blocks=None, addToBlock=None,
+              keepComments=False, preserveConstants=False,
+              useConstants=None, exceptionOnReplace=False):
+        """
+        This function takes Finesse commands and adds them to the kat object.
+        These commands will then be accesible via the kat object interface if
+        the appropriate pykat objects are available.
+              
+        If the kat object is set to be verbose this will output more detailed
+        information and warnings, such as when an input cannot be parsed into
+        a pykat object, thus added as an extra line. See kat.addLine and removeLine
+        to handle these.
+              
+        Arguments:
+        commands - Strings of Finesse commands to parse. This can be a multiline string, a list of strings, or some other iterable of strings
+        blocks - List of blocks to parse from the commands (Can't be used in conjunction with addToBlock)
+        addToBlock - Name of block to parse the commands in to
+        keepComments - Keeps the comments in the kat object so they show when printed
+        preserveConstants - When false each constant is replaced with its value when parsing. True keeps the constant in the kat object and can be changed later using kat.constants
+        useConstants - A dictionary of constant values to use instead of those already parsed by the kat object or in the commands
+        exceptionOnReplace - If true an exception is thrown when a command or detector name is already present in the kat object
+        """
         if not isinstance(commands, six.string_types) and hasattr(commands, "__iter__"):
+            # separate out individual parseable inputs
             for _ in commands:
                 self.parse(_, blocks, addToBlock, keepComments, preserveConstants, useConstants)
             

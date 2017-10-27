@@ -1,0 +1,642 @@
+/*
+Virgo model without SRM. Based on the other PRITF.kat with 
+some added stuff tha came from the MATLAB files 
+(don't remember which one). A main change is that I modified 
+the cavity lenghts and RoCs in order to make the PRC 
+near-unstable instead of unstable, which it was in the 
+original file.
+
+Daniel Toyra
+dtoyra@star.sr.bham.ac.uk  
+*/
+
+%%% FTblock Laser
+###########################################################################
+
+l i1 $P_laser 0 0 nin 
+
+###########################################################################
+%%% FTend Laser
+
+%%% FTblock EOMs
+###########################################################################
+
+# Without EOMs
+# ---------
+# s s_tmp 0.301 nin nInj
+# ---------
+
+# With EOMs
+# ---------
+s s0 1m nin nEOM1a
+mod EOM1 $f1 $mod_index_6M 2 pm 0 nEOM1a nEOM1b
+s sEOM1 0.1 nEOM1b nEOM2a
+mod EOM2 $f2 $mod_index_56M 2 pm 0 nEOM2a nEOM2b
+s sEOM2 0.1 nEOM2b nEOM3a
+mod EOM3 $f3 $mod_index_8M 2 pm 0 nEOM3a nEOM3b
+s sEOM3 0.1 nEOM3b nEOM4a
+mod EOM4 $f4 $mod_index_119M 2 pm 0 nEOM4a nEOM4b
+# s sEOM4 0 nEOM4b nEOM5a
+# mod EOM5 $f4b $mod_index_132M 2 pm 0 nEOM5a nEOM5b
+
+s s1 0 nEOM4b nInj1
+# ---------
+
+###########################################################################
+%%% FTend EOMs
+
+bs Inj 1 0 0 0 nInj1 nInj2 nInj3 nInj4
+
+s sInj_FI 0.1 nInj2 nFI1
+
+# Input faraday isolator
+dbs FI nFI1 nFI2 nFI3 nB2
+
+s sFI_MPR 0 nFI3 nMPR1
+
+%%% FTblock PRC
+###########################################################################
+
+m2 MPR_AR 0 160u $PRARphi nMPR1 nMPRsub1
+s sMPRsub 0.1003 $nsilica nMPRsub1 nMPRsub2
+m1 MPR $T_PR $L_PR $PRphi nMPRsub2 nMPR2
+attr MPR Rc $ROC_PR
+
+# Space between PR and POP
+s lMPR_POP 0.06 1 nMPR2 nPOP1 #correct one
+
+# Optical path through POP with n=$nsilica
+m POP_AR 0 1 0 nPOP1 nPOPsub1
+s sPOPsub 0.03549 $nsilica nPOPsub1 nPOPsub2a
+bs2 POP $R_POP 0 0 0 nPOPsub2a nPOPsub2b nPOP2 nB4
+
+s lPOP_BS $l_BS_POP nPOP2 nBSs
+
+###########################################################################
+%%% FTend PRC
+
+%%% FTblock BS
+###########################################################################
+
+# Changed by DT to get correct angles and distances. Was changed when 
+# trying to get the PRC marginally stable. 
+
+bs1 BS $T_BS $L_BS 0 -45 nBSs nBSw nBSi1 nBSi3      
+
+s sBS1 0.0744589543 $nsilica nBSi1 nBSi2
+s sBS2 0.0744589543 $nsilica nBSi3 nBSi4
+# s sBS1 0.075 $nsilica nBSi1 nBSi2  # Old
+# s sBS2 0.075 $nsilica nBSi3 nBSi4  # Old
+
+# Incidence angles computed by DT
+bs2 BSAR1 $R_BS_AR 0 0 -29.1950549837 nBSi2 dump nBSn nBSAR       
+bs2 BSAR2 $R_BS_AR 0 0 -29.1950549837 nBSi4 dump nBSe dump
+## Incidence angles computed by me
+#bs2 BSAR1 $R_BS_AR 0 0 -29.1922 nBSi2 dump nBSn nBSAR       
+#bs2 BSAR2 $R_BS_AR 0 0 -29.1922 nBSi4 dump nBSe dump
+
+s sOut 0 nBSe nB1
+
+###########################################################################
+%%% FTend BS
+
+%%% FTblock Narm
+###########################################################################
+
+s sNs $l_BS_CP01 nBSn nCP_N1
+
+#  Optical path through CP01 with n=nsilica
+m MCPNs1 0 1 0 nCP_N1 nCP_N2
+s sCP_N 0.03549 $nsilica nCP_N2 nCP_N3
+m MCPNs2 0 1 0 nCP_N3 nCP_N4
+
+# Space between CP01 and NI
+s sCP_NI 0.2 nCP_N4 nMNI1 #from CAD
+
+# m2 MNIAR $R_NI_AR $L_NI $NIARphi nMNI1 nMNIi1
+m2 MNIAR 0 0 $NIARphi nMNI1 nMNIi1      
+s sMNI1 .20026 $nsilica nMNIi1 nMNIi2
+m1 MNI $T_NI 0 $NIphi nMNIi2 nMNI2 
+attr MNI Rc $ROC_NI
+attr MNIAR Rc $NIARRC 
+s sNl $l_arm nMNI2 nMNE1
+
+m1 MNE $T_NE $L_NE  $NEphi nMNE1 nMNEi1
+#s sMNE 0.289926 $nsilica nMNEi1 nMNEi2
+s sMNE .2 $nsilica nMNEi1 nMNEi2
+m2 MNEAR 0 133u $NEARphi nMNEi2 nMNE2
+attr MNE Rc $ROC_NE
+
+###########################################################################
+%%% FTend Narm
+
+%%% FTblock Warm
+###########################################################################
+
+s sWs $l_BS_CP02 nBSw nCP_W1
+
+# Optical path through CP02 with n=nsilica
+m MCPWs1 0 1 0 nCP_W1 nCP_W2
+s sCP_W 0.03549 $nsilica nCP_W2 nCP_W3
+m MCPWs2 0 1 0 nCP_W3 nCP_W4
+
+# Space between CP02 and WI
+s sCP_WI 0.2 nCP_W4 nMWI1 #from CAD
+
+# m2 MWIAR $R_WI_AR $L_WI $WIARphi nMWI1 nMWIi1
+m2 MWIAR 0 0 $WIARphi nMWI1 nMWIi1
+s sMWI1 .20031 $nsilica nMWIi1 nMWIi2
+m1 MWI $T_WI 0 $WIphi nMWIi2 nMWI2 
+attr MWI Rc $ROC_WI    
+attr MWIAR Rc $WIARRC
+s sWl $l_arm nMWI2 nMWE1
+m1 MWE $T_WE $L_WE $WEphi nMWE1 nMWEi1
+#s sMWE 0.289926 $nsilica nMWEi1 nMWEi2
+s sMWE .2 $nsilica nMWEi1 nMWEi2
+m2 MWEAR 0 133u $WEARphi nMWEi2 nMWE2
+attr MWE Rc $ROC_WE
+
+###########################################################################
+%%% FTend Warm
+
+%%% FTblock HOMs
+###########################################################################
+
+# Arms
+cav WC MWI nMWI2 MWE nMWE1
+cav NC MNI nMNI2 MNE nMNE1
+
+# PRC
+cav cavPRW MPR nMPR2 MWI nMWIi2
+cav cavPRN MPR nMPR2 MNI nMNIi2
+
+###########################################################################
+%%% FTend HOMs
+
+%%% FTblock Tunings
+###########################################################################
+
+# Changed by DT
+#const PRphi   -0.0953605
+#const PRARphi -0.0953605
+# const PRphi   -0.0955 # old
+# const PRARphi -0.0955 # old
+
+#const NIphi   -22.5
+#const NIARphi -22.5
+#const NEphi   -22.5
+#const NEARphi -22.5
+
+#const WIphi   22.5
+#const WIARphi 22.5
+#const WEphi   22.5
+#const WEARphi 22.5
+
+const PRphi   0
+const PRARphi 0
+
+const NIphi   0
+const NIARphi 0
+const NEphi   0
+const NEARphi 0
+
+const WIphi   0
+const WIARphi 0
+const WEphi   0
+const WEARphi 0
+
+###########################################################################
+%%% FTend Tunings
+
+%%% FTblock Powers
+###########################################################################
+
+# DC photodiodes
+pd pdB1DC nBSe
+pd pdB2DC nMPR1
+pd pdB4DC nB4
+pd pdB5DC nBSAR
+pd pdB7DC nMNE2
+pd pdB8DC nMWE2
+
+# ----------------------------
+# Added by DT
+# ----------------------------
+
+# Power
+# ---------------------------
+# Input power to PRM
+pd P_in nMPR1*
+
+# BS south
+pd P_BSs_out nBSs   # out
+pd P_BSs_in nBSs*   # in
+
+# BS west
+pd P_BSw_out nBSw   # out
+pd P_BSw_in nBSw*   # in
+
+# BS north
+pd P_BSn_out nBSn   # out
+pd P_BSn_in nBSn*   # in
+
+# Arms, intra cavity power
+pd P_NAC nMNI2     # North
+pd P_WAC nMWI2     # West
+# ----------------------------
+
+###########################################################################
+%%% FTend Powers
+
+%%% FTblock Amplitudes
+###########################################################################
+
+# Input
+ad A_car_in 0 nMPR1*
+ad A_6_in $f1 nMPR1*
+ad A_8_in $f3 nMPR1*
+ad A_56_in $f2 nMPR1*
+ad A_119_in $f4 nMPR1*
+ad A_131_in $f4b nMPR1*
+
+# SYM (reflected off PRC)
+ad A_car_sym 0 nMPR1
+ad A_6_sym $f1 nMPR1
+ad A_8_sym $f3 nMPR1
+ad A_56_sym $f2 nMPR1
+ad A_119_sym $f4 nMPR1
+ad A_131_sym $f4b nMPR1
+
+# AS
+ad A_car_as 0 nBSe
+ad A_6_as $f1 nBSe
+ad A_8_as $f3 nBSe
+ad A_56_as $f2 nBSe
+ad A_119_as $f4 nBSe
+ad A_131_as $f4b nBSe
+
+# BS south in
+ad A_car_BSsIn 0 nBSs*
+ad A_6_BSsIn $f1 nBSs*
+ad A_8_BSsIn $f3 nBSs*
+ad A_56_BSsIn $f2 nBSs*
+ad A_119_BSsIn $f4 nBSs*
+ad A_131_BSsIn $f4b nBSs*
+
+# ----------------------------
+# Added by DT
+# ----------------------------
+
+# PRM out
+ad A_car_out 0 nMPR1
+
+# Arms
+# North
+ad A_car_NArm_intra 0 nMNI2
+ad A_car_NArm_trans 0 nMNE2
+# West
+ad A_car_WArm_intra 0 nMWI2
+ad A_car_WArm_trans 0 nMWE2
+
+# BS south out
+ad A_car_BSsOut 0 nBSs
+ad A_6_BSsOut $f1 nBSs
+ad A_8_BSsOut $f3 nBSs
+ad A_56_BSsOut $f2 nBSs
+ad A_119_BSsOut $f4 nBSs
+ad A_131_BSsOut $f4b nBSs
+
+# BS east in
+ad A_car_BSeIn 0 nBSe*
+ad A_6_BSeIn $f1 nBSe*
+ad A_8_BSeIn $f3 nBSe*
+ad A_56_BSeIn $f2 nBSe*
+ad A_119_BSeIn $f4 nBSe*
+ad A_131_BSeIn $f4b nBSe*
+
+# BS east out
+ad A_car_BSeOut 0 nBSe
+ad A_6_BSeOut $f1 nBSe
+ad A_8_BSeOut $f3 nBSe
+ad A_56_BSeOut $f2 nBSe
+ad A_119_BSeOut $f4 nBSe
+ad A_131_BSeOut $f4b nBSe
+
+# BS north in
+ad A_car_BSnIn 0 nBSn*
+ad A_6_BSnIn $f1 nBSn*
+ad A_8_BSnIn $f3 nBSn*
+ad A_56_BSnIn $f2 nBSn*
+ad A_119_BSnIn $f4 nBSn*
+ad A_131_BSnIn $f4b nBSn*
+
+# BS north out
+ad A_car_BSnOut 0 nBSn
+ad A_6_BSnOut $f1 nBSn
+ad A_8_BSnOut $f3 nBSn
+ad A_56_BSnOut $f2 nBSn
+ad A_119_BSnOut $f4 nBSn
+ad A_131_BSnOut $f4b nBSn
+
+# BS west in
+ad A_car_BSwIn 0 nBSw*
+ad A_6_BSwIn $f1 nBSw*
+ad A_8_BSwIn $f3 nBSw*
+ad A_56_BwnIn $f2 nBSw*
+ad A_119_BSwIn $f4 nBSw*
+ad A_131_BSwIn $f4b nBSw*
+
+# BS west out
+ad A_car_BSwOut 0 nBSw
+ad A_6_BSwOut $f1 nBSw
+ad A_8_BSwOut $f3 nBSw
+ad A_56_BSwOut $f2 nBSw
+ad A_119_BSwOut $f4 nBSw
+ad A_131_BSwOut $f4b nBSw
+
+###########################################################################
+%%% FTend Amplitudes
+
+%%% FTblock errsigs
+###########################################################################
+
+# f for B1
+pd1 pdB1f6p $f1 0 nBSe
+pd1 pdB1f6q $f1 90 nBSe
+pd1 errB1_6 $f1 nBSe   # Added by DT
+
+pd1 pdB1f8p $f3 0 nBSe
+pd1 pdB1f8q $f3 90 nBSe
+pd1 errB1_8 $f3 nBSe   # Added by DT
+
+pd1 pdB1f56p $f2 0 nBSe
+pd1 pdB1f56q $f2 90 nBSe
+pd1 errB1_56 $f2 nBSe   # Added by DT
+
+pd1 pdB1f131p $f4b 0 nBSe
+pd1 pdB1f131q $f4b 90 nBSe
+pd1 errB1_131 $f4b nBSe   # Added by DT
+
+# f for B2
+pd1 pdB2f6p $f1 0 nMPR1
+pd1 pdB2f6q $f1 90 nMPR1
+pd1 errB2_6 $f1 nMPR1   # Added by DT
+
+pd1 pdB2f8p $f3 0 nMPR1
+pd1 pdB2f8q $f3 90 nMPR1
+pd1 errB2_8 $f3 nMPR1   # Added by DT
+
+pd1 pdB2f56p $f2 0 nMPR1
+pd1 pdB2f56q $f2 90 nMPR1
+pd1 errB2_56 $f2 nMPR1   # Added by DT
+
+pd1 pdB2f131p $f4b 0 nMPR1
+pd1 pdB2f131q $f4b 90 nMPR1
+pd1 errB2_131 $f4b nMPR1   # Added by DT
+
+pd1 pdB2f119p $f4 0 nMPR1   # Added by DT
+pd1 pdB2f119q $f4 90 nMPR1  # Added by DT
+pd1 errB2_119 $f4 nMPR1     # Added by DT
+
+# f for B4
+pd1 pdB4f6p $f1 0 nB4
+pd1 pdB4f6q $f1 90 nB4
+pd1 errB4_6 $f1 nB4   # Added by DT
+
+pd1 pdB4f8p $f3 0 nB4
+pd1 pdB4f8q $f3 90 nB4
+pd1 errB4_8 $f3 nB4   # Added by DT
+
+pd1 pdB4f56p $f2 0 nB4
+pd1 pdB4f56q $f2 90 nB4
+pd1 errB4_56 $f2 nB4   # Added by DT
+
+pd1 pdB4f131p $f4b 0 nB4
+pd1 pdB4f131q $f4b 90 nB4
+pd1 errB4_131 $f4b nB4   # Added by DT
+
+# f for B5
+pd1 pdB5f6p $f1 0 nBSAR
+pd1 pdB5f6q $f1 90 nBSAR
+pd1 errB5_6 $f1 nBSAR   # Added by DT
+
+pd1 pdB5f8p $f3 0 nBSAR
+pd1 pdB5f8q $f3 90 nBSAR
+pd1 errB5_8 $f3 nBSAR   # Added by DT
+
+pd1 pdB5f56p $f2 0 nBSAR
+pd1 pdB5f56q $f2 90 nBSAR
+pd1 errB5_56 $f2 nBSAR   # Added by DT
+
+pd1 pdB5f131p $f4b 0 nBSAR
+pd1 pdB5f131q $f4b 90 nBSAR
+pd1 errB5_131 $f4b nBSAR   # Added by DT
+
+# f for B7
+pd1 pdB7f6p $f1 0 nMNE2
+pd1 pdB7f6q $f1 90 nMNE2
+pd1 errB7_6 $f1 nMNE2   # Added by DT
+
+pd1 pdB7f8p $f3 0 nMNE2
+pd1 pdB7f8q $f3 90 nMNE2
+pd1 errB7_8 $f3 nMNE2   # Added by DT
+
+pd1 pdB7f56p $f2 0 nMNE2
+pd1 pdB7f56q $f2 90 nMNE2
+pd1 errB7_56 $f2 nMNE2   # Added by DT
+
+pd1 pdB7f131p $f4b 0 nMNE2
+pd1 pdB7f131q $f4b 90 nMNE2
+pd1 errB7_131 $f4b nMNE2   # Added by DT
+
+# f for B8
+pd1 pdB8f6p $f1 0 nMWE2
+pd1 pdB8f6q $f1 90 nMWE2
+pd1 errB8_6 $f1 nMWE2   # Added by DT
+
+pd1 pdB8f8p $f3 0 nMWE2
+pd1 pdB8f8q $f3 90 nMWE2
+pd1 errB8_8 $f3 nMWE2   # Added by DT
+
+pd1 pdB8f56p $f2 0 nMWE2
+pd1 pdB8f56q $f2 90 nMWE2
+pd1 errB8_56 $f2 nMWE2   # Added by DT
+
+pd1 pdB8f131p $f4b 0 nMWE2
+pd1 pdB8f131q $f4b 90 nMWE2
+pd1 errB8_131 $f4b nMWE2   # Added by DT
+
+# PRCL 3f
+pd1 pdB2fx3p $f1_3f 0 nMPR1
+pd1 pdB2fx3q $f1_3f 90 nMPR1
+pd1 errB2_fx3 $f1_3f nMPR1   # Added by DT
+
+###########################################################################
+%%% FTend errsigs
+
+%%% FTblock Lengths
+###########################################################################
+
+# measured distances
+const l_BS_POP 5.9399       # Original, changed, see below
+# const l_BS_POP 6.5399     # Changed by DT for stability
+const l_BS_CP01 5.3662      # North (distances computed from the Center of Mass)
+const l_BS_CP02 5.244       # West (distances computed from the Center of Mass)double checked
+
+# macroscopic lengths in m, given
+const l_arm 2999.8          # arm length [TDR, tab 2.1, pp 17] 
+const l_PRCL 11.952         # power recycling cavity length [TDR, tab 2.1, pp 17]
+
+# const l_PRCL 11.971
+const l_SRCL 11.952         # signal recycling cavity length [TDR, tab 2.1, pp 17]
+const l_Schnupp 0.23        # Schnupp asymmetry [TDR, tab 2.4, pp 25]
+const l_PR_BS 5.925         # computed as BS-POP + n*POPthick + POP-PR [TDR, tab 2.4, pp 25]
+const l_IMC_PR 11.67        # Extracted from Optocad (0.4084 on SIB1, 2.1240 under SIB1, 9.14136 on SIB1 to PRM)
+const l_IMC1_IMC2 0.08625   # TDR, p. 123, Fig. 4.27
+
+###########################################################################
+%%% FTend Lengths
+
+
+%%% FTblock Reflectivities
+###########################################################################
+
+# coating parameters for 1064 nm
+# FIXME: these values should be changed to values measured by LMA
+const T_PR 0.04835       # measured power recycling mirror transmission [VIR-0029A-15]
+const T_BS 0.5012        # measured beam splitter transmission [VIR-0446B-14]
+const T_NI 0.01375       # measured north input mirror transmission [IM02, VIR-0543A-14]
+const T_NE 4.4u          # measured north end mirror transmission [EM01, VIR-0269A-15]
+const T_SR 0.20          # signal recycling mirror transmission [VIR-0309B-12, slide 20]
+const T_WI 0.01377       # measured west input mirror transmission [IM04, VIR-0544A-14]
+const T_WE 4.3u          # measured west end mirror transmission [EM03, VIR-0270A-15]
+const R_POP 300u         # reflectivity of PRC pick-off plate [TDR, tab 5.3, pp 183]
+const R_PR_AR 160u       # measured reflectivity of PR back-face [VIR-0029A-15]
+const R_BS_AR 329u       # measured reflectivity of BS back-face [VIR-0446B-14]
+const R_NI_AR 58u        # measured reflectivity of NI back-face [IM02, VIR-0543A-14]
+const R_WI_AR 32u        # measured reflectivity of WI back-face [IM04, VIR-0544A-14]
+const R_NE_AR 133u       # measured reflectivity of NE back-face [EM01, VIR-0269A-15]
+const R_WE_AR 155u       # measured reflectivity of WE back-face [EM03, VIR-0270A-15]
+const T_IMC 2500u        # IMC HR transmission according to TDR, p. 121 preliminary
+const T_IMCend 1u        # IMC end mirror HR transmission, preliminary
+const L_IMC 15u          # Losses according to TDR, preliminary
+const R_IMC_AR 0.0001    # IMC AR reflection, preliminary
+
+# mirror losses [TDR, tab 1.1, pp 8]
+const L_PR 37.5u
+const L_BS 37.5u
+const L_NI 37.5u
+const L_NE 37.5u
+const L_SR 37.5u
+const L_WI 37.5u
+const L_WE 37.5u
+
+###########################################################################
+%%% FTend Reflectivities
+
+%%% FTblock ROCs
+###########################################################################
+
+const ROC_NE 1683
+const ROC_SR 1430
+const ROC_WE 1683
+const ROC_IMCend 187   # TDR value, p. 122
+
+# RoCs for ITMs and PRM
+# -----------------------------------------------------------------
+
+# Design values
+# -----------------------------------------------------------------
+# mirror radii of curvature in m, [TDR, tab 5.2, pp 176]
+# const ROC_PR -1430      # Design (warm)
+# const ROC_PR -1429.4    # Changed by DT to make PRC stable.
+#
+# const ROC_NI -1420
+# const ROC_WI -1420
+#
+# const NIARRC -1425.2
+# const WIARRC -1425.2
+# -----------------------------------------------------------------
+
+# Measured, got from Anna-Lisa /DT
+# -----------------------------------------------------------------
+# const ROC_PR -1431.0 
+# const ROC_NI -1424.5
+# const ROC_WI -1424.5
+# -----------------------------------------------------------------
+
+# For modematching between PRC and arms (About 99.999 %) /DT
+# -----------------------------------------------------------------
+const ROC_PR -1431.0         # Measured, from from Anna-Lisa
+const ROC_NI -1421.87        # From optimal modematching
+const ROC_WI -1422.03        # From optimal modematching
+# From optimal modematching and constrained to equal ROC_NI - 5.2)
+const NIARRC -1427.07
+# From optimal modematching and constrained to equal ROC_WI - 5.2)
+const WIARRC -1427.23        # From optimal modematching
+# -----------------------------------------------------------------
+
+###########################################################################
+%%% FTend ROCs
+
+%%% FTblock Constants
+###########################################################################
+
+const P_laser 125 # Laser power in W
+
+const nsilica 1.44963
+const f1_3f 18812331
+
+# modulation frequencies [TDR, tab 2.3, pp 24]
+const f1 6270777            # fmod1 in TDR   
+const f3 8361036            # 4 / 3 * f1, fmod3 in TDR
+const f2 56436993          # 9 * f1, fmod2 in TDR
+const f4b 131686317        # 21 * f1, fmod4 in TDR
+const f4 119144763.0      # 19 * f1, added by DT
+
+# modulation indices [TDR, section 4.6.1, pp 104]
+const mod_index_6M 0.1
+const mod_index_8M 0.1
+const mod_index_56M 0.1
+const mod_index_119M 0.1
+const mod_index_132M 0.1 # ??
+
+const speed_of_light 299792458
+
+###########################################################################
+%%% FTend Constants
+
+%%% FTblock commands
+###########################################################################
+
+phase 2
+maxtem 2
+
+###########################################################################
+%%% FTend commands
+
+
+%%% FTblock Functions
+###########################################################################
+
+# Unused, what I can see /DT
+
+# macroscopic lengths in m, derived
+func l_BS_NI = $l_PRCL - $l_PR_BS + 0.5*$l_Schnupp
+func l_BS_WI = $l_PRCL - $l_PR_BS - 0.5*$l_Schnupp
+func l_BS_SR = $l_SRCL - 0.5*($l_BS_NI + $l_BS_WI)
+func l_IMC = 3*$speed_of_light / $f1 # assuming a linear cavity
+
+###########################################################################
+%%% FTend Functions
+
+
+%%% FTblock Mass
+###########################################################################
+attr MNI M 43
+attr MNE M 43
+attr MWI M 43
+attr MWE M 43
+###########################################################################
+%%% FTend Mass
+
