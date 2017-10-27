@@ -352,15 +352,15 @@ class ALIGO_IFO(IFO):
         in a previous kat run. This should bring the kat object closer to an
         initial lock point so that the lock commands do not need to be run
         on startup.
-        
+    
         out: kat run object containing data on lock outputs
         idx: the step in the output array to use
-        
+    
         This function directly alters the tunings of the associated kat object.
         """
-        
-        tuning = self.kat.IFO.get_tunings()
     
+        tuning = self.kat.IFO.get_tunings()
+
         if "ETMX_lock" in out.ylabels:
             if idx is None:
                 tuning["ETMX"] += float(out["ETMX_lock"])
@@ -368,7 +368,7 @@ class ALIGO_IFO(IFO):
                 tuning["ETMX"] += float(out["ETMX_lock"][idx])
         else:
             pkex.printWarning("could not find ETMX lock")
-        
+    
         if "ETMY_lock" in out.ylabels:
             if idx is None:
                 tuning["ETMY"] += float(out["ETMY_lock"])
@@ -376,33 +376,33 @@ class ALIGO_IFO(IFO):
                 tuning["ETMY"] += float(out["ETMY_lock"][idx])
         else:
             pkex.printWarning("could not find ETMY lock")
-        
+    
         if "PRCL_lock" in out.ylabels:
             if idx is None:
-                tuning["PRM"]  += float(out["PRCL_lock"])
+                tuning["PRM"]  += float(out["PRM_lock"])
             else:
-                tuning["PRM"]  += float(out["PRCL_lock"][idx])
+                tuning["PRM"]  += float(out["PRM_lock"][idx])
         else:
             pkex.printWarning("could not find PRCL lock")
-        
+    
         if ("MICH_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
             if idx is None:
-                tuning["ITMX"] += float(out["MICH_lock"])
+                tuning["ITMX"] += float(out["ITMX_lock"])
                 tuning["ITMY"] += float(out["ITMY_lock"])
             else:
-                tuning["ITMX"] += float(out["MICH_lock"][idx])
+                tuning["ITMX"] += float(out["ITMX_lock"][idx])
                 tuning["ITMY"] += float(out["ITMY_lock"][idx])
         else:
             pkex.printWarning("could not find MICH (ITMY) lock")
-        
+    
         if "SRCL_lock" in out.ylabels:
             if idx is None:
-                tuning["SRM"]  += float(out["SRCL_lock"])
+                tuning["SRM"]  += float(out["SRM_lock"])
             else:
-                tuning["SRM"]  += float(out["SRCL_lock"][idx])
+                tuning["SRM"]  += float(out["SRM_lock"][idx])
         else:
             pkex.printWarning("could not find SRCL lock")
-        
+            
         self.kat.IFO.apply_tunings(tuning)
     
     def set_DC_offset(self, DCoffset=None, verbose=False):
