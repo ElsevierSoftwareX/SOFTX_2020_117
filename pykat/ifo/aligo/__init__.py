@@ -402,6 +402,8 @@ class ALIGO_IFO(IFO):
                 tuning["SRM"]  += float(out["SRM_lock"][idx])
         else:
             pkex.printWarning("could not find SRCL lock")
+            
+        self.kat.IFO.apply_tunings(tuning)
     
     def set_DC_offset(self, DCoffset=None, verbose=False):
         """
