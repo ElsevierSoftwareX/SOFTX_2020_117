@@ -183,7 +183,7 @@ class BaseDetector(object) :
                 
         self._mask[_id] = factor
 
-    def _set_node(value, index):
+    def _set_node(self, value, index):
         if self._kat is None:
             raise pkex.BasePyKatException("This detector has not been added to a kat object yet")
         else:
