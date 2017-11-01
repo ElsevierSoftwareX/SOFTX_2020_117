@@ -115,7 +115,7 @@ s sCPN_NI $l_CPN_NI nCPN_TL2 nNI1
 # m2 NIAR $R_NI_AR $L_NI $NIAR_phi nNI1 nNIi1
 m2 NIAR 0 $L_NIAR $NIAR_phi nNI1 nNIsub1      
 s sNIsub .20026 $nsilica nNIsub1 nNIsub2
-m1 NI $T_NI 0 $NI_phi nNIsub2 nNI2
+m1 NI $T_NI $L_WI $NI_phi nNIsub2 nNI2
 
 s LN $l_arm nNI2 nNE1
 
@@ -146,7 +146,7 @@ s sCPW_WI $l_CPW_WI nCPW_TL2 nWI1
 # West input mirror
 m2 WIAR 0 $L_WIAR $WIAR_phi nWI1 nWIsub1
 s sWIsub .20031 $nsilica nWIsub1 nWIsub2
-m1 WI $T_WI 0 $WI_phi nWIsub2 nWI2 
+m1 WI $T_WI $L_WI $WI_phi nWIsub2 nWI2 
 # Cavity length
 s LW $l_arm nWI2 nWE1
 # West end mirror
@@ -204,6 +204,7 @@ const T_BS 0.5012        # BS transmission [VIR-0446B-14]
 const T_PR 0.04835       # PR transmission [VIR-0029A-15]
 const R_POP 184u         # POP reflectivity [VIR-0027A-15]
 
+
 # Measured AR-surface reflectivities. Put as losses since the mirrors have wedge.
 const L_WIAR 58u         # WI AR reflectivity [IM02, VIR-0543A-14]
 const L_WEAR 155u        # WE AR reflectivity [EM03, VIR-0270A-15]
@@ -225,13 +226,16 @@ const L_IMC 15u          # Losses according to TDR, preliminary
 const R_IMC_AR 0.0001    # IMC AR reflection, preliminary
 
 # Mirror losses [TDR, tab 1.1, pp 8]
-const L_PR 37.5u
-const L_BS 37.5u
-const L_NI 37.5u
-const L_NE 37.5u
-const L_SR 37.5u
+const L_NI 37.5u   # Changed by DT to match measured roundtrip loss of 61 +- 5 ppm
+const L_NE 37.5u   # Changed by DT to match measured roundtrip loss of 61 +- 5 ppm
 const L_WI 37.5u
 const L_WE 37.5u
+
+const L_PR 37.5u
+const L_BS 37.5u
+
+const L_SR 37.5u
+
 # -------------------------------------------------------------------------
 
 # Tunings
@@ -322,8 +326,8 @@ const l_BS_CPW 5.244        # BS HR to CPW
 # -------------------------------------------------------------------------
 # modulation frequencies [TDR, tab 2.3, pp 24]
 const f1 6270777            # fmod1 in TDR   
-const f3 8361036            # 4 / 3 * f1, fmod3 in TDR
 const f2 56436993           # 9 * f1, fmod2 in TDR
+const f3 8361036            # 4 / 3 * f1, fmod3 in TDR
 const f4 119144763.0        # 19 * f1, new fmod4
 const f4b 131686317         # 21 * f1, fmod4 in TDR
 const f1_3f 18812331

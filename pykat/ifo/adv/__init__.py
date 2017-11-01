@@ -955,7 +955,7 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     # useful ports
     kat.IFO.B1   = Output(kat.IFO, "B1", "nB1")
 
-    kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", kat.IFO.f1, phase = 174.76)
+    kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", kat.IFO.f1, phase = 174.75)
     kat.IFO.B2_f2 = Output(kat.IFO, "B2_f2", "nB2", kat.IFO.f2, phase = 49.94)
     kat.IFO.B2_f3 = Output(kat.IFO, "B2_f3", "nB2", kat.IFO.f3, phase = -2.46)
     kat.IFO.B2_f4 = Output(kat.IFO, "B2_f4", "nB2", kat.IFO.f4, phase = 0)
