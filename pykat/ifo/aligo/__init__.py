@@ -338,10 +338,10 @@ class ALIGO_IFO(IFO):
         """
         kat = self.kat
         
-        vprint(kat.verbose, "-- adjusting PRC length")
+        vprint(verbose, "-- adjusting PRC length")
         ltmp = 0.5 * clight / kat.IFO.f1
         delta_l = 3.5 * ltmp - kat.IFO.lPRC
-        vprint(kat.verbose, "   adusting kat.lp1.L by {:.4g}m".format(delta_l))
+        vprint(verbose, "   adusting kat.lp1.L by {:.4g}m".format(delta_l))
         kat.lp1.L += delta_l
     
         kat.IFO.compute_derived_lengths(kat)
