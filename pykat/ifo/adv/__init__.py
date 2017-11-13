@@ -970,8 +970,8 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
         kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nMSR1")
 
     # pretune LSC DOF
-    kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "NE", 1, 1.0, sigtype="z")
-    kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "WE", 1, 1.0, sigtype="z")
+    kat.IFO.preARMN =  DOF(kat.IFO, "ARMN", kat.IFO.POW_X,   "", "NE", 1, 1.0, sigtype="z")
+    kat.IFO.preARMW =  DOF(kat.IFO, "ARMW", kat.IFO.POW_Y,   "", "WE", 1, 1.0, sigtype="z")
     kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", ["NI", "NE", "WI", "WE"], [1,1,-1,-1], 6.0, sigtype="z")
     kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PR",  1, 10.0, sigtype="z")
     kat.IFO.preDARM = DOF(kat.IFO, "DARM", kat.IFO.POW_X, "", ["NE", "WE"], [-1,1], 1.0, sigtype="z")
@@ -1076,13 +1076,13 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     
     kat.BS.setRTL(0.0, 1.0, 0.0) # set BS refl. for X arm
     
-    phi, precision = scan_to_precision(kat, IFO.preARMX, pretune_precision)
+    phi, precision = scan_to_precision(kat, IFO.preARMN, pretune_precision)
     phi = round(phi/pretune_precision)*pretune_precision
     phi = round_to_n(phi,5)
     
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
     
-    IFO.preARMX.apply_tuning(phi)
+    IFO.preARMN.apply_tuning(phi)
 
     vprint(verbose, "   scanning Y arm (maximising power)")
     kat = _kat.deepcopy()
@@ -1091,11 +1091,11 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     make_transparent(kat,["PR"])
     make_transparent(kat,["NI", "NE"])
     kat.BS.setRTL(1.0,0.0,0.0) # set BS refl. for Y arm
-    phi, precision = scan_to_precision(kat, IFO.preARMY, pretune_precision)
+    phi, precision = scan_to_precision(kat, IFO.preARMW, pretune_precision)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
-    IFO.preARMY.apply_tuning(phi)
+    IFO.preARMW.apply_tuning(phi)
 
     vprint(verbose, "   scanning MICH (minimising power)")
     kat = _kat.deepcopy()
@@ -1140,7 +1140,7 @@ def pretune_status(_kat):
     kat.verbose = False
     kat.noxaxis = True
     
-    pretune_DOFs = [kat.IFO.preARMX, kat.IFO.preARMY, kat.IFO.prePRCL, kat.IFO.preMICH]
+    pretune_DOFs = [kat.IFO.preARMN, kat.IFO.preARMW, kat.IFO.prePRCL, kat.IFO.preMICH]
     
     _detStr=""
     
