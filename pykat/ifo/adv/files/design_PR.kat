@@ -21,11 +21,6 @@ l i1 $P_laser 0 0 nin
 %%% FTblock EOMs
 ###########################################################################
 
-# Without EOMs
-# ---------
-# s s_tmp 0.301 nin nInj
-# ---------
-
 # With EOMs
 # ---------
 s s0 1m nin nEOM1a
@@ -34,12 +29,7 @@ s sEOM1 0.1 nEOM1b nEOM2a
 mod EOM2 $f2 $mod_index_56M 2 pm 0 nEOM2a nEOM2b
 s sEOM2 0.1 nEOM2b nEOM3a
 mod EOM3 $f3 $mod_index_8M 2 pm 0 nEOM3a nEOM3b
-s sEOM3 0.1 nEOM3b nEOM4a
-mod EOM4 $f4 $mod_index_119M 2 pm 0 nEOM4a nEOM4b
-# s sEOM4 0 nEOM4b nEOM5a
-# mod EOM5 $f4b $mod_index_132M 2 pm 0 nEOM5a nEOM5b
-
-s s1 0 nEOM4b nInj1
+s s1 0.1 nEOM3b nInj1
 # ---------
 
 ###########################################################################

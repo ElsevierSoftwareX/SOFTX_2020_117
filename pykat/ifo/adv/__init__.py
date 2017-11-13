@@ -306,13 +306,45 @@ class ADV_IFO(IFO):
         
         This function alters the kat object directly.
         """
-        self.kat.s1.L = (self.kat.s1.L + self.kat.s0.L.value + self.kat.sEOM1.L.value +
-                         self.kat.sEOM2.L.value + self.kat.sEOM3.L.value)
+        self.kat.s1.L = (self.kat.s1.L + self.kat.s0.L.value +
+                         self.kat.sEOM1.L.value + self.kat.sEOM2.L.value)
         
-        self.kat.remove("s0", "EOM1", "sEOM1", "EOM2", "sEOM2", 'EOM3','sEOM3', 'EOM4') # Remove modulators
+        self.kat.remove("s0", "EOM1", "sEOM1", "EOM2", "sEOM2", 'EOM3') # Remove modulators
         # Set output node of laser block to be on the laser
-        self.kat.nodes.replaceNode(self.kat.i1, 'nin', 'nEOM4b')
+        self.kat.nodes.replaceNode(self.kat.i1, 'nin', 'nEOM3b')
+
+    def add_modulator(self, f, midx, order, mod_type, phase):
+        """
+        Adds a modulator. Limited to adding only one extra on top of the three included in the kat-file.
+        It doesn't change any overall lengths, and it reconnects the nodes. 
+
+        This method alters the kat-object directly.
+        """
         
+        code = "mod EOM4 {} {} {} {} {} nEOM4a nEOM4b".format(f, midx, order, mod_type, phase)
+        self.kat.parse(code, addToBlock= 'EOMs', preserveConstants=True)
+
+        self.kat.nodes.replaceNode(self.kat.s1, 'nEOM3b', 'nEOM4b')
+        self.kat.parse("s sEOM3 0.1 nEOM3b nEOM4a", addToBlock= 'EOMs')
+
+
+    def add_mod_f4(self, f=None):
+        """
+        Adds the modulator for f4 which is used during lock acquisition, without changing
+        any lengths and by correclty reconnecting the nodes 
+
+        This method alters the kat-object direclty.
+
+        f     - Modulation frequency. Default is the constant $f4 (=119 MHz) in the kat-file.
+        """
+
+        if f is None or f == 'f4' or f == '$f4' or f == 119144763:
+            self.add_modulator('$f4', '$mod_index_119M', 2, 'pm', 0)
+        elif f == 'f4b' or f == '$f4b' or  f == 131686317:
+            self.add_modulator('$f4b', '$mod_index_132M', 2, 'pm', 0)
+        else:
+            raise pkex.BasePyKatException("f must be $f4 or $f4b from the kat-file")
+
     def remove_IMC_HAM2(self, removeIMC, removeHAM2):
         """
         For use with files that have the IMC and HAM2 blocks.
