@@ -307,7 +307,7 @@ class ADV_IFO(IFO):
 
     def add_modulator(self, f, midx, order, mod_type, phase):
         """
-        Adds a modulator. Limited to adding only one extra on top of the three included in the kat-file.
+        Adds a modulator. Currently limited to adding only one extra on top of the three included in the kat-file.
         It doesn't change any overall lengths, and it reconnects the nodes. 
 
         This method alters the kat-object directly.
@@ -318,7 +318,6 @@ class ADV_IFO(IFO):
 
         self.kat.nodes.replaceNode(self.kat.s1, 'nEOM3b', 'nEOM4b')
         self.kat.parse("s sEOM3 0.1 nEOM3b nEOM4a", addToBlock= 'EOMs')
-
 
     def add_mod_f4(self, f=None):
         """
@@ -496,19 +495,20 @@ class ADV_IFO(IFO):
         print("-- applying user-defined DC offset to {}:".format(offset_type))
 
         _kat = self.kat
+        m = self.mirrors
         if DCoffset:
             if isDARM:
                 self.DARMoffset = DCoffset
                 tunings = self.get_tunings()
-                tunings["WE"] += self.DARMoffset
-                tunings["NE"] -= self.DARMoffset
+                tunings[m["EY"]] += self.DARMoffset
+                tunings[m["EX"]] -= self.DARMoffset
             else:
                 self.MICHoffset = DCoffset
                 tunings = self.get_tunings()
-                tunings["WI"] += self.MICHoffset/2.0
-                tunings["WE"] += self.MICHoffset/2.0
-                tunings["NI"] -= self.MICHoffset/2.0
-                tunings["NE"] -= self.MICHoffset/2.0
+                tunings[m["IY"]] += self.MICHoffset/2.0
+                tunings[m["EY"]] += self.MICHoffset/2.0
+                tunings[m["IX"]] -= self.MICHoffset/2.0
+                tunings[m["EX"]] -= self.MICHoffset/2.0
                 
             self.apply_tunings(tunings)        
             
@@ -572,20 +572,35 @@ class ADV_IFO(IFO):
         kat.IFO.B1.add_signal()
         
         if isDARM:
-            EXphi = float(kat.NE.phi)
-            EYphi = float(kat.WE.phi)
+            
+            EXphi = float(kat.components[m['EX']].phi.value)
+            EYphi = float(kat.components[m['EY']].phi.value)
         else:
-            EXphi = float(kat.NE.phi)
-            EYphi = float(kat.WE.phi)
-            IXphi = float(kat.NI.phi)
-            IYphi = float(kat.WI.phi)
+            EXphi = float(kat.components[m['EX']].phi.value)
+            EYphi = float(kat.components[m['EY']].phi.value)
+            IXphi = float(kat.components[m['IX']].phi.value)
+            IYphi = float(kat.components[m['IY']].phi.value)
 
         def powerDiff(phi):
-            kat.WE.phi = EYphi + phi
-            kat.NE.phi = EXphi - phi
-            if not isDARM:
-                kat.WI.phi = IYphi + phi
-                kat.NI.phi = IXphi - phi
+            if isDARM:
+                kat.components[m['EY']].phi = EYphi + phi
+                kat.components[m['EX']].phi = EXphi - phi
+
+                #kat.WE.phi = EYphi + phi
+                #kat.NE.phi = EXphi - phi
+            if else:
+                kat.components[m['EY']].phi = EYphi + phi/2.0
+                kat.components[m['IY']].phi = IYphi + phi/2.0
+
+                kat.components[m['EX']].phi = EXphi - phi/2.0
+                kat.components[m['IX']].phi = IXphi - phi/2.0
+                
+                #kat.WE.phi = EYphi + phi/2.0
+                #kat.NE.phi = EXphi - phi/2.0
+                
+                #kat.WI.phi = IYphi + phi/2.0
+                #kat.NI.phi = IXphi - phi/2.0
+                
             out = kat.run()
             print("   ! ", out[self.B1.get_signal_name()], phi)
             
@@ -604,15 +619,15 @@ class ADV_IFO(IFO):
         if isDARM:
             self.DARMoffset = round(out[0], 6)
             DCoffset  = self.DARMoffset
-            tunings["WE"] += DCoffset
-            tunings["NE"] -= DCoffset
+            tunings[m["EY"]] += DCoffset
+            tunings[m["EX"]] -= DCoffset
         else:
             self.MICHoffset = round(out[0], 6)
             DCoffset  = self.MICHoffset
-            tunings["WE"] += DCoffset
-            tunings["WI"] += DCoffset
-            tunings["NE"] -= DCoffset
-            tunings["NI"] -= DCoffset
+            tunings[m["EY"]] += DCoffset/2.0
+            tunings[m["IY"]] += DCoffset/2.0
+            tunings[m["EX"]] -= DCoffset/2.0
+            tunings[m["IX"]] -= DCoffset/2.0
             
         self.apply_tunings(tunings)
         
