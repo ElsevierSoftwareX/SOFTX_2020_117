@@ -47,6 +47,8 @@ class ADV_IFO(IFO):
         self._f4 = np.nan
         
         self._f36M = np.nan
+
+        
     
     @property
     def DARMoffset(self):
@@ -875,8 +877,28 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
+
+    # Pre-defined file-names
     names = ['design_PR', 'design_PR_OMC']
     
+    # Mirror names. Mapping to IFO-specific names. To faciliate creating new IFO files later.
+    mirrors = {'EX': 'NE', 'EY': 'WE',
+               'EXAR': 'NEAR', 'EYAR': 'WEAR',
+               'IX': 'NI', 'IY': 'WI',
+               'IXAR': 'NIAR', 'IYAR': 'WIAR',
+               'PRM': 'PR', 'SRM': 'SR',
+               'PRMAR': 'PRAR', 'SRMAR': 'SRAR',
+               'PR2': None, 'PR3': None,
+               'SR2': None, 'SR3': None,
+               'BS': 'BS', 'BSARX': 'BSAR1', 'BSARY': 'BSAR2'}
+
+    # Define which mirrors create the tuning description. Has to be consistent
+    # with values in the mirrors dictionary above. 
+    tunings_components_list = ["PR", "NI", "NE", "WI", "WE", "BS", "SR"]
+    
+    # Define which keys are used for a tuning description
+    tuning_keys_list = ["maxtem", "phase"]
+
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
     else:
@@ -884,21 +906,10 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     
     kat.verbose=verbose
     
-    # Define which mirrors create the tuning description
-    tunings_components_list = ["PR", "NI", "NE", "WI", "WE", "BS", "MSR"]
-    # Removing MSR if it's not in the file
-    isSRC = True
-    if not 'MSR' in kat.components:
-        isSRC = False
-        tunings_components_list.pop(tunings_components_list.index('MSR'))
-    
-    # Define which keys are used for a tuning description
-    tuning_keys_list = ["maxtem", "phase"]
     # Create empty object to just store whatever DOFs, port, variables in
     # that will be used by processing functions
     kat.IFO = ADV_IFO(kat, tuning_keys_list, tunings_components_list)
 
-    kat.IFO.isSRC = isSRC
     
     kat.IFO._data_path=pkg_resources.resource_filename('pykat.ifo', os.path.join('adv','files'))
 
@@ -916,7 +927,17 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
         kat.load(katkile, keepComments=keepComments, preserveConstants=preserveConstants)
         kat.IFO.rawBlocks.read(katkile)
 
-    # Checking if mirrors are in the kat-object
+    # Removing SR if it isn't in the kat-file, or if it's fully transparent.
+    isSRC = True
+    if not mirrors['SRM'] in kat.components:
+        isSRC = False
+        tunings_components_list.pop(tunings_components_list.index(mirrors['SRM']))
+    elif kat.components[mirrors['SRM']].R.value == 0:
+        isSRC = False
+        tunings_components_list.pop(tunings_components_list.index(mirrors['SRM']))
+    kat.IFO.isSRC = isSRC
+
+    # Checking if mirrors in tuning_component_list are in the kat-object
     for m in tunings_components_list:
         if m in kat.components:
             if not ( isinstance(kat.components[m], pykat.components.mirror) or
@@ -924,7 +945,17 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
                 raise pkex.BasePyKatException('{} is not a mirror or beam splitter'.format(m))
         else:
             raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(m))
-    
+
+    # Checking if mirrors in mirrors mirrors-dictionary are in the kat-object.
+    for k, v in mirrors.items():
+        if v in kat.components:
+            if not ( isinstance(kat.components[v], pykat.components.mirror) or
+                     isinstance(kat.components[v], pykat.components.beamSplitter) ):
+                raise pkex.BasePyKatException('{} is not a mirror or a beam splitter'.format(v))
+        elif not v is None:
+            raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(v))
+
+        
     # ----------------------------------------------------------------------
     # get and derive parameters from the kat file
 
@@ -935,7 +966,7 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     #f4 = 119144763.0        # 19 * f1, new f4.
     #f4b = 131686317         # 21 * f1, fmod4 in TDR. Old f4.
     
-    # get main frequencies
+    # Get main sideband frequencies
     if "f1" in kat.constants.keys():
         kat.IFO.f1 = float(kat.constants["f1"].value)
     else:
@@ -994,24 +1025,23 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
         kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nMSR1")
 
     # pretune LSC DOF
-    kat.IFO.preARMN =  DOF(kat.IFO, "ARMN", kat.IFO.POW_X,   "", "NE", 1, 1.0, sigtype="z")
-    kat.IFO.preARMW =  DOF(kat.IFO, "ARMW", kat.IFO.POW_Y,   "", "WE", 1, 1.0, sigtype="z")
-    kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", ["NI", "NE", "WI", "WE"], [1,1,-1,-1], 6.0, sigtype="z")
-    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PR",  1, 10.0, sigtype="z")
-    kat.IFO.preDARM = DOF(kat.IFO, "DARM", kat.IFO.POW_X, "", ["NE", "WE"], [-1,1], 1.0, sigtype="z")
-    kat.IFO.preCARM = DOF(kat.IFO, "CARM", kat.IFO.POW_X, "", ["NE", "WE"], [-1,-1], 1.0, sigtype="z")
-
+    kat.IFO.preARMN =  DOF(kat.IFO, "ARMN", kat.IFO.POW_X,   "", mirrors["EX"], 1, 1.0, sigtype="z")
+    kat.IFO.preARMW =  DOF(kat.IFO, "ARMW", kat.IFO.POW_Y,   "", mirrors["EY"], 1, 1.0, sigtype="z")
+    kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]], [-0.5,-0.5,0.5,0.5], 6.0, sigtype="z")
+    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", mirrors["PRM"],  1, 10.0, sigtype="z")
+    kat.IFO.preDARM = DOF(kat.IFO, "DARM", kat.IFO.POW_X, "", [mirrors["EX"], mirrors["EY"]], [-1,1], 1.0, sigtype="z")
+    kat.IFO.preCARM = DOF(kat.IFO, "CARM", kat.IFO.POW_X, "", [mirrors["EX"], mirrors["EY"]], [-1,-1], 1.0, sigtype="z")
     if isSRC:
-        kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.POW_S,   "", "MSR",  1, 10.0, sigtype="z")
+        kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.POW_S,   "", mirrors["SRM"],  1, 10.0, sigtype="z")
     
     # control scheme as in [1] Table C.1. Due to Finesse conventions, the overall factor for all but PRCL are multiplied by -1
     # compared to the LIGO defintion, to match the same defintion. 
-    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3,  "I", "PR", 1, 100.0, sigtype="z")
-    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B2_f1,  "Q", ["NI", "NE", "WI", "WE"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
-    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.B2_f1, "I", ["NE", "WE"], [-1, -1], 1.5, sigtype="z")
-    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.B1,   "",  ["NE", "WE"], [-1,1], 1.0, sigtype="z")
+    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3,  "I", mirrors["PRM"], 1, 100.0, sigtype="z")
+    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B2_f1,  "Q", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
+    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.B2_f1, "I", [mirrors["EX"], mirrors["EY"]], [-1, -1], 1.5, sigtype="z")
+    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.B1,   "",  [mirrors["EX"], mirrors["EY"]], [-1,1], 1.0, sigtype="z")
     if isSRC:
-        kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "MSR", -1, 1e2, sigtype="z")
+        kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", mirrors["SRM"], -1, 1e2, sigtype="z")
 
     kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM)
     kat.IFO.CAV_POWs = (kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.POW_BS)
@@ -1025,7 +1055,8 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     # rotations of the cavity mirrors. For LIGO the rotational DOFs assume ITM + rotation
     # is clockwise and ETM + rotation is anticlockwise.
     # I'll be explict here for future reference.
-    cav_mirrors = ["NE", "NEAR", "WE", "WEAR", "NI", "NIAR", "WI", "WIAR"]
+    cav_mirrors = [mirrors["EX"], mirrors["EXAR"], mirrors["EY"],  mirrors["EYAR"],
+                   mirrors["IX"], mirrors["IXAR"], mirrors["IY"],  mirrors["IYAR"]]
 
     # LIGO definitions
     # Based on figure 7 in T0900511-v4
@@ -1037,7 +1068,7 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     
     # Finesse definitions
     # negative for ITM rotations
-    ITMS = np.in1d(cav_mirrors, np.array(["NI", "NIAR", "WI", "WIAR"]))
+    ITMS = np.in1d(cav_mirrors, np.array([mirrors["IX"],  mirrors["IXAR"], mirrors["IY"],  mirrors["IYAR"]]))
     CHARD_factors[ITMS] *= -1
     DHARD_factors[ITMS] *= -1
     CSOFT_factors[ITMS] *= -1
@@ -1047,24 +1078,41 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", None , None, cav_mirrors, DHARD_factors, 1, sigtype="pitch")
     kat.IFO.CSOFT_P = DOF(kat.IFO, "CSOFT_P", None , None, cav_mirrors, CSOFT_factors, 1, sigtype="pitch")
     kat.IFO.DSOFT_P = DOF(kat.IFO, "DSOFT_P", None , None, cav_mirrors, DSOFT_factors, 1, sigtype="pitch")
-    kat.IFO.PR_P   = DOF(kat.IFO, "PR_P"  , None , None, ["PR", "PRAR"], [1,1], 1, sigtype="pitch")
-    kat.IFO.PRC2_P  = DOF(kat.IFO, "PRC2_P" , None , None, ["PR2"], [1], 1, sigtype="pitch")
-    kat.IFO.PRC3_P  = DOF(kat.IFO, "PRC3_P" , None , None, ["PR3"], [1], 1, sigtype="pitch")
+    kat.IFO.PR_P   = DOF(kat.IFO, "PR_P"  , None , None, [mirrors["PRM"], mirrors["PRMAR"]], [1,1], 1, sigtype="pitch")
+    
+    if not mirrors["PR2"] is None:
+        kat.IFO.PR2_P  = DOF(kat.IFO, "PRC2_P" , None , None, mirrors["PR2"], [1], 1, sigtype="pitch")
+    if not mirrors["PR3"] is None:
+        kat.IFO.PR3_P  = DOF(kat.IFO, "PRC3_P" , None , None, mirrors["PR3"], [1], 1, sigtype="pitch")
     if isSRC:
-        kat.IFO.MSR_P = DOF(kat.IFO, "MSR_P"  , None , None, ["MSR", "MSRAR"], [1,1], 1, sigtype="pitch")
-    kat.IFO.SRC2_P  = DOF(kat.IFO, "SRC2_P" , None , None, ["SR2"], [1], 1, sigtype="pitch")
-    kat.IFO.SRC3_P  = DOF(kat.IFO, "SRC3_P" , None , None, ["SR3"], [1], 1, sigtype="pitch")
-    kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, ["BS", "BSAR1", "BSAR2"], [1,1,1], 1, sigtype="pitch")
+        kat.IFO.SR_P = DOF(kat.IFO, "SR_P"  , None , None, [mirrors["SRM"], mirrors["SRMAR"]], [1,1], 1, sigtype="pitch")
+        if not mirrors['SR2'] is None:
+            kat.IFO.SR2_P  = DOF(kat.IFO, "SR2_P" , None , None, mirrors["SR2"], [1], 1, sigtype="pitch")
+        if not mirrors['SR3'] is None:
+            kat.IFO.SR3_P  = DOF(kat.IFO, "SR3_P" , None , None, mirrors["SR3"], [1], 1, sigtype="pitch")
+            
+    kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, [mirrors["BS"], mirrors["BSARX"], mirrors["BSARY"]],
+                          [1,1,1], 1, sigtype="pitch")
     
     kat.IFO.ASC_P_DOFs = (kat.IFO.CHARD_P, kat.IFO.DHARD_P,
                           kat.IFO.CSOFT_P, kat.IFO.DSOFT_P,
-                          kat.IFO.PR_P, kat.IFO.PRC2_P,
-                          kat.IFO.PRC3_P, kat.IFO.MICH_P)
+                          kat.IFO.PR_P, kat.IFO.MICH_P)
+    
+    # Adding SRC pitch DoFs if SRC is included
     if isSRC:
-        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.MSR_P,)
+        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.SR_P,)
+        if not mirrors["SR2"] is None:
+            kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.SR2_P,)
+        if not mirrors["SR3"] is None:
+            kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.SR3_P,)
+
+    # Adding PR2 and PR3 pitch if they are included
+    if not mirrors["PR2"] is None:
+        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.PR2_P,)
+    if not mirrors["PR3"] is None:
+        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.PR3_P,)
     
     kat.IFO.update()
-
     kat.IFO.lockNames = None
     
     return kat
