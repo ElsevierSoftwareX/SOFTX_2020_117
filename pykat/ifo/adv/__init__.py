@@ -164,14 +164,6 @@ class ADV_IFO(IFO):
         self.f1_PRC = 3.5 * self.fsrPRC
     
     def compute_derived_lengths(self, verbose=False):
-        """
-        Compute derived length from individual space components.
-        Design values are currently:
-        lPRC = 57.656, lSRC = 56.008, lSchnupp = 0.08
-        and the individual lengths:
-        PRC: Lp1 16.6107, Lp2 16.1647, Lp3 19.5381 
-        SRC: Ls1 15.7586, Ls2 15.4435, Ls3 19.3661
-        """
         # Optical path length from PR HR to BS HR
         self.lpr = self.kat.lPR_POP.L + self.kat.sPOPsub.L*self.kat.sPOPsub.n + self.kat.lPOP_BS.L
         # Optical path length from BS HR to NI HR
@@ -512,10 +504,10 @@ class ADV_IFO(IFO):
             else:
                 self.MICHoffset = DCoffset
                 tunings = self.get_tunings()
-                tunings["WI"] += self.MICHoffset
-                tunings["WE"] += self.MICHoffset
-                tunings["NI"] -= self.MICHoffset
-                tunings["NE"] -= self.MICHoffset
+                tunings["WI"] += self.MICHoffset/2.0
+                tunings["WE"] += self.MICHoffset/2.0
+                tunings["NI"] -= self.MICHoffset/2.0
+                tunings["NE"] -= self.MICHoffset/2.0
                 
             self.apply_tunings(tunings)        
             
@@ -548,8 +540,8 @@ class ADV_IFO(IFO):
         
             DCoffset = self.find_DC_offset(5*waste_light, offset_type, verbose=verbose)
             
-        vprint(verbose, "   {} DCoffset = {:6.4} deg ({:6.4}m)".format(offset_type, DCoffset, DCoffset / 360.0 * _kat.lambda0 ))
-        vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
+        vprint(verbose, "   {} DCoffset = {:6.4} deg ({:6.4} m)".format(offset_type, DCoffset, DCoffset / 360.0 * _kat.lambda0 ))
+        vprint(verbose, "   at dark port power: {:6.4} W".format(self.DCoffsetW))
 
     def find_DC_offset(self, AS_power, offset_type = 'DARM', precision=1e-4, verbose=False):
         """
@@ -883,7 +875,7 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['PRITF', 'design_PR']
+    names = ['design_PR', 'design_PR_OMC']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
