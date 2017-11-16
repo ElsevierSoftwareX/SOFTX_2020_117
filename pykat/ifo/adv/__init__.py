@@ -243,25 +243,23 @@ class ADV_IFO(IFO):
     
     def fix_mirrors(self, z=True, pitch=True, yaw=True):
         """
-        This function will iterate through the main mirrors
+        This function will iterate through the mirrors
         and remove any suspension settings on them. This can be
         done individuallly or for z, pitch, and yaw.
         """
     
-        for mirror in ["WE","NE","WI","NI","PR","PR2","PR3","SRM","SR2","SR3","BS"]:
-            mirror = self.kat.components[mirror]
-        
-            if z:
-                mirror.mass = None
-                mirror.zmech = None
-            
-            if pitch:
-                mirror.Iy = None
-                mirror.rymech = None
-        
-            if yaw:
-                mirror.Ix = None
-                mirror.rxmech = None
+        for k, m in self.mirrors.items():
+            if m is not None:
+                mirror = self.kat.components[m]
+                if z:
+                    mirror.mass = None
+                    mirror.zmech = None
+                if pitch:
+                    mirror.Iy = None
+                    mirror.rymech = None
+                if yaw:
+                    mirror.Ix = None
+                    mirror.rxmech = None
         
     def lengths_status(self):
         self.compute_derived_lengths()
@@ -427,6 +425,7 @@ class ADV_IFO(IFO):
         """
         
         tuning = self.kat.IFO.get_tunings()
+        m = self.kat.IFO.mirrors
     
         if "NE_lock" in out.ylabels:
             if idx is None:
@@ -954,7 +953,6 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
                 raise pkex.BasePyKatException('{} is not a mirror or a beam splitter'.format(v))
         elif not v is None:
             raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(v))
-
         
     # ----------------------------------------------------------------------
     # get and derive parameters from the kat file
@@ -1111,7 +1109,9 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
         kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.PR2_P,)
     if not mirrors["PR3"] is None:
         kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.PR3_P,)
-    
+
+    kat.IFO.mirrors = mirrors
+        
     kat.IFO.update()
     kat.IFO.lockNames = None
     
@@ -1135,16 +1135,18 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     # This function needs to apply a bunch of pretunings to the original
     # kat and associated IFO object passed in
     IFO = _kat.IFO
+    m = IFO.mirrors
     
-    print("-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision, pretune_precision*_kat.lambda0/360.0))
+    print("-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision,
+                                                                                  pretune_precision*_kat.lambda0/360.0))
     
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
     vprint(verbose, "   scanning X arm (maximising power)")
     
-    make_transparent(kat, ["PR"])
-    make_transparent(kat, ["WI", "WE"])
+    make_transparent(kat, [m["PRM"]])
+    make_transparent(kat, [m["IY"], m["EY"]])
     
     kat.BS.setRTL(0.0, 1.0, 0.0) # set BS refl. for X arm
     
@@ -1160,8 +1162,8 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    make_transparent(kat,["PR"])
-    make_transparent(kat,["NI", "NE"])
+    make_transparent(kat,[m["PRM"]])
+    make_transparent(kat,[m["IX"], m["EX"]])
     kat.BS.setRTL(1.0,0.0,0.0) # set BS refl. for Y arm
     phi, precision = scan_to_precision(kat, IFO.preARMW, pretune_precision)
     phi=round(phi/pretune_precision)*pretune_precision
@@ -1173,7 +1175,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    make_transparent(kat,["PR"])
+    make_transparent(kat,[m["PRM"]])
     phi, precision = scan_to_precision(kat, IFO.preMICH, pretune_precision, minmax="min", precision=30.0)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
@@ -1183,23 +1185,25 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     vprint(verbose, "   scanning PRCL (maximising power)")
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
-    # make_transparent(kat,["SRM"])
+    if IFO.isSRC:
+        make_transparent(kat,[m["SRM"]])
     phi, precision = scan_to_precision(kat, IFO.prePRCL, pretune_precision)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
     IFO.prePRCL.apply_tuning(phi)
 
-    # vprint(verbose, "   scanning SRCL (maximising carrier power, then adding 90 deg)")
-    # kat = _kat.deepcopy()
-    # kat.removeBlock("locks", False)
-    
-    #phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision = 10)
-    #phi=round(phi/pretune_precision)*pretune_precision
-    #phi=round_to_n(phi,4)-90.0
-    
-    # vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
-    # IFO.preSRCL.apply_tuning(phi)
+    if IFO.isSRC:
+        vprint(verbose, "   scanning SRCL (maximising carrier power, then adding 90 deg)")
+        kat = _kat.deepcopy()
+        kat.removeBlock("locks", False)
+
+        phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision = 10)
+        phi=round(phi/pretune_precision)*pretune_precision
+        phi=round_to_n(phi,4)-90.0
+
+        vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
+        IFO.preSRCL.apply_tuning(phi)
     
     print("   ... done")
     
