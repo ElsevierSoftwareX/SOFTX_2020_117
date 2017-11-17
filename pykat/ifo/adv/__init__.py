@@ -588,7 +588,7 @@ class ADV_IFO(IFO):
 
                 #kat.WE.phi = EYphi + phi
                 #kat.NE.phi = EXphi - phi
-            if else:
+            else:
                 kat.components[m['EY']].phi = EYphi + phi/2.0
                 kat.components[m['IY']].phi = IYphi + phi/2.0
 
@@ -895,7 +895,8 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     # Pre-defined file-names
     names = ['design_PR', 'design_PR_OMC']
     
-    # Mirror names. Mapping to IFO-specific names. To faciliate creating new IFO files later.
+    # Mirror names. Mapping to IFO-specific names to faciliate creating new IFO-specific files.
+    # Change the values in the dictionary to the IFO-specific mirror names.
     mirrors = {'EX': 'NE', 'EY': 'WE',
                'EXAR': 'NEAR', 'EYAR': 'WEAR',
                'IX': 'NI', 'IY': 'WI',
@@ -905,6 +906,12 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
                'PR2': None, 'PR3': None,
                'SR2': None, 'SR3': None,
                'BS': 'BS', 'BSARX': 'BSAR1', 'BSARY': 'BSAR2'}
+
+    #signalNames = {'AS_DC': 'B1_DC', 'POP_f1': 'B2_f1', 'POP_f2': 'B2_f2', 'POP_f3': 'B2_f3', 'POP_f4':
+    #               'B2_f4', 'REFL_f1': 'B4_f1', 'REFL_f2': 'B4_f2'}
+
+    # nodes = {}
+
 
     # Define which mirrors create the tuning description. Has to be consistent
     # with values in the mirrors dictionary above. 
@@ -1019,8 +1026,12 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
         
     # ----------------------------------------------------------------------
     # define ports and signals 
+
+
     
-    # useful ports
+
+    
+    # Useful signals
     kat.IFO.B1   = Output(kat.IFO, "B1", "nB1")
 
     kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", kat.IFO.f1, phase = 174.75)
@@ -1032,12 +1043,12 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     kat.IFO.B4_f2  = Output(kat.IFO, "B4_f2",  "nB4",  kat.IFO.f2, phase = 156.95)
     
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nBSs*")
-    kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nNI2")
-    kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nWI2")
+    kat.IFO.POW_X   = Output(kat.IFO, "PowN",  "nNI2")
+    kat.IFO.POW_Y   = Output(kat.IFO, "PowW",  "nWI2")
     if isSRC:
         kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nMSR1")
 
-    # pretune LSC DOF
+    # Pretune LSC DOF
     kat.IFO.preARMN =  DOF(kat.IFO, "ARMN", kat.IFO.POW_X,   "", mirrors["EX"], 1, 1.0, sigtype="z")
     kat.IFO.preARMW =  DOF(kat.IFO, "ARMW", kat.IFO.POW_Y,   "", mirrors["EY"], 1, 1.0, sigtype="z")
     kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]], [-0.5,-0.5,0.5,0.5], 6.0, sigtype="z")
