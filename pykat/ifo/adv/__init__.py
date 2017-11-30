@@ -47,6 +47,8 @@ class ADV_IFO(IFO):
         self._f4 = np.nan
         
         self._f36M = np.nan
+
+        
     
     @property
     def DARMoffset(self):
@@ -164,14 +166,6 @@ class ADV_IFO(IFO):
         self.f1_PRC = 3.5 * self.fsrPRC
     
     def compute_derived_lengths(self, verbose=False):
-        """
-        Compute derived length from individual space components.
-        Design values are currently:
-        lPRC = 57.656, lSRC = 56.008, lSchnupp = 0.08
-        and the individual lengths:
-        PRC: Lp1 16.6107, Lp2 16.1647, Lp3 19.5381 
-        SRC: Ls1 15.7586, Ls2 15.4435, Ls3 19.3661
-        """
         # Optical path length from PR HR to BS HR
         self.lpr = self.kat.lPR_POP.L + self.kat.sPOPsub.L*self.kat.sPOPsub.n + self.kat.lPOP_BS.L
         # Optical path length from BS HR to NI HR
@@ -249,25 +243,23 @@ class ADV_IFO(IFO):
     
     def fix_mirrors(self, z=True, pitch=True, yaw=True):
         """
-        This function will iterate through the main mirrors
+        This function will iterate through the mirrors
         and remove any suspension settings on them. This can be
         done individuallly or for z, pitch, and yaw.
         """
     
-        for mirror in ["WE","NE","WI","NI","PR","PR2","PR3","SRM","SR2","SR3","BS"]:
-            mirror = self.kat.components[mirror]
-        
-            if z:
-                mirror.mass = None
-                mirror.zmech = None
-            
-            if pitch:
-                mirror.Iy = None
-                mirror.rymech = None
-        
-            if yaw:
-                mirror.Ix = None
-                mirror.rxmech = None
+        for k, m in self.mirrors.items():
+            if m is not None:
+                mirror = self.kat.components[m]
+                if z:
+                    mirror.mass = None
+                    mirror.zmech = None
+                if pitch:
+                    mirror.Iy = None
+                    mirror.rymech = None
+                if yaw:
+                    mirror.Ix = None
+                    mirror.rxmech = None
         
     def lengths_status(self):
         self.compute_derived_lengths()
@@ -306,13 +298,44 @@ class ADV_IFO(IFO):
         
         This function alters the kat object directly.
         """
-        self.kat.s1.L = (self.kat.s1.L + self.kat.s0.L.value + self.kat.sEOM1.L.value +
-                         self.kat.sEOM2.L.value + self.kat.sEOM3.L.value)
+        self.kat.s1.L = (self.kat.s1.L + self.kat.s0.L.value +
+                         self.kat.sEOM1.L.value + self.kat.sEOM2.L.value)
         
-        self.kat.remove("s0", "EOM1", "sEOM1", "EOM2", "sEOM2", 'EOM3','sEOM3', 'EOM4') # Remove modulators
+        self.kat.remove("s0", "EOM1", "sEOM1", "EOM2", "sEOM2", 'EOM3') # Remove modulators
         # Set output node of laser block to be on the laser
-        self.kat.nodes.replaceNode(self.kat.i1, 'nin', 'nEOM4b')
+        self.kat.nodes.replaceNode(self.kat.i1, 'nin', 'nEOM3b')
+
+    def add_modulator(self, f, midx, order, mod_type, phase):
+        """
+        Adds a modulator. Currently limited to adding only one extra on top of the three included in the kat-file.
+        It doesn't change any overall lengths, and it reconnects the nodes. 
+
+        This method alters the kat-object directly.
+        """
         
+        code = "mod EOM4 {} {} {} {} {} nEOM4a nEOM4b".format(f, midx, order, mod_type, phase)
+        self.kat.parse(code, addToBlock= 'EOMs', preserveConstants=True)
+
+        self.kat.nodes.replaceNode(self.kat.s1, 'nEOM3b', 'nEOM4b')
+        self.kat.parse("s sEOM3 0.1 nEOM3b nEOM4a", addToBlock= 'EOMs')
+
+    def add_mod_f4(self, f=None):
+        """
+        Adds the modulator for f4 which is used during lock acquisition, without changing
+        any lengths and by correclty reconnecting the nodes 
+
+        This method alters the kat-object direclty.
+
+        f     - Modulation frequency. Default is the constant $f4 (=119 MHz) in the kat-file.
+        """
+
+        if f is None or f == 'f4' or f == '$f4' or f == 119144763:
+            self.add_modulator('$f4', '$mod_index_119M', 2, 'pm', 0)
+        elif f == 'f4b' or f == '$f4b' or  f == 131686317:
+            self.add_modulator('$f4b', '$mod_index_132M', 2, 'pm', 0)
+        else:
+            raise pkex.BasePyKatException("f must be $f4 or $f4b from the kat-file")
+
     def remove_IMC_HAM2(self, removeIMC, removeHAM2):
         """
         For use with files that have the IMC and HAM2 blocks.
@@ -401,6 +424,7 @@ class ADV_IFO(IFO):
         """
         
         tuning = self.kat.IFO.get_tunings()
+        m = self.kat.IFO.mirrors
     
         if "NE_lock" in out.ylabels:
             if idx is None:
@@ -471,19 +495,20 @@ class ADV_IFO(IFO):
         print("-- applying user-defined DC offset to {}:".format(offset_type))
 
         _kat = self.kat
+        m = self.mirrors
         if DCoffset:
             if isDARM:
                 self.DARMoffset = DCoffset
                 tunings = self.get_tunings()
-                tunings["WE"] += self.DARMoffset
-                tunings["NE"] -= self.DARMoffset
+                tunings[m["EY"]] += self.DARMoffset
+                tunings[m["EX"]] -= self.DARMoffset
             else:
                 self.MICHoffset = DCoffset
                 tunings = self.get_tunings()
-                tunings["WI"] += self.MICHoffset
-                tunings["WE"] += self.MICHoffset
-                tunings["NI"] -= self.MICHoffset
-                tunings["NE"] -= self.MICHoffset
+                tunings[m["IY"]] += self.MICHoffset/2.0
+                tunings[m["EY"]] += self.MICHoffset/2.0
+                tunings[m["IX"]] -= self.MICHoffset/2.0
+                tunings[m["EX"]] -= self.MICHoffset/2.0
                 
             self.apply_tunings(tunings)        
             
@@ -516,8 +541,8 @@ class ADV_IFO(IFO):
         
             DCoffset = self.find_DC_offset(5*waste_light, offset_type, verbose=verbose)
             
-        vprint(verbose, "   {} DCoffset = {:6.4} deg ({:6.4}m)".format(offset_type, DCoffset, DCoffset / 360.0 * _kat.lambda0 ))
-        vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
+        vprint(verbose, "   {} DCoffset = {:6.4} deg ({:6.4} m)".format(offset_type, DCoffset, DCoffset / 360.0 * _kat.lambda0 ))
+        vprint(verbose, "   at dark port power: {:6.4} W".format(self.DCoffsetW))
 
     def find_DC_offset(self, AS_power, offset_type = 'DARM', precision=1e-4, verbose=False):
         """
@@ -547,20 +572,35 @@ class ADV_IFO(IFO):
         kat.IFO.B1.add_signal()
         
         if isDARM:
-            EXphi = float(kat.NE.phi)
-            EYphi = float(kat.WE.phi)
+            
+            EXphi = float(kat.components[m['EX']].phi.value)
+            EYphi = float(kat.components[m['EY']].phi.value)
         else:
-            EXphi = float(kat.NE.phi)
-            EYphi = float(kat.WE.phi)
-            IXphi = float(kat.NI.phi)
-            IYphi = float(kat.WI.phi)
+            EXphi = float(kat.components[m['EX']].phi.value)
+            EYphi = float(kat.components[m['EY']].phi.value)
+            IXphi = float(kat.components[m['IX']].phi.value)
+            IYphi = float(kat.components[m['IY']].phi.value)
 
         def powerDiff(phi):
-            kat.WE.phi = EYphi + phi
-            kat.NE.phi = EXphi - phi
-            if not isDARM:
-                kat.WI.phi = IYphi + phi
-                kat.NI.phi = IXphi - phi
+            if isDARM:
+                kat.components[m['EY']].phi = EYphi + phi
+                kat.components[m['EX']].phi = EXphi - phi
+
+                #kat.WE.phi = EYphi + phi
+                #kat.NE.phi = EXphi - phi
+            else:
+                kat.components[m['EY']].phi = EYphi + phi/2.0
+                kat.components[m['IY']].phi = IYphi + phi/2.0
+
+                kat.components[m['EX']].phi = EXphi - phi/2.0
+                kat.components[m['IX']].phi = IXphi - phi/2.0
+                
+                #kat.WE.phi = EYphi + phi/2.0
+                #kat.NE.phi = EXphi - phi/2.0
+                
+                #kat.WI.phi = IYphi + phi/2.0
+                #kat.NI.phi = IXphi - phi/2.0
+                
             out = kat.run()
             print("   ! ", out[self.B1.get_signal_name()], phi)
             
@@ -579,15 +619,15 @@ class ADV_IFO(IFO):
         if isDARM:
             self.DARMoffset = round(out[0], 6)
             DCoffset  = self.DARMoffset
-            tunings["WE"] += DCoffset
-            tunings["NE"] -= DCoffset
+            tunings[m["EY"]] += DCoffset
+            tunings[m["EX"]] -= DCoffset
         else:
             self.MICHoffset = round(out[0], 6)
             DCoffset  = self.MICHoffset
-            tunings["WE"] += DCoffset
-            tunings["WI"] += DCoffset
-            tunings["NE"] -= DCoffset
-            tunings["NI"] -= DCoffset
+            tunings[m["EY"]] += DCoffset/2.0
+            tunings[m["IY"]] += DCoffset/2.0
+            tunings[m["EX"]] -= DCoffset/2.0
+            tunings[m["IX"]] -= DCoffset/2.0
             
         self.apply_tunings(tunings)
         
@@ -851,8 +891,35 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['PRITF', 'design_PR']
+
+    # Pre-defined file-names
+    names = ['design_PR', 'design_PR_OMC']
     
+    # Mirror names. Mapping to IFO-specific names to faciliate creating new IFO-specific files.
+    # Change the values in the dictionary to the IFO-specific mirror names.
+    mirrors = {'EX': 'NE', 'EY': 'WE',
+               'EXAR': 'NEAR', 'EYAR': 'WEAR',
+               'IX': 'NI', 'IY': 'WI',
+               'IXAR': 'NIAR', 'IYAR': 'WIAR',
+               'PRM': 'PR', 'SRM': 'SR',
+               'PRMAR': 'PRAR', 'SRMAR': 'SRAR',
+               'PR2': None, 'PR3': None,
+               'SR2': None, 'SR3': None,
+               'BS': 'BS', 'BSARX': 'BSAR1', 'BSARY': 'BSAR2'}
+
+    #signalNames = {'AS_DC': 'B1_DC', 'POP_f1': 'B2_f1', 'POP_f2': 'B2_f2', 'POP_f3': 'B2_f3', 'POP_f4':
+    #               'B2_f4', 'REFL_f1': 'B4_f1', 'REFL_f2': 'B4_f2'}
+
+    # nodes = {}
+
+
+    # Define which mirrors create the tuning description. Has to be consistent
+    # with values in the mirrors dictionary above. 
+    tunings_components_list = ["PR", "NI", "NE", "WI", "WE", "BS", "SR"]
+    
+    # Define which keys are used for a tuning description
+    tuning_keys_list = ["maxtem", "phase"]
+
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
     else:
@@ -860,21 +927,10 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     
     kat.verbose=verbose
     
-    # Define which mirrors create the tuning description
-    tunings_components_list = ["PR", "NI", "NE", "WI", "WE", "BS", "MSR"]
-    # Removing MSR if it's not in the file
-    isSRC = True
-    if not 'MSR' in kat.components:
-        isSRC = False
-        tunings_components_list.pop(tunings_components_list.index('MSR'))
-    
-    # Define which keys are used for a tuning description
-    tuning_keys_list = ["maxtem", "phase"]
     # Create empty object to just store whatever DOFs, port, variables in
     # that will be used by processing functions
     kat.IFO = ADV_IFO(kat, tuning_keys_list, tunings_components_list)
 
-    kat.IFO.isSRC = isSRC
     
     kat.IFO._data_path=pkg_resources.resource_filename('pykat.ifo', os.path.join('adv','files'))
 
@@ -892,7 +948,17 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
         kat.load(katkile, keepComments=keepComments, preserveConstants=preserveConstants)
         kat.IFO.rawBlocks.read(katkile)
 
-    # Checking if mirrors are in the kat-object
+    # Removing SR if it isn't in the kat-file, or if it's fully transparent.
+    isSRC = True
+    if not mirrors['SRM'] in kat.components:
+        isSRC = False
+        tunings_components_list.pop(tunings_components_list.index(mirrors['SRM']))
+    elif kat.components[mirrors['SRM']].R.value == 0:
+        isSRC = False
+        tunings_components_list.pop(tunings_components_list.index(mirrors['SRM']))
+    kat.IFO.isSRC = isSRC
+
+    # Checking if mirrors in tuning_component_list are in the kat-object
     for m in tunings_components_list:
         if m in kat.components:
             if not ( isinstance(kat.components[m], pykat.components.mirror) or
@@ -900,7 +966,16 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
                 raise pkex.BasePyKatException('{} is not a mirror or beam splitter'.format(m))
         else:
             raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(m))
-    
+
+    # Checking if mirrors in mirrors mirrors-dictionary are in the kat-object.
+    for k, v in mirrors.items():
+        if v in kat.components:
+            if not ( isinstance(kat.components[v], pykat.components.mirror) or
+                     isinstance(kat.components[v], pykat.components.beamSplitter) ):
+                raise pkex.BasePyKatException('{} is not a mirror or a beam splitter'.format(v))
+        elif not v is None:
+            raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(v))
+        
     # ----------------------------------------------------------------------
     # get and derive parameters from the kat file
 
@@ -911,7 +986,7 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     #f4 = 119144763.0        # 19 * f1, new f4.
     #f4b = 131686317         # 21 * f1, fmod4 in TDR. Old f4.
     
-    # get main frequencies
+    # Get main sideband frequencies
     if "f1" in kat.constants.keys():
         kat.IFO.f1 = float(kat.constants["f1"].value)
     else:
@@ -951,8 +1026,12 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
         
     # ----------------------------------------------------------------------
     # define ports and signals 
+
+
     
-    # useful ports
+
+    
+    # Useful signals
     kat.IFO.B1   = Output(kat.IFO, "B1", "nB1")
 
     kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", kat.IFO.f1, phase = 174.75)
@@ -964,30 +1043,29 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     kat.IFO.B4_f2  = Output(kat.IFO, "B4_f2",  "nB4",  kat.IFO.f2, phase = 156.95)
     
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nBSs*")
-    kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nNI2")
-    kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nWI2")
+    kat.IFO.POW_X   = Output(kat.IFO, "PowN",  "nNI2")
+    kat.IFO.POW_Y   = Output(kat.IFO, "PowW",  "nWI2")
     if isSRC:
         kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nMSR1")
 
-    # pretune LSC DOF
-    kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "NE", 1, 1.0, sigtype="z")
-    kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "WE", 1, 1.0, sigtype="z")
-    kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", ["NI", "NE", "WI", "WE"], [1,1,-1,-1], 6.0, sigtype="z")
-    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PR",  1, 10.0, sigtype="z")
-    kat.IFO.preDARM = DOF(kat.IFO, "DARM", kat.IFO.POW_X, "", ["NE", "WE"], [-1,1], 1.0, sigtype="z")
-    kat.IFO.preCARM = DOF(kat.IFO, "CARM", kat.IFO.POW_X, "", ["NE", "WE"], [-1,-1], 1.0, sigtype="z")
-
+    # Pretune LSC DOF
+    kat.IFO.preARMN =  DOF(kat.IFO, "ARMN", kat.IFO.POW_X,   "", mirrors["EX"], 1, 1.0, sigtype="z")
+    kat.IFO.preARMW =  DOF(kat.IFO, "ARMW", kat.IFO.POW_Y,   "", mirrors["EY"], 1, 1.0, sigtype="z")
+    kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]], [-0.5,-0.5,0.5,0.5], 6.0, sigtype="z")
+    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", mirrors["PRM"],  1, 10.0, sigtype="z")
+    kat.IFO.preDARM = DOF(kat.IFO, "DARM", kat.IFO.POW_X, "", [mirrors["EX"], mirrors["EY"]], [-1,1], 1.0, sigtype="z")
+    kat.IFO.preCARM = DOF(kat.IFO, "CARM", kat.IFO.POW_X, "", [mirrors["EX"], mirrors["EY"]], [-1,-1], 1.0, sigtype="z")
     if isSRC:
-        kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.POW_S,   "", "MSR",  1, 10.0, sigtype="z")
+        kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.POW_S,   "", mirrors["SRM"],  1, 10.0, sigtype="z")
     
     # control scheme as in [1] Table C.1. Due to Finesse conventions, the overall factor for all but PRCL are multiplied by -1
     # compared to the LIGO defintion, to match the same defintion. 
-    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3,  "I", "PR", 1, 100.0, sigtype="z")
-    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B2_f1,  "Q", ["NI", "NE", "WI", "WE"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
-    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.B2_f1, "I", ["NE", "WE"], [-1, -1], 1.5, sigtype="z")
-    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.B1,   "",  ["NE", "WE"], [-1,1], 1.0, sigtype="z")
+    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3,  "I", mirrors["PRM"], 1, 100.0, sigtype="z")
+    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B2_f1,  "Q", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
+    kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.B2_f1, "I", [mirrors["EX"], mirrors["EY"]], [-1, -1], 1.5, sigtype="z")
+    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.B1,   "",  [mirrors["EX"], mirrors["EY"]], [-1,1], 1.0, sigtype="z")
     if isSRC:
-        kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "MSR", -1, 1e2, sigtype="z")
+        kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", mirrors["SRM"], -1, 1e2, sigtype="z")
 
     kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM)
     kat.IFO.CAV_POWs = (kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.POW_BS)
@@ -1001,7 +1079,8 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     # rotations of the cavity mirrors. For LIGO the rotational DOFs assume ITM + rotation
     # is clockwise and ETM + rotation is anticlockwise.
     # I'll be explict here for future reference.
-    cav_mirrors = ["NE", "NEAR", "WE", "WEAR", "NI", "NIAR", "WI", "WIAR"]
+    cav_mirrors = [mirrors["EX"], mirrors["EXAR"], mirrors["EY"],  mirrors["EYAR"],
+                   mirrors["IX"], mirrors["IXAR"], mirrors["IY"],  mirrors["IYAR"]]
 
     # LIGO definitions
     # Based on figure 7 in T0900511-v4
@@ -1013,7 +1092,7 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     
     # Finesse definitions
     # negative for ITM rotations
-    ITMS = np.in1d(cav_mirrors, np.array(["NI", "NIAR", "WI", "WIAR"]))
+    ITMS = np.in1d(cav_mirrors, np.array([mirrors["IX"],  mirrors["IXAR"], mirrors["IY"],  mirrors["IYAR"]]))
     CHARD_factors[ITMS] *= -1
     DHARD_factors[ITMS] *= -1
     CSOFT_factors[ITMS] *= -1
@@ -1023,24 +1102,43 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", None , None, cav_mirrors, DHARD_factors, 1, sigtype="pitch")
     kat.IFO.CSOFT_P = DOF(kat.IFO, "CSOFT_P", None , None, cav_mirrors, CSOFT_factors, 1, sigtype="pitch")
     kat.IFO.DSOFT_P = DOF(kat.IFO, "DSOFT_P", None , None, cav_mirrors, DSOFT_factors, 1, sigtype="pitch")
-    kat.IFO.PR_P   = DOF(kat.IFO, "PR_P"  , None , None, ["PR", "PRAR"], [1,1], 1, sigtype="pitch")
-    kat.IFO.PRC2_P  = DOF(kat.IFO, "PRC2_P" , None , None, ["PR2"], [1], 1, sigtype="pitch")
-    kat.IFO.PRC3_P  = DOF(kat.IFO, "PRC3_P" , None , None, ["PR3"], [1], 1, sigtype="pitch")
+    kat.IFO.PR_P   = DOF(kat.IFO, "PR_P"  , None , None, [mirrors["PRM"], mirrors["PRMAR"]], [1,1], 1, sigtype="pitch")
+    
+    if not mirrors["PR2"] is None:
+        kat.IFO.PR2_P  = DOF(kat.IFO, "PRC2_P" , None , None, mirrors["PR2"], [1], 1, sigtype="pitch")
+    if not mirrors["PR3"] is None:
+        kat.IFO.PR3_P  = DOF(kat.IFO, "PRC3_P" , None , None, mirrors["PR3"], [1], 1, sigtype="pitch")
     if isSRC:
-        kat.IFO.MSR_P = DOF(kat.IFO, "MSR_P"  , None , None, ["MSR", "MSRAR"], [1,1], 1, sigtype="pitch")
-    kat.IFO.SRC2_P  = DOF(kat.IFO, "SRC2_P" , None , None, ["SR2"], [1], 1, sigtype="pitch")
-    kat.IFO.SRC3_P  = DOF(kat.IFO, "SRC3_P" , None , None, ["SR3"], [1], 1, sigtype="pitch")
-    kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, ["BS", "BSAR1", "BSAR2"], [1,1,1], 1, sigtype="pitch")
+        kat.IFO.SR_P = DOF(kat.IFO, "SR_P"  , None , None, [mirrors["SRM"], mirrors["SRMAR"]], [1,1], 1, sigtype="pitch")
+        if not mirrors['SR2'] is None:
+            kat.IFO.SR2_P  = DOF(kat.IFO, "SR2_P" , None , None, mirrors["SR2"], [1], 1, sigtype="pitch")
+        if not mirrors['SR3'] is None:
+            kat.IFO.SR3_P  = DOF(kat.IFO, "SR3_P" , None , None, mirrors["SR3"], [1], 1, sigtype="pitch")
+            
+    kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, [mirrors["BS"], mirrors["BSARX"], mirrors["BSARY"]],
+                          [1,1,1], 1, sigtype="pitch")
     
     kat.IFO.ASC_P_DOFs = (kat.IFO.CHARD_P, kat.IFO.DHARD_P,
                           kat.IFO.CSOFT_P, kat.IFO.DSOFT_P,
-                          kat.IFO.PR_P, kat.IFO.PRC2_P,
-                          kat.IFO.PRC3_P, kat.IFO.MICH_P)
-    if isSRC:
-        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.MSR_P,)
+                          kat.IFO.PR_P, kat.IFO.MICH_P)
     
-    kat.IFO.update()
+    # Adding SRC pitch DoFs if SRC is included
+    if isSRC:
+        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.SR_P,)
+        if not mirrors["SR2"] is None:
+            kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.SR2_P,)
+        if not mirrors["SR3"] is None:
+            kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.SR3_P,)
 
+    # Adding PR2 and PR3 pitch if they are included
+    if not mirrors["PR2"] is None:
+        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.PR2_P,)
+    if not mirrors["PR3"] is None:
+        kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.PR3_P,)
+
+    kat.IFO.mirrors = mirrors
+        
+    kat.IFO.update()
     kat.IFO.lockNames = None
     
     return kat
@@ -1063,45 +1161,47 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     # This function needs to apply a bunch of pretunings to the original
     # kat and associated IFO object passed in
     IFO = _kat.IFO
+    m = IFO.mirrors
     
-    print("-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision, pretune_precision*_kat.lambda0/360.0))
+    print("-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision,
+                                                                                  pretune_precision*_kat.lambda0/360.0))
     
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
     vprint(verbose, "   scanning X arm (maximising power)")
     
-    make_transparent(kat, ["PR"])
-    make_transparent(kat, ["WI", "WE"])
+    make_transparent(kat, [m["PRM"]])
+    make_transparent(kat, [m["IY"], m["EY"]])
     
     kat.BS.setRTL(0.0, 1.0, 0.0) # set BS refl. for X arm
     
-    phi, precision = scan_to_precision(kat, IFO.preARMX, pretune_precision)
+    phi, precision = scan_to_precision(kat, IFO.preARMN, pretune_precision)
     phi = round(phi/pretune_precision)*pretune_precision
     phi = round_to_n(phi,5)
     
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
     
-    IFO.preARMX.apply_tuning(phi)
+    IFO.preARMN.apply_tuning(phi)
 
     vprint(verbose, "   scanning Y arm (maximising power)")
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    make_transparent(kat,["PR"])
-    make_transparent(kat,["NI", "NE"])
+    make_transparent(kat,[m["PRM"]])
+    make_transparent(kat,[m["IX"], m["EX"]])
     kat.BS.setRTL(1.0,0.0,0.0) # set BS refl. for Y arm
-    phi, precision = scan_to_precision(kat, IFO.preARMY, pretune_precision)
+    phi, precision = scan_to_precision(kat, IFO.preARMW, pretune_precision)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
-    IFO.preARMY.apply_tuning(phi)
+    IFO.preARMW.apply_tuning(phi)
 
     vprint(verbose, "   scanning MICH (minimising power)")
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    make_transparent(kat,["PR"])
+    make_transparent(kat,[m["PRM"]])
     phi, precision = scan_to_precision(kat, IFO.preMICH, pretune_precision, minmax="min", precision=30.0)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
@@ -1111,23 +1211,25 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     vprint(verbose, "   scanning PRCL (maximising power)")
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
-    # make_transparent(kat,["SRM"])
+    if IFO.isSRC:
+        make_transparent(kat,[m["SRM"]])
     phi, precision = scan_to_precision(kat, IFO.prePRCL, pretune_precision)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
     IFO.prePRCL.apply_tuning(phi)
 
-    # vprint(verbose, "   scanning SRCL (maximising carrier power, then adding 90 deg)")
-    # kat = _kat.deepcopy()
-    # kat.removeBlock("locks", False)
-    
-    #phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision = 10)
-    #phi=round(phi/pretune_precision)*pretune_precision
-    #phi=round_to_n(phi,4)-90.0
-    
-    # vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
-    # IFO.preSRCL.apply_tuning(phi)
+    if IFO.isSRC:
+        vprint(verbose, "   scanning SRCL (maximising carrier power, then adding 90 deg)")
+        kat = _kat.deepcopy()
+        kat.removeBlock("locks", False)
+
+        phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision = 10)
+        phi=round(phi/pretune_precision)*pretune_precision
+        phi=round_to_n(phi,4)-90.0
+
+        vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
+        IFO.preSRCL.apply_tuning(phi)
     
     print("   ... done")
     
@@ -1140,7 +1242,7 @@ def pretune_status(_kat):
     kat.verbose = False
     kat.noxaxis = True
     
-    pretune_DOFs = [kat.IFO.preARMX, kat.IFO.preARMY, kat.IFO.prePRCL, kat.IFO.preMICH]
+    pretune_DOFs = [kat.IFO.preARMN, kat.IFO.preARMW, kat.IFO.prePRCL, kat.IFO.preMICH]
     
     _detStr=""
     
