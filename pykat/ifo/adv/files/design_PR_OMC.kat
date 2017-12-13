@@ -78,9 +78,6 @@ s sBSsub2 0.074459 $nsilica nBSsub2a nBSsub2b
 bs2 BSAR1 0 $L_BSAR 0 -29.1951 nBSsub1b nUnused1 nBSn nBSAR       
 bs2 BSAR2 0 $L_BSAR 0 -29.1951 nBSsub2b nUnused2 nBSe nUnused3
 
-# B1 port = Dark port = AS port 
-s sOut 0 nBSe nB1
-
 ###########################################################################
 %%% FTend BS
 
@@ -149,6 +146,121 @@ m2 WEAR 0 $L_WEAR $WEAR_phi nWEsub2 nWE2
 %%% FTend Warm
 
 
+%%% FTblock SRC
+###########################################################################
+
+# The SR mirror here is fully transmissive. This path is just here to 
+# enable for the the OMC. 
+
+s lsr 5.943 nBSe nSR1
+
+m SR 0 1 0 nSR1 nSRsub1
+s SRsub 0.1 $nsilica nSRsub1 nSRsub2
+m SRAR 0 1 0 nSRsub2 nSR2
+ 
+
+###########################################################################
+%%% FTend SRC
+
+%%% FTblock OMCpath
+###########################################################################
+
+# All parameters in the block are from the TDR, table 7.16.
+
+s sSR_MMTL 4.451 nSR2 nMMT_La
+
+# Meniscus lens. Focal length obtained via lensmaker's equation with
+# thin lens approximation, and assuming n = 1.44963. 
+lens MMT_L -3.596 nMMT_La nMMT_Lb
+
+s sMMT_ML_M1 0.6 nMMT_Lb nMMT_M1a
+
+# Telescope mirror 1
+bs MMT_M1 1 0 0 0 nMMT_M1a nMMT_M1b nMMT_M1c nMMT_M1d
+
+s sMMT_M1_M2 0.765 nMMT_M1b nMMT_M2a
+
+# Telescope mirror 2
+bs MMT_M2 1 0 0 0 nMMT_M2a nMMT_M2b nMMT_M2c nMMT_M2d
+
+s sMMT_M2_L1 0.5 nMMT_M2b nMMT_L1a
+
+# Modematching lenses. 
+# ------------------------------------------------------
+# Focal length obtained via lensmaker's equation with
+# thin lens approximation, and assuming n = 1.44963. 
+
+# lens MMT_L1 2.891 nMMT_L1a nMMT_L1b
+# s sMMT_L1_L2 0.12 nMMT_L1b nMMT_L2a
+# lens MMT_L2 1.724 nMMT_L2a nMMT_L2b
+
+# Adjusted the above values to modematch OMCs to the IFO
+lens MMT_L1 2.88 nMMT_L1a nMMT_L1b
+s sMMT_L1_L2 0.072 nMMT_L1b nMMT_L2a
+lens MMT_L2 1.53 nMMT_L2a nMMT_L2b
+# ------------------------------------------------------
+
+s sL2_OMC1 0.99 nMMT_L2b nOMC1_ICa
+
+attr MMT_M1 Rc 1.44
+attr MMT_M2 Rc 0.09 
+
+
+###########################################################################
+%%% FTend OMCpath
+
+
+
+
+
+%%% FTblock OMC
+###########################################################################
+
+# ROCs and lengths are from TDR page 247. 
+# The losses are taken from TDR pages 248-249: 30 ppm per surface and
+# 0.3 ppm / cm. 
+# Transmission and reflection parameters have been manually
+# tuned to obtain a finesse of 210 (TDR page 249), and to impedance match
+# the cavity. UPDATE AS SOON AS WE GET ACTUAL VALUES!
+# The OMC separation distance of 0.9 cm is from TDR page 254. 
+# OMC 1
+# -----
+bs OMC1_IC 0.985107 0.014863 0 8.876 nOMC1_ICa nOMC1_ICb nOMC1_ICc nOMC1_ICd
+s sOMC1_IC_CS1 0.0630 $nsilica nOMC1_ICc nOMC1_CS1a
+bs OMC1_CS1 0.9999665 33.5u 0 8.876 nOMC1_CS1a nOMC1_CS1b nOMC1_CS1c nOMC1_CS1d
+s sOMC1_CS1_OC 0.0600 $nsilica nOMC1_CS1b nOMC1_OCa
+bs OMC1_OC 0.985233 0.014737 0 8.876 nOMC1_OCa nOMC1_OCb nOMC1_OCc nOMC1_OCd
+s sOMC1_OC_CS2 0.0630 $nsilica nOMC1_OCb nOMC1_CS2a
+bs OMC1_CS2 0.9999665 33.5u 0 8.876 nOMC1_CS2a nOMC1_CS2b nOMC1_CS2c nOMC1_CS2d
+s sOMC1_CS2_IC 0.0600 $nsilica nOMC1_CS2b nOMC1_ICd
+
+# Space between the two OMCs
+s sOMC1_OMC2 0.009 nOMC1_OCc nOMC2_ICa
+
+# OMC 2
+# -----
+bs OMC2_IC 0.985107 0.014863 0 8.876 nOMC2_ICa nOMC2_ICb nOMC2_ICc nOMC2_ICd
+s sOMC2_IC_CS1 0.0630 $nsilica nOMC2_ICc nOMC2_CS1a
+bs OMC2_CS1 0.9999665 33.5u 0 8.876 nOMC2_CS1a nOMC2_CS1b nOMC2_CS1c nOMC2_CS1d
+s sOMC2_CS1_OC 0.0600 $nsilica nOMC2_CS1b nOMC2_OCa
+bs OMC2_OC 0.985233 0.014737 0 8.876 nOMC2_OCa nOMC2_OCb nOMC2_OCc nOMC2_OCd
+s sOMC2_OC_CS2 0.0630 $nsilica nOMC2_OCb nOMC2_CS2a
+bs OMC2_CS2 0.9999665 33.5u 0 8.876 nOMC2_CS2a nOMC2_CS2b nOMC2_CS2c nOMC2_CS2d
+s sOMC2_CS2_IC 0.0600 $nsilica nOMC2_CS2b nOMC2_ICd
+
+# Space to output B1
+s sOMC2_B1 0 nOMC2_OCc nB1
+
+###########################################################################
+%%% FTend OMC
+
+
+
+
+
+
+
+
 %%% FTblock Gaussian
 ###########################################################################
 
@@ -160,6 +272,11 @@ cav cavN NI nNI2 NE nNE1
 cav cavPRW PR nPR2 WI nWIsub2
 cav cavPRN PR nPR2 NI nNIsub2
 
+# OMCs
+cav cavOMC1 OMC1_IC nOMC1_ICc OMC1_IC nOMC1_ICd
+cav cavOMC2 OMC2_IC nOMC2_ICc OMC2_IC nOMC2_ICd
+
+
 # Radii of curvature
 # -------------------
 # HR-surfaces
@@ -168,12 +285,20 @@ attr NI Rc $RoC_NI
 attr WE Rc $RoC_WE
 attr NE Rc $RoC_NE
 attr PR Rc $RoC_PR
-# attr SR Rc $RoC_SR
+attr SR Rc $RoC_SR
+attr OMC1_CS1 Rc $RoC_OMC
+attr OMC1_CS2 Rc $RoC_OMC
+attr OMC2_CS1 Rc $RoC_OMC
+attr OMC2_CS2 Rc $RoC_OMC
+
 # AR-surfaces
 attr WIAR Rc $RoC_WIAR
 attr NIAR Rc $RoC_NIAR
 attr PRAR Rc $RoC_PRAR
-# attr SRAR Rc $RoC_SRAR
+attr SRAR Rc $RoC_SRAR
+
+
+
 
 ###########################################################################
 %%% FTend Gaussian
@@ -182,7 +307,7 @@ attr PRAR Rc $RoC_PRAR
 ###########################################################################
 
 # Input power (design)
-const P_laser 125
+const P_laser 25
 # Refractive index of silica
 const nsilica 1.44963
 
@@ -272,6 +397,7 @@ const RoC_WE 1696      # Measured WE RoC [VIR-0270A-15]
 const RoC_NE 1695      # Measured NE RoC [VIR-0269A-15]
 const RoC_PR -1477     # Measured PR RoC [VIR-0029A-15]
 const RoC_SR 1430      # Design [TDR, table 2.8]
+const RoC_OMC 1.499    # Design [TDR page 247]
 
 # AR-surfaces
 #const RoC_WIAR -1420    # Designed WI AR RoC [TDR, table 2.6]
