@@ -168,7 +168,7 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
     dy = abs(y[1] - y[0])    
         
     if cache is None:
-        Hg_in  = HG_mode(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
+        Hg_in  = HG_mode(qx=q1, qy=q1y, n=mode_in[0],  m=mode_in[1])
         Hg_out = HG_mode(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
         
         U1 = Hg_in.Unm(x+delta[0], y+delta[1])
@@ -410,39 +410,62 @@ def m_1_pow(n):
         return -1
 
 
-def __Ss(u, _u, F, _F, d=0):
-    r = 0
-    
-    for s in range(0, min(u,_u)+1):
-        r += m_1_pow(s) * _F ** (u-s) * _F ** (_u-s) / (fac(2*s+d)*fac(u-s)*fac(_u-s))
-        
-    return r
-
-
-def __S(m, _m, X, _X, F, _F, d=0):
+def __sum_lim(m):
     if m % 2 == 1:
-        lim1 = int((m-1)/2)
+        return int((m-1)/2)
     else:
-        lim1 = int(m/2 )
+        return int(m/2)
 
-    if _m % 2 == 1:
-        lim2 = int((_m-1)/2)
-    else:
-        lim2 = int(_m/2)
-    
+def __Sg(m, _m, X, _X, F, _F):
+    lim1 = __sum_lim(m)
+    lim2 = __sum_lim(_m)    
     r = 0
+    
+    def __Ss(u, _u, F, _F):
+        r = 0
+    
+        for s in range(0, min(u,_u)+1):
+            r += m_1_pow(s) * _F ** (u-s) * _F ** (_u-s) / (fac(2*s)*fac(u-s)*fac(_u-s))
+        
+        return r
+    
     
     for u in range(0, lim1+1):
         for _u in range(0, lim2+1):
-            r += m_1_pow(u) * _X**(m-2*u) * X**(_m-2*_u) / ( fac(m-2*u)*fac(_m-2*_u) )   * __Ss(u, _u, F, _F, d=d)
+            r += m_1_pow(u) * _X**(m-2*u) * X**(_m-2*_u) / ( fac(m-2*u)*fac(_m-2*_u) )   * __Ss(u, _u, F, _F)
     
     return r
+    
+
+
+
+def __Su(m, _m, X, _X, F, _F):
+    lim1 = __sum_lim(m-1)
+    lim2 = __sum_lim(_m-1)
+    
+    r = 0
+    
+    def __Ss(u, _u, F, _F):
+        r = 0
+    
+        for s in range(0, min(u,_u)+1):
+            r += m_1_pow(s) * _F ** (u-s) * _F ** (_u-s) / (fac(2*s+1)*fac(u-s)*fac(_u-s))
+        
+        return r
+    
+    
+    for u in range(0, lim1+1):
+        for _u in range(0, lim2+1):
+            r += m_1_pow(u) * _X**(m-2*u-1) * X**(_m-2*_u-1) / ( fac(m-2*u-1)*fac(_m-2*_u-1) )   * __Ss(u, _u, F, _F)
+    
+    return r
+    
            
 
 def __bayerhelms_kn(n, _n, q1, q2, gamma=0.0):
-    
     K0 = (q1.zr - q2.zr)/q2.zr
     K2 = (q1.z - q2.z)/q2.zr
+    
     K = (K0 + 1j*K2)/2.0
     
     Ktilde = abs(K / (1+K))
@@ -458,17 +481,17 @@ def __bayerhelms_kn(n, _n, q1, q2, gamma=0.0):
         X  = 0.0
         Ex = 1.0
     
-    _F  = K / (2.0 * (1.0+K0))
-    F = K.conjugate() / 2.0 
+    F  = K / (2.0 * (1.0+K0))
+    _F = K.conjugate() / 2.0 
 
-    Sg = __S(n, _n, X, _X, F, _F)
+    Sg = __Sg(n, _n, X, _X, F, _F)
 
-    if n > 0 and _n > 0:
-        Su = __S(n-1, _n-1, X, _X, F, _F, 1)
+    if n != 0 and _n != 0:
+        Su = __Su(n, _n, X, _X, F, _F)
     else:
         Su = 0
     
-    b = m_1_pow(_n) * cmath.sqrt(fac(n) * fac(_n) * (1.0 + K.real)**(n+0.5) * (1.0 + K.conjugate()) ** (-(n+_n+1)))
+    b = m_1_pow(_n) * np.sqrt(fac(n) * fac(_n) * (1.0 + K0)**(n+0.5) * (1.0 + K.conjugate()) ** (-(n+_n+1)))
     
     return b * Ex * (Sg - Su)
 
@@ -548,7 +571,7 @@ def square_aperture_HG_knm(mode_in, mode_out, q, R):
 
 
 def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann",
-          verbose=False, profile=False, gamma=(0,0), delta=(0,0), **kwargs):
+          verbose=False, profile=False, gamma=(0,0), delta=(0,0), cache=True, **kwargs):
           
     if q1y is None:
         q1y = q1
@@ -602,7 +625,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
 
         cache = __gen_ROM_HG_knm_cache(weights, couplings, q1=q1, q2=q2, q1y=q1y, q2y=q2y)
         
-    elif method == "riemann":
+    elif method == "riemann" and cache:
         if surface_map is None:
             raise BasePyKatException("Using 'riemann' method requires a surface map to be specified")
             
@@ -629,7 +652,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
             t0 = time.time()
         
         if method == "riemann":
-            K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache, delta=delta)
+            K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=None, delta=delta)
         elif method == "romhom":
             K[i] = ROM_HG_knm(weights, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, cache=cache)
         elif method == "bayerhelms":
@@ -653,10 +676,12 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         return K.reshape(couplings.shape[:-1])
 
 
-def plot_knm_matrix(couplings, knm, cmap=None, show=True):
-    import pylab as plt
+def plot_knm_matrix(couplings, knm, cmap=None, show=True, fig=None):
+    import matplotlib.pyplot as plt
     
-    fig = plt.figure()
+    if fig is None:
+        fig = plt.figure()
+        
     ax = fig.add_subplot(111)
     cax = ax.pcolormesh(abs(knm), cmap=cmap)
     fig.colorbar(cax)
@@ -693,5 +718,3 @@ def plot_knm_matrix(couplings, knm, cmap=None, show=True):
     fig.tight_layout()
     
     if show: plt.show()
-    
-    return fig
