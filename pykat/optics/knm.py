@@ -636,10 +636,6 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
             K[i] = bayerhelms_HG_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, gamma=gamma)
         elif method == "adaptive":
             K[i] = adaptive_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, smap=surface_map, delta=delta, params=kwargs)
-        elif method == "tilt_modulation":
-            
-        elif method == "q_modulation":
-            
         else:
             raise BasePyKatException("method value '%s' not accepted" % method)
         

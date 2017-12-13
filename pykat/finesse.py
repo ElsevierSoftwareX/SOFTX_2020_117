@@ -1923,7 +1923,7 @@ class kat(object):
             pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
             sys.exit(1)
     
-    def _finesse_exec(self):
+    def _finesse_exec(self, binary_name="kat"):
         if len(self.__katdir) == 0:
             # Get the environment variable for where Finesse is stored
             self.__finesse_dir = os.environ.get('FINESSE_DIR').strip()
@@ -1934,7 +1934,7 @@ class kat(object):
             self.__finesse_dir = self.__katdir.strip()
             
         if len(self.__katname) == 0:
-            katexe = "kat"
+            katexe = binary_name
             
             if os.sys.platform == "win32":
                 katexe += ".exe"
@@ -1949,11 +1949,13 @@ class kat(object):
         
         return kat_exec
         
-    def finesse_version(self):
+    def finesse_version(self, kat_binary='kat'):
         """
         Returns the full number version.
+        
+        kat_binary - Name of binary file to run
         """
-        p = Popen([self._finesse_exec(), '-v'], stdout=PIPE)
+        p = Popen([self._finesse_exec(kat_binary), '-v'], stdout=PIPE)
 
         out, err = p.communicate()
         
@@ -1964,26 +1966,36 @@ class kat(object):
         
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017    
         
-    def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None, getTraceData=False, rethrowExceptions=False, usePipe=True):
+    def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None,
+            getTraceData=False, rethrowExceptions=False, usePipe=True, kat_binary="kat"):
         """ 
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
         data from the simulation run.
+        
         plot (string) - Sets gnuterm for plotting
+        
         save_output (bool) - if true does not delete out file
+        
         save_kat (bool) - if true does not delete kat file
+        
         kat_name (string) - name of kat file if needed, will be randomly generated otherwise
+        
         cmd_args (list of strings) - command line flags to pass to FINESSE
+        
         getTraceData (bool) - If true a list of dictionaries is returned along with the
-        output file. Each dictionary is the result of the beam tracing
-        that Finesse performs, the keys are the node names and the values
-        are the x and y beam parameters. If no tracing is done a None
-        is returned.
+                            output file. Each dictionary is the result of the beam tracing
+                            that Finesse performs, the keys are the node names and the values
+                            are the x and y beam parameters. If no tracing is done a None
+                            is returned.
         
         usePipe           - Version of Finesse 2.1 allow piping between kat and pykat for transfer data an progress.
                             Switching this off means some data and variables won't be populated, but it will work with
                             older versions of Finesse.
+        
         rethrowExceptions - if true exceptions will be thrown again rather than being excepted and calling sys.exit()
+        
+        kat_binary        - Name of binary in $FINESSE_DIR to use
         """
         start = time.time()
         
@@ -1991,7 +2003,7 @@ class kat(object):
             if not hasattr(self, "xaxis") and self.noxaxis != None and self.noxaxis == False:
                 raise pkex.BasePyKatException("No xaxis was defined")
                 
-            kat_exec = self._finesse_exec()
+            kat_exec = self._finesse_exec(kat_binary)
                             
             if self.verbose: print ("--------------------------------------------------------------")
             if self.verbose: print ("Running kat - Started at " + str(datetime.datetime.fromtimestamp(start)))
@@ -2092,7 +2104,7 @@ class kat(object):
                         #    line = line.decode("utf8") # Make sure we're using unicode encoding
                     
                         v = line.split(u":", 1)
-                    
+                        
                         if len(v) != 2:
                             continue    
                         

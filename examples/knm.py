@@ -1,9 +1,9 @@
 import pykat
 from pykat.optics.knm import *
 from pykat.optics.maps import *
+import numpy as np
 
 
-m = read_map("/Users/ddb/git/aligo_finesse/PI/20153006/maps/mode_37.map")
 C = makeCouplingMatrix(10)
 
 q1 = pykat.BeamParam(w0=5e-2, z=0)

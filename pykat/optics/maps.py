@@ -67,8 +67,8 @@ class surfacemap(object):
         self.notNan = notNan
 
         # Currently "beam center", i.e., mirror_center + xyOffset. 
-        self.center = center
         self.step_size = step_size
+        self.center = center
         self.scaling = scaling
         self._RcRemoved = None
         # Offset of fitted sphere. Proably unnecessary to have here.
@@ -1118,10 +1118,14 @@ class surfacemap(object):
         Based on Simtools function 'FT_create_sphere_for_map.m' by Charlotte Bond.
         '''
         
+        if Rc == np.inf:
+            Rc = 0
+        
         # Adjusting for tilts and offset
         Z = zOffset + (X*np.tan(xTilt) + Y*np.tan(yTilt))/self.scaling
+        
         # Adjusting for spherical shape.
-        if Rc !=0 and Rc is not None:
+        if Rc != 0 and Rc is not None:
             Z = Z + (Rc - np.sign(Rc)*np.sqrt(Rc**2 - (X-x0)**2 - (Y-y0)**2))/self.scaling
         
         if isPlot:
@@ -1688,14 +1692,13 @@ class curvedmap(surfacemap):
         surfacemap.__init__(self, name, "phase reflection", size, (np.array(size)+1)/2.0, step_size, 1e-6)
         
         self.Rc = Rc
-        
+            
     @property
     def Rc(self):
         return self.__Rc
     
     @Rc.setter
     def Rc(self, value):
-        
         self.__Rc = float(value)
     
         xx, yy = np.meshgrid(self.x, self.y)
