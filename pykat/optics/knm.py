@@ -425,14 +425,14 @@ def __Sg(m, _m, X, _X, F, _F):
         r = 0
     
         for s in range(0, min(u,_u)+1):
-            r += m_1_pow(s) * _F ** (u-s) * _F ** (_u-s) / (fac(2*s)*fac(u-s)*fac(_u-s))
+            r += m_1_pow(s) * _F ** (u-s) * F ** (_u-s) / (fac(2*s)*fac(u-s)*fac(_u-s))
         
         return r
     
     
     for u in range(0, lim1+1):
         for _u in range(0, lim2+1):
-            r += m_1_pow(u) * _X**(m-2*u) * X**(_m-2*_u) / ( fac(m-2*u)*fac(_m-2*_u) )   * __Ss(u, _u, F, _F)
+            r += m_1_pow(u) * _X**(m - 2*u) * X**(_m - 2*_u) / ( fac(m - 2*u) * fac(_m - 2*_u) ) * __Ss(u, _u, F, _F)
     
     return r
     
@@ -449,7 +449,7 @@ def __Su(m, _m, X, _X, F, _F):
         r = 0
     
         for s in range(0, min(u,_u)+1):
-            r += m_1_pow(s) * _F ** (u-s) * _F ** (_u-s) / (fac(2*s+1)*fac(u-s)*fac(_u-s))
+            r += m_1_pow(s) * _F ** (u-s) * F ** (_u-s) / (fac(2*s+1)*fac(u-s)*fac(_u-s))
         
         return r
     
@@ -481,17 +481,22 @@ def __bayerhelms_kn(n, _n, q1, q2, gamma=0.0):
         X  = 0.0
         Ex = 1.0
     
-    F  = K / (2.0 * (1.0+K0))
-    _F = K.conjugate() / 2.0 
+    _F  = K / (2.0 * (1.0+K0))
+    F = K.conjugate() / 2.0 
 
     Sg = __Sg(n, _n, X, _X, F, _F)
 
-    if n != 0 and _n != 0:
-        Su = __Su(n, _n, X, _X, F, _F)
-    else:
+    if n == 0 or _n == 0:
         Su = 0
+    else:
+        Su = __Su(n, _n, X, _X, F, _F)
     
-    b = m_1_pow(_n) * np.sqrt(fac(n) * fac(_n) * (1.0 + K0)**(n+0.5) * (1.0 + K.conjugate()) ** (-(n+_n+1)))
+    b = ((-1)**(_n) * 
+         np.sqrt(fac(n) * fac(_n)) *
+         (1.0 + K0)**(n/2.0 + 1/4.0) *
+         (1.0 + K.conjugate()) ** (-(n+_n+1)/2.0))
+    
+    #print(K, F, _F, b, Ex, Sg, Su)
     
     return b * Ex * (Sg - Su)
 
