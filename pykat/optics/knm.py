@@ -502,6 +502,9 @@ def __bayerhelms_kn(n, _n, q1, q2, gamma=0.0):
 
 
 def bayerhelms_HG_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, gamma=(0,0)):
+    """
+    
+    """
     if q1y is None:
         q1y = q1
 
@@ -577,7 +580,74 @@ def square_aperture_HG_knm(mode_in, mode_out, q, R):
 
 def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann",
           verbose=False, profile=False, gamma=(0,0), delta=(0,0), cache=True, **kwargs):
+    """
+    Computes a mode scattering matrix for various defects:
+          - Mode mismatch (a)
+          - Surface maps (b)
+          - Tilts        (c)
+          - Displacements (d)
+    
+    Mathematically the 2D overlap integral between an incoming and outgoing beam is
+    solved in the Hermite-Gaussian mode basis.
+    
+    Some of these effects aren't supported in all solvers. The markers a,b,c, and d
+    are listed below next to each method.
           
+    Parameters:
+          couplings - Matrix of coupling 
+          q1        - Incoming mode parameter (x and y direction if q1y not specified)
+          q2        - Outgoing mode parameter (x and y direction if q2y not specified)
+          q1y       - Incoming mode parameter (y direction)
+          q2y       - Outgoing mode parameter (y direction)
+          method    - Solving method to use:
+                          riemann     - Newton-Cotes grid based solver (a,b,c,d)
+                          bayer-helms - analytic mismatch and tilt solver (a,c,d)
+                          adaptive    - Numerical adaptive quadrature solver (a,b,c,d)
+                          romhom      - Reduced order modelling solver (a,b,c)
+          verbose   - If true outputs more debug and timing information
+          gamma     - Tuple of misalignment tilts of incoming and outgoing mode, e.g. (x_tilt, y_tilt) 
+          delta     - Tuple of displacements between incoming and outgoing mode, e.g. (dx, dy) 
+          cache     - If True caching of certain results are used to speed up calculations
+         
+          
+    Example using Maps:
+        import pykat
+        from pykat.optics.knm import knmHG, makeCouplingMatrix, plot_knm_matrix
+
+        C = makeCouplingMatrix(3)
+
+        q1 = pykat.BeamParam(w0=5e-2, z=0)
+        q2 = pykat.BeamParam(w0=10e-2, z=10)
+
+        N = 1000
+        dx = 1/N # 1m diameter map / N
+
+        m = curvedmap("test", (N,N), dx, 1e15)
+
+        C = makeCouplingMatrix(3)
+
+        q1 = pykat.BeamParam(w0=6e-3, z=0)
+        q2 = pykat.BeamParam(w0=3e-2, z=0.1)
+
+        Kmap = knmHG(C, q1, q2, surface_map=m)
+
+        plot_knm_matrix(C, abs(Kmap))
+
+    
+    Example using Bayer-Helms:
+        import pykat
+        from pykat.optics.knm import knmHG, makeCouplingMatrix, plot_knm_matrix
+
+        C = makeCouplingMatrix(3)
+
+        q1 = pykat.BeamParam(w0=5e-2, z=0)
+        q2 = pykat.BeamParam(w0=10e-2, z=10)
+
+        Kbh  = knmHG(C, q1, q2, method="bayerhelms")
+
+        plot_knm_matrix(C, Kbh)
+
+    """
     if q1y is None:
         q1y = q1
         
