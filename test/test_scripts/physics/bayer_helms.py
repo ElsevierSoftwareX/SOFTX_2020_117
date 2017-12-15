@@ -20,4 +20,7 @@ q2 = pykat.BeamParam(w0=10e-2, z=10)
 Kmap = knmHG(C, q1, q2, surface_map=m, method="riemann", cache=False)
 Kbh  = knmHG(C, q1, q2, method="bayerhelms", cache=False)
 
-assert(np.max(abs(Kmap - Kbh)) < 1e-13)
+
+print(np.max(abs(Kmap - Kbh)))
+
+assert(np.max(abs(Kmap - Kbh)) < 1e-12)
