@@ -166,7 +166,7 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
 
     dx = abs(x[1] - x[0])
     dy = abs(y[1] - y[0])    
-        
+    
     if cache is None:
         Hg_in  = HG_mode(qx=q1, qy=q1y, n=mode_in[0],  m=mode_in[1])
         Hg_out = HG_mode(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
@@ -194,7 +194,7 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
             for i in range(0, (len(wy)-1)/newtonCotesOrder): wy[(i*(N-1)):(i*(N-1)+N)] += W
             
             Wxy = np.outer(wx, wy)
-            
+        
         if newtonCotesOrder == 0:
             return dx * dy * np.einsum('ij,ij', Axy, U1*U2)
         else:

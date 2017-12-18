@@ -42,15 +42,21 @@ class MirrorROQWeights:
             
 class surfacemap(object):
     
-    def __init__(self, name, maptype, size=None, center=None, step_size=1.0, scaling=1.0e-9, data=None,
+    def __init__(self, name, maptype, size=None, center=None, step_size=(1,1), scaling=1.0e-9, data=None,
                  notNan=None, zOffset=None, xyOffset=(.0,.0)):
         '''
         size, center, step_size, xyOffset are all tuples of the form (x, y),
         i.e., (col, row).
         '''
+        assert(len(step_size) == 2)
+        assert(step_size[0] > 0 and step_size[1] > 0)
+        assert(len(xyOffset) == 2)
+        assert(size is not None and len(size) == 2)
+        assert(center is not None and len(center) == 2)
         
         self.name = name
         self.type = maptype
+        
         if data is None:
             if size is None:
                 raise BasePyKatException("One of the parameters data or size needs to be specified to create map")
@@ -71,6 +77,7 @@ class surfacemap(object):
         self.center = center
         self.scaling = scaling
         self._RcRemoved = None
+        
         # Offset of fitted sphere. Proably unnecessary to have here.
         self.zOffset = zOffset
         self.__interp = None
@@ -1687,7 +1694,18 @@ class aperturemap(surfacemap):
         
         
 class curvedmap(surfacemap):
+    """
+    Example:
+        import pykat
+        from pykat.optics.knm import *
+        from pykat.optics.maps import *
+
+        N = 501
+        dx = 1/float(N)
+        Roc = 10e3
     
+        m = curvedmap("test", (N,N), (dx,dx), RoC)
+    """
     def __init__(self, name, size, step_size, Rc):
         surfacemap.__init__(self, name, "phase reflection", size, (np.array(size)+1)/2.0, step_size, 1e-6)
         
