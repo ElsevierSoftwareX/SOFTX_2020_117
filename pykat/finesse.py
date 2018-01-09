@@ -2063,8 +2063,13 @@ class kat(object):
             if sys.platform == "win32" or sys.platform == "cygwin":
             	# Pipes in windows need to be prefixed with a hidden location.
             	pipe_name = "\\\\.\\pipe\\" + pipe_name
-
-            p = Popen(cmd, stderr=PIPE, stdout=PIPE)
+        
+            _stdout = tempfile.TemporaryFile()
+            _stderr = tempfile.TemporaryFile()
+        
+            # Using PIPE for out/err is limited to 2^16 characters and will deadlock
+            # the process if alot of warnings are printed, using tempfiles instead
+            p = Popen(cmd, stderr=_stderr, stdout=_stdout)
 
             if self.verbose:
                 if self.noxaxis:
@@ -2088,7 +2093,12 @@ class kat(object):
                         try:
                             if time.time() < _start_kat + duration:
                                 time.sleep(0.001)
-                                fifo = codecs.open(pipe_name, "r", "utf-8")
+
+                                if six.PY2:
+                                    fifo = codecs.open(pipe_name, "r", "utf-8")
+                                else:
+                                    fifo = open(pipe_name, "r", encoding="utf-8")
+                                    
                                 self.__looking = False
                             else:
                                 raise pkex.BasePyKatException("Could not connect to pykat pipe in {0} seconds. Ensure you are using Finesse >= v2.1 and Pykat >= v1.0.0. Or set usePipe=False when making kat object.".format(duration))
@@ -2097,36 +2107,38 @@ class kat(object):
                                 if not self.__looking:
                                     self.__looking = True
                 
-                if fifo is not None:
-                    for line in fifo:
-                    
-                        #if (sys.version_info < (3, 0)):
-                        #    line = line.decode("utf8") # Make sure we're using unicode encoding
-                    
-                        v = line.split(u":", 1)
-                        
-                        if len(v) != 2:
-                            continue    
-                        
-                        (tag, line) = v
-                    
-                        if tag == "version":
-                            r.katVersion = line
-                        elif tag == "progress" and self.verbose:
-                            var = line.split("\t")
-                        
-                            if len(var) == 3:
-                            	pb.currval = int(var[1])
-                            	pb.widgets[-1] = var[0] + " " + var[2][:-1]
-                            	pb.update()
+                    if fifo is not None:
+                        for line in fifo:
+                            v = line.split(u":", 1)
+
+                            if len(v) != 2:
+                                continue
+
+                            (tag, line) = v
+
+                            if tag == "version":
+                                r.katVersion = line
+                            elif tag == "progress" and self.verbose:
+                                var = line.split("\t")
+
+                                if len(var) == 3:
+                                    pb.currval = int(var[1])
+                                    pb.widgets[-1] = var[0] + " " + var[2][:-1]
+                                    pb.update()
             finally:
             	if fifo is not None:
             		fifo.close()
-			
-            (stdout, stderr) = p.communicate()
 
-            r.stdout = stdout.decode('utf-8', 'replace')
-            r.stderr = stderr.decode('utf-8', 'replace')
+            p.wait()
+            
+            _stdout.seek(0)
+            _stderr.seek(0)
+
+            r.stdout = _stdout.read().decode('utf-8', 'replace')
+            r.stderr = _stderr.read().decode('utf-8', 'replace')
+            
+            _stderr.close()
+            _stdout.close()
             
             k = r.stdout.rfind('computation time:')
             
@@ -2148,7 +2160,7 @@ class kat(object):
                     r.runtime = 0.0
     
             r.runDateTime = datetime.datetime.now()
-
+            
             # If Finesse returned an error, just print that and exit!
             if p.returncode != 0:
                 raise pkex.FinesseRunError(r.stderr, katfile.name)
