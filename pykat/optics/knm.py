@@ -166,9 +166,9 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
 
     dx = abs(x[1] - x[0])
     dy = abs(y[1] - y[0])    
-        
+    
     if cache is None:
-        Hg_in  = HG_mode(qx=q1, qy=q1y, n=mode_in[0], m=mode_in[1])
+        Hg_in  = HG_mode(qx=q1, qy=q1y, n=mode_in[0],  m=mode_in[1])
         Hg_out = HG_mode(qx=q2, qy=q2y, n=mode_out[0], m=mode_out[1])
         
         U1 = Hg_in.Unm(x+delta[0], y+delta[1])
@@ -194,7 +194,7 @@ def riemann_HG_knm(x, y, mode_in, mode_out, q1, q2, q1y=None, q2y=None,
             for i in range(0, (len(wy)-1)/newtonCotesOrder): wy[(i*(N-1)):(i*(N-1)+N)] += W
             
             Wxy = np.outer(wx, wy)
-            
+        
         if newtonCotesOrder == 0:
             return dx * dy * np.einsum('ij,ij', Axy, U1*U2)
         else:
@@ -410,39 +410,62 @@ def m_1_pow(n):
         return -1
 
 
-def __Ss(u, _u, F, _F, d=0):
-    r = 0
-    
-    for s in range(0, min(u,_u)+1):
-        r += m_1_pow(s) * _F ** (u-s) * _F ** (_u-s) / (fac(2*s+d)*fac(u-s)*fac(_u-s))
-        
-    return r
-
-
-def __S(m, _m, X, _X, F, _F, d=0):
+def __sum_lim(m):
     if m % 2 == 1:
-        lim1 = int((m-1)/2)
+        return int((m-1)/2)
     else:
-        lim1 = int(m/2 )
+        return int(m/2)
 
-    if _m % 2 == 1:
-        lim2 = int((_m-1)/2)
-    else:
-        lim2 = int(_m/2)
-    
+def __Sg(m, _m, X, _X, F, _F):
+    lim1 = __sum_lim(m)
+    lim2 = __sum_lim(_m)    
     r = 0
+    
+    def __Ss(u, _u, F, _F):
+        r = 0
+    
+        for s in range(0, min(u,_u)+1):
+            r += m_1_pow(s) * _F ** (u-s) * F ** (_u-s) / (fac(2*s)*fac(u-s)*fac(_u-s))
+        
+        return r
+    
     
     for u in range(0, lim1+1):
         for _u in range(0, lim2+1):
-            r += m_1_pow(u) * _X**(m-2*u) * X**(_m-2*_u) / ( fac(m-2*u)*fac(_m-2*_u) )   * __Ss(u, _u, F, _F, d=d)
+            r += m_1_pow(u) * _X**(m - 2*u) * X**(_m - 2*_u) / ( fac(m - 2*u) * fac(_m - 2*_u) ) * __Ss(u, _u, F, _F)
     
     return r
+    
+
+
+
+def __Su(m, _m, X, _X, F, _F):
+    lim1 = __sum_lim(m-1)
+    lim2 = __sum_lim(_m-1)
+    
+    r = 0
+    
+    def __Ss(u, _u, F, _F):
+        r = 0
+    
+        for s in range(0, min(u,_u)+1):
+            r += m_1_pow(s) * _F ** (u-s) * F ** (_u-s) / (fac(2*s+1)*fac(u-s)*fac(_u-s))
+        
+        return r
+    
+    
+    for u in range(0, lim1+1):
+        for _u in range(0, lim2+1):
+            r += m_1_pow(u) * _X**(m-2*u-1) * X**(_m-2*_u-1) / ( fac(m-2*u-1)*fac(_m-2*_u-1) )   * __Ss(u, _u, F, _F)
+    
+    return r
+    
            
 
 def __bayerhelms_kn(n, _n, q1, q2, gamma=0.0):
-    
     K0 = (q1.zr - q2.zr)/q2.zr
     K2 = (q1.z - q2.z)/q2.zr
+    
     K = (K0 + 1j*K2)/2.0
     
     Ktilde = abs(K / (1+K))
@@ -461,19 +484,27 @@ def __bayerhelms_kn(n, _n, q1, q2, gamma=0.0):
     _F  = K / (2.0 * (1.0+K0))
     F = K.conjugate() / 2.0 
 
-    Sg = __S(n, _n, X, _X, F, _F)
+    Sg = __Sg(n, _n, X, _X, F, _F)
 
-    if n > 0 and _n > 0:
-        Su = __S(n-1, _n-1, X, _X, F, _F, 1)
-    else:
+    if n == 0 or _n == 0:
         Su = 0
+    else:
+        Su = __Su(n, _n, X, _X, F, _F)
     
-    b = m_1_pow(_n) * cmath.sqrt(fac(n) * fac(_n) * (1.0 + K.real)**(n+0.5) * (1.0 + K.conjugate()) ** (-(n+_n+1)))
+    b = ((-1)**(_n) * 
+         np.sqrt(fac(n) * fac(_n)) *
+         (1.0 + K0)**(n/2.0 + 1/4.0) *
+         (1.0 + K.conjugate()) ** (-(n+_n+1)/2.0))
+    
+    #print(K, F, _F, b, Ex, Sg, Su)
     
     return b * Ex * (Sg - Su)
 
 
 def bayerhelms_HG_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, gamma=(0,0)):
+    """
+    
+    """
     if q1y is None:
         q1y = q1
 
@@ -548,8 +579,75 @@ def square_aperture_HG_knm(mode_in, mode_out, q, R):
 
 
 def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann",
-          verbose=False, profile=False, gamma=(0,0), delta=(0,0), **kwargs):
+          verbose=False, profile=False, gamma=(0,0), delta=(0,0), cache=True, **kwargs):
+    """
+    Computes a mode scattering matrix for various defects:
+          - Mode mismatch (a)
+          - Surface maps (b)
+          - Tilts        (c)
+          - Displacements (d)
+    
+    Mathematically the 2D overlap integral between an incoming and outgoing beam is
+    solved in the Hermite-Gaussian mode basis.
+    
+    Some of these effects aren't supported in all solvers. The markers a,b,c, and d
+    are listed below next to each method.
           
+    Parameters:
+          couplings - Matrix of coupling 
+          q1        - Incoming mode parameter (x and y direction if q1y not specified)
+          q2        - Outgoing mode parameter (x and y direction if q2y not specified)
+          q1y       - Incoming mode parameter (y direction)
+          q2y       - Outgoing mode parameter (y direction)
+          method    - Solving method to use:
+                          riemann     - Newton-Cotes grid based solver (a,b,c,d)
+                          bayer-helms - analytic mismatch and tilt solver (a,c,d)
+                          adaptive    - Numerical adaptive quadrature solver (a,b,c,d)
+                          romhom      - Reduced order modelling solver (a,b,c)
+          verbose   - If true outputs more debug and timing information
+          gamma     - Tuple of misalignment tilts of incoming and outgoing mode, e.g. (x_tilt, y_tilt) 
+          delta     - Tuple of displacements between incoming and outgoing mode, e.g. (dx, dy) 
+          cache     - If True caching of certain results are used to speed up calculations
+         
+          
+    Example using Maps:
+        import pykat
+        from pykat.optics.knm import knmHG, makeCouplingMatrix, plot_knm_matrix
+
+        C = makeCouplingMatrix(3)
+
+        q1 = pykat.BeamParam(w0=5e-2, z=0)
+        q2 = pykat.BeamParam(w0=10e-2, z=10)
+
+        N = 1000
+        dx = 1/N # 1m diameter map / N
+
+        m = curvedmap("test", (N,N), dx, 1e15)
+
+        C = makeCouplingMatrix(3)
+
+        q1 = pykat.BeamParam(w0=6e-3, z=0)
+        q2 = pykat.BeamParam(w0=3e-2, z=0.1)
+
+        Kmap = knmHG(C, q1, q2, surface_map=m)
+
+        plot_knm_matrix(C, abs(Kmap))
+
+    
+    Example using Bayer-Helms:
+        import pykat
+        from pykat.optics.knm import knmHG, makeCouplingMatrix, plot_knm_matrix
+
+        C = makeCouplingMatrix(3)
+
+        q1 = pykat.BeamParam(w0=5e-2, z=0)
+        q2 = pykat.BeamParam(w0=10e-2, z=10)
+
+        Kbh  = knmHG(C, q1, q2, method="bayerhelms")
+
+        plot_knm_matrix(C, Kbh)
+
+    """
     if q1y is None:
         q1y = q1
         
@@ -602,7 +700,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
 
         cache = __gen_ROM_HG_knm_cache(weights, couplings, q1=q1, q2=q2, q1y=q1y, q2y=q2y)
         
-    elif method == "riemann":
+    elif method == "riemann" and cache:
         if surface_map is None:
             raise BasePyKatException("Using 'riemann' method requires a surface map to be specified")
             
@@ -629,17 +727,13 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
             t0 = time.time()
         
         if method == "riemann":
-            K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=cache, delta=delta)
+            K[i] = riemann_HG_knm(x, y, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, Axy=Axy, cache=None, delta=delta)
         elif method == "romhom":
             K[i] = ROM_HG_knm(weights, mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, cache=cache)
         elif method == "bayerhelms":
             K[i] = bayerhelms_HG_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, gamma=gamma)
         elif method == "adaptive":
             K[i] = adaptive_knm(mode_in, mode_out, q1=q1, q2=q2, q1y=q1y, q2y=q2y, smap=surface_map, delta=delta, params=kwargs)
-        elif method == "tilt_modulation":
-            
-        elif method == "q_modulation":
-            
         else:
             raise BasePyKatException("method value '%s' not accepted" % method)
         
@@ -657,10 +751,12 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         return K.reshape(couplings.shape[:-1])
 
 
-def plot_knm_matrix(couplings, knm, cmap=None, show=True):
-    import pylab as plt
+def plot_knm_matrix(couplings, knm, cmap=None, show=True, fig=None):
+    import matplotlib.pyplot as plt
     
-    fig = plt.figure()
+    if fig is None:
+        fig = plt.figure()
+        
     ax = fig.add_subplot(111)
     cax = ax.pcolormesh(abs(knm), cmap=cmap)
     fig.colorbar(cax)
@@ -697,5 +793,3 @@ def plot_knm_matrix(couplings, knm, cmap=None, show=True):
     fig.tight_layout()
     
     if show: plt.show()
-    
-    return fig
