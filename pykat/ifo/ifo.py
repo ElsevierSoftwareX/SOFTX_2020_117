@@ -62,8 +62,8 @@ class aLIGO(object):
             # TODO different files not yet implemented
             if _name != "default":
                 printf("aLIGO name `{}' not recognised, using 'default'",_name)                
-            self.kat.loadKatFile(self._data_path+"aLIGO.kat")
-            self.rawBlocks.read(self._data_path+"aLIGO.kat")
+            self.kat.loadKatFile(self._data_path+"design_with_IMC_HAM2_FI_OMC.kat")#"aLIGO.kat"
+            self.rawBlocks.read(self._data_path+"design_with_IMC_HAM2_FI_OMC.kat")#"aLIGO.kat"
 
         # ----------------------------------------------------------------------
         # set variables to zero first

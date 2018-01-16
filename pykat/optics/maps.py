@@ -42,15 +42,21 @@ class MirrorROQWeights:
             
 class surfacemap(object):
     
-    def __init__(self, name, maptype, size=None, center=None, step_size=1.0, scaling=1.0e-9, data=None,
+    def __init__(self, name, maptype, size=None, center=None, step_size=(1,1), scaling=1.0e-9, data=None,
                  notNan=None, zOffset=None, xyOffset=(.0,.0)):
         '''
         size, center, step_size, xyOffset are all tuples of the form (x, y),
         i.e., (col, row).
         '''
+        assert(len(step_size) == 2)
+        assert(step_size[0] > 0 and step_size[1] > 0)
+        assert(len(xyOffset) == 2)
+        assert(size is not None and len(size) == 2)
+        assert(center is not None and len(center) == 2)
         
         self.name = name
         self.type = maptype
+        
         if data is None:
             if size is None:
                 raise BasePyKatException("One of the parameters data or size needs to be specified to create map")
@@ -67,10 +73,11 @@ class surfacemap(object):
         self.notNan = notNan
 
         # Currently "beam center", i.e., mirror_center + xyOffset. 
-        self.center = center
         self.step_size = step_size
+        self.center = center
         self.scaling = scaling
         self._RcRemoved = None
+        
         # Offset of fitted sphere. Proably unnecessary to have here.
         self.zOffset = zOffset
         self.__interp = None
@@ -1118,10 +1125,14 @@ class surfacemap(object):
         Based on Simtools function 'FT_create_sphere_for_map.m' by Charlotte Bond.
         '''
         
+        if Rc == np.inf:
+            Rc = 0
+        
         # Adjusting for tilts and offset
         Z = zOffset + (X*np.tan(xTilt) + Y*np.tan(yTilt))/self.scaling
+        
         # Adjusting for spherical shape.
-        if Rc !=0 and Rc is not None:
+        if Rc != 0 and Rc is not None:
             Z = Z + (Rc - np.sign(Rc)*np.sqrt(Rc**2 - (X-x0)**2 - (Y-y0)**2))/self.scaling
         
         if isPlot:
@@ -1683,19 +1694,29 @@ class aperturemap(surfacemap):
         
         
 class curvedmap(surfacemap):
+    """
+    Example:
+        import pykat
+        from pykat.optics.knm import *
+        from pykat.optics.maps import *
+
+        N = 501
+        dx = 1/float(N)
+        Roc = 10e3
     
+        m = curvedmap("test", (N,N), (dx,dx), RoC)
+    """
     def __init__(self, name, size, step_size, Rc):
         surfacemap.__init__(self, name, "phase reflection", size, (np.array(size)+1)/2.0, step_size, 1e-6)
         
         self.Rc = Rc
-        
+            
     @property
     def Rc(self):
         return self.__Rc
     
     @Rc.setter
     def Rc(self, value):
-        
         self.__Rc = float(value)
     
         xx, yy = np.meshgrid(self.x, self.y)

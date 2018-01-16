@@ -35,6 +35,9 @@ s s1 0.1 nEOM3b nInj1
 ###########################################################################
 %%% FTend EOMs
 
+%%% FTblock REFL
+###########################################################################
+
 bs Inj 1 0 0 0 nInj1 nInj2 nInj3 nInj4
 
 s sInj_FI 0.1 nInj2 nFI1
@@ -43,6 +46,9 @@ s sInj_FI 0.1 nInj2 nFI1
 dbs FI nFI1 nFI2 nFI3 nB2
 
 s sFI_PR 0 nFI3 nPR1
+
+###########################################################################
+%%% FTend REFL
 
 %%% FTblock PRC
 ###########################################################################
@@ -323,7 +329,7 @@ const T_PR 0.04835       # PR transmission [VIR-0029A-15]
 const R_POP 184u         # POP reflectivity [VIR-0027A-15]
 
 
-# Measured AR-surface reflectivities. Put as losses since the mirrors have wedge.
+# Measured AR-surface reflectivities. Set as losses since the mirrors have wedge.
 const L_WIAR 58u         # WI AR reflectivity [IM02, VIR-0543A-14]
 const L_WEAR 155u        # WE AR reflectivity [EM03, VIR-0270A-15]
 const L_NIAR 32u         # NI AR reflectivity [IM04, VIR-0544A-14]
@@ -377,14 +383,14 @@ const L_SR 37.5u
 const PR_phi   0
 const PRAR_phi 0
 
-const NI_phi   0
+const NI_phi   -0.271
+const NE_phi   -0.271
 const NIAR_phi 0
-const NE_phi   0
 const NEAR_phi 0
 
-const WI_phi   0
+const WI_phi   0.271
+const WE_phi   0.271
 const WIAR_phi 0
-const WE_phi   0
 const WEAR_phi 0
 # -------------------------------------------------------------------------
 
@@ -550,7 +556,7 @@ pd P_WAC nWI2     # West
 
 
 
-%%% FTblock errsigs
+%%% FTblock Errsigs
 ###########################################################################
 
 # f for B1
@@ -665,7 +671,7 @@ pd1 pdB2fx3q $f1_3f 90 nPR1
 pd1 errB2_fx3 $f1_3f nPR1   # Added by DT
 
 ###########################################################################
-%%% FTend errsigs
+%%% FTend Errsigs
 
 %%% FTblock Amplitudes
 ###########################################################################

@@ -495,6 +495,167 @@ def LG2HG(p,l):
     
     return coefficients, ns, ms
 
+def HG_mode_fraction_x(q, beam_data, xdata, n):
+    """Returns the fraction of the Hermite-Gauss mode HGn0 in
+    a measured beam profile over the x-dimension.
+
+    Parameters
+    ----------
+    q : `pykat.optics.gaussian_beams.BeamParam`
+
+      Beam parameter instance to pass to `HG_mode`.
+
+    beam_data : array like
+
+      Beam profile data in the x-dimension.
+
+    xdata : array like
+
+      Array of x-dimension data.
+
+    n : int
+
+      Tangential mode index.
+
+    Returns
+    -------
+    Fraction of the HGn0 mode in the measured beam profile, yields a value
+    in [0.0, 1.0]; e.g. `1.0` for a profile which is a pure HGn0 mode and
+    `0.0` for a profile described by a pure HG mode not equal to HGn0.
+
+    Examples
+    --------
+    Here `out` is an instance of `pykat.finesse.KatRun` containing a
+    `ccd` object representing a Finesse `beam` detector which has been
+    scanned over the x-dimension.
+
+        >>> import pykat.optics.gaussian_beams as gb
+        >>> out = kat.run()
+        >>> bp = gb.BeamParam(q=complex(-1, 1.2))
+        >>> frac_HG00 = gb.HG_mode_fraction_x(bp, out['ccd'], out.x*bp.w0, 0)
+
+    From this, `frac_HG00` will store the fraction of the beam profile made
+    up of the HG00 mode.
+
+    author: Samuel Rowlinson
+    date: 07/12/2017
+    """
+    import pykat.optics.gaussian_beams as gb
+    hgn0 = gb.HG_mode(q, n=n, m=0)
+    return np.abs(np.vdot(
+        hgn0.Un(xdata), beam_data
+    ))*np.diff(xdata)[0]/np.abs(hgn0.Um(0))
+
+def HG_mode_fraction_y(q, beam_data, ydata, m):
+    """Returns the fraction of the Hermite-Gauss mode HG0m in
+    a measured beam profile over the y-dimension.
+
+    Parameters
+    ----------
+    q : `pykat.optics.gaussian_beams.BeamParam`
+
+      Beam parameter instance to pass to `HG_mode`.
+
+    beam_data : array like
+
+      Beam profile data in the y-dimension.
+
+    ydata : array like
+
+      Array of y-dimension data.
+
+    m : int
+
+      Sagittal mode index.
+
+    Returns
+    -------
+    Fraction of the HG0m mode in the measured beam profile, yields a value
+    in [0.0, 1.0]; e.g. `1.0` for a profile which is a pure HG0m mode and
+    `0.0` for a profile described by a pure HG mode not equal to HG0m.
+
+    Examples
+    --------
+    Here `out` is an instance of `pykat.finesse.KatRun` containing a
+    `ccd` object representing a Finesse `beam` detector which has been
+    scanned over the y-dimension.
+
+        >>> import pykat.optics.gaussian_beams as gb
+        >>> out = kat.run()
+        >>> bp = gb.BeamParam(q=complex(-1, 1.2))
+        >>> frac_HG00 = gb.HG_mode_fraction_y(bp, out['ccd'], out.x*bp.w0, 0)
+
+    From this, `frac_HG00` will store the fraction of the beam profile made
+    up of the HG00 mode.
+
+    author: Samuel Rowlinson
+    date: 07/12/2017
+    """
+    import pykat.optics.gaussian_beams as gb
+    hg0m = gb.HG_mode(q, n=0, m=m)
+    return np.abs(np.vdot(
+        hg0m.Un(ydata), beam_data
+    ))*np.diff(ydata)[0]/np.abs(hg0m.Un(0))
+
+def HG_mode_fraction(q, beam_data, xdata, ydata, n, m):
+    """Returns the fraction of the Hermite-Gauss mode HGnm in
+    a measured beam profile.
+
+    Parameters
+    ----------
+    q : `pykat.optics.gaussian_beams.BeamParam`
+
+      Beam parameter instance to pass to `HG_mode`.
+
+    beam_data : array like
+
+      Beam profile data.
+
+    xdata : array like
+
+      Array of x-dimension data.
+
+    ydata : array like
+
+      Array of y-dimension data.
+
+    n : int
+
+      Tangential mode index.
+
+    m : int
+
+      Sagittal mode index.
+
+    Returns
+    -------
+    Fraction of the HGnm mode in the measured beam profile, yields a value
+    in [0.0, 1.0]; e.g. `1.0` for a profile which is a pure HGnm mode and
+    `0.0` for a profile described by a pure HG mode not equal to HGnm.
+
+    Examples
+    --------
+    Here `out` is an instance of `pykat.finesse.KatRun` containing a
+    `ccd` object representing a Finesse `beam` detector which has been
+    scanned over both the x and y dimensions.
+
+        >>> import pykat.optics.gaussian_beams as gb
+        >>> out = kat.run()
+        >>> bp = gb.BeamParam(q=complex(-1, 1.2))
+        >>> frac_HG00 = gb.HG_mode_fraction(bp, out['ccd'],
+                                                out.x*bp.w0, out.y*bp.w0,
+                                                0, 0)
+
+    From this, `frac_HG00` will store the fraction of the beam profile made
+    up of the HG00 mode.
+
+    author: Samuel Rowlinson
+    date: 07/12/2017
+    """
+    import pykat.optics.gaussian_beams as gb
+    return np.abs(np.vdot(
+        gb.HG_mode(q, n=n, m=m).Unm(xdata, ydata), beam_data
+    ))*np.diff(xdata)[0]*np.diff(ydata)[0]
 
 # These classes are here as legacy classes, BeamParam should throw a warning if they are used instead.
 
