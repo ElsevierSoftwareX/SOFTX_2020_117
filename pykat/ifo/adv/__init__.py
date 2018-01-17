@@ -948,7 +948,9 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     elif kat.components[mirrors['SRM']].R.value == 0:
         isSRC = False
         tunings_components_list.pop(tunings_components_list.index(mirrors['SRM']))
-        
+
+
+    print(isSRC)
     # Checking if mirrors in tuning_component_list are in the kat-object
     for m in tunings_components_list:
         if m in kat.components:
