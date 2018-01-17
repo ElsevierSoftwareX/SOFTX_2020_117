@@ -896,7 +896,8 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     names = ['design_PR', 'design_PR_OMC']
     
     # Mirror names. Mapping to IFO-specific names to faciliate creating new IFO-specific files.
-    # Change the values in the dictionary to the IFO-specific mirror names.
+    # Change the values in the dictionary to the IFO-specific mirror names. Do not change the
+    # keys, they are used in functions and methods.
     mirrors = {'EX': 'NE', 'EY': 'WE',
                'EXAR': 'NEAR', 'EYAR': 'WEAR',
                'IX': 'NI', 'IY': 'WI',
@@ -916,7 +917,7 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     # Define which mirrors create the tuning description. Has to be consistent
     # with values in the mirrors dictionary above. 
     tunings_components_list = ["PR", "NI", "NE", "WI", "WE", "BS", "SR"]
-    
+
     # Define which keys are used for a tuning description
     tuning_keys_list = ["maxtem", "phase"]
 
@@ -927,26 +928,17 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     
     kat.verbose=verbose
     
-    # Create empty object to just store whatever DOFs, port, variables in
-    # that will be used by processing functions
-    kat.IFO = ADV_IFO(kat, tuning_keys_list, tunings_components_list)
-
-    
-    kat.IFO._data_path=pkg_resources.resource_filename('pykat.ifo', os.path.join('adv','files'))
-
-    kat.IFO.rawBlocks = BlockedKatFile()
+    files_directory = pkg_resources.resource_filename('pykat.ifo', os.path.join('adv','files'))
     
     if katfile:
         kat.load(katfile, keepComments=keepComments, preserveConstants=preserveConstants)
-        kat.IFO.rawBlocks.read(katfile)
     else:
         if name not in names:
             pkex.printWarning("adv name `{}' not recognised, options are {}, using default 'design'".format(name, names))
         
-        katkile = os.path.join(kat.IFO._data_path, name+".kat")
-        
-        kat.load(katkile, keepComments=keepComments, preserveConstants=preserveConstants)
-        kat.IFO.rawBlocks.read(katkile)
+        katfile = os.path.join(files_directory, name+".kat")
+        kat.load(katfile, keepComments=keepComments, preserveConstants=preserveConstants)
+
 
     # Removing SR if it isn't in the kat-file, or if it's fully transparent.
     isSRC = True
@@ -956,8 +948,7 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     elif kat.components[mirrors['SRM']].R.value == 0:
         isSRC = False
         tunings_components_list.pop(tunings_components_list.index(mirrors['SRM']))
-    kat.IFO.isSRC = isSRC
-
+        
     # Checking if mirrors in tuning_component_list are in the kat-object
     for m in tunings_components_list:
         if m in kat.components:
@@ -967,15 +958,64 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
         else:
             raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(m))
 
-    # Checking if mirrors in mirrors mirrors-dictionary are in the kat-object.
+    # Checking if mirrors in mirrors-dictionary are in the kat-object.
     for k, v in mirrors.items():
         if v in kat.components:
             if not ( isinstance(kat.components[v], pykat.components.mirror) or
                      isinstance(kat.components[v], pykat.components.beamSplitter) ):
                 raise pkex.BasePyKatException('{} is not a mirror or a beam splitter'.format(v))
         elif not v is None:
-            raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(v))
+            # Allowing SRM mirrors to be in the mirrors-dictionary anyway if isSRC = False
+            if not ( (k == 'SRM' and not isSRC) or (k == 'SRMAR' and not isSRC) ):
+                raise pkex.BasePyKatException('{} is not a component in the kat-object'.format(v))
+
+
+    # Creating the IFO object
+    kat.IFO = ADV_IFO(kat, tuning_keys_list, tunings_components_list)
+    kat.IFO._data_path = files_directory
+    kat.IFO.rawBlocks = BlockedKatFile()
+    kat.IFO.rawBlocks.read(katfile)
+    kat.IFO.isSRC = isSRC
+
+
+
+    
+
+    
+
+    # --------
+
+    
+    
+
+    ## # -------
+    
+    ## # Create empty object to just store whatever DOFs, port, variables in
+    ## # that will be used by processing functions
+    ## kat.IFO = ADV_IFO(kat, tuning_keys_list, tunings_components_list)
+
+    
+    ## kat.IFO._data_path=pkg_resources.resource_filename('pykat.ifo', os.path.join('adv','files'))
+
+    ## kat.IFO.rawBlocks = BlockedKatFile()
+    
+    ## if katfile:
+    ##     kat.load(katfile, keepComments=keepComments, preserveConstants=preserveConstants)
+    ##     kat.IFO.rawBlocks.read(katfile)
+    ## else:
+    ##     if name not in names:
+    ##         pkex.printWarning("adv name `{}' not recognised, options are {}, using default 'design'".format(name, names))
         
+    ##     katkile = os.path.join(kat.IFO._data_path, name+".kat")
+        
+    ##     kat.load(katkile, keepComments=keepComments, preserveConstants=preserveConstants)
+    ##     kat.IFO.rawBlocks.read(katkile)
+
+    ## # --------
+
+
+    
+
     # ----------------------------------------------------------------------
     # get and derive parameters from the kat file
 
@@ -1038,6 +1078,8 @@ def make_kat(name="design_PR", katfile=None, verbose = False, debug=False, keepC
     kat.IFO.B2_f2 = Output(kat.IFO, "B2_f2", "nB2", kat.IFO.f2, phase = 49.94)
     kat.IFO.B2_f3 = Output(kat.IFO, "B2_f3", "nB2", kat.IFO.f3, phase = -2.46)
     kat.IFO.B2_f4 = Output(kat.IFO, "B2_f4", "nB2", kat.IFO.f4, phase = 0)
+    kat.IFO.B2_f4b = Output(kat.IFO, "B2_f4b", "nB2", kat.IFO.f4b, phase = 0)
+
     
     kat.IFO.B4_f1  = Output(kat.IFO, "B4_f1",  "nB4",  kat.IFO.f1, phase = 177.49)
     kat.IFO.B4_f2  = Output(kat.IFO, "B4_f2",  "nB4",  kat.IFO.f2, phase = 156.95)
@@ -1202,11 +1244,11 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     kat.removeBlock("locks", False)
     
     make_transparent(kat,[m["PRM"]])
-    phi, precision = scan_to_precision(kat, IFO.preMICH, pretune_precision, minmax="min", precision=30.0)
+    phi, precision = scan_to_precision(kat, IFO.preMICH, pretune_precision, minmax="min", precision=30)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
-    IFO.preMICH.apply_tuning(phi, add=True)
+    IFO.preMICH.apply_tuning(phi, add=False)
 
     vprint(verbose, "   scanning PRCL (maximising power)")
     kat = _kat.deepcopy()
