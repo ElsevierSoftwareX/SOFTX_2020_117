@@ -98,7 +98,6 @@ class VOYAGER_IFO(IFO):
         
     
     def compute_derived_resonances(self):
-        clight
         self.fsrX = 0.5 * clight / float(self.kat.LX.L)
         self.fsrY = 0.5 * clight / float(self.kat.LY.L)
         self.fsrPRC = 0.5 * clight / self.lPRC
@@ -211,8 +210,8 @@ class VOYAGER_IFO(IFO):
                 mirror.Ix = None
                 mirror.rxmech = None
        
-    def cavity_status(_kat):
-        kat = _kat.deepcopy()
+    def cavity_status(self):
+        kat = self.kat.deepcopy()
         kat.verbose = False
         kat.noxaxis = True
         kat.IFO.fix_mirrors()
@@ -650,15 +649,18 @@ def assert_voyager_ifo_kat(kat):
     if not isinstance(kat.IFO, VOYAGER_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an VOYAGER_IFO compatiable kat\033[0m")
               
-def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
+def make_kat(name="voyager", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
     
+    name: Model to load
+        - "voyager" base voyager model with IFO, OMC, LMC
+    
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['design', 'design_low_power', 'design_with_IMC_HAM2', 'design_with_IMC_HAM2_FI_OMC']
+    names = ['voyager']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
