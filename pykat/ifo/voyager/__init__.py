@@ -212,7 +212,6 @@ class VOYAGER_IFO(IFO):
                 mirror.rxmech = None
        
     def cavity_status(_kat):
-    
         kat = _kat.deepcopy()
         kat.verbose = False
         kat.noxaxis = True
@@ -220,12 +219,12 @@ class VOYAGER_IFO(IFO):
         kat.IFO.remove_modulators()
         kat.removeBlock('locks',False)
         kat.maxtem = 0
-    
+
         kat.parse('yaxis abs')
-    
+
         cavs = kat.getAll(pykat.commands.cavity)   
         optics = [x for x in kat.getAll(pykat.components.mirror) + kat.getAll(pykat.components.beamSplitter) if 'AR' not in x.name]
-    
+
         cp_cmds = ''
         for cav in cavs:
             cp_cmds += '''cp {0}_x_g {0} x stability
@@ -235,18 +234,18 @@ class VOYAGER_IFO(IFO):
                         cp {0}_x_fsr {0} x fsr
                         cp {0}_y_fsr {0} y fsr
                         '''.format(cav)
-        
+    
         bp_cmds = ''
         for optic in optics:
             bp_cmds += '''bp {0}_x_w x w {1}
                         bp {0}_y_w y w {1}
                         '''.format(optic,optic.nodes[0].name)
-    
+
         kat.parse(cp_cmds)
         kat.parse(bp_cmds)
-        
-        out = kat.run()
     
+        out = kat.run()
+
         print(" .-------------------------------------------------.")
         print(" | optic    | w_x[cm]    | w_y[cm]                 |")
         print(" +----------|------------|-------------------------+")
@@ -255,27 +254,27 @@ class VOYAGER_IFO(IFO):
                   .format(optic.name,100*float(out[optic.name+'_x_w']),100*float(out[optic.name+'_x_w'])))
         print(" `-------------------------------------------------'")
         print()
-        print(" .--------------------------------------------------------.")
-        print(" | cavity   | g_x    | psi_RT[deg]| delta_f[kHz]| FSR[kHz]|")
-        print(" +----------|--------|------------|-------------|---------+")
+        print(" .----------------------------------------------------------.")
+        print(" | cavity   | g_x[0->1]| psi_RT[deg]| delta_f[kHz]| FSR[kHz]|")
+        print(" +----------|----------|------------|-------------|---------+")
         for cav in cavs:
             # shift g from -1:1 to 0:1
             g_x = (out[cav.name+'_x_g']+1)/2
             B_x = out[cav.name+'_x_B']
             psi_rt_x = 2*np.arccos(np.sign(B_x)*np.sqrt(g_x))
             FSR = out[cav.name+'_x_fsr']
-        
+    
             if np.abs(psi_rt_x/(2*np.pi)) > 1/2:
                 delta_f_x = psi_rt_x/(2*np.pi) * FSR - FSR*np.sign(psi_rt_x)
             else:
                 delta_f_x = psi_rt_x/(2*np.pi) * FSR
-            print(' |  {:8}| {:6.4g} | {:10.4g} | {:9.4g}   | {:6.4g}  |'\
-                  .format(cav.name,float(out[cav.name+'_x_g']),180/np.pi*float(psi_rt_x),1e-3*float(delta_f_x),1e-3*float(FSR)))
+            print(' |  {:8}| {:8.4g} | {:10.4g} | {:9.4g}   | {:6.4g}  |'\
+                  .format(cav.name,g_x,180/np.pi*float(psi_rt_x),1e-3*float(delta_f_x),1e-3*float(FSR)))
         print(" `--------------------------------------------------------'")
         print()
-        print(" .--------------------------------------------------------.")
-        print(" | cavity   | g_y    | psi_RT[deg]| delta_f[kHz]| FSR[kHz]|")
-        print(" +----------|--------|------------|-------------|---------+")
+        print(" .----------------------------------------------------------.")
+        print(" | cavity   | g_y[0->1]| psi_RT[deg]| delta_f[kHz]| FSR[kHz]|")
+        print(" +----------|----------|------------|-------------|---------+")
         for cav in cavs:
             # shift g from -1:1 to 0:1
             g_y = (out[cav.name+'_y_g']+1)/2
@@ -286,9 +285,10 @@ class VOYAGER_IFO(IFO):
                 delta_f_y = psi_rt_y/(2*np.pi) * FSR - FSR*np.sign(psi_rt_y)
             else:
                 delta_f_y = psi_rt_y/(2*np.pi) * FSR
-            print(' |  {:8}| {:6.4g} | {:10.4g} | {:9.4g}   | {:6.4g}  |'\
-                  .format(cav.name,float(out[cav.name+'_y_g']),180/np.pi*float(psi_rt_y),1e-3*float(delta_f_y),1e-3*float(FSR)))
-        print(" `--------------------------------------------------------'")
+            print(' |  {:8}| {:8.4g} | {:10.4g} | {:9.4g}   | {:6.4g}  |'\
+                  .format(cav.name,g_y,180/np.pi*float(psi_rt_y),1e-3*float(delta_f_y),1e-3*float(FSR)))
+        print(" `-----------------------------------------------------------'")
+        
      
     def lengths_status(self):
         self.compute_derived_lengths()
