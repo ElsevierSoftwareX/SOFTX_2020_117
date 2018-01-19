@@ -540,8 +540,7 @@ def HG_mode_fraction_x(q, beam_data, xdata, n):
     author: Samuel Rowlinson
     date: 07/12/2017
     """
-    import pykat.optics.gaussian_beams as gb
-    hgn0 = gb.HG_mode(q, n=n, m=0)
+    hgn0 = HG_mode(q, n=n, m=0)
     return np.abs(np.vdot(
         hgn0.Un(xdata), beam_data
     ))*np.diff(xdata)[0]/np.abs(hgn0.Um(0))
@@ -591,8 +590,7 @@ def HG_mode_fraction_y(q, beam_data, ydata, m):
     author: Samuel Rowlinson
     date: 07/12/2017
     """
-    import pykat.optics.gaussian_beams as gb
-    hg0m = gb.HG_mode(q, n=0, m=m)
+    hg0m = HG_mode(q, n=0, m=m)
     return np.abs(np.vdot(
         hg0m.Un(ydata), beam_data
     ))*np.diff(ydata)[0]/np.abs(hg0m.Un(0))
@@ -652,9 +650,8 @@ def HG_mode_fraction(q, beam_data, xdata, ydata, n, m):
     author: Samuel Rowlinson
     date: 07/12/2017
     """
-    import pykat.optics.gaussian_beams as gb
     return np.abs(np.vdot(
-        gb.HG_mode(q, n=n, m=m).Unm(xdata, ydata), beam_data
+        HG_mode(q, n=n, m=m).Unm(xdata, ydata), beam_data
     ))*np.diff(xdata)[0]*np.diff(ydata)[0]
 
 # These classes are here as legacy classes, BeamParam should throw a warning if they are used instead.
