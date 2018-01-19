@@ -413,7 +413,7 @@ class ALIGO_IFO(IFO):
         """
         _kat = self.kat
         
-        if DCoffset:
+        if DCoffset is not None:
             self.DCoffset = DCoffset
         
             print("-- applying user-defined DC offset:")
@@ -429,11 +429,14 @@ class ALIGO_IFO(IFO):
             kat = _kat.deepcopy()
         
             signame = kat.IFO.AS_DC.add_signal()
+            kat.parse("ad adp00 0 0 0 nAS")
         
             kat.noxaxis=True
         
             out = kat.run(cmd_args=["-cr=on"])
-        
+            
+            TEM00_DC = abs(out['adp00'])**2
+            
             _kat.IFO.DCoffsetW = float(out[signame])
         else:
             # Finding light power in AS port (mostly due to RF sidebands now)
@@ -455,8 +458,16 @@ class ALIGO_IFO(IFO):
         
             self.find_DC_offset(_kat, 2*waste_light)
         
+            _kat.parse("ad adp00 0 0 0 nAS")
+            _kat.noxaxis=True
+        
+            out = _kat.run(cmd_args=["-cr=on"])
+            
+            TEM00_DC = abs(out['adp00'])**2
+            
         vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset / 360.0 * _kat.lambda0 ))
         vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
+        vprint(verbose, "   at dark port power (TEM00 0Hz): {:6.4}W".format(TEM00_DC))
 
     def find_DC_offset(self, AS_power, precision=1e-4, verbose=False):
         """
@@ -464,7 +475,7 @@ class ALIGO_IFO(IFO):
         
         This function directly alters the tunings of the associated kat object.
         """
-        vprint(verbose, "   finding DC offset for AS power of {:3g} W".format(AS_power))
+        vprint(verbose, "   finding DC offset for AS power of {:3g} W".format(float(AS_power)))
     
         _kat = self.kat
         
@@ -580,13 +591,21 @@ class ALIGO_IFO(IFO):
                  "set MICH_err {} re\n"
                  "set SRCL_err {} re\n").format(*names)
 
-        code2 = ("lock DARM_lock $DARM_err {:8.2} {:8.2} {DC}\n"
-                 "lock CARM_lock $CARM_err {:8.2g} {:8.2g}\n"
-                 "lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}\n"
-                 "lock MICH_lock $MICH_err {:8.2g} {:8.2g}\n"
-                 "lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}\n"
-                 ).format(*chain.from_iterable(zip(gains, accuracies)),
-                          DC=-self.kat.IFO.DCoffsetW)
+        if "DC" in self.kat.IFO.DARM.port.name:
+            code2 = ("lock DARM_lock $DARM_err {:8.2} {:8.2} {DC}\n"
+                     "lock CARM_lock $CARM_err {:8.2g} {:8.2g}\n"
+                     "lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}\n"
+                     "lock MICH_lock $MICH_err {:8.2g} {:8.2g}\n"
+                     "lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}\n"
+                     ).format(*chain.from_iterable(zip(gains, accuracies)),
+                              DC=-self.kat.IFO.DCoffsetW)
+        else:
+            code2 = ("lock DARM_lock $DARM_err {:8.2} {:8.2}\n"
+                     "lock CARM_lock $CARM_err {:8.2g} {:8.2g}\n"
+                     "lock PRCL_lock $PRCL_err {:8.2g} {:8.2g}\n"
+                     "lock MICH_lock $MICH_err {:8.2g} {:8.2g}\n"
+                     "lock SRCL_lock $SRCL_err {:8.2g} {:8.2g}\n"
+                     ).format(*chain.from_iterable(zip(gains, accuracies)))
 
         # TODO: Use DOF optics and factors to define this. 
         code3 = ("func ETMX_lock = (-1.0) * $CARM_lock - 0.5 * $MICH_lock - $DARM_lock\n"
@@ -756,6 +775,8 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
         - design_with_IMC_HAM2: A file based on `design` but has the IMC and HAM2 blocks
           which contain design parameter input optics
     
+        - design_with_IMC_HAM2_FI_OMC: A file with the OMC and IMC, most complete file
+    
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
@@ -829,11 +850,22 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  kat.IFO.f2, phase=13)
     kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", kat.IFO.f1, phase=101)
     kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", kat.IFO.f2, phase=14)
+    
+    # If we don't have an OMC then we need to attach
+    # directly to the AS node. Otherwise use OMC refl
+    if "OMC" in kat.getBlocks():
+        nAS_RF = "nOMC_ICb"
+    else:
+        nAS_RF = "nAS"
+        
+    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1", nAS_RF, kat.IFO.f1, phase=101)
+    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2", nAS_RF, kat.IFO.f2, phase=14)
+    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", nAS_RF, kat.IFO.f36M, phase=14)
+
     kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nITMX2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nITMY2")
-    # kat.IFO.POW_S   = Output(kat.IFO, "PowS",  "nSRM1")
 
     # pretune LSC DOF
     kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")

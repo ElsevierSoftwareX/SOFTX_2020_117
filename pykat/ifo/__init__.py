@@ -441,8 +441,8 @@ def optimise_demod_phase(_kat, DOF, ports, debug=False):
     kat.removeBlock("locks", False)
     kat.removeBlock("powers", False)
     
-    kat.parse( aligo.diff_DOF(DOF, DOF.sigtype), addToBlock="OPTIMISE")
-    kat.parse( aligo.scan_demod_phase_cmds(pd_detectors), addToBlock="OPTIMISE")
+    kat.parse( diff_DOF(DOF, DOF.sigtype), addToBlock="OPTIMISE")
+    kat.parse( scan_demod_phase_cmds(pd_detectors), addToBlock="OPTIMISE")
     
     # Analyitcally we can find the phase which gives a maxmium
     # by solving for A and B in:
@@ -1246,7 +1246,7 @@ class Output(object):
         self.f = f            # demodulation frequency, float
         self.phase = phase    # demodulation phase for I quadrature, float
         self._block = block
-
+    
     @property
     def kat(self):
         """For referencing the kat object this DOF is associated with"""

@@ -160,7 +160,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
                 
         out = kat.run()
         
-        if d.name == "DARM":
+        if d.name == "DARM" and "DC" in d.port.name:
             DC_Offset = kat.IFO.DCoffsetW
         else:
             DC_Offset = 0
