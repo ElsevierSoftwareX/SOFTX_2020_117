@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from . import assert_aligo_ifo_kat
+from . import assert_voyager_ifo_kat
 from .. import scan_optics_string
 
 from pykat.ifo.plot import *
@@ -15,7 +15,7 @@ def f1_PRC_resonance(_kat, ax=None, show=True):
     f1 (~ 9MHz) in the PRC, to check the resonance
     condition.
     """
-    assert_aligo_ifo_kat(_kat)
+    assert_voyager_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     
@@ -58,7 +58,7 @@ def f1_PRC_resonance(_kat, ax=None, show=True):
     if show: plt.show()
 
 def pretuning_powers(self, _kat, xlimits=[-10,10]):
-    assert_aligo_ifo_kat(_kat)
+    assert_voyager_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     kat.verbose = False
@@ -160,19 +160,14 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
                 
         out = kat.run()
         
-        if d.name == "DARM" and "DC" in d.port.name:
-            DC_Offset = kat.IFO.DCoffsetW
-        else:
-            DC_Offset = 0
-        
         if toShow is None:
-            ax.plot(out.x, out[d.signal_name()] - DC_Offset, label=legend)
+            ax.plot(out.x, out[d.signal_name()], label=legend)
         else:
             for _ in toShow:
                 if legend is None:
                     legend = _.name
                     
-                ax.plot(out.x, out[_.signal_name()] - DC_Offset, label=legend)
+                ax.plot(out.x, out[_.signal_name()], label=legend)
             
         ax.set_xlim([np.min(out.x), np.max(out.x)])
         ax.set_xlabel("{} [deg]".format(d.name))
