@@ -1519,6 +1519,8 @@ class laser(Component):
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
         self.__f_offset = Param("f", self, f, canFsig=True, fsig_name="freq")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
+        self.__w0 = Param("phase", self, None, canFsig=True, fsig_name="w0", isPutable=False, isPutter=False, isTunable=False)
+        self.__z  = Param("phase", self, None, canFsig=True, fsig_name="z", isPutable=False, isPutter=False, isTunable=False)
         self.__noise = AttrParam("noise", self, None)
         self._svgItem = None
         
