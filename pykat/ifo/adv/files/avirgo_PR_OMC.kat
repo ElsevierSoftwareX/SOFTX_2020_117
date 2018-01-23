@@ -66,14 +66,14 @@ s sPRsub 0.1003 $nsilica nPRsub1 nPRsub2
 m1 PR $T_PR $L_PR $PR_phi nPRsub2 nPR2
 
 # Space between PR and POP
-s lPR_POP 0.06 1 nPR2 nPOP1 #correct one
+s lPR_POP 0.06 1 nPR2 nPOP1 # correct one
 
 # Optical path through POP with thickness 3.5 cm (TDR) and n = $nsilica
 # (TDR) 
 # Should reflection from both POP surfaces be allowed to reach B4? 
 # Currently, only reflection off one of the surfaces reach port B4. 
 bs2 POP_AR 0 $L_POPAR 0 6.0 nPOP1 nPOPunused1 nPOPsub1 nPOPsub3
-s sPOPsub1 0.03549 $nsilica nPOPsub1 nPOPsub2
+s sPOPsub 0.03549 $nsilica nPOPsub1 nPOPsub2
 # s sPOPsub2 0.03549 $nsilica nPOPsub3 nPOPsub4
 bs2 POP $R_POP 0 0 4.135015 nPOPsub2 nPOPsub4 nPOP2 nB4
 
@@ -105,7 +105,7 @@ bs2 BSAR2 0 $L_BSAR 0 -29.1951 nBSsub2b nUnused2 nBSe nUnused3
 # Distance between beam splitter and compensation plate
 s lBS_CPN $l_BS_CPN nBSn nCPN1
 
-# Compensation plate
+# Compensation plate. Thickness from [TDR, tab 2.9]
 m2 CPN1 0 $L_CPN1 0 nCPN1 nCPNsub1
 s sCPNsub 0.035 $nsilica nCPNsub1 nCPNsub2
 m2 CPN2 0 $L_CPN2 0 nCPNsub2 nCPN2
@@ -117,7 +117,7 @@ lens CPN_TL $f_CPN_TL nCPN_TL1 nCPN_TL2
 s sCPN_NI $l_CPN_NI nCPN_TL2 nNI1
 
 # m2 NIAR $R_NI_AR $L_NI $NIAR_phi nNI1 nNIi1
-m2 NIAR 0 $L_NIAR $NIAR_phi nNI1 nNIsub1      
+m2 NIAR $R_NIAR 0 $NIAR_phi nNI1 nNIsub1      
 s sNIsub .20026 $nsilica nNIsub1 nNIsub2
 m1 NI $T_NI $L_WI $NI_phi nNIsub2 nNI2
 
@@ -137,7 +137,7 @@ m2 NEAR 0 $L_NEAR $NEAR_phi nNEsub2 nNE2
 
 # BS to compensation plate
 s lBS_CPW $l_BS_CPW nBSw nCPW1
-# Compensation plate CP02 
+# Compensation plate CP02. Thickness from [TDR, tab 2.9]
 m2 CPW1 0 $L_CPW1 0 nCPW1 nCPWsub1
 s sCPWsub 0.035 $nsilica nCPWsub1 nCPWsub2
 m2 CPW2 0 $L_CPW2 0 nCPWsub2 nCPW2
@@ -148,7 +148,7 @@ lens CPW_TL $f_CPW_TL nCPW_TL1 nCPW_TL2
 s sCPW_WI $l_CPW_WI nCPW_TL2 nWI1
 
 # West input mirror
-m2 WIAR 0 $L_WIAR $WIAR_phi nWI1 nWIsub1
+m2 WIAR $R_NIAR 0 $WIAR_phi nWI1 nWIsub1
 s sWIsub .20031 $nsilica nWIsub1 nWIsub2
 m1 WI $T_WI $L_WI $WI_phi nWIsub2 nWI2 
 # Cavity length
@@ -332,15 +332,19 @@ const L_WI 27u           # WI loss
 const L_WE 27u           # WE loss 
 
 # These are included above
-# const L_NI 0.19u         # NI Absorbtion coating losses. From Valeria. Ref?
-# const L_WI 0.28u         # WI Absorbtion coating losses. From Valeria. Ref?
-# const L_NE 0.24u         # NE Absorbtion coating losses. From Valeria. Ref?
-# const L_WE 0.24u         # WE Absorbtion coating losses. From Valeria. Ref?
+#const L_NI 0.19u         # NI Absorbtion coating losses. From Valeria. Ref?
+#const L_WI 0.28u         # WI Absorbtion coating losses. From Valeria. Ref?
+#const L_NE 0.24u         # NE Absorbtion coating losses. From Valeria. Ref?
+#const L_WE 0.24u         # WE Absorbtion coating losses. From Valeria. Ref?
 
 # HR surfaces from [TDR, tab 1.1, pp 8]
 const L_PR 37.5u
 const L_BS 37.5u
 const L_SR 37.5u
+
+#const L_PR 0
+#const L_BS 0
+#const L_SR 0
 
 # Measured end mirror AR-surface reflectivities. No wedge on these
 const R_WIAR 58u         # WI AR reflectivity [IM02, VIR-0543A-14]
@@ -353,7 +357,7 @@ const L_NEAR 133u        # NE AR reflectivity [EM01, VIR-0269A-15]
 const L_BSAR 329u        # BS AR reflectivity [VIR-0446B-14]
 const L_PRAR 160u        # PR AR reflectivity [VIR-0029A-15]
 
-# Not sure if POPAR should be a loss. Can it reach B4? 
+# Not sure if POPAR R should be a loss. Can it reach B4? 
 const L_POPAR 125u       # POP AR reflectivity [VIR-0027A-15]
 
 # Not sure if these should be set as losses. Wedge or not?
