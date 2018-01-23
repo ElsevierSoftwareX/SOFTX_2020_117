@@ -135,58 +135,16 @@ class VOYAGER_IFO(IFO):
         """
     
         code = """
-        attr ETMY mass 40
-        attr ETMX mass 40
-        attr ITMY mass 40
-        attr ITMX mass 40
-    
-        attr PRM  mass 2.9
-        attr PR2  mass 2.9
-        attr PR3  mass 12
-    
-        attr SRM  mass 2.9
-        attr SR2  mass 2.9
-        attr SR3  mass 12
-    
-        attr BS   mass 14
+        attr ETMY mass 203
+        attr ETMX mass 203
+        attr ITMY mass 203
+        attr ITMX mass 203
         """
     
         self.kat.parse(code)
     
         return code
 
-
-    def suspend_mirrors_pitch(self):
-        """
-        Suspends the main mirrors in an aLIGO model in pitch in the
-        supplied kat object.
-    
-        Returns the commands used for reference.
-        
-        TODO: Assumes all suspensions are QUADS currently.
-        """
-    
-        code = """
-        tf2 QUAD 2.38663 0.0 {-0.0050+86.8639i,-0.0050+61.0536i,-0.0050+32.0042i,-0.0050+21.3735i,-0.0050+20.6567i,-0.0050+19.0823i,-0.0050+22.3646i,-0.0050+17.2518i,-0.0050+16.5670i,-0.0050+15.0288i,-0.0050+12.4591i,-0.0050+13.1589i,-0.0050+10.0625i,-0.0050+8.4105i,-0.0050+8.4829i,-0.0050+6.2308i,-0.0050+6.5431i,-0.0050+5.5092i,-0.0050+2.7083i,-0.0050+3.2843i,-0.0050+2.8957i,-0.0050+3.7645i,-0.0050+14.0137i,-0.0050+3.4691i} {-0.0050+86.8639i,-0.0050+61.0536i,-0.0050+32.0042i,-0.0050+21.3735i,-0.0050+20.6566i,-0.0050+19.0823i,-0.0050+17.2493i,-0.0050+16.5665i,-0.0050+22.3646i,-0.0050+15.0288i,-0.0050+12.4591i,-0.0050+13.1589i,-0.0050+9.4995i,-0.0050+8.4829i,-0.0050+5.5072i,-0.0050+6.2177i,-0.0050+6.7464i,-0.0050+6.5428i,-0.0050+2.7591i,-0.0050+2.8957i,-0.0050+3.7645i,-0.0050+14.0137i,-0.0050+3.4691i}
-    
-        attr ETMY iy 1 rymech 
-        attr ETMX iy 1 rymech 
-        attr ITMY iy 1 rymech 
-        attr ITMX iy 1 rymech 
-    
-        attr PRM  iy 1 rymech 
-        attr PR2  iy 1 rymech 
-        attr PR3  iy 1 rymech 
-    
-        attr SRM  iy 1 rymech 
-        attr SR2  iy 1 rymech 
-        attr SR3  iy 1 rymech 
-    
-        attr BS   iy 1 rymech
-        """
-        self.kat.parse(code)
-    
-        return code
     
     def fix_mirrors(self, z=True, pitch=True, yaw=True):
         """
@@ -759,6 +717,8 @@ def make_kat(name="voyager", katfile=None, verbose = False, debug=False, keepCom
     kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [-1, -1], 1.5, sigtype="z")
     kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2,   "Q", ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
     kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", -1, 1e2, sigtype="z")
+
+    kat.IFO.DARM_h =  DOF(kat.IFO, "DARM_h", None, "", ["LY", "LX"], [-1,1], 1.0, sigtype="phase")
 
     kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM, kat.IFO.SRCL)
     kat.IFO.CAV_POWs = (kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.POW_BS)
