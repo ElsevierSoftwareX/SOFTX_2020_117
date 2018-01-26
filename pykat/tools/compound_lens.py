@@ -8,17 +8,30 @@ def space(d):
 
 def combine(f1, f2, d=None, verbose = False, q=None): 
     '''
-    Computing focal length for the new combined lens. The errors are computed 
-    assuming that the new lens is placed at the location of lens1. The ABCD
-    matrices for propagating the complex beam parameter to the location of 
-    lens2 constructed, and the errors are computed. 
-    
+    Computing focal length for the new combined lens.
+
+    The errors are computed assuming that the new lens is placed at the
+    location of lens1. The ABCD matrices for propagating the complex beam
+    parameter to the location of lens2 are constructed, and the errors are
+    computed. 
+
+    Inputs:
+    -------
     f1      - Focal length of lens1 [m].
     f2      - Focal length of lens2 [m].
     d       - Distance between the two lenses [m]
     verbose - If true, the result and errors are printed to terminal.
     q       - Complex beam parameter immediately before lens1. Used to compute
-              error on the q-value immediately after lens2. 
+              error on the q-value immediately after lens2.
+
+    Returns:
+    --------
+    f         - Focal length of the compound lens [m].
+    rel_errs  - Dictionary containing the relative errors for the elements of the
+                ABCD-matrix propgating the beam from f1 to f2, asumming that the
+                new thin lens is placed at the location of lens1. If a complex
+                beam parameter is given, the dictionary also contains the relative
+                errors of propagating this particual beam. 
     '''
     
     if d is None:
