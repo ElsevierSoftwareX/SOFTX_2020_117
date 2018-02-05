@@ -22,8 +22,9 @@ import pykat.exceptions as pkex
 
 def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOff=None, AR_zOff=None, **kwargs):
     """
-    Computes the effective change in optical path length of a mirror due to thermal lensing
-    and suface deformation effects on a mirror from the power and absorbtion coefficients.
+    Computes the effective change in optical path length in a mirror due to thermal lensing
+    and suface deformation effects from the power and absorbtion coefficients.
+    
     If the initial HR_RoC and/or AR_RoC are specified as inputs, spherical surfaces are
     fitted to the new deformed surfaces, and the resulting change in RoC is extraced. If also
     the initial z-offsets are specified, both the RoCs and offsets are fitted.
@@ -32,8 +33,8 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     Sequino and Daniel Toyra, translated from Matlab function by ?.
 
 
-    # Power definitions
-    # ------------------------------
+    Power definitions:
+    ------------------
        
            Mirror
             
@@ -46,12 +47,12 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
      |                |      
 
 
-    # RoC and z-offset signs and definitions:
-    # --------------------------------------
+    RoC and z-offset signs and definitions:
+    ---------------------------------------
     If r is the transverse coordinate, and if z (optical axis) increases in the direction AR --> HR,
     then the z-axis passes through the mirror surface (AR or HR, they are fitted independently)
     at the point (r, z) = (0, zOffset), and the surface's center of curvature is located at
-    (r, Z) = (0, RoC + zOffset). E.g., for Advanced Virgo, both HR and AR surfaces have positive RoC.
+    (r, Z) = (0, RoC + zOffset). E.g., for Advanced Virgo IMs, both HR and AR surfaces have positive RoC.
     
     Inputs:
     -------
@@ -80,11 +81,12 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     sigma          - Mirror Poisson's ratio (default 0.164)
     dndT           - Mirror index of refraction change with temperature (default 8.7 ppm)
     N              - Number of data points along the mirror radius a (default 176).
+    nScale         - If set to true, the optical path length data is scaled to physical distance.
 
     Returns:
     --------
 
-    r              - Array with distances away from the optical axis [m]. 0 <= r <= a
+    r              - Array with distances from the optical axis [m]. 0 <= r <= a
     fitData        - List that contains the RoC and z-offsets for the new fitted
                      spherical surfaces, if the initial values for these parameters
                      have been given as inputs.
@@ -93,7 +95,7 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     oplData        - List containing the four contributions to extra optical path length [m]
                      as functions of r.
                      oplData = [ coating thermo-optic,   coating thermo-elastic,
-                                 substrate thermo-optic, subsrate thermo-elastic ]
+                                 substrate thermo-optic, substrate thermo-elastic ]
     """ 
 
 
@@ -115,6 +117,8 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     sigma=0.164    # SiO2 Poisson's ratio
     dndT=8.7e-6    # Mirror index of refraction change with temperature (default 8.7 ppm)
     N = 176        # Number of data points along the mirror radius
+    scale = 1.0    # Scales path-length data before fitting RoCs
+    nScale = False # If true, scale is set to 1/n
 
     #Pin=125;       # IFO input power
     #RecG=37.5;     # recycling gain
@@ -148,6 +152,12 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
             dndT = v
         elif k == 'N':
             N = v
+        elif k == 'nScale':
+            nScale = v
+
+    # Scales the optical path length data to physical distances
+    if nScale:
+        scale = 1.0/n
 
     # Total power going into the coating
     Pc = P_coat + P_sub_in
@@ -232,9 +242,9 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     #        thermal lens.
 
     # Setting HR-deformation
-    OPL_HR = OPLtec
+    OPL_HR = OPLtec*scale
     # Setting AR-thermal
-    OPL_AR = OPLs + OPLtes + OPLc
+    OPL_AR = (OPLs + OPLtes + OPLc)*scale
 
     fitData = []
     # Computing new RoC for HR-surface, if initial HR_RoC was given. 
@@ -311,8 +321,14 @@ def fit_circle(r, z, Rc0=None, zOff0=None, w=None, maxfev=2000):
 
     '''
     Fits circle segment to data. By default, only the radius of curvature is fitted,
-    but if zOff0 is set, the offset along the z-axis is fitted as well. If w is set,
-    gaussian weights are used. 
+    the circle-segment crosses the z-axis (optical axis) at z=0, and the center of
+    curvature is at (r, z) = (0, Rc). 
+
+    If zOff0 is set, the offset along the z-axis is fitted as well, the circle-segment
+    crosses the z-axis (optical axis) at z = zOff, and the center of curvature is at
+    (r, z) = (0, Rc + zOff).
+
+    If w is set, gaussian weights are used.
 
     Inputs:
     -------
@@ -333,7 +349,7 @@ def fit_circle(r, z, Rc0=None, zOff0=None, w=None, maxfev=2000):
     # Initial guesses of radius of curvature and z-offset.
     p = []
     if Rc0 is None:
-        p.append(1000.0)
+        p.append(0)
     else:
         p.append(Rc0)
     if not zOff0 is None:
@@ -359,26 +375,14 @@ def fit_circle(r, z, Rc0=None, zOff0=None, w=None, maxfev=2000):
     opts = {'xtol': 1.0e-5, 'ftol': 1.0e-9, 'maxiter': 10000, 'maxfev': maxfev, 'disp': False}
 
     if len(p) < 2:
-        # z-value at centre of the data-grid.
+        # Removing z-offset from z-array if z-offset is not being fitted
         zOff0 = z[np.abs(r).argmin()]
-        out = minimize(costFunc, p, args = (zOff0,), method='Nelder-Mead', options=opts)
-    else:
-        out = minimize(costFunc, p, method='Nelder-Mead', options=opts)
+        z = z - zOff0
+        
+    out = minimize(costFunc, p, method='Nelder-Mead', options=opts)
 
-    
-    #print(out['message'])
-    #print(' Iterations: {}'.format(out['nit']))
-    #print(' Function value: {:.2e}'.format(out['fun']))
     if not out['success']:
         msg = '  Warning: ' + out['message'].split('.')[0] + ' (nfev={:d}).'.format(out['nfev'])
-
-    #print(out['x'])
-    #Rc = out['x'][0]
-    #if len(out['x']) == 2:
-    #    zOffset = out['x'][1]
-    #    return Rc, zOffset
-    #else:
-    #    return Rc
 
     return out['x']
 
