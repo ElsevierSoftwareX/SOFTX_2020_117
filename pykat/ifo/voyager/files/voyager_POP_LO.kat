@@ -1,0 +1,328 @@
+%%% FTblock laser
+# Laser and input optics
+l L0 $Pin 0 0.0 n0
+s lmod1 1.0 n0 n1
+# modulators for core interferometer sensing - Advanced LIGO, CQG, 2015
+# http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
+# 9MHz (CARM, PRC, SRC loops)
+const f1 9099471.0
+const f2 45497355.0
+mod mod1 $f1 0.18 1 pm 0.0 n1 n2
+s lmod2 1.0 n2 n3
+# 45MHz (MICH, SRC loops)
+mod mod2 $f2 0.18 1 pm 0.0 n3 nLaserOut
+%%% FTend laser
+
+%%% FTblock PRC
+s sLaser_PRC 0.0 nLaserOut nFI1
+# Isolator component
+dbs FI nFI1 nFI2 nFI3 nREFL
+s sFI_PRM 0.0 nFI3 nPRM1
+# PRM
+# AR surface
+m2 PRMAR 0.0 4e-05 0.0 nPRM1 nPRMs1
+# Substrate
+s sPRMsub1 0.0737 $nsilica nPRMs1 nPRMs2
+# HR surface
+m1 PRM $prmT 8.5e-06 $phi_PRM nPRMs2 nPRM2
+attr PRM Rcx 11.009
+attr PRM Rcy 11.009
+# Distance between PRM and PR2
+s lp1 15.013852581034335 nPRM2 nPR2a
+# PR2
+bs1 PR2 0.00025 $Mloss 0.0 -0.79 nPR2a nPR2b nPOP nAPOP
+attr PR2 Rcx -4.406198824458381
+attr PR2 Rcy -4.406198824458381
+# Distance from PR2 to PR3
+s lp2 16.1647 nPR2b nPR3a
+# PR3
+bs1 PR3 0.0 $Mloss 0.0 0.615 nPR3a nPR3b dump12 dump13
+attr PR3 Rcx 35.137774741758534
+attr PR3 Rcy 35.137774741758534
+# Distance from PR3
+s lp3 19.5381 nPR3b nPRBS
+%%% FTend PRC
+
+%%% FTblock BS
+# BS beamsplitter
+##------------------------------------------------------------
+## BS
+##                             ^
+##                  to IMY     |
+##                             |      ,'-.
+##                             |     +    `.
+##                        nYBS |   ,'       :'
+##      nPR3b                  |  +i1      +
+##         ---------------->    ,:._  i2 ,'
+##    from the PRC       nPRBS + \  `-. + nXBS
+##                           ,' i3\   ,' --------------->
+##                          +      \ +     to IMX
+##                        ,'     i4.'
+##                       `._      ..
+##                          `._ ,' |nSRBS
+##                             -   |
+##                                 |to the SRC
+##                                 |
+##                                 v
+##------------------------------------------------------------
+bs1 BS 0.5 $Mloss $phi_BS 45.0 nPRBS nYBS nBSi1 nBSi3
+s BSsub1 0.0687 $nsilica nBSi1 nBSi2
+s BSsub2 0.0687 $nsilica nBSi3 nBSi4
+bs2 BSAR1 5e-05 0.0 0.0 -29.195 nBSi2 dump14 nXBS nPOX
+bs2 BSAR2 5e-05 0.0 0.0 29.195 nBSi4 dump15 nSRBS dump16
+%%% FTend BS
+
+%%% FTblock Yarm
+# Distance from beam splitter to Y arm input mirror
+s ly1 5.0126 nYBS nITMY1a
+# Thermal lens correction
+lens ITMY_therm $th_f nITMY1a nITM_th1
+s ITMY_th1 0.0 nITM_th1 nITM_th2
+lens ITMY_lens inf nITM_th2 nITM_th3
+s ITMY_th2 0.0 nITM_th3 nITMY1
+# Y arm input mirror
+m2 ITMYAR 0.0 2e-05 0.0 nITMY1 nITMYs1
+s ITMYsub $Dtm $nsilicon nITMYs1 nITMYs2
+m1 ITMY $itmT $Mloss $phi_ITMY nITMYs2 nITMY2
+attr ITMY Rcx $Rcitm
+attr ITMY Rcy $Rcitm
+attr ITMY mass $Mtm
+attr ITMY zmech sus1
+# Y arm length
+s LY $Larm nITMY2 nETMY1
+# Y arm end mirror
+m1 ETMY $etmT $Mloss $phi_ETMY nETMY1 nETMYs1
+attr ETMY Rcx $Rcetm
+attr ETMY Rcy $Rcetm
+attr ETMY mass $Mtm
+attr ETMY zmech sus1
+s ETMYsub $Dtm $nsilicon nETMYs1 nETMYs2
+m2 ETMYAR 0.0 0.0005 0.0 nETMYs2 nPTY
+%%% FTend Yarm
+
+%%% FTblock Xarm
+# Distance from beam splitter to X arm input mirror
+s lx1 4.993 nXBS nITMX1a
+# Thermal lens correction
+lens ITMX_therm $th_f nITMX1a nITMX_th1
+s ITMX_th1 0.0 nITMX_th1 nITMX_th2
+lens ITMX_lens inf nITMX_th2 nITMX_th3
+s ITMX_th2 0.0 nITMX_th3 nITMX1
+# X arm input mirror
+m2 ITMXAR 0.0 2e-05 0.0 nITMX1 nITMXs1
+s ITMXsub $Dtm $nsilicon nITMXs1 nITMXs2
+m1 ITMX $itmT $Mloss $phi_ITMX nITMXs2 nITMX2
+attr ITMX Rcx $Rcitm
+attr ITMX Rcy $Rcitm
+attr ITMX mass $Mtm
+attr ITMX zmech sus1
+# X arm length
+s LX $Larm nITMX2 nETMX1
+# X arm end mirror
+m1 ETMX $etmT $Mloss $phi_ETMX nETMX1 nETMXs1
+attr ETMX Rcx $Rcetm
+attr ETMX Rcy $Rcetm
+attr ETMX mass $Mtm
+attr ETMX zmech sus1
+s ETMXsub $Dtm $nsilicon nETMXs1 nETMXs2
+m2 ETMXAR 0.0 0.0005 0.0 nETMXs2 nPTX
+%%% FTend Xarm
+
+%%% FTblock SRC
+# Distance to SR3
+s ls3 19.3661 nSRBS nSR3b
+# SR3
+bs1 SR3 0.0 $Mloss 0.0 0.785 nSR3b nSR3a dump17 dump18
+attr SR3 Rcx 34.3491014982
+attr SR3 Rcy 34.3491014982
+# Distance from SR3 to SR2
+s ls2 15.4435 nSR3a nSR2b
+# SR2
+bs1 SR2 0.0 $Mloss 0.0 -0.87 nSR2b nSR2a dump19 dump20
+attr SR2 Rcx -5.27964391313
+attr SR2 Rcy -5.27964391313
+# Distance from SR2 to SRM
+s ls1 14.16015586330141 nSR2a nSRM1
+# Signal recycling mirror SRM-08
+m1 SRM $srmT 8.7e-06 $phi_SRM nSRM1 nSRMs1
+attr SRM Rcx -5.6938
+attr SRM Rcy -5.6938
+s SRMsub 0.0749 $nsilica nSRMs1 nSRMs2
+m2 SRMAR 0.0 5e-08 0.0 nSRMs2 nSRM2
+s sSRM_FI 0.7278 nSRM2 nFI2a
+%%% FTend SRC
+
+%%% FTblock FI
+###########################################################################
+# (Loctions and angles based on the solid work file D1000342-v14 give ~5%
+# mismatch. Thus lom1, lom3omc have been adjusted to get ~99.7% overlap at the OMC)
+# Distance SRM --> Faraday Isolator (FI)
+# Directional beam splitter (ideal Faraday Isolator with 4 ports)
+# ----------------------------------------------------------------
+# Description of node connections, inputNode --> outputNode
+# --
+# nFI2a (SRM)    --> nFI2c (OMC)
+# nFI2b (SQZ)    --> nFI2a (SRM)
+# nFI2c (OMC)    --> nFI2d (Unused)
+# nFI2d (Unused) --> nFI2b (SQZ)
+dbs FI2 nFI2a nFI2b nFI2c nFI2d
+# Distance FI2 --> OM1
+s sFI_OM1 2.9339 nFI2c nOM1a
+# OM1
+# # T is set for high power; Loss is a guess
+bs1 OM1 0.0008 $Mloss 0.0 2.251 nOM1a nOM1b dump21 dump22
+attr OM1 Rcx 4.101136000041355
+attr OM1 Rcy 4.101136000041355
+# Distance OM1 --> OM2
+s sOM1_OM2 1.395 nOM1b nOM2a
+# OM2
+# # T is a guess
+bs1 OM2 1e-05 $Mloss 0.0 4.399 nOM2a nOM2b nOM2c nOM2d
+attr OM2 Rcx 3.1808340953976355
+attr OM2 Rcy 3.1808340953976355
+# Distance OM2 --> OM3
+s sOM2_OM3 0.631 nOM2b nOM3a
+# # T is a guess
+bs1 OM3 1e-05 $Mloss 0.0 30.037 nOM3a nOM3b nOM3c nOM3d
+# Distance OM3 --> OMC input coupler IC
+# # By design should be ~0.31
+s sOM3_OMC 0.2034 nOM3b nOMC_ICa
+###########################################################################
+%%% FTend FI
+
+%%% FTblock OMC
+###########################################################################
+# OMC (as built parameters: D1300507-v1)
+# Input Coupler IC (flat mirror)
+bs1 OMC_IC 0.0076 1e-05 0.0 2.7609 nOMC_ICa nOMC_ICb nOMC_ICc nOMC_ICd
+# Distance from IC to OC
+s lIC_OC 0.2815 nOMC_ICc nOMC_OCa
+# Output Coupler OC (flat mirror)
+bs1 OMC_OC 0.0075 1e-05 0.0 4.004 nOMC_OCa nOMC_OCb nOMC_OCc nOMC_OCd
+# Distance from OC to CM1
+s lOC_CM1 0.2842 nOMC_OCb nOMC_CM1a
+# Curved Mirror CM1
+bs1 OMC_CM1 3.6e-05 1e-05 0.0 4.004 nOMC_CM1a nOMC_CM1b nOMC_CM1c nOMC_CM1d
+attr OMC_CM1 Rcx 2.57321
+attr OMC_CM1 Rcy 2.57321
+# Distance from CM1 to CM2
+s lCM1_CM2 0.2815 nOMC_CM1b nOMC_CM2a
+# Curved Mirror CM2
+bs1 OMC_CM2 3.59e-05 1e-05 0.0 4.004 nOMC_CM2a nOMC_CM2b nOMC_CM2c nOMC_CM2d
+attr OMC_CM2 Rcx 2.57369
+attr OMC_CM2 Rcy 2.57369
+# Distance from CM2 to IC
+s lCM2_IC 0.2842 nOMC_CM2b nOMC_ICd
+###########################################################################
+%%% FTend OMC
+
+%%% FTblock LMC
+###########################################################################
+# Copy of OMC from above and a mode matching setup from the pickoff point
+
+const L1  8.73313988  
+const RC1 13.55283591
+const RC2 7.75468408
+
+s lb1 1 nPOP nLM1a
+bs LM1 1 0 0 0 nLM1a nLM1b dump dump
+attr LM1 Rc $RC1
+
+s lb2 $L1 nLM1b nLM2a
+
+bs LM2 1 0 0.0 0 nLM2a nLM2b dump dump
+attr LM2 Rc $RC2
+
+s lb3 1 nLM2b nLMC_ICa
+
+# Input Coupler IC (flat mirror)
+bs1 LMC_IC 0.0076 1e-05 0.0 2.7609 nLMC_ICa nLMC_ICb nLMC_ICc nLMC_ICd
+# Distance from IC to OC
+s lLMC_IC_OC 0.2815 nLMC_ICc nLMC_OCa
+# Output Coupler OC (flat mirror)
+bs1 LMC_OC 0.0075 1e-05 0.0 4.004 nLMC_OCa nLMC_OCb nLMC_OCc nLMC_OCd
+# Distance from OC to CM1
+s lLMC_OC_CM1 0.2842 nLMC_OCb nLMC_CM1a
+# Curved Mirror CM1
+bs1 LMC_CM1 3.6e-05 1e-05 0.0 4.004 nLMC_CM1a nLMC_CM1b nLMC_CM1c nLMC_CM1d
+attr LMC_CM1 Rcx 2.57321
+attr LMC_CM1 Rcy 2.57321
+# Distance from CM1 to CM2
+s lLMC_CM1_CM2 0.2815 nLMC_CM1b nLMC_CM2a
+# Curved Mirror CM2
+bs1 LMC_CM2 3.59e-05 1e-05 0.0 4.004 nLMC_CM2a nLMC_CM2b nLMC_CM2c nLMC_CM2d
+attr LMC_CM2 Rcx 2.57369
+attr LMC_CM2 Rcy 2.57369
+# Distance from CM2 to IC
+s lLMC_CM2_IC 0.2842 nLMC_CM2b nLMC_ICd
+###########################################################################
+%%% FTend LMC
+
+%%% FTblock BHD
+###########################################################################
+s LMC_BHD 0 nLMC_OCc bsBHD1
+s OMC_BHD 0 nOMC_OCc bsBHD4
+bs bsBHD 0.5 0.5 0 0 bsBHD1 nASa nASb bsBHD4
+###########################################################################
+%%% FTend BHD
+
+
+%%% FTblock cavities
+cav cavXARM ITMX nITMX2 ETMX nETMX1
+cav cavYARM ITMY nITMY2 ETMY nETMY1
+cav cavPRX PRM nPRM2 ITMX nITMXs2
+cav cavPRY PRM nPRM2 ITMY nITMYs2
+cav cavSRX SRM nSRM1 ITMX nITMXs2
+cav cavSRY SRM nSRM1 ITMY nITMYs2
+cav cavOMC OMC_IC nOMC_ICc OMC_IC nOMC_ICd
+cav cavLMC LMC_IC nLMC_ICc LMC_IC nLMC_ICd
+%%% FTend cavities
+
+%%% FTblock constants
+const nsilica 1.44963098985906
+const Pin 144.0
+const nsilicon 3.43
+# const nsilicon 1.44963098985906
+const nTGG 1.954
+const nCalcite 1.65846
+const Mloss 1e-05
+const Dtm 0.55
+# const Dtm 0.2
+const Larm 3994.4692
+const fM 36397884.0
+const fP 54596826.0
+const th_f 34500.0
+# const th_f inf
+const etmT 5e-06
+const itmT 0.0012
+const srmT 0.0556
+const prmT 0.0777
+const Mtm 203.7
+# # derived from requirements for 5.9/8.4cm beam size [Rana] at ITM/ETM
+const Rcetm 2492.0
+# # derived from requirements for 5.9/8.4cm beam size [Rana] at ITM/ETM
+const Rcitm -1798.0
+# const Rcetm 2245
+# const Rcitm -1934
+# const lmichx 4.5
+# const lmichy 4.45
+tf sus1 1.0 0.0 p $mech_fres $mech_Q 
+# # 9 sus-thermal spike
+const mech_fres 1.0
+# # Guess for suspension Q factor
+const mech_Q 1000000.0
+%%% FTend constants
+
+%%% FTblock tunings
+const phi_SRM 90.0
+const phi_PRM 0.0
+const phi_ITMX 0.0
+const phi_ITMY 0.0
+const phi_ETMX 0.0
+const phi_ETMY 0.0
+const phi_BS 0.0
+%%% FTend tunings
+
+maxtem 0
+noxaxis
+lambda 2e-06

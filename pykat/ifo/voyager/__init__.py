@@ -607,7 +607,7 @@ def assert_voyager_ifo_kat(kat):
     if not isinstance(kat.IFO, VOYAGER_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an VOYAGER_IFO compatiable kat\033[0m")
               
-def make_kat(name="voyager", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
+def make_kat(name="voyager_BSAR_LO", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
@@ -618,7 +618,7 @@ def make_kat(name="voyager", katfile=None, verbose = False, debug=False, keepCom
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['voyager']
+    names = ['voyager_BSAR_LO', 'voyager_POP_LO']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
