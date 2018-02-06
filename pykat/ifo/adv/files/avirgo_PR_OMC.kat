@@ -10,6 +10,20 @@ Daniel Toyra
 dtoyra@star.sr.bham.ac.uk  
 */
 
+
+# Notes to self
+# - Extract all thermal lenses and make them into one thermal lens at 
+#   each compensation plate.
+# - Tools to make several lenses into one
+# - Function computing thermal lens from arm cavity power, absorption 
+#   coefficients and Roc of CP surfaces
+# - Python scirpt computing Finesse and rt-loss of a pretuned kat-file.
+#   The finesse should be measured from the gain of an fsig-sideband (PR wobbling)
+#   or carrier gain (not sure that works in general)
+# - Prepare file that computes arm cavity finesse as a function of etalon 
+#   tunings.
+# - Several references missing for claimed measured values. 
+
 %%% FTblock Laser
 ###########################################################################
 
@@ -33,12 +47,12 @@ const f3 8361036            # 4 / 3 * f1, fmod3 in TDR
 
 # EOMs with modulation indices from https://logbook.virgo-gw.eu/virgo/?r=34898 
 # and https://logbook.virgo-gw.eu/virgo/?r=38123
-mod EOM1 $f1 0.22 2 pm 0 nEOM1a nEOM1b
+mod EOM1 $f1 0.22 1 pm 0 nEOM1a nEOM1b
 s sEOM1 0.1 nEOM1b nEOM2a
-mod EOM2 $f2 0.25 2 pm 0 nEOM2a nEOM2b
+mod EOM2 $f2 0.25 1 pm 0 nEOM2a nEOM2b
 s sEOM2 0.1 nEOM2b nEOM3a
-mod EOM3 $f3 0.15 2 pm 0 nEOM3a nEOM3b
-s s1 0.1 nEOM3b nInj1
+mod EOM3 $f3 0.15 1 pm 0 nEOM3a nEOM3b
+s s1 0.2 nEOM3b nFI1
 
 ###########################################################################
 %%% FTend EOMs
@@ -46,13 +60,10 @@ s s1 0.1 nEOM3b nInj1
 %%% FTblock REFL
 ###########################################################################
 
-bs Inj 1 0 0 0 nInj1 nInj2 nInj3 nInj4
-
-s sInj_FI 0.1 nInj2 nFI1
-
-# Input faraday isolator
+# Lossless faraday isolator to pick off B2-beam
 dbs FI nFI1 nFI2 nFI3 nB2
 
+# Space between the isolator and PR
 s sFI_PR 0 nFI3 nPR1
 
 ###########################################################################
@@ -61,39 +72,45 @@ s sFI_PR 0 nFI3 nPR1
 %%% FTblock PRC
 ###########################################################################
 
-m2 PRAR 0 $L_PRAR $PRAR_phi nPR1 nPRsub1
+# Power recycling mirror. Measured thickness (ref?). The AR-surface is 
+# wedged, therefore the AR-reflectivity is set as a loss. 
+m2 PRAR 0 $L_PRAR 0 nPR1 nPRsub1
 s sPRsub 0.1003 $nsilica nPRsub1 nPRsub2
 m1 PR $T_PR $L_PR $PR_phi nPRsub2 nPR2
 
-# Space between PR and POP
-s lPR_POP 0.06 1 nPR2 nPOP1 #correct one
+# Space between PR and POP. Length from TDR.
+s lPR_POP 0.06 1 nPR2 nPOP1
 
-# Optical path through POP with thickness 3.5 cm (TDR) and n = $nsilica
-# (TDR) 
-# Should reflection from both POP surfaces be allowed to reach B4? 
-# Currently, only reflection off one of the surfaces reach port B4. 
-bs2 POP_AR 0 $L_POPAR 0 6.0 nPOP1 nPOPunused1 nPOPsub1 nPOPsub3
-s sPOPsub1 0.03549 $nsilica nPOPsub1 nPOPsub2
-# s sPOPsub2 0.03549 $nsilica nPOPsub3 nPOPsub4
-bs2 POP $R_POP 0 0 4.135015 nPOPsub2 nPOPsub4 nPOP2 nB4
+# Pick off plate. The angle of incidence and the physical distance the beam 
+# propagates inside POP are computed from thickness of 3.5 cm [TDR], 6 deg 
+# tilt [TDR], and refractive index of $nsilica. POP AR is wedged, thus,
+# the AR-reflectivity is set as a loss. 
+bs2 POP_AR 0 $L_POP2 0 6.0 nPOP1 nPOPunused1 nPOPsub1 nPOPsub3
+s sPOPsub 0.03549 $nsilica nPOPsub1 nPOPsub2
+bs2 POP $R_POP1 0 0 4.135015 nPOPsub2 nPOPsub4 nPOP2 nB4
 
-s lPOP_BS $l_BS_POP nPOP2 nBSs
+# Space between POP and BS. Measured. Reference?
+s lPOP_BS 5.9399 nPOP2 nBSs
 
 ###########################################################################
 %%% FTend PRC
 
 %%% FTblock BS
 ###########################################################################
+# The beam splitter
 
-# Angles of incidence and path length through the BS substrate
-# computed using BS thickness of 6.5 cm obtained from [TDR, table 2.4].
+# Angles of incidence and the physical distance the beam propagates inside 
+# the BS substrate are computed using BS thickness of 6.5 cm, angle of 
+# incidence of 45 degrees, and refractive index of nsilica. All from TDR.
 
+# HR surface
 bs1 BS $T_BS $L_BS 0 -45 nBSs nBSw nBSsub1a nBSsub2a      
-
+# Substrate
 s sBSsub1 0.074459 $nsilica nBSsub1a nBSsub1b
 s sBSsub2 0.074459 $nsilica nBSsub2a nBSsub2b
-
-bs2 BSAR1 0 $L_BSAR 0 -29.1951 nBSsub1b nUnused1 nBSn nBSAR       
+# AR-surface towards north cavity
+bs2 BSAR1 0 $L_BSAR 0 -29.1951 nBSsub1b nUnused1 nBSn nBSAR
+# AR-surface towards the dark port  
 bs2 BSAR2 0 $L_BSAR 0 -29.1951 nBSsub2b nUnused2 nBSe nUnused3
 
 ###########################################################################
@@ -102,32 +119,37 @@ bs2 BSAR2 0 $L_BSAR 0 -29.1951 nBSsub2b nUnused2 nBSe nUnused3
 %%% FTblock Narm
 ###########################################################################
 
-# Distance between beam splitter and compensation plate
-s lBS_CPN $l_BS_CPN nBSn nCPN1
+# Distance between beam splitter and compensation plate. Measured. Ref?
+s lBS_CPN 5.3662 nBSn nCPN1
 
-# Compensation plate
+# Compensation plate. Thickness from [TDR, tab 2.9]
 m2 CPN1 0 $L_CPN1 0 nCPN1 nCPNsub1
 s sCPNsub 0.035 $nsilica nCPNsub1 nCPNsub2
 m2 CPN2 0 $L_CPN2 0 nCPNsub2 nCPN2
-# Thermal lens in compensation plate
+
+# Space between compensation plate and thermal lens. 
 s sCPN_TL 0 nCPN2 nCPN_TL1
+
+# Thermal lens in compensation plate
 lens CPN_TL $f_CPN_TL nCPN_TL1 nCPN_TL2
 
-# Space between compensation plate and NI
-s sCPN_NI $l_CPN_NI nCPN_TL2 nNI1
+# Space between compensation plate and NI. From TDR.
+s sCPN_NI 0.2 nCPN_TL2 nNI1
 
-# m2 NIAR $R_NI_AR $L_NI $NIAR_phi nNI1 nNIi1
-m2 NIAR 0 $L_NIAR $NIAR_phi nNI1 nNIsub1      
+# North input mirror. The AR-surface is not wedged, thus the 
+# AR-reflectivity is set as a reflectivity. Measured thickness. Ref?
+m2 NIAR $R_NIAR $L_NIAR $NIAR_phi nNI1 nNIsub1      
 s sNIsub .20026 $nsilica nNIsub1 nNIsub2
 m1 NI $T_NI $L_WI $NI_phi nNIsub2 nNI2
 
-s LN $l_arm nNI2 nNE1
+# Space between north test masses.
+s LN 2999.8 nNI2 nNE1
 
-m1 NE $T_NE $L_NE $NE_phi nNE1 nNEsub1
-#s sNE 0.289926 $nsilica nNEi1 nNEi2
+# North end mirror. The AR-surface is wedged, thus the 
+# AR-reflectivity is set as a loss. Thickness from TDR
+m1 NE $T_NE $L_NE 0 nNE1 nNEsub1
 s sNEsub .2 $nsilica nNEsub1 nNEsub2
-m2 NEAR 0 $L_NEAR $NEAR_phi nNEsub2 nNE2
-
+m2 NEAR 0 $L_NEAR 0 nNEsub2 nNE2
 
 ###########################################################################
 %%% FTend Narm
@@ -135,29 +157,37 @@ m2 NEAR 0 $L_NEAR $NEAR_phi nNEsub2 nNE2
 %%% FTblock Warm
 ###########################################################################
 
-# BS to compensation plate
-s lBS_CPW $l_BS_CPW nBSw nCPW1
-# Compensation plate CP02 
+# BS to compensation plate. Measured. Ref?
+s lBS_CPW 5.244 nBSw nCPW1
+
+# Compensation plate CP02. Thickness from [TDR, tab 2.9]
 m2 CPW1 0 $L_CPW1 0 nCPW1 nCPWsub1
 s sCPWsub 0.035 $nsilica nCPWsub1 nCPWsub2
 m2 CPW2 0 $L_CPW2 0 nCPWsub2 nCPW2
-# Thermal lens in compensation plate
-s sCPW_TL 0 nCPW2 nCPW_TL1
-lens CPW_TL $f_CPW_TL nCPW_TL1 nCPW_TL2
-# Space between compensation plate and WI
-s sCPW_WI $l_CPW_WI nCPW_TL2 nWI1
 
-# West input mirror
-m2 WIAR 0 $L_WIAR $WIAR_phi nWI1 nWIsub1
+# Space between compensation plate and the thermal lens
+s sCPW_TL 0 nCPW2 nCPW_TL1
+
+# Thermal lens in compensation plate
+lens CPW_TL $f_CPW_TL nCPW_TL1 nCPW_TL2
+
+# Space between compensation plate and WI. From TDR.
+s sCPW_WI 0.2 nCPW_TL2 nWI1
+
+# West input mirror. The AR-surface is not wedged, thus the 
+# AR-reflectivity is set as a reflectivity.
+m2 WIAR $R_NIAR $L_NIAR $WIAR_phi nWI1 nWIsub1
 s sWIsub .20031 $nsilica nWIsub1 nWIsub2
-m1 WI $T_WI $L_WI $WI_phi nWIsub2 nWI2 
-# Cavity length
-s LW $l_arm nWI2 nWE1
-# West end mirror
+m1 WI $T_WI $L_WI $WI_phi nWIsub2 nWI2
+
+# Space between west test masses
+s LW 2999.8 nWI2 nWE1
+
+# West end mirror. The AR-surface is wedged, thus the 
+# AR-reflectivity is set as a loss.
 m1 WE $T_WE $L_WE $WE_phi nWE1 nWEsub1
 s sWEsub .2 $nsilica nWEsub1 nWEsub2
 m2 WEAR 0 $L_WEAR $WEAR_phi nWEsub2 nWE2
-
 
 ###########################################################################
 %%% FTend Warm
@@ -174,7 +204,6 @@ s lsr 5.943 nBSe nSR1
 m SR 0 1 0 nSR1 nSRsub1
 s SRsub 0.1 $nsilica nSRsub1 nSRsub2
 m SRAR 0 1 0 nSRsub2 nSR2
- 
 
 ###########################################################################
 %%% FTend SRC
@@ -283,139 +312,136 @@ cav cavPRN PR nPR2 NI nNIsub2
 cav cavOMC1 OMC1_IC nOMC1_ICc OMC1_IC nOMC1_ICd
 cav cavOMC2 OMC2_IC nOMC2_ICc OMC2_IC nOMC2_ICd
 
-# Radii of curvature
-# -------------------
-# HR-surfaces
-attr WI Rc $RoC_WI    
-attr NI Rc $RoC_NI
-attr WE Rc $RoC_WE
-attr NE Rc $RoC_NE
-attr PR Rc $RoC_PR
-attr SR Rc $RoC_SR
-attr OMC1_CS1 Rc $RoC_OMC
-attr OMC1_CS2 Rc $RoC_OMC
-attr OMC2_CS1 Rc $RoC_OMC
-attr OMC2_CS2 Rc $RoC_OMC
-
-# AR-surfaces
-attr WIAR Rc $RoC_WIAR
-attr NIAR Rc $RoC_NIAR
-attr PRAR Rc $RoC_PRAR
-attr SRAR Rc $RoC_SRAR
-
 maxtem 2
 ###########################################################################
 %%% FTend Gaussian
 
-%%% FTblock Constants
+%%% FTblock ROCs
 ###########################################################################
+# Specifying radii of curvature. 
 
-# Refractive index of silica
-const nsilica 1.44963
+# HR-surfaces
+# -----------
+attr WI Rc -1424.5      # Measured WI RoC [VIR-0543A-14]
+attr NI Rc -1424.6      # Measured NI RoC [VIR-0544A-14]
+attr WE Rc 1696         # Measured WE RoC [VIR-0270A-15]
+attr NE Rc 1695         # Measured NE RoC [VIR-0269A-15]
+attr PR Rc -1477        # Measured PR RoC [VIR-0029A-15]
+attr SR Rc 1430         # Design [TDR, table 2.8]
+# Design RoCs for OMC [TDR page 247]
+attr OMC1_CS1 Rc 1.499  
+attr OMC1_CS2 Rc 1.499
+attr OMC2_CS1 Rc 1.499
+attr OMC2_CS2 Rc 1.499
 
-# Reflectivities, Transmissions, Losses
-# -------------------------------------------------------------------------
-# Measured HR-surfaces
+# AR-surfaces
+# -----------
+# attr WIAR Rc -1420     # Designed WI AR RoC [TDR, table 2.6]
+# attr NIAR Rc -1420     # Designed NI AR RoC [TDR, table 2.6]
+attr WIAR Rc -1423.95    # Approximately the same as measured HR surface,
+                         # and slightly adjusted so that a mode matched file
+                         # model can be obtained with equal CP thermal 
+                         # lensing.
+attr NIAR Rc -1424.6     # Approximately the same as measured HR surface
+attr PRAR Rc -3.62       # Measured PR AR RoC [VIR-0029A-15]
+attr SRAR Rc 3.59        # Design [TDR, table 2.8]
+
+# Lenses
+# -----------
+# Compensation plate thermal lenses
+const f_CPN_TL 50890       # North 
+const f_CPW_TL 50890       # West
+
+###########################################################################
+%%% FTend ROCs
+
+
+%%% FTblock RTLs
+###########################################################################
+# Specifying reflectivities, transmissions, and losses.
+
+# Transmissions. All measured. These are set to HR-surfaces.
+# -----------
 const T_NI 0.01377       # NI transmission [IM04, VIR-0544A-14]
 const T_WI 0.01375       # WI transmission [IM02, VIR-0543A-14]
 const T_WE 4.3u          # WE transmission [EM03, VIR-0270A-15]
 const T_NE 4.4u          # NE transmission [EM01, VIR-0269A-15]
 const T_BS 0.5012        # BS transmission [VIR-0446B-14]
 const T_PR 0.04835       # PR transmission [VIR-0029A-15]
-const R_POP 184u         # POP reflectivity [VIR-0027A-15]
 
+# Losses
+# -----------
 # Set to match measured roundtrip loss of 61 +- 5 ppm [Loggbook 38601]
 const L_NI 27u           # NI loss
 const L_NE 27u           # NE loss
 # Set to match measured roundtrip loss of 56 +- 5 ppm [Loggbook 38601]
 const L_WI 27u           # WI loss 
 const L_WE 27u           # WE loss 
-
 # These are included above
 # const L_NI 0.19u         # NI Absorbtion coating losses. From Valeria. Ref?
 # const L_WI 0.28u         # WI Absorbtion coating losses. From Valeria. Ref?
 # const L_NE 0.24u         # NE Absorbtion coating losses. From Valeria. Ref?
 # const L_WE 0.24u         # WE Absorbtion coating losses. From Valeria. Ref?
+# Guessed/assumed values
+const L_PR 30u
+const L_BS 30u
+const L_SR 30u
 
-# HR surfaces from [TDR, tab 1.1, pp 8]
-const L_PR 37.5u
-const L_BS 37.5u
-const L_SR 37.5u
-
-# Measured end mirror AR-surface reflectivities. No wedge on these
+# AR-surfaces
+# -----------
+# Measured non-wedged AR-surface reflectivities. Setting as reflectivities
 const R_WIAR 58u         # WI AR reflectivity [IM02, VIR-0543A-14]
 const R_NIAR 32u         # NI AR reflectivity [IM04, VIR-0544A-14]
-
-# Measured end mirror AR-surface reflectivities. Setting this as losses
-# as these are wedged.
+# Mesured wedged AR-reflectivities. Setting as losses due to wedge
 const L_WEAR 155u        # WE AR reflectivity [EM03, VIR-0270A-15]
 const L_NEAR 133u        # NE AR reflectivity [EM01, VIR-0269A-15]
 const L_BSAR 329u        # BS AR reflectivity [VIR-0446B-14]
 const L_PRAR 160u        # PR AR reflectivity [VIR-0029A-15]
+# Losses
+const L_NIAR 0           # Unknown
+const L_WIAR 0           # Unknown
 
-# Not sure if POPAR should be a loss. Can it reach B4? 
-const L_POPAR 125u       # POP AR reflectivity [VIR-0027A-15]
+# POP and CPs
+# -----------
+# Measured POP-reflectivities. Setting S2 surface as loss due to wedge.
+const R_POP1 184u        # POP S1 reflectivity [VIR-0027A-15]
+const L_POP2 125u        # POP S2 reflectivity [VIR-0027A-15]
 
-# Not sure if these should be set as losses. Wedge or not?
+# Masured CP-reflectivities. Set as losses, but not sure if they have wedge
 const L_CPW1 87u         # CPW (CP02) surface 1 reflectiviy [VIR-0506B-14]
 const L_CPW2 114u        # CPW (CP02) surface 2 reflectiviy [VIR-0506B-14]
 const L_CPN1 22u         # CPW (CP03) surface 1 reflectiviy [VIR-0153A-16]
 const L_CPN2 44u         # CPW (CP03) surface 2 reflectiviy [VIR-0153A-16]
 
-# Unused and non-verified values
-const T_SR 0.20          # signal recycling mirror transmission [VIR-0309B-12, slide 20]
-const T_IMC 2500u        # IMC HR transmission according to TDR, p. 121 preliminary
-const T_IMCend 1u        # IMC end mirror HR transmission, preliminary
-const L_IMC 15u          # Losses according to TDR, preliminary
-const R_IMC_AR 0.0001    # IMC AR reflection, preliminary
-# -------------------------------------------------------------------------
+###########################################################################
+%%% FTend RTLs
 
-# Tunings
-# -------------------------------------------------------------------------
+%%% FTblock Tunings
+###########################################################################
+# Tunings [deg]
+
 const PR_phi   0
-const PRAR_phi 0
 
+const NIAR_phi 0
 const NI_phi   -0.271
 const NE_phi   -0.271
-const NIAR_phi 0
-const NEAR_phi 0
 
+const WIAR_phi 0
 const WI_phi   0.271
 const WE_phi   0.271
-const WIAR_phi 0
-const WEAR_phi 0
-# -------------------------------------------------------------------------
 
-# Radii of curvature
-# -------------------------------------------------------------------------
-# HR-surfaces
-const RoC_WI -1424.5   # Measured WI RoC [VIR-0543A-14]
-const RoC_NI -1424.6   # Measured NI RoC [VIR-0544A-14]
-const RoC_WE 1696      # Measured WE RoC [VIR-0270A-15]
-const RoC_NE 1695      # Measured NE RoC [VIR-0269A-15]
-const RoC_PR -1477     # Measured PR RoC [VIR-0029A-15]
-const RoC_SR 1430      # Design [TDR, table 2.8]
-const RoC_OMC 1.499    # Design [TDR page 247]
+###########################################################################
+%%% FTend Tunings
 
-# AR-surfaces
-#const RoC_WIAR -1420    # Designed WI AR RoC [TDR, table 2.6]
-#const RoC_NIAR -1420    # Designed NI AR RoC [TDR, table 2.6]
-const RoC_WIAR -1423.95  # Approximately the same as measured HR surface,
-                         # and slightly adjusted so that mode matched file
-                         # model can be obtained with equal CP thermal 
-                         # lensing.
-const RoC_NIAR -1424.6   # Approximately the same as measured HR surface
-const RoC_PRAR -3.62     # Measured PR AR RoC [VIR-0029A-15]
-const RoC_SRAR 3.59      # Design [TDR, table 2.8]
-# -------------------------------------------------------------------------
 
-# Lenses
-# -------------------------------------------------------------------------
-# Compensation plate thermal lenses
-const f_CPN_TL 50890       # North 
-const f_CPW_TL 50890       # West
 
-# -------------------------------------------------------------------------
+%%% FTblock Constants
+###########################################################################
+
+# Refractive index of silica
+const nsilica 1.44963
+const l_arm 2999.8         # Arm length
+
 
 # Lengths
 # -------------------------------------------------------------------------
@@ -423,14 +449,7 @@ const f_CPW_TL 50890       # West
 #const l_BS_POP 5.814        # BS to POP
 #const l_BS_CPN 5.367        # BS AR to CPN 
 #const l_BS_CPW 5.245        # BS HR to CPW
-const l_arm 2999.8          # Arm length
-const l_CPN_NI 0.2          # CPN to NI
-const l_CPW_WI 0.2          # CPW to WI
 
-# Measured distances  (Reference?)
-const l_BS_POP 5.9399       # BS to POP
-const l_BS_CPN 5.3662       # BS AR to CPN
-const l_BS_CPW 5.244        # BS HR to CPW 
 
 # Derived lengths [TDR, table 2.4]
 # const l_PRCL 11.952         # power recycling cavity length [TDR, table 2.1]
