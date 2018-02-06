@@ -56,32 +56,34 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     
     Inputs:
     -------
-    P_coat         - Power on HR coating from vacuum side. See figure above.
-    P_sub_in       - Power propagaint from AR-surface to HR-surface. See figure above.
-    P_sub_out      - Power propagating from HR-surface to AR-surface. See figure above. 
-    HR_RoC         - Initial RoC of the HR surface [m]. If specified, the new RoC will be
-                     fitted to the deformed surface. For sign, see above. 
-    AR_RoC         - Same as for HR_RoC, but for the AR-surface.
-    HR_zOff        - Initial guess for the new HR-surface's offset along the optical axis [m].
-                     If given a numeric value, the offset will be fitted along with the RoC,
-                     which affects the RoC fitting. Set this to None (no fitting) or 0 (the
-                     offset should always be small).
-    AR_zOff        - Same as for HR_zOff above, but for the AR-surface.
+    P_coat            - Power on HR coating from vacuum side. See figure above.
+    P_sub_in          - Power propagaint from AR-surface to HR-surface. See figure above.
+    P_sub_out         - Power propagating from HR-surface to AR-surface. See figure above. 
+    HR_RoC            - Initial RoC of the HR surface [m]. If specified, the new RoC will be
+                        fitted to the deformed surface. For sign, see above. 
+    AR_RoC            - Same as for HR_RoC, but for the AR-surface.
+    HR_zOff           - Initial guess for the new HR-surface's offset along the optical axis [m].
+                        If given a numeric value, the offset will be fitted along with the RoC,
+                        which affects the RoC fitting. Set this to None (no fitting) or 0 (the
+                        offset should always be small).
+    AR_zOff           - Same as for HR_zOff above, but for the AR-surface.
+
+    mirror_properties - Dictionary where all the below properties can be specified directly.
     
-    thickness      - Mirror thickness [m] (default 0.2 m)
-    aCoat          - Coating power absorption (default 2.5 ppm)
-    aSub           - Substrate power absorptio [1/m] default (30 ppm/m)
-    n              - Mirror index of refraction (default SiO2, 1.452).
-    a              - Mirror radius [m] (default 0.175 m)
-    w              - Gaussian spot size [m] (default 0.049 m)
-    K              - Mirror thermal conductivity (default 1.380)
-    T0             - Surrounding temperature [K] (default 295.0 K)
-    emiss          - Mirror emissivity (default 0.89)
-    alpha          - Mirror thermal expansion coefficient (default 0.54e-6)
-    sigma          - Mirror Poisson's ratio (default 0.164)
-    dndT           - Mirror index of refraction change with temperature (default 8.7 ppm)
-    N              - Number of data points along the mirror radius a (default 176).
-    nScale         - If set to true, the optical path length data is scaled to physical distance.
+    thickness         - Mirror thickness [m] (default 0.2 m)
+    aCoat             - Coating power absorption (default 2.5 ppm)
+    aSub              - Substrate power absorptio [1/m] default (30 ppm/m)
+    n                 - Mirror index of refraction (default SiO2, 1.452).
+    a                 - Mirror radius [m] (default 0.175 m)
+    w                 - Gaussian spot size [m] (default 0.049 m)
+    K                 - Mirror thermal conductivity (default 1.380)
+    T0                - Surrounding temperature [K] (default 295.0 K)
+    emiss             - Mirror emissivity (default 0.89)
+    alpha             - Mirror thermal expansion coefficient (default 0.54e-6)
+    sigma             - Mirror Poisson's ratio (default 0.164)
+    dndT              - Mirror index of refraction change with temperature (default 8.7 ppm)
+    N                 - Number of data points along the mirror radius a (default 176).
+    nScale            - If set to true, the optical path length data is scaled to physical distance.
 
     Returns:
     --------
@@ -124,7 +126,42 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     #RecG=37.5;     # recycling gain
     #Finesse=443;   # F-P cavity finesse not used
 
-    # Updating values specified as arguments
+
+
+    # Updating values specified as a dictionary. 
+    if 'mirror_properties' in kwargs:
+        for k,v in kwargs['mirror_properties'].items():
+            if k == 'aCoat':
+                aCoat = v
+            elif k == 'thickness':
+                h = v
+            elif k == 'aSub':
+                aSub = v
+            elif k == 'n':
+                n = v
+            elif k == 'a':
+                a = v
+            elif k == 'w':
+                w = v
+            elif k == 'K':
+                K = v
+            elif k == 'T0':
+                T0 = v
+            elif k == 'emiss':
+                emiss = v
+            elif k == 'alpha':
+                alpha = v
+            elif k == 'sigma':
+                sigma = v
+            elif k == 'dndT':
+                dndT = v
+            elif k == 'N':
+                N = v
+            elif k == 'nScale':
+                nScale = v
+
+    # Updating values specified as arguments. These have precedence
+    # over the parameters specified in the dictionary. 
     for k, v in kwargs.items():
         if k == 'aCoat':
             aCoat = v
@@ -154,6 +191,8 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
             N = v
         elif k == 'nScale':
             nScale = v
+
+    
 
     # Scales the optical path length data to physical distances
     if nScale:
