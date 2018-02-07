@@ -1,0 +1,36 @@
+# PATCHES
+patch.facecolor: r
+
+# FONT
+font.size : 9
+
+# TEXT
+text.usetex : False
+
+# AXES
+axes.grid : True
+axes.formatter.useoffset : False
+axes.formatter.use_locale : False
+axes.prop_cycle: cycler('color', ['0000FF', 'FF0000', '000000', '00FF00', 'FF00FF'])
+
+# GRIDS
+grid.color : 999999
+grid.linestyle : :
+grid.linewidth : 0.25
+
+# FIGURES
+figure.titlesize : 12
+figure.figsize : 6.69291, 4.13645
+figure.dpi : 96
+
+# IMAGES
+image.cmap : magma
+image.origin : lower
+
+# SAVING FIGURES
+savefig.dpi : 300
+savefig.bbox : tight
+savefig.transparent : True
+
+pdf.compression : 9
+pdf.fonttype : 42

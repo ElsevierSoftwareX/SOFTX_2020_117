@@ -1,0 +1,7 @@
+# FONT
+font.family : serif
+font.serif : ["Latin Modern"]
+font.size : 9
+
+# TEXT
+text.usetex : True
