@@ -372,11 +372,21 @@ class AbstractMirrorComponent(Component):
         self._default_fsig_param = self.__phi
     
     def setRTL(self, R=None, T=None, L=None):
+        """
+        Sets the R, T, and/or L properties. At least two values should be specfified
+        as the the third can be assumed as:
+        
+            R+T+L = 1
+        
+        By setting one of the properties to None will set whether an m/m1/m2 (bs/bs1/bs2)
+        command is used with Finesse.
+        """
         if R is not None: self.R = R
         if T is not None: self.T = T
         if L is not None: self.L = L
 
     def completeRTL(self, R=None, T=None, L=None):
+        
         setValues = sum(x is not None for x in [R,T,L])
         if setValues == 3:
             self.setRTL(R,T,L)
