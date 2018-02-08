@@ -1,6 +1,5 @@
 import os
 import contextlib
-import matplotlib.pyplot as plt
 
 __all__ = ["use", "context"]
 
@@ -20,7 +19,9 @@ def get_style_path(style):
     return styles
 
 def use(style):
+    import matplotlib.pyplot as plt
     plt.style.use(get_style_path(style))
 
 def context(style, after_reset=False):
+    import matplotlib.pyplot as plt
     return plt.style.context(get_style_path(style), after_reset)
