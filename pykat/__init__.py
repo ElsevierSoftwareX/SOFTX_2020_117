@@ -45,6 +45,7 @@ import pykat.style as style
 from pykat.optics.gaussian_beams import BeamParam
 
 from pykat.plotting import init_pykat_plotting
+from pykat.style import use as set_plot_style
 
 from .SIfloat import SIfloat
 
