@@ -40,10 +40,12 @@ import pykat.finesse as finesse
 import pykat.components as components
 import pykat.detectors as detectors
 import pykat.commands as commands
+import pykat.style as style
 
 from pykat.optics.gaussian_beams import BeamParam
 
 from pykat.plotting import init_pykat_plotting
+from pykat.style import use as set_plot_style
 
 from .SIfloat import SIfloat
 

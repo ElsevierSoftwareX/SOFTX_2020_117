@@ -1,0 +1,9 @@
+# FONT
+font.family : serif
+font.size : 9
+
+# FIGURE
+figure.figsize : 6.69291, 4.13645
+
+# TEXT
+text.usetex : True
