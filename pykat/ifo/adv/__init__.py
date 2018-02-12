@@ -366,7 +366,7 @@ class ADV_IFO(IFO):
             self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
 
 
-    def remove_FI_OMC(self, removeFI=True, removeOMC=True):
+    def remove_OMC(self):
         """
         Method for removing the OMC and the FI blocks in kat-objects having these
         included. The FI block contains an ideal Faraday isolator as well as the
@@ -382,19 +382,17 @@ class ADV_IFO(IFO):
         removeOMC : Boolean
                     If True, the OMC is removed. Must be True if removeFI = True.
         """
-        
-        if removeFI and not removeOMC:
-            raise pkex.BasePyKatException("Must remove OMC if removing FI")
-        if removeFI:
-            self.kat.nodes.replaceNode(self.kat.sSRM_FI, 'nFI2a', 'nAS')
-            self.kat.removeBlock('FI')
-            self.kat.removeBlock('OMC')
-            self.kat.cavOMC.remove()
-        elif removeOMC:
-            self.kat.nodes.replaceNode(self.kat.sOM3_OMC, 'nOMC_ICa', 'nAS')
-            self.kat.removeBlock('OMC')
-            self.kat.cavOMC.remove()
 
+        self.kat.removeBlock('OMCpath')
+        self.kat.removeBlock('OMC')
+        self.kat.cavOMC1.remove()
+        self.kat.cavOMC2.remove()
+        
+        self.kat.nodes.replaceNode(self.kat.sOut,
+                                   self.kat.sOut.nodes[0],
+                                   self.kat.components[self.mirrors['SRMAR']].nodes[1].name)
+
+        
     def adjust_PRC_length(self, verbose=False):
         """
         Adjust PRC length so that it fulfils the requirement
