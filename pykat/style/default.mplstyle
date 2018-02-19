@@ -2,16 +2,20 @@
 patch.facecolor: r
 
 # FONT
-font.size : 9
+font.size : 11
 
 # TEXT
 text.usetex : False
 
 # AXES
 axes.grid : True
-axes.formatter.useoffset : False
+axes.formatter.useoffset : True
 axes.formatter.use_locale : False
 axes.prop_cycle: cycler('color', ['0000FF', 'FF0000', '000000', '00FF00', 'FF00FF'])
+
+#TICKS
+xtick.labelsize : 9
+ytick.labelsize : 9
 
 # GRIDS
 grid.color : 999999
@@ -20,7 +24,7 @@ grid.linewidth : 0.25
 
 # FIGURES
 figure.titlesize : 12
-figure.figsize : 6.69291, 4.13645
+figure.figsize : 6, 3.708
 figure.dpi : 96
 
 # IMAGES
@@ -30,7 +34,6 @@ image.origin : lower
 # SAVING FIGURES
 savefig.dpi : 300
 savefig.bbox : tight
-savefig.transparent : True
 
 pdf.compression : 9
 pdf.fonttype : 42
