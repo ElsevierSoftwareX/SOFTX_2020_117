@@ -1527,13 +1527,14 @@ class laser(Component):
         self._requested_node_names.append(node)
         
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
-        self.__f_offset = Param("f", self, SIfloat(f), canFsig=True, fsig_name="freq")
+        self.__f_offset = Param("f", self, None, canFsig=True, fsig_name="freq")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__w0 = Param("phase", self, None, canFsig=True, fsig_name="w0", isPutable=False, isPutter=False, isTunable=False)
         self.__z  = Param("phase", self, None, canFsig=True, fsig_name="z", isPutable=False, isPutter=False, isTunable=False)
         self.__noise = AttrParam("noise", self, None)
         self._svgItem = None
         
+        self.f = f
         self._default_fsig_param = self.__f_offset
 
         self._freeze()
