@@ -30,10 +30,14 @@ Please email finesse@star.sr.bham.ac.uk if you have any issues.
 Installation
 -------------
 
-The easiest way to install PyKat is through PyPi::
+The easiest way to install PyKat is through PyPi or Conda (Recommended)::
 
     pip install pykat
-    
+  
+    conda install -c gwoptics pykat
+
+The Conda installation has the advantage that it will also install the Finesse binaries too.
+
 If you are a Windows user you also have the option to download the installer at https://pypi.python.org/pypi/PyKat.
 
 You should now be able to open up a new Python terminal and type `import pykat`, the output should be::
