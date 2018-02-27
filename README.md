@@ -20,6 +20,13 @@ Please cite pykat when used with::
       Url                      = {http://www.gwoptics.org/pykat}
     }
 
+
+Examples and tutorials can be found at http://www.gwoptics.org/learn/
+
+Please email finesse@star.sr.bham.ac.uk if you have any issues.
+
+
+
 Installation
 -------------
 
