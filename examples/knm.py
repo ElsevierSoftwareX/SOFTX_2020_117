@@ -18,7 +18,19 @@ m = surfacemap("empty",
                step_size=(dx, dx))
 
 C = makeCouplingMatrix(2)
-
 K = knmHG(C, q1, q2, surface_map=m)
 
 plot_knm_matrix(C, abs(K))
+
+
+
+C = [0,0,0,0] # 00 -> 00
+K = knmHG(C, q1, q2, surface_map=m)
+
+print(K)
+
+
+C = [[0,0,1,0], [0,0,0,0]] # [00->10, 00->00]
+K = knmHG(C, q1, q2, surface_map=m)
+
+print(K)
