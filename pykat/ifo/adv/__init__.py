@@ -863,7 +863,24 @@ class ADV_IFO(IFO):
     
         for _ in inspect.getmembers(self, lambda x: isinstance(x, Output)):
             self.Outputs[_[0]] = _[1]
-            
+
+
+
+    def thermal_lensing(self, thermal_mirror_list):
+
+        out = compute_thermal_effect(self.kat, thermal_mirror_list, nScale=True)
+        
+        mirrors = self.kat.IFO.mirrors
+        # Setting values to kat-object
+        for k,v in out.items():
+            # Setting new RoC (No RoC calculations yet)
+            # self.kat.components[k].Rc = v[1][0]
+            # Setting new lens
+            if k == mirrors['IX']:
+                self.kat.CPN_TL.f = float(v['f_CP_new'])
+            elif k == mirrors['IY']:
+                self.kat.CPW_TL.f = float(v['f_CP_new'])
+
 def assert_adv_ifo_kat(kat):
 
     #print(ADV_IFO)
@@ -1494,19 +1511,19 @@ def generate_locks(kat, gainsAdjustment = [0.1, 0.9, 0.9, 0.001, 0.02],
     return data
 
 
-def thermal_effect(kat, mirror_list, nScale=False):
+def thermal_lensing(kat, mirror_list, nScale=False):
     out = compute_thermal_effect(kat, mirror_list, nScale=nScale)
     kat1 = kat.deepcopy()
     mirrors = kat1.IFO.mirrors
     # Setting values to kat-object
     for k,v in out.items():
-        # Setting new RoC
-        kat1.components[k].Rc = v[1][0]
+        # Setting new RoC (No RoC calculations yet)
+        # kat1.components[k].Rc = v[1][0]
         # Setting new lens
         if k == mirrors['IX']:
-            kat1.CPN_TL.f = float(v[5][0])
+            kat1.CPN_TL.f = float(v['f_CP_new'])
         elif k == mirrors['IY']:
-            kat1.CPW_TL.f = float(v[5][0])
+            kat1.CPW_TL.f = float(v['f_CP_new'])
     return kat1
 
 def compute_thermal_effect(kat, mirror_list, nScale=False):
@@ -1550,6 +1567,13 @@ def compute_thermal_effect(kat, mirror_list, nScale=False):
             # Spot size
             code += "bp w_{}_x x w {}\n".format(m, hr.nodes[1].name)
             code += "bp w_{}_y y w {}\n".format(m, hr.nodes[1].name)
+            # Complex beam parameter
+            if m == mirrors['IX']:
+                code += "bp q_{}_x x q {}\n".format("CP", "nCPN_TL1")
+                code += "bp q_{}_y y q {}\n".format("CP", "nCPN_TL1")
+            elif m == mirrors['IY']:
+                code += "bp q_{}_x x q {}\n".format("CP", "nCPW_TL1")
+                code += "bp q_{}_y y q {}\n".format("CP", "nCPW_TL1")
 
         elif m == mirrors['EX'] or m == mirrors['EY'] or m == mirrors['BS'] or m == mirrors['SRM']:
             # Going into HR-side
@@ -1563,17 +1587,18 @@ def compute_thermal_effect(kat, mirror_list, nScale=False):
             code += "bp w_{}_y y w {}\n".format(m, hr.nodes[0].name)
             
     code += 'noxaxis\n'
-    code += 'yaxis abs'
+    code += 'yaxis abs:deg'
     
     kat1.parse(code)
     out = kat1.run()
+    q = (out['q_CP_x'] + out['q_CP_y'])/2.0
     
     #################################
     # Compute thermal effects
     #################################
-    res = {}
+    output = {}
     for k,v in Ms.items():
-        
+        res = {}
         # Dictionary for mirror properties
         mp = copy.deepcopy(kat1.IFO.mirror_properties[k])
         mp['HR_RoC'] = v['HR'].Rc.value
@@ -1585,16 +1610,19 @@ def compute_thermal_effect(kat, mirror_list, nScale=False):
 
         mp['thickness'] = v['SUB'].L.value
         mp['n'] = v['SUB'].n.value
-        mp['w'] = np.sqrt(out['w_{}_x'.format(k)])*np.sqrt(out['w_{}_y'.format(k)])
+        mp['w'] = np.sqrt(out['w_{}_x'.format(k)].real)*np.sqrt(out['w_{}_y'.format(k)].real)
         
         mp['nScale'] = nScale
         
-        P_coat = out['P_'+k+'_HR']
-        P_sub_in = out['P_'+k+'_sub1']
-        P_sub_out = out['P_'+k+'_sub2']
+        P_coat = out['P_'+k+'_HR'].real
+        P_sub_in = out['P_'+k+'_sub1'].real
+        P_sub_out = out['P_'+k+'_sub2'].real
 
-        res[k] = hellovinet(P_coat, P_sub_in, P_sub_out, mirror_properties = mp)
+        res['f_thermal'], tmp = hellovinet(P_coat, P_sub_in, P_sub_out, mirror_properties = mp)
+        res['r'] = tmp[0]
+        res['OPL_data'] = tmp[1]
         
+        '''
         # Switching signs of RoC for mirrors depending on tracing direction
         if k == mirrors['IY'] or k == mirrors['IX'] or k == mirrors['PRM']:
             res[k][1][0] = -res[k][1][0]
@@ -1607,14 +1635,26 @@ def compute_thermal_effect(kat, mirror_list, nScale=False):
             # Computing focal length
             f = lensmaker(-res[k][1][1], mp['HR_RoC'], d, mp['n'])
             res[k] += (f,)
-            # Combining CP and input mirror thermal lenses into 1
-            if k == mirrors['IX']:
-                f_old = kat1.CPN_TL.f.value
-                d = kat1.sCPN_NI.L.value
-            else:
-                f_old = kat1.CPW_TL.f.value
-                d = kat1.sCPW_WI.L.value
-            f_new = combine(f_old, f, d=d)
-            res[k] += (f_new,)
-            
-    return res 
+        '''
+
+        # Combining CP and input mirror thermal lenses into 1
+        if k == mirrors['IX']:
+            # Initial focal length of CP
+            f_old = kat1.CPN_TL.f.value
+            # Distance between CP and input mirror
+            d = kat1.sCPN_NI.L.value
+        elif k == mirrors['IY']:
+            # Initial focal length of CP
+            f_old = kat1.CPW_TL.f.value
+            # Distance between CP and input mirror
+            d = kat1.sCPW_WI.L.value
+        # Combining CP and input mirror lenses into one new lens at the CP
+        f_CP_new, errors = combine(f_old, res['f_thermal'], d=d, q=q)
+        res['f_CP_new'] = f_CP_new
+        res['rel_errs'] = errors
+        output[k] = res
+
+    return output 
+
+
+
