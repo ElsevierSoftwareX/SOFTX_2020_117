@@ -236,7 +236,7 @@ def scan_optics_string(_optics, _factors, _varName='scan', target="phi", linlog=
     #print()
     return _tuneStr
 
-def scan_f_cmds(DOF, linlog="lin", lower=10, upper=5000, steps=100):
+def scan_f_cmds(DOF, linlog="log", lower=10, upper=5000, steps=100):
     name = "_%s" % DOF.name
     cmds = DOF.fsig(name, 1)
     
