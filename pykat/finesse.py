@@ -99,7 +99,7 @@ if USE_GUI:
 
 from multiprocessing import Process, Manager
 
-PYKAT_DATA = "PYKAT_DATA="
+PYKAT_DATA = "#PYKAT_DATA="
 NO_BLOCK = "NO_BLOCK"
 pykat_web = "www.gwoptics.org/pykat"
 
@@ -1212,9 +1212,10 @@ class kat(object):
             katScript = "".join(self.generateKatScript())       
             katfile.writelines(katScript)
             
-            katfile.write("")
-            katfile.write(PYKAT_DATA + self._data2str())
-            katfile.flush()
+            if len(self.data) > 0:
+                katfile.write("")
+                katfile.write(PYKAT_DATA + self._data2str())
+                katfile.flush()
             
     def saveScript(self, filename=None):
         """

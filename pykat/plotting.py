@@ -21,15 +21,18 @@ def in_ipython():
         return False
         
         
-def init_pykat_plotting(mode="display", dpi=100):
+def init_pykat_plotting(mode="display", dpi=100, fmts=None):
     import matplotlib as mpl
     
     __DPI__ = int(dpi)
     
+    if fmts is None:
+        fmts=['svg', 'pdf']
+        
     if in_ipython():
         try:
             from IPython.display import set_matplotlib_formats
-            set_matplotlib_formats('pdf', 'svg')
+            set_matplotlib_formats(*fmts)
             ipy = get_ipython()
             ipy.magic("matplotlib inline")
         except:
@@ -63,13 +66,18 @@ def init_pykat_plotting(mode="display", dpi=100):
         mpl.rcParams['axes.color_cycle'] = ['b', 'r', 'k', 'g', 'c', 'm', 'y']
     else:
         mpl.rcParams['axes.prop_cycle']=mpl.cycler('color', ['b', 'r', 'k', 'g', 'c', 'm', 'y'])
+        
     mpl.rcParams['lines.linewidth'] = 1.2
     mpl.rcParams.update({"figure.figsize": (6, 3.708)})
-    mpl.rcParams.update({'font.size': 12})
+    mpl.rcParams.update({'font.size': 11})
     mpl.rcParams.update({'figure.dpi': __DPI__})
     mpl.rcParams.update({'savefig.dpi': __DPI__})
     mpl.rcParams.update({'font.family': "serif"})
     mpl.rcParams.update({'axes.grid': True})
+    
+    mpl.rcParams.update({'axes.titlesize': "medium"})
+    mpl.rcParams.update({'axes.xmargin': 0})
+    mpl.rcParams.update({'legend.fontsize': "small"})
     mpl.rcParams.update({'axes.axisbelow': True})
     mpl.rcParams.update({'grid.linewidth': 0.25})
     mpl.rcParams.update({'grid.linestyle': ":"})
@@ -78,7 +86,7 @@ def init_pykat_plotting(mode="display", dpi=100):
     mpl.rcParams.update({'savefig.pad_inches': 0.05})
     mpl.rcParams.update({'xtick.labelsize': "small"})
     mpl.rcParams.update({'ytick.labelsize': "small"})
-    mpl.rcParams.update({'axes.formatter.useoffset': False})
+    mpl.rcParams.update({'axes.formatter.useoffset': True})
 
 def figure(width="full", height=0.618, textwidth=6, **kwargs):
     """

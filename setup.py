@@ -43,7 +43,11 @@ try:
         description='Python interface and tools for FINESSE',
         long_description=open('README.md').read(),
         install_requires=REQUIREMENTS,
-        package_data={'': ['optics/greedypoints/*.txt', 'ifo/aligo/files/*.kat']},
+        package_data={'': ['optics/greedypoints/*.txt',
+                           'ifo/aligo/files/*.kat',
+                           'ifo/adv/files/*.kat',
+                           'ifo/voyager/files/*.kat',
+                           'style/*.mplstyle']},
         include_package_data=True
     )
 finally:

@@ -372,11 +372,21 @@ class AbstractMirrorComponent(Component):
         self._default_fsig_param = self.__phi
     
     def setRTL(self, R=None, T=None, L=None):
+        """
+        Sets the R, T, and/or L properties. At least two values should be specfified
+        as the the third can be assumed as:
+        
+            R+T+L = 1
+        
+        By setting one of the properties to None will set whether an m/m1/m2 (bs/bs1/bs2)
+        command is used with Finesse.
+        """
         if R is not None: self.R = R
         if T is not None: self.T = T
         if L is not None: self.L = L
 
     def completeRTL(self, R=None, T=None, L=None):
+        
         setValues = sum(x is not None for x in [R,T,L])
         if setValues == 3:
             self.setRTL(R,T,L)
@@ -1517,13 +1527,14 @@ class laser(Component):
         self._requested_node_names.append(node)
         
         self.__power = Param("P", self, SIfloat(P), canFsig=True, fsig_name="amp")
-        self.__f_offset = Param("f", self, f, canFsig=True, fsig_name="freq")
+        self.__f_offset = Param("f", self, None, canFsig=True, fsig_name="freq")
         self.__phase = Param("phase", self, SIfloat(phase), canFsig=True, fsig_name="phase")
         self.__w0 = Param("phase", self, None, canFsig=True, fsig_name="w0", isPutable=False, isPutter=False, isTunable=False)
         self.__z  = Param("phase", self, None, canFsig=True, fsig_name="z", isPutable=False, isPutter=False, isTunable=False)
         self.__noise = AttrParam("noise", self, None)
         self._svgItem = None
         
+        self.f = f
         self._default_fsig_param = self.__f_offset
 
         self._freeze()

@@ -1,0 +1,5 @@
+# AXES
+axes.prop_cycle : cycler("color", ["000000", "2c2d2d", "525353", "888989", "d1d3d4"]) + cycler("linestyle", ["-", "--", ":", "-.", "-"])
+
+# IMAGES
+image.cmap : gray

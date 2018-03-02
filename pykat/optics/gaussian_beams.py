@@ -140,6 +140,10 @@ class BeamParam(object):
         return np.arctan2(q.real, q.imag)
         
     @property
+    def divergence(self):
+        return self.wavelength/ (self.w0 * np.pi)
+        
+    @property
     def w0(self):
         return np.sqrt(self.__q.imag * self.__lambda / (self.__nr * math.pi))    
 
