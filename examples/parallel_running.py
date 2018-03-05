@@ -3,11 +3,16 @@
 # Firstly you need to start an ipython cluster on your computer. To do this open
 # a new terminal and type the command:
 #
-#   ipcluster start -n 4
+#   ipcluster start --n=4
 #
+# (or something similar)
 # This will start a cluster with 4 workers. You should set this number to how many
 # cores you have.
 #
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import pykat
 from pykat.parallel import parakat
