@@ -179,6 +179,13 @@ class BaseDetector(object) :
     def __str__(self): return self.name
 
     def mask(self, n, m, factor):
+        """
+        Sets the mode mask to apply to this detector for the mode TEMnm. By default
+        all modes have a factor of 1.
+        
+        n,m - mode indicies
+        factor - float between 0 and 1
+        """
         _id = (n,m)
         
         # if the mask is 1 then remove this so it doesn't get 
