@@ -1,7 +1,7 @@
 import pykat
+
 from pykat.optics.knm import plot_knm_matrix, knmHG, makeCouplingMatrix
-from pykat.optics.maps import *
-import numpy as np
+from pykat.optics.maps import surfacemap
 
 q1 = pykat.BeamParam(w0=5e-2, z=0)
 q2 = pykat.BeamParam(w0=5e-2, z=0)
