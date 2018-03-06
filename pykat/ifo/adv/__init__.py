@@ -884,7 +884,7 @@ class ADV_IFO(IFO):
 
 
 
-    def find_maxtem(self, tol=5e-3, verbose=False):
+    def find_maxtem(self, tol=5e-3, start = 0, stop = 10, verbose=False):
         '''
         Finding the minimum required maxtem for the power to converge to within the relative tolerance tol.
         '''
@@ -899,7 +899,8 @@ class ADV_IFO(IFO):
         P = np.zeros(3, dtype=float) + 1e-9
         rdiff = np.ones([2,3],dtype=float)
         mxtm = 0
-        while run:
+        while run and mxtm <= stop:
+            vprint(verbose, mxtm, ": ")
             P_old[0,:] = P_old[1,:]
             P_old[1,:] = P
             rdiff_old = rdiff[1,:]
@@ -911,15 +912,18 @@ class ADV_IFO(IFO):
             rdiff = np.abs((P-P_old)/P_old)
             if rdiff.max()<tol:
                 run = False
+            
+            vprint(verbose, "{0[0]:.2e} {0[1]:.2e} {0[2]:.2e}".format(rdiff[1,:]))
             # print(kat1.maxtem, rdiff, rdiff.max())
             mxtm += 1
-        # Stepping back to the lowest acceptable maxtem
-        mxtm -= 2
-        # One more step back if the two previous iterations were within the tolerance
-        if rdiff_old.max() < tol:
-            mxtm -= 1
+        if not run:
+            # Stepping back to the lowest acceptable maxtem
+            mxtm -= 2
+            # One more step back if the two previous iterations were within the tolerance
+            if rdiff_old.max() < tol:
+                mxtm -= 1
         self.kat.maxtem = mxtm
-        vprint(verbose, "Maxtem set to {}".format(mxtm))
+        vprint(verbose, "\nMaxtem set to {}".format(mxtm))
 
 
     def find_warm_detector(self, mirror_list, DCoffset, verbose=False):
