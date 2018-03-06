@@ -264,9 +264,9 @@ s sMMT_M2_L1 0.5 nMMT_M2b nMMT_L1a
 # lens MMT_L2 1.724 nMMT_L2a nMMT_L2b
 
 # Adjusted the above values to modematch OMCs to the IFO
-lens MMT_L1 2.88 nMMT_L1a nMMT_L1b
-s sMMT_L1_L2 0.072 nMMT_L1b nMMT_L2a
-lens MMT_L2 1.53 nMMT_L2a nMMT_L2b
+lens MMT_L1 3.493 nMMT_L1a nMMT_L1b
+s sMMT_L1_L2 0.12 nMMT_L1b nMMT_L2a
+lens MMT_L2 1.398 nMMT_L2a nMMT_L2b
 # ------------------------------------------------------
 
 s sL2_OMC1 0.99 nMMT_L2b nOMC1_ICa
