@@ -621,20 +621,23 @@ def modematch(kat, components, cavs, node, verbose = False):
     Nc = len(cavs)
     Np = len(components)
     kat1 = kat.deepcopy()
+    kat2 = kat.deepcopy()
     # Storing parameters to tune, and their initial values, in lists
     attrs = []
+    attrs2 = []
     p0 = []
     for c in components:
         if isinstance(kat1.components[c], pykat.components.lens):
-            attrs.append(kat1.components[c])
             p0.append(kat1.components[c].f.value)
         elif (isinstance(kat1.components[c], pykat.components.mirror) or 
               isinstance(kat1.components[c], pykat.components.beamSplitter)):
-            attrs.append(kat1.components[c])
             p0.append(kat1.components[c].Rc.value)
         elif isinstance(kat1.components[c], pykat.components.space):
-            attrs.append(kat1.components[c])
             p0.append(kat1.components[c].L.value)
+
+        attrs.append(kat1.components[c])
+        attrs2.append(kat2.components[c])
+
             
     # Switching off cavity commands for cavities not in cavs
     for cav in kat1.getAll(pykat.commands.cavity):
@@ -685,26 +688,26 @@ def modematch(kat, components, cavs, node, verbose = False):
         
     # Setting new parameters to kat-object
     for k in range(Np):
-        if isinstance(attrs[k], pykat.components.lens):
-            attrs[k].f = out.x[k]
-        elif isinstance(attrs[k], pykat.components.space):
-            attrs[k].L = out.x[k]
-        elif (isinstance(attrs[k], pykat.components.mirror) or 
-              isinstance(attrs[k], pykat.components.beamSplitter)):
-            attrs[k].Rc = out.x[k]
+        if isinstance(attrs2[k], pykat.components.lens):
+            attrs2[k].f = out.x[k]
+        elif isinstance(attrs2[k], pykat.components.space):
+            attrs2[k].L = out.x[k]
+        elif (isinstance(attrs2[k], pykat.components.mirror) or 
+              isinstance(attrs2[k], pykat.components.beamSplitter)):
+            attrs2[k].Rc = out.x[k]
 
     if verbose:
         print('Maximum mismatch: {:.2e} --> {:.2e}'.format(mm0.max(), out.fun))
         for c in components:
             if isinstance(kat.components[c], pykat.components.lens):
-                print(' {}.f: {:.5e} m --> {:.5e} m'.format(c, kat.components[c].f.value, kat1.components[c].f.value ))
+                print(' {}.f: {:.5e} m --> {:.5e} m'.format(c, kat.components[c].f.value, kat2.components[c].f.value ))
             elif isinstance(kat.components[c], pykat.components.space):
-                print(' {}.L: {:.5e} m --> {:.5e} m'.format(c, kat.components[c].L.value, kat1.components[c].L.value ))
+                print(' {}.L: {:.5e} m --> {:.5e} m'.format(c, kat.components[c].L.value, kat2.components[c].L.value ))
             elif (isinstance(kat.components[c], pykat.components.mirror) or 
                   isinstance(kat.components[c], pykat.components.beamSplitter)):
-                print(' {}.Rc = {:.5e} m --> {:.5e} m'.format(c, kat.components[c].Rc.value, kat1.components[c].Rc.value ))
+                print(' {}.Rc = {:.5e} m --> {:.5e} m'.format(c, kat.components[c].Rc.value, kat2.components[c].Rc.value ))
                       
-    return kat1
+    return kat2, out.x
 
 
 
