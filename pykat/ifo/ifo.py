@@ -59,10 +59,7 @@ class aLIGO(object):
             self.kat.loadKatFile(katfile)
             self.rawBlocks.read(katfile)
         else:
-            """
-            if _name not in names: # TODO different files not yet implemented
-                printf("aLIGO name `{}' not recognised, must be 'default', 'LLO' or 'LHO'",_name)
-            """
+            # TODO different files not yet implemented
             if _name != "default":
                 printf("aLIGO name `{}' not recognised, using 'default'",_name)                
             self.kat.loadKatFile(self._data_path+"design_with_IMC_HAM2_FI_OMC.kat")#"aLIGO.kat"
@@ -265,7 +262,7 @@ put f1m f $mx1
         make_transparent(kat1,["PRM","SRM"])
         make_transparent(kat1,["ITMY", "ETMY"])
         kat1.BS.setRTL(0.0,1.0,0.0) # set BS refl. for X arm
-        phi, precision = self.scan_to_precision(kat1, self.preARMX, pretune_precision)
+        phi, precision = scan_to_precision(kat1, self.preARMX, pretune_precision)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,5)
         vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
@@ -276,7 +273,7 @@ put f1m f $mx1
         make_transparent(kat,["PRM","SRM"])
         make_transparent(kat,["ITMX", "ETMX"])
         kat.BS.setRTL(1.0,0.0,0.0) # set BS refl. for Y arm
-        phi, precision = self.scan_to_precision(kat, self.preARMY, pretune_precision)
+        phi, precision = scan_to_precision(kat, self.preARMY, pretune_precision)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,5)
         vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
@@ -285,7 +282,7 @@ put f1m f $mx1
         vprint(verbose, "   scanning MICH (minimising power)")
         kat = _kat.deepcopy()
         make_transparent(kat,["PRM","SRM"])
-        phi, precision = self.scan_to_precision(kat, self.preMICH, pretune_precision, minmax="min", precision=30.0)
+        phi, precision = scan_to_precision(kat, self.preMICH, pretune_precision, minmax="min", precision=30.0)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,5)
         vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
@@ -294,7 +291,7 @@ put f1m f $mx1
         vprint(verbose, "   scanning PRCL (maximising power)")
         kat = _kat.deepcopy()
         make_transparent(kat,["SRM"])
-        phi, precision = self.scan_to_precision(kat, self.prePRCL, pretune_precision)
+        phi, precision = scan_to_precision(kat, self.prePRCL, pretune_precision)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,5)
         vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
@@ -302,20 +299,13 @@ put f1m f $mx1
 
         vprint(verbose, "   scanning SRCL (maximising carrier power, then adding 90 deg)")
         kat = _kat.deepcopy()
-        phi, precision = self.scan_to_precision(kat, self.preSRCL, pretune_precision, phi=0)
+        phi, precision = scan_to_precision(kat, self.preSRCL, pretune_precision, phi=0)
         phi=round(phi/pretune_precision)*pretune_precision
         phi=round_to_n(phi,4)-90.0
         vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
         self.preSRCL.apply_tuning(_kat,phi)
         print("   ... done")
         
-    def scan_to_precision(self, kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
-        while precision>pretune_precision*DOF.scale:
-            out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
-            phi, precision = find_peak(out, DOF.port.portName, minmax=minmax)
-            #print("** phi= {}".format(phi))
-        return phi, precision
-
     def pretune_status(self, _kat):
         kat = _kat.deepcopy()
         kat.verbose = False
@@ -930,6 +920,17 @@ def set_tunings(kat, tunings):
         keys.remove("phase")
     for comp in keys:
         kat.components[comp].phi = tunings[comp] 
+
+        
+def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
+    """
+    find a maximum or minimum in a DOF within a given range
+    """
+    while precision>pretune_precision*DOF.scale:
+        out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
+        phi, precision = find_peak(out, DOF.port.portName, minmax=minmax)
+        #print("** phi= {}".format(phi))
+    return phi, precision
 
 def scan_optics_string(_optics, _factors, _varName, linlog="lin", xlimits=[-100, 100], steps=200, axis=1,relative=False):
     optics=make_list_copy(_optics)

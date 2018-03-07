@@ -11,6 +11,8 @@ from scipy.optimize import brute
 from scipy.optimize import fmin
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize
+from scipy.misc import comb
 # THE PLOTTING OPTION WILL BE REMOVED
 import matplotlib.pyplot as plt
 
@@ -101,9 +103,9 @@ def round_to_n(x, n):
     factor = (10 ** power)
     return round(x * factor) / factor
     
-def vprint(verbose, printstr):
+def vprint(verbose, printstr, end='\n'):
     if verbose:
-        print(printstr)
+        print(printstr,end=end)
         
 def BS_optical_path(thickness, n=1.44963098985906, angle=45.0):
     """
@@ -599,11 +601,117 @@ def mismatch_scan_L(base, node, length, lower, upper, steps):
     return out['qx'], out['qy']
 
 
+def modematch(kat, components, cavs, node, verbose = False):
+    '''
+    Mode matches the cavity eigenmmodes for the cavities in cavs by varying the
+    components in components. Computes mode overlaps between the cavity eigenmodes.
+    Minimises the maximum cavity mismatch. 
+    
+    Inputs
+    --------
+    kat         - kat-object to run
+    components  - list of names of components to vary. Each entry must be a lens (varies f), 
+                  mirror (Rc), BS (Rc) or space (L). 
+    cavs        - list with names of cavities to match
+    node        - name of node where to compute mismatches. Must be first or
+                  last node in IFO for reliable result.
+    verbose     - If true, prints the new optimised paramaters
+    
+    Returns
+    --------
+    kat1        - kat-object with the optimised component parameters. Deepcopy of kat.
+    
+    '''
+    Nc = len(cavs)
+    Np = len(components)
+    kat1 = kat.deepcopy()
+    kat2 = kat.deepcopy()
+    # Storing parameters to tune, and their initial values, in lists
+    attrs = []
+    attrs2 = []
+    p0 = []
+    for c in components:
+        if isinstance(kat1.components[c], pykat.components.lens):
+            p0.append(kat1.components[c].f.value)
+        elif (isinstance(kat1.components[c], pykat.components.mirror) or 
+              isinstance(kat1.components[c], pykat.components.beamSplitter)):
+            p0.append(kat1.components[c].Rc.value)
+        elif isinstance(kat1.components[c], pykat.components.space):
+            p0.append(kat1.components[c].L.value)
 
+        attrs.append(kat1.components[c])
+        attrs2.append(kat2.components[c])
 
+            
+    # Switching off cavity commands for cavities not in cavs
+    for cav in kat1.getAll(pykat.commands.cavity):
+        if not cav.name in cavs:
+            cav.remove()
 
+    # Cost function
+    def func(p):
+        for k in range(Np):
+            if isinstance(attrs[k], pykat.components.lens):
+                attrs[k].f = p[k]
+            elif isinstance(attrs[k], pykat.components.space):
+                attrs[k].L = p[k]
+            elif (isinstance(attrs[k], pykat.components.mirror) or 
+                  isinstance(attrs[k], pykat.components.beamSplitter)):
+                attrs[k].Rc = p[k]
+        
+        mmx, mmy, qs = pykat.ifo.mismatch_cavities(kat1, node)
+        mm = np.zeros(comb(Nc,2,exact=True), dtype=float)
+        cs = deepcopy(cavs)
+        k = 0
+        for c1 in cavs:
+            cs.pop(0)
+            for c2 in cs:
+                mm[k] = np.sqrt(mmx[c1][c2])*np.sqrt(mmy[c1][c2])
+                k += 1
+        # print(kat1.CPN_TL.f.value, kat1.CPW_TL.f.value, mm.mean())
+        return mm.max()
+        
+    if verbose: 
+        # Computing initial mismatch. Only for display
+        mmx, mmy, qs = pykat.ifo.mismatch_cavities(kat1, node)
+        mm0 = np.zeros(comb(Nc,2,exact=True), dtype=float)
+        cs = deepcopy(cavs)
+        k = 0
+        for c1 in cavs:
+            cs.pop(0)
+            for c2 in cs:
+                mm0[k] = np.sqrt(mmx[c1][c2])*np.sqrt(mmy[c1][c2])
+                k += 1
+        
+    # Optimising
+    opts = {'xtol': 1.0, 'ftol': 1.0e-7, 'disp': False}
+    out = minimize(func, p0, method='Nelder-Mead', options=opts)
+    
+    if not out['success']:
+        pkex.printWarning(out.message)
+        
+    # Setting new parameters to kat-object
+    for k in range(Np):
+        if isinstance(attrs2[k], pykat.components.lens):
+            attrs2[k].f = out.x[k]
+        elif isinstance(attrs2[k], pykat.components.space):
+            attrs2[k].L = out.x[k]
+        elif (isinstance(attrs2[k], pykat.components.mirror) or 
+              isinstance(attrs2[k], pykat.components.beamSplitter)):
+            attrs2[k].Rc = out.x[k]
 
-
+    if verbose:
+        print('Maximum mismatch: {:.2e} --> {:.2e}'.format(mm0.max(), out.fun))
+        for c in components:
+            if isinstance(kat.components[c], pykat.components.lens):
+                print(' {}.f: {:.5e} m --> {:.5e} m'.format(c, kat.components[c].f.value, kat2.components[c].f.value ))
+            elif isinstance(kat.components[c], pykat.components.space):
+                print(' {}.L: {:.5e} m --> {:.5e} m'.format(c, kat.components[c].L.value, kat2.components[c].L.value ))
+            elif (isinstance(kat.components[c], pykat.components.mirror) or 
+                  isinstance(kat.components[c], pykat.components.beamSplitter)):
+                print(' {}.Rc = {:.5e} m --> {:.5e} m'.format(c, kat.components[c].Rc.value, kat2.components[c].Rc.value ))
+                      
+    return kat2, out.x
 
 
 
