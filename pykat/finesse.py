@@ -1500,7 +1500,14 @@ class kat(object):
                     
                     # don't read comment lines
                     if line[0] == "#" or line[0] == "%":
-                        if keepComments:
+                        if line.startswith(PYKAT_DATA):
+                            # Checks if pykat data is included now as a comment
+                            vals = line.split("=", 1)
+                            
+                            if len(v)==2:
+                                self._str2data(vals[1])
+                                
+                        elif keepComments:
                             self.addLine(line, self.__currentTag)
                             
                         continue
