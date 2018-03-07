@@ -41,9 +41,6 @@ class ALIGO_IFO(IFO):
 
     def __init__(self, kat, tuning_keys_list, tunings_components_list):
         IFO.__init__(self, kat, tuning_keys_list, tunings_components_list)
-        self._f1 = np.nan
-        self._f2 = np.nan
-        self._f3 = np.nan
         self._f36M = np.nan
     
     @property
@@ -70,60 +67,30 @@ class ALIGO_IFO(IFO):
 
     @property
     def f1(self):
-        return self._f1
+        return self.kat.mod1.f.value
+        
     @f1.setter
     def f1(self, value):
-        self._f1 = float(value)
-        self.f36M = self.f2 - self.f1
-        # Updating ports
-        if hasattr(self, 'LSC_DOFs'):
-            for a in self.LSC_DOFs:
-                if a.port.name[-2:] == 'f1':
-                    a.port.f = self.f1
+        self.kat.mod1.f.value = value
                 
     @property
     def f2(self):
-        return self._f2
+        return self.kat.mod2.f.value
+        
     @f2.setter
     def f2(self, value):
-        self._f2 = float(value)
-        self.f36M = self.f2 - self.f1
-        # Updating ports
-        if hasattr(self, 'LSC_DOFs'):
-            for a in self.LSC_DOFs:
-                if a.port.name[-2:] == 'f2':
-                    a.port.f = self.f2
-        
-    @property
-    def f3(self):
-        return self._f3
-    @f3.setter
-    def f3(self, value):
-        self._f3 = float(value)
-        # Updating ports
-        if hasattr(self, 'LSC_DOFs'):
-            for a in self.LSC_DOFs:
-                if a.port.name[-2:] == 'f3':
-                    a.port.f = self.f3
+        self.kat.mod2.f.value = value
         
     @property
     def f36M(self):
-        return self._f36M
-    @f36M.setter
-    def f36M(self, value):
-        self._f36M = float(value)
-        # Updating ports
-        if hasattr(self, 'LSC_DOFs'):
-            for a in self.LSC_DOFs:
-                if a.port.name[-4:] == 'f36M':
-                    a.port.f = self.f36M
+        return self.f2 - self.f1
         
     def createPorts(self):
         # useful ports
-        self.POP_f1  = Output(self, "POP_f1",  "nPOP",  self.f1, phase=101)
-        self.POP_f2  = Output(self, "POP_f2",  "nPOP",  self.f2, phase=13)
-        self.REFL_f1 = Output(self, "REFL_f1", "nREFL", self.f1, phase=101)
-        self.REFL_f2 = Output(self, "REFL_f2", "nREFL", self.f2, phase=14)
+        self.POP_f1  = Output(self, "POP_f1",  "nPOP",  "f1", phase=101)
+        self.POP_f2  = Output(self, "POP_f2",  "nPOP",  "f2", phase=13)
+        self.REFL_f1 = Output(self, "REFL_f1", "nREFL", "f1", phase=101)
+        self.REFL_f2 = Output(self, "REFL_f2", "nREFL", "f2", phase=14)
         self.AS_DC   = Output(self, "AS_DC", "nAS")
         self.POW_BS  = Output(self, "PowBS", "nPRBS*")
         self.POW_X   = Output(self, "PowX",  "nITMX2")
@@ -268,10 +235,19 @@ class ALIGO_IFO(IFO):
         
         This function alters the kat object directly.
         """
-        self.kat.remove("lmod1", "mod1", "lmod2", "mod2", "lmod3")    # Remove modulators
-        # Set output node of laser block to be on the laser
-        self.kat.nodes.replaceNode(self.kat.L0, 'n0', 'nLaserOut')
+        comps, nodes = self.kat.nodes.getComponentsBetween(self.kat.L0.nodes[0].name, self.kat.mod2.nodes[1].name, getNodes=True)
         
+        for i,c in enumerate(comps):
+            if c.name == "lmod1":
+                i -= 1
+                break
+        
+        self.kat.remove("lmod1", "mod1", "lmod2", "mod2")    # Remove modulators
+                
+        # Set output node of laser block to be on the laser
+        self.kat.nodes.replaceNode(comps[i], nodes[i][-1].name, 'nLaserOut')
+        
+            
     def remove_IMC_HAM2(self, removeIMC, removeHAM2):
         """
         For use with files that have the IMC and HAM2 blocks.
@@ -410,13 +386,15 @@ class ALIGO_IFO(IFO):
         Sets the DC offset for this inteferometer.
         
         This function directly alters the tunings of the associated kat object.
+        
+        DCoffset - degrees of additional DC offset to apply current tunings
         """
         _kat = self.kat
         
         if DCoffset is not None:
             self.DCoffset = DCoffset
         
-            print("-- applying user-defined DC offset:")
+            vprint(verbose, "-- applying user-defined DC offset:")
         
             tunings = self.get_tunings()
         
@@ -683,14 +661,14 @@ class ALIGO_IFO(IFO):
         
         self.set_REFL_gouy_telescope_phase(gouy_REFL_BS, gouy_A, gouy_B)
         
-        self.kat.IFO.ASC_REFL9A   = Output(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A",  self.kat.IFO.f1, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL9B   = Output(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B",  self.kat.IFO.f1, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL9A   = Output(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A",  "f1", block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL9B   = Output(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B",  "f1", block="REFL_gouy_tele")
 
-        self.kat.IFO.ASC_REFL45A  = Output(self.kat.IFO, "ASC_REFL45A",  "nREFL_WFS_A",  self.kat.IFO.f2, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL45B  = Output(self.kat.IFO, "ASC_REFL45B",  "nREFL_WFS_B",  self.kat.IFO.f2, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL45A  = Output(self.kat.IFO, "ASC_REFL45A",  "nREFL_WFS_A",  "f2", block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL45B  = Output(self.kat.IFO, "ASC_REFL45B",  "nREFL_WFS_B",  "f2", block="REFL_gouy_tele")
         
-        self.kat.IFO.ASC_REFL36A  = Output(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  self.kat.IFO.f36M, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL36B  = Output(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  self.kat.IFO.f36M, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL36A  = Output(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  "f36M", block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL36B  = Output(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  "f36M", block="REFL_gouy_tele")
         
         self.update()
         
@@ -827,11 +805,6 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     else:
         kat.IFO.f2 = 5.0 * kat.IFO.f1
         
-    if "f3" in kat.constants.keys():
-        kat.IFO.f3 = float(kat.constants["f3"].value)
-    
-    kat.IFO.f36M = kat.IFO.f2 - kat.IFO.f1
-        
     # TODO add else here!
     # check modultion frequencies
     if (5 * kat.IFO.f1 != kat.IFO.f2):
@@ -846,10 +819,10 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     # define ports and signals 
     
     # useful ports
-    kat.IFO.POP_f1  = Output(kat.IFO, "POP_f1",  "nPOP",  kat.IFO.f1, phase=101)
-    kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  kat.IFO.f2, phase=13)
-    kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", kat.IFO.f1, phase=101)
-    kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", kat.IFO.f2, phase=14)
+    kat.IFO.POP_f1  = Output(kat.IFO, "POP_f1",  "nPOP",  "f1", phase=101)
+    kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  "f2", phase=13)
+    kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", "f1", phase=101)
+    kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", "f2", phase=14)
     
     # If we don't have an OMC then we need to attach
     # directly to the AS node. Otherwise use OMC refl
@@ -858,9 +831,9 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     else:
         nAS_RF = "nAS"
         
-    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1", nAS_RF, kat.IFO.f1, phase=101)
-    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2", nAS_RF, kat.IFO.f2, phase=14)
-    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", nAS_RF, kat.IFO.f36M, phase=14)
+    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1", nAS_RF,  "f1", phase=101)
+    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2", nAS_RF,  "f2", phase=14)
+    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", nAS_RF, "f36M", phase=14)
 
     kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
@@ -868,12 +841,16 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nITMY2")
 
     # pretune LSC DOF
-    kat.IFO.preARMX =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
-    kat.IFO.preARMY =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
-    kat.IFO.preMICH =  DOF(kat.IFO, "AS"  , kat.IFO.AS_DC,   "", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 6.0, sigtype="z")
-    kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PRM",  1, 10.0, sigtype="z")
-    kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0, sigtype="z")
-    
+    kat.IFO.preARMX  =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
+    kat.IFO.preARMY  =  DOF(kat.IFO, "ARMY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
+    kat.IFO.preMICH  =  DOF(kat.IFO, "AS"  , kat.IFO.AS_DC,   "", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 6.0, sigtype="z")
+    kat.IFO.prePRCL  =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PRM",  1, 10.0, sigtype="z")
+    kat.IFO.preSRCL  =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0, sigtype="z")
+     
+    # Used by new pretuning scripts DOFs
+    kat.IFO._preDARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2, "Q",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
+    kat.IFO._prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.REFL_f1,"I", "PRM",  1, 10.0, sigtype="z")
+     
     # control scheme as in [1] Table C.1. Due to Finesse conventions, the overall factor for all but PRCL are multiplied by -1
     # compared to the LIGO defintion, to match the same defintion. 
     kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
@@ -937,24 +914,25 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     
 
     
-def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=60.0):
+def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=90.0, debug=None):
     assert_aligo_ifo_kat(kat)
     
     while precision > pretune_precision * DOF.scale:
         out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
-        phi, precision = find_peak(out, DOF.port.name, minmax=minmax)
         
+        phi, precision = find_peak(out, DOF.port.name, minmax=minmax, debug=debug)
+         
     return phi, precision
     
     
-def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
+def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     assert_aligo_ifo_kat(_kat)
     
     # This function needs to apply a bunch of pretunings to the original
     # kat and associated IFO object passed in
     IFO = _kat.IFO
     
-    print("-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision, pretune_precision*_kat.lambda0/360.0))
+    vprint(verbose, "-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision, pretune_precision*_kat.lambda0/360.0))
     
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
@@ -1004,7 +982,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     make_transparent(kat,["SRM"])
     phi, precision = scan_to_precision(kat, IFO.prePRCL, pretune_precision)
     phi=round(phi/pretune_precision)*pretune_precision
-    phi=round_to_n(phi,5)
+    phi=round_to_n(phi, 5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
     IFO.prePRCL.apply_tuning(phi)
 
@@ -1012,15 +990,193 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision = 10)
+    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, debug=("SRCL" in debug))
     phi=round(phi/pretune_precision)*pretune_precision
-    phi=round_to_n(phi,4)-90.0
+    phi=round_to_n(phi, 5) - 90.0
     
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
     IFO.preSRCL.apply_tuning(phi)
     
-    print("   ... done")
+    vprint(verbose,"   ... done")
     
+
+def pretune_2(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
+    """
+    This will pretune the arms and PRC cavities. This should be used in conjunction with the
+    pretune_SRCL function after the DC offset has been set.
+    """
+    assert_aligo_ifo_kat(_kat)
+    
+    # This function needs to apply a bunch of pretunings to the original
+    # kat and associated IFO object passed in
+    IFO = _kat.IFO
+    
+    vprint(verbose, "-- pretuning interferometer to precision {0:2g} deg = {1:2g} m".format(pretune_precision, pretune_precision*_kat.lambda0/360.0))
+    
+    kat = _kat.deepcopy()
+    kat.removeBlock("locks", False)
+    
+    vprint(verbose, "   scanning X arm (maximising power)")
+    
+    make_transparent(kat, ["PRM", "SRM"])
+    make_transparent(kat, ["ITMY", "ETMY"])
+    
+    kat.BS.setRTL(0.0, 1.0, 0.0) # set BS refl. for X arm
+    
+    phi, precision = scan_to_precision(kat, IFO.preARMX, pretune_precision)
+    phi = round(phi/pretune_precision)*pretune_precision
+    phi = round_to_n(phi,5)
+    
+    vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
+    
+    IFO.preARMX.apply_tuning(phi)
+
+    vprint(verbose, "   scanning Y arm (maximising power)")
+    kat = _kat.deepcopy()
+    kat.removeBlock("locks", False)
+    
+    make_transparent(kat,["PRM","SRM"])
+    make_transparent(kat,["ITMX", "ETMX"])
+    kat.BS.setRTL(1.0,0.0,0.0) # set BS refl. for Y arm
+    phi, precision = scan_to_precision(kat, IFO.preARMY, pretune_precision)
+    phi=round(phi/pretune_precision)*pretune_precision
+    phi=round_to_n(phi,5)
+    vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
+    IFO.preARMY.apply_tuning(phi)
+
+    vprint(verbose, "   scanning MICH (minimising power)")
+    kat = _kat.deepcopy()
+    kat.removeBlock("locks", False)
+    
+    make_transparent(kat,["PRM","SRM"])
+    phi, precision = scan_to_precision(kat, IFO.preMICH, pretune_precision, minmax="min", precision=30.0)
+    phi=round(phi/pretune_precision)*pretune_precision
+    phi=round_to_n(phi,5)
+    vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
+    IFO.preMICH.apply_tuning(phi, add=True)
+
+    vprint(verbose, "   scanning PRCL (maximising power)")
+    kat = _kat.deepcopy()
+    kat.removeBlock("locks", False)
+    make_transparent(kat,["SRM"])
+    phi, precision = scan_to_precision(kat, IFO.prePRCL, pretune_precision)
+    phi=round(phi/pretune_precision)*pretune_precision
+    phi=round_to_n(phi, 5)
+    vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
+    IFO.prePRCL.apply_tuning(phi)
+    
+    vprint(verbose, "   ... done")
+    
+    
+def pretune_SRCL(_kat, verbose=False, debug=False):
+    """
+    This pretunes the SRC cavity to find a reasonable operating point.
+    It works slightly better with distorted interferometer models compared
+    to just using pretune().
+    """
+    assert_aligo_ifo_kat(_kat)
+    
+    IFO = _kat.IFO
+    
+    vprint(verbose, "   scanning SRCL (finding TEM00 antiresonance)")
+    base1 = _kat.deepcopy()
+
+    # add some detectors to make a metric
+    base1.removeBlock("locks", False)
+    base1.parse("""
+    pd Psrm nSRM1
+    """)
+    base1.parse(base1.IFO.SRCL.signal())
+
+    # Set some detectors to only see the TEM00 mode
+    for n in range(_kat.maxtem+1):
+        for m in range(_kat.maxtem+1):
+            base1.detectors[base1.IFO.SRCL.signal_name()].mask(n, m, int(n==m==0))
+            base1.Psrm.mask(n, m, int(n==m==0))
+            ...
+
+    out = pykat.ifo.scan_DOF(base1, base1.IFO.SRCL, xlimits = [-10, 180], steps=1000)
+    # find resonance tuning
+    mx_deg_Psrm = out.x[out['Psrm'].argmax()]
+
+    c = ((mx_deg_Psrm + 90) % 360) - 180
+
+    out = pykat.ifo.scan_DOF(base1, base1.IFO.SRCL, xlimits = [c-180, c+180], steps=1000)
+    
+    # A weighting to favour the minimum value between the two SRC resonances
+    # highlighting the anti-resonance
+    W_Psrm     = 1+np.cos(np.deg2rad((out.x-mx_deg_Psrm)*2))
+
+    # Error signal should be small as well as small amount of power
+    SRCL_metric = abs(out["REFL_f2_I"]*out["Psrm"])
+    SRCL_metric /= SRCL_metric.max()
+    # favour points further away from resonance
+    SRCL_metric += W_Psrm
+
+    if debug:
+        plt.plot(out.x, SRCL_metric)
+        plt.plot(out.x, out["REFL_f2_I"])
+    
+    deg = (out.x[SRCL_metric.argmin()] % 360) - 180
+    IFO.preSRCL.apply_tuning(-deg)
+    
+    
+def setup(base, old=True, DC_offset_pm=20, verbose=False):
+    """
+    Runs a preparation routine to produce a LIGO model at a resonable operating point.
+    This uses the pretune2 and pretune_SRCL methods which allow you 
+    """
+    assert_aligo_ifo_kat(base)
+    
+    base = base.deepcopy()
+    base.verbose = False
+
+    base.removeBlock('locks', False)
+    base.removeBlock('errsigs', False)
+    base.removeBlock('powers', False)
+
+    base.phase = 2
+    base.IFO.fix_mirrors()
+
+    kat = base.deepcopy()
+    kat.IFO.remove_modulators()
+
+    if old:
+        pretune(kat,pretune_precision=1e-3, verbose=verbose)
+    else:
+        pretune_2(kat, pretune_precision=1e-3, verbose=verbose)
+
+    # Apply the tunings to our base kat file
+    base.IFO.apply_tunings(kat.IFO.get_tunings())
+    base.IFO.adjust_PRC_length(verbose=verbose)
+
+    if verbose:
+        pretune_status(base)
+        base.IFO.lengths_status()
+
+    # Set DC offset and plot
+    DCoffset = DC_offset_pm*1e-12 / base.lambda0 * 180.0
+    base.IFO.set_DC_offset(DCoffset=DCoffset, verbose=verbose)
+
+    if not old:
+        pretune_SRCL(base, verbose=verbose)
+
+    errsigs_cmds = base.IFO.add_errsigs_block()
+
+    # Generates a dictionary of the lock values to use
+    locks = generate_locks(base, verbose=verbose)
+
+    # Takes these values and then generates the commands and adds them to
+    # the lock block of the kat
+    lock_cmds = base.IFO.add_locks_block(locks, verbose=verbose)
+
+    base.SRCL_lock.accuracy /= 10
+    
+    return base
+
+
+
+
 
 
 def pretune_status(_kat):

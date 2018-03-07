@@ -157,7 +157,7 @@ def find_peak(out, detector, minmax='max', debug=False):
         import matplotlib.pyplot as plt
         
         plt.figure()
-        plt.plot(out.x,out[detector])
+        plt.semilogy(out.x,out[detector])
         plt.show()
         
         print("max: ")
@@ -167,6 +167,7 @@ def find_peak(out, detector, minmax='max', debug=False):
         
     if len(_max) == 0 and minmax == "max":
         raise pkex.BasePyKatException("No maximum peaks found in {}".format(detector))
+        
     if len(_min) == 0 and minmax == "min":
         raise pkex.BasePyKatException("No minimum peaks found in {}".format(detector))
         
@@ -303,7 +304,7 @@ def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps
 
     kat.parse(scan_optic_cmds(_optics, _factors, target=target, xlimits=xlimits, steps=steps, relative=relative))
 
-    return kat.run(cmd_args="-cr=on")
+    return kat.run(cmd_args=["-cr=on"])
 
 def optical_gain(DOF_sig, DOF_det, f=1, useDiff=True, deriv_h=1.0e-8):
     """
@@ -402,7 +403,7 @@ def scan_demod_phase_cmds(pd_detectors, demod_phase=1, relative=False, xaxis=1, 
         
     return rtn
     
-def optimise_demod_phase(_kat, DOF, ports, debug=False):
+def optimise_demod_phase(_kat, DOF, ports, minimise=False, debug=False):
     """
     This will optimise the demodulation phase at each port
     provide the largest slope in the detector outputs with respect
@@ -455,7 +456,7 @@ def optimise_demod_phase(_kat, DOF, ports, debug=False):
     if debug:
         print(kat & "OPTIMISE")
         
-    out = kat.run()
+    out = kat.run(cmd_args=["-cr=on"])
     
     if debug:
         print(out.y)
@@ -468,6 +469,9 @@ def optimise_demod_phase(_kat, DOF, ports, debug=False):
         x = np.deg2rad(out.x)
         R = np.sqrt(y1**2 + y2**2)
         phi = np.rad2deg(np.arctan2(y2,y1))
+        
+        if minimise:
+            phi += 90
         
         # All in I quadrature so no
         _kat.IFO.Outputs[port.name].phase = phi
@@ -517,7 +521,7 @@ def mismatch_cavities(base, node):
             mmx[c1][c2] = pykat.BeamParam.overlap(q1x, q2x)
             mmy[c1][c2] = pykat.BeamParam.overlap(q1y, q2y)
             
-    return 1-mmx, 1-mmy, list(zip(cavs, qxs, qys))
+    return 1-mmx.astype(float), 1-mmy.astype(float), list(zip(cavs, qxs, qys))
 
 def mismatch_scan_RoC(base, node, mirror, lower, upper, steps):
     _kat = base.deepcopy()
@@ -1239,11 +1243,14 @@ class Output(object):
     You can add many detectors at a given port, which readout different quadratures or types of transfer functions
     or signals.
     """
-    def __init__(self, IFO, name, nodeNames, f=None, phase=0, block=None):
+    def __init__(self, IFO, name, nodeNames, f_property_name=None, phase=0, block=None):
+        if f_property_name is not None and not isinstance(f_property_name, six.string_types):
+            raise Exception("f_property_name should be a property name of a frequency in class {}".format(IFO.__class__))
+            
         self.__IFO = IFO
         self.name = name
         self.nodeNames = make_list_copy(nodeNames)
-        self.f = f            # demodulation frequency, float
+        self.__f_property_name = f_property_name
         self.phase = phase    # demodulation phase for I quadrature, float
         self._block = block
     
@@ -1252,6 +1259,13 @@ class Output(object):
         """For referencing the kat object this DOF is associated with"""
         return self.__IFO.kat
           
+    @property
+    def f(self):
+        if self.__f_property_name is None:
+            return None
+        
+        return getattr(self.__IFO, self.__f_property_name)
+        
     def check_nodeName(self):
         self.nodeName = None
         

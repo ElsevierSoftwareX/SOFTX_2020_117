@@ -119,7 +119,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     
     # add in signals for those DOF to plot
     for _ in dofs:
-        if not (not replaceDOFSignals and hasattr(kat, _.signal_name())):
+        if replaceDOFSignals and not hasattr(kat, _.signal_name()):
             kat.parse(_.signal())
             
     toShow = None
@@ -158,21 +158,27 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
                                   
         kat.parse(scan_cmd, addToBlock="SCAN")
                 
-        out = kat.run()
+        out = kat.run(cmd_args=['-cr=on'])
         
-        if d.name == "DARM" and "DC" in d.port.name:
-            DC_Offset = kat.IFO.DCoffsetW
-        else:
+        DC_Offset = None
+        
+        # Get a lock offset if used
+        if (d.name + '_lock') in _kat.commands:
+            DC_Offset = _kat.commands[d.name + '_lock'].offset.value
+        
+        if DC_Offset is None:
             DC_Offset = 0
-        
+        else:
+            DC_Offset = float(DC_Offset)
+            
         if toShow is None:
-            ax.plot(out.x, out[d.signal_name()] - DC_Offset, label=legend)
+            ax.plot(out.x, out[d.signal_name()] + DC_Offset, label=legend)
         else:
             for _ in toShow:
                 if legend is None:
                     legend = _.name
                     
-                ax.plot(out.x, out[_.signal_name()] - DC_Offset, label=legend)
+                ax.plot(out.x, out[_.signal_name()] + DC_Offset, label=legend)
             
         ax.set_xlim([np.min(out.x), np.max(out.x)])
         ax.set_xlabel("{} [deg]".format(d.name))
@@ -366,5 +372,36 @@ def pow_lsc(kat,xaxis = [-1,1,100]):
     Plotting cavity powers and error signals in the same figures. Can be used
     to see if error signal zero crossings coincide with power peaks.
     '''
-    pass
+    raise NotImplemented()
     
+
+def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plt={}):
+    """
+    Plots strain sensitivity
+    
+    base - LIGO model
+    lower, upper, steps - frequency vector
+    ax - Matplotlib axes to use, if None it creates internally
+    plt - Dict of keyword arguments to pass to loglog
+    """
+    kat = base.deepcopy()
+
+    kat.removeBlock("locks")
+    kat.removeBlock("errsigs")
+
+    kat.parse(kat.IFO.DARM.transfer())
+    kat.parse("qnoisedS NSR 1 $fs nAS")
+    
+    if ax is None:
+        ax = plt.subplot(111)
+    
+    out = kat.IFO.DARM_h.scan_f(linlog="log", lower=lower, upper=upper, steps=steps)
+
+    ax.loglog(out.x, abs(out["NSR"]), **plt)
+
+    ax.set_ylabel("Sensitivity [h/sqrt{Hz}]")
+    ax.set_xlabel("Frequency [Hz]")
+    
+    if ax is None:
+        plt.gcf().tight_layout()
+        plt.show()
