@@ -1503,8 +1503,7 @@ class kat(object):
                         if line.startswith(PYKAT_DATA):
                             # Checks if pykat data is included now as a comment
                             vals = line.split("=", 1)
-                            
-                            if len(v)==2:
+                            if len(vals)==2:
                                 self._str2data(vals[1])
                                 
                         elif keepComments:
