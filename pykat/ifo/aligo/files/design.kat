@@ -70,7 +70,8 @@
 %%% FTblock laser
 ###########################################################################
 # Laser and input optics
-l L0 125 0 n0
+l L0 125 0.0 0.0 ni
+bs jitter 1 0 0 0 ni n0 dump dump
 s lmod1 1 n0 n1
 # modulators for core interferometer sensing - Advanced LIGO, CQG, 2015 
 # http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8

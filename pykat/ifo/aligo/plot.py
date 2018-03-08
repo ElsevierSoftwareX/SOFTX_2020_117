@@ -375,7 +375,7 @@ def pow_lsc(kat,xaxis = [-1,1,100]):
     raise NotImplemented()
     
 
-def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plt={}):
+def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}):
     """
     Plots strain sensitivity
     
@@ -397,7 +397,7 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plt={}):
     
     out = kat.IFO.DARM_h.scan_f(linlog="log", lower=lower, upper=upper, steps=steps)
 
-    ax.loglog(out.x, abs(out["NSR"]), **plt)
+    ax.loglog(out.x, abs(out["NSR"]), **plot_cmds)
 
     ax.set_ylabel("Sensitivity [h/sqrt{Hz}]")
     ax.set_xlabel("Frequency [Hz]")

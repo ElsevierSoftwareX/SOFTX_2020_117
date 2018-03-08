@@ -105,7 +105,9 @@ def round_to_n(x, n):
     
 def vprint(verbose, printstr, end='\n'):
     if verbose:
-        print(printstr,end=end)
+        # needs to be fixed
+        #print(printstr, end=end)
+        print(printstr)
         
 def BS_optical_path(thickness, n=1.44963098985906, angle=45.0):
     """
@@ -276,16 +278,19 @@ def scan_optic_cmds(self, optics, factors, xlimits=[-100, 100], steps=200,relati
                               axis=1,
                               relative=relative)
                               
-def scan_DOF(kat, DOF, xlimits=[-100, 100], steps=200, relative=False): 
+def scan_DOF(kat, DOF, xlimits=[-100, 100], steps=200, relative=False, extra_cmds=None): 
     kat = kat.deepcopy()
     kat.parse(scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
     
     if DOF.port is not None:
         kat.parse(DOF.signal())
     
+    if extra_cmds:
+        kat.parse(extra_cmds)
+        
     return kat.run(cmd_args=["-cr=on"])
 
-def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps=200,relative=False): 
+def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps=200,relative=False, extra_cmds=None): 
     """
     Scans one or more optics (by scanning the `target` parameter).
     
@@ -305,7 +310,10 @@ def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps
     factors=make_list_copy(_factors)
 
     kat.parse(scan_optic_cmds(_optics, _factors, target=target, xlimits=xlimits, steps=steps, relative=relative))
-
+    
+    if extra_cmds:
+        kat.parse(extra_cmds)
+        
     return kat.run(cmd_args=["-cr=on"])
 
 def optical_gain(DOF_sig, DOF_det, f=1, useDiff=True, deriv_h=1.0e-8):

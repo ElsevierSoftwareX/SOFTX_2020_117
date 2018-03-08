@@ -847,11 +847,12 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.prePRCL  =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", "PRM",  1, 10.0, sigtype="z")
     kat.IFO.preSRCL  =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0, sigtype="z")
      
-    # Used by new pretuning scripts DOFs
+    # Used by new pretuning scripts DOFs - based on lock aquisition stuff in martynov thesis
     kat.IFO._preDARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2, "Q",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
     kat.IFO._prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.REFL_f1,"I", "PRM",  1, 10.0, sigtype="z")
      
-    # control scheme as in [1] Table C.1. Due to Finesse conventions, the overall factor for all but PRCL are multiplied by -1
+    # control scheme as in [1] Table C.1. Due to Finesse
+    # conventions, the overall factor for all but PRCL are multiplied by -1
     # compared to the LIGO defintion, to match the same defintion. 
     kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
     kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
@@ -914,11 +915,11 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     
 
     
-def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=90.0, debug=None):
+def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=90.0, debug=None, extra_cmds=None):
     assert_aligo_ifo_kat(kat)
     
     while precision > pretune_precision * DOF.scale:
-        out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision])
+        out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision], extra_cmds=extra_cmds)
         
         phi, precision = find_peak(out, DOF.port.name, minmax=minmax, debug=debug)
          
@@ -990,7 +991,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, debug=("SRCL" in debug))
+    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision=90.0, debug=("SRCL" in debug))
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi, 5) - 90.0
     
@@ -1351,3 +1352,65 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
     }
     
     return data
+
+def setup(base, DC_offset_pm=20, verbose=False, debug=False):
+    """
+    Runs a preparation routine to produce a LIGO model at a resonable operating point.
+    
+    Returns a copy of the base file provided with all the locks and error signals
+    added.
+    
+    base - Base aLIGO model to tune and find an operating for
+    """
+    
+    # Will change later when this works with the 
+    old = True
+    
+    assert_aligo_ifo_kat(base)
+    
+    base = base.deepcopy()
+    base.verbose = False
+
+    base.removeBlock('locks',   False)
+    base.removeBlock('errsigs', False)
+    base.removeBlock('powers',  False)
+
+    base.phase = 2
+    base.IFO.fix_mirrors()
+
+    kat = base.deepcopy()
+    kat.IFO.remove_modulators()
+
+    if old:
+        pretune(kat, pretune_precision=1e-3, verbose=verbose)
+    else:
+        _pretune_ARM(kat, pretune_precision=1e-3, verbose=verbose)
+        _pretune_MICH(kat, pretune_precision=1e-3, verbose=verbose)
+        
+    # Apply the tunings to our base kat file
+    base.IFO.apply_tunings(kat.IFO.get_tunings())
+    base.IFO.adjust_PRC_length(verbose=verbose)
+    
+    if not old:
+        _pretune_PRCL(base, verbose=verbose, debug=debug)
+    
+    DCoffset = DC_offset_pm*1e-12 / base.lambda0 * 180.0
+    base.IFO.set_DC_offset(DCoffset=DCoffset, verbose=verbose)
+    
+    if not old:
+        _pretune_SRCL(base, verbose=verbose, debug=debug)
+        
+    if verbose:
+        pretune_status(base)
+        base.IFO.lengths_status()
+        
+    errsigs_cmds = base.IFO.add_errsigs_block()
+
+    #Generates a dictionary of the lock values to use
+    locks = generate_locks(base, verbose=verbose)
+
+    #Takes these values and then generates the commands and adds them to
+    #the lock block of the kat
+    lock_cmds = base.IFO.add_locks_block(locks, verbose=verbose)
+    
+    return base
