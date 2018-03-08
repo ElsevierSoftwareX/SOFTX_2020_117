@@ -1094,7 +1094,6 @@ def pretune_SRCL(_kat, verbose=False, debug=False):
         for m in range(_kat.maxtem+1):
             base1.detectors[base1.IFO.SRCL.signal_name()].mask(n, m, int(n==m==0))
             base1.Psrm.mask(n, m, int(n==m==0))
-            ...
 
     out = pykat.ifo.scan_DOF(base1, base1.IFO.SRCL, xlimits = [-10, 180], steps=1000)
     # find resonance tuning
