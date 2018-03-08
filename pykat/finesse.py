@@ -1531,14 +1531,6 @@ class kat(object):
                             
                         continue
                     
-                    if line.startswith(PYKAT_DATA):
-                        v = line.split("=", 1)
-                        
-                        if len(v)==2:
-                            self._str2data(v[1])
-                            
-                        continue
-                    
                     if keepComments and "#" in line:
                         if not inlineCommentWarning:
                             inlineCommentWarning = True
