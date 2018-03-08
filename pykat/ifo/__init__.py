@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import pykat
 import pykat.exceptions as pkex
 from pykat import isContainer
@@ -15,6 +17,7 @@ from scipy.optimize import minimize
 from scipy.misc import comb
 # THE PLOTTING OPTION WILL BE REMOVED
 import matplotlib.pyplot as plt
+
 
 
 class SensingMatrix(DataFrame):
@@ -105,9 +108,7 @@ def round_to_n(x, n):
     
 def vprint(verbose, printstr, end='\n'):
     if verbose:
-        # needs to be fixed
-        #print(printstr, end=end)
-        print(printstr)
+        print(printstr, end=end)
         
 def BS_optical_path(thickness, n=1.44963098985906, angle=45.0):
     """
