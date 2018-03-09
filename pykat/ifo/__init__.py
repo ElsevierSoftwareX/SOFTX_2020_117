@@ -15,8 +15,6 @@ from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
 from scipy.optimize import minimize
 from scipy.misc import comb
-# THE PLOTTING OPTION WILL BE REMOVED
-import matplotlib.pyplot as plt
 
 
 
@@ -759,7 +757,6 @@ def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=Fal
     optical_gain  - The optical gain (slope of the error signal). The unit
                     depends on the unit of x.
     '''
-    # THE PLOTTING OPTION WILL BE REMOVED
 
     if xbounds is None:
         xbounds = np.array([x[0],x[-1]])
@@ -813,6 +810,7 @@ def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=Fal
         
         # PLOTTING WILL BE REMOVED
         if isplot:
+            import matplotlib.pyplot as plt
             phases = np.linspace(min_phase, max_phase, (max_phase - min_phase)/step + 1)
             cm = plt.cm.Spectral_r
             norm = mpl.colors.Normalize(vmin=phases[0], vmax=phases[-1])
@@ -854,6 +852,7 @@ def ASC_demod_phase(kat, asc_dof, output, xaxis=[-1e-6, 1e-6, 50], err_tol = 1e-
 
     # THE PLOTTING OPTION WILL BE REMOVED
     if isplot:
+        import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.plot(x, c2r_errsig(y,demod_phase), 'b-', label='{} at {}'.format(asc_dof.name,cmd_str[1]))
@@ -939,6 +938,7 @@ def LSC_demod_phase(lsc_dof, xaxis=[-.1, .1, 50], err_tol = 1e-5, pwr_dof=None,
 
     # PLOTTING WILL BE REMOVED
     if isplot:
+        import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.plot(x, c2r_errsig(y,demod_phase), 'r-', label='{} error signal'.format(lsc_dof.name))
@@ -956,8 +956,6 @@ def LSC_demod_phase(lsc_dof, xaxis=[-.1, .1, 50], err_tol = 1e-5, pwr_dof=None,
         plt.show(fig)
     if verbose:
         print('{}: demod. phase =  {:.3e} deg, optical gain = {:.3e} W/deg'.format(lsc_dof.name,demod_phase, og))
-
-    
     return demod_phase, og
 
 def find_max_power(kat, scanstring, detector, P_tol=1e-4, isplot=False, isMax = True):
@@ -979,6 +977,7 @@ def find_max_power(kat, scanstring, detector, P_tol=1e-4, isplot=False, isMax = 
     #print(out[pwr_dof.signal_name()])
 
     if isplot:
+        import matplotlib.pyplot as plt
         plt.plot(x0, P0)
         plt.xlim(x0.min(),x0.max())
         plt.grid()
