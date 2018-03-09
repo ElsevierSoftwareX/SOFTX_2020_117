@@ -264,9 +264,9 @@ s sMMT_M2_L1 0.5 nMMT_M2b nMMT_L1a
 # lens MMT_L2 1.724 nMMT_L2a nMMT_L2b
 
 # Adjusted the above values to modematch OMCs to the IFO
-lens MMT_L1 3.493 nMMT_L1a nMMT_L1b
+lens MMT_L1 4.024 nMMT_L1a nMMT_L1b
 s sMMT_L1_L2 0.12 nMMT_L1b nMMT_L2a
-lens MMT_L2 1.398 nMMT_L2a nMMT_L2b
+lens MMT_L2 1.323 nMMT_L2a nMMT_L2b
 # ------------------------------------------------------
 
 s sL2_OMC1 0.99 nMMT_L2b nOMC1_ICa
@@ -346,11 +346,11 @@ maxtem 2
 
 # HR-surfaces
 # -----------
-attr WI Rc -1424.5      # Measured WI RoC [VIR-0543A-14]
-attr NI Rc -1424.6      # Measured NI RoC [VIR-0544A-14]
-attr WE Rc 1696         # Measured WE RoC [VIR-0270A-15]
-attr NE Rc 1695         # Measured NE RoC [VIR-0269A-15]
-attr PR Rc -1477        # Measured PR RoC [VIR-0029A-15]
+attr WI Rc -1424.5      # Measured cold IFO WI RoC [VIR-0543A-14]
+attr NI Rc -1424.6      # Measured cold IFO NI RoC [VIR-0544A-14]
+attr WE Rc 1696         # Measured cold IFO WE RoC [VIR-0270A-15]
+attr NE Rc 1695         # Measured cold IFO NE RoC [VIR-0269A-15]
+attr PR Rc -1477        # Measured cold IFO PR RoC [VIR-0029A-15]
 attr SR Rc 1430         # Design [TDR, table 2.8]
 # Design RoCs for OMC [TDR page 247]
 attr OMC1_CS1 Rc 1.499  
@@ -362,7 +362,7 @@ attr OMC2_CS2 Rc 1.499
 # -----------
 # attr WIAR Rc -1420     # Designed WI AR RoC [TDR, table 2.6]
 # attr NIAR Rc -1420     # Designed NI AR RoC [TDR, table 2.6]
-attr WIAR Rc -1424.5    # Approximately the same as measured HR surface
+attr WIAR Rc -1424.5     # Approximately the same as measured HR surface
 attr NIAR Rc -1424.6     # Approximately the same as measured HR surface
 attr PRAR Rc -3.62       # Measured PR AR RoC [VIR-0029A-15]
 attr SRAR Rc 3.59        # Design [TDR, table 2.8]
@@ -370,8 +370,8 @@ attr SRAR Rc 3.59        # Design [TDR, table 2.8]
 # Lenses
 # -----------
 # Compensation plate thermal lenses
-const f_CPN_TL 60509.52414597     # North 
-const f_CPW_TL 64643.60054991     # West
+const f_CPN_TL 63544.191     # North 
+const f_CPW_TL 68247.604     # West
 
 #const f_CPN_TL 54000     # North 
 #const f_CPW_TL 930000     # West
