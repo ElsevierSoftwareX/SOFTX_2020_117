@@ -55,25 +55,48 @@ class ADV_IFO(IFO):
     
     @property
     def DARMoffset(self):
-        if 'DARMoffset' not in self.kat.data:
+        if 'DCoffset' not in self.kat.data:
+            return 0
+        elif 'DARM' not in self.kat.data['DCoffset']:
             return 0
         else:
-            return float(self.kat.data['DARMoffset'])
+            return float(self.kat.data['DCoffset']['DARM'])
 
     @DARMoffset.setter
     def DARMoffset(self, value):
-        self.kat.data['DARMoffset'] = float(value)
+        if 'DCoffset' in self.kat.data:
+            pkex.printWarning(("Overwrites current DARM-offset in kat.IFO.DARMoffset, "+
+                               "but the tunings might have been added in the kat-file."+
+                               "Only add offset once if thermal functions are to be used"))
+            self.kat.data['DCoffset']['DARM'] = float(value)
+        else:
+            self.kat.data['DCoffset'] = {'DARM': float(value)}
 
     @property
     def MICHoffset(self):
-        if 'MICHoffset' not in self.kat.data:
+        if 'DCoffset' not in self.kat.data:
+            return 0
+        elif 'MICH' not in self.kat.data['DCoffset']:
             return 0
         else:
-            return float(self.kat.data['MICHoffset'])
+            return float(self.kat.data['DCoffset']['MICH'])
 
     @MICHoffset.setter
     def MICHoffset(self, value):
-        self.kat.data['MICHoffset'] = float(value)
+        if 'DCoffset' in self.kat.data:
+            pkex.printWarning(("Overwrites current MICH-offset in kat.IFO.DARMoffset, "+
+                               "but the tunings might have been added in the kat-file." +
+                               "Only add offset once if thermal functions are to be used"))
+            self.kat.data['DCoffset']['MICH'] = float(value)
+        else:
+            self.kat.data['DCoffset'] = {'MICH': float(value)}
+
+    @property
+    def DCoffset(self):
+        if 'DCoffset' not in self.kat.data:
+            return 0
+        else:
+            return self.kat.data['DCoffset']
     
     @property
     def DCoffsetW(self):
@@ -85,6 +108,28 @@ class ADV_IFO(IFO):
     @DCoffsetW.setter
     def DCoffsetW(self, value):
         self.kat.data['DCoffsetW'] = float(value)
+
+    @property
+    def mirror_properties(self):
+        if 'mirror_properties' not in self.kat.data:
+            return None
+        else:
+            return self.kat.data['mirror_properties']
+        
+    @mirror_properties.setter
+    def mirror_properties(self, value):
+        self.kat.data['mirror_properties'] = value
+
+    @property
+    def cold_optics(self):
+        if 'cold_optics_parameters' in self.kat.data:
+            return self.kat.data['cold_optics_parameters']
+        else:
+            return None
+
+    @cold_optics.setter
+    def cold_optics(self, value):
+        self.kat.data['cold_optics_parameters'] = value    
 
     @property
     def f1(self):
@@ -473,7 +518,7 @@ class ADV_IFO(IFO):
     
     def set_DC_offset(self, DCoffset=None, offset_type = 'DARM', verbose=False):
         """
-        Sets the DC offset for this inteferometer. It can be set to DARM or MICH. 
+        Sets the DC offset for the interferometer. It can be set to DARM or MICH. 
         This function directly alters the tunings of the associated kat object.
         If no DCoffset is specified, the function finds the DC offset that yields
         5 times the current dark port power.
@@ -511,7 +556,7 @@ class ADV_IFO(IFO):
                 tunings[m["IX"]] -= self.MICHoffset/2.0
                 tunings[m["EX"]] -= self.MICHoffset/2.0
                 
-            self.apply_tunings(tunings)        
+            self.apply_tunings(tunings)
             
             # Compute the DC offset powers
             kat = _kat.deepcopy()
@@ -522,7 +567,7 @@ class ADV_IFO(IFO):
         
             out = kat.run(cmd_args=["-cr=on"])
         
-            self.kat.IFO.DCoffsetW = float(out[signame])
+            self.DCoffsetW = float(out[signame])
         else:
             # Finding light power in AS port (mostly due to RF sidebands now)
             kat = _kat.deepcopy()
@@ -542,7 +587,8 @@ class ADV_IFO(IFO):
         
             DCoffset = self.find_DC_offset(5*waste_light, offset_type, verbose=verbose)
             
-        vprint(verbose, "   {} DCoffset = {:6.4} deg ({:6.4} m)".format(offset_type, DCoffset, DCoffset / 360.0 * _kat.lambda0 ))
+        vprint(verbose, "   {} DCoffset = {:6.4} deg ({:6.4} m)".format(offset_type, DCoffset,
+                                                                        DCoffset / 360.0 * _kat.lambda0))
         vprint(verbose, "   at dark port power: {:6.4} W".format(self.DCoffsetW))
 
     def find_DC_offset(self, AS_power, offset_type = 'DARM', precision=1e-4, verbose=False):
@@ -633,7 +679,7 @@ class ADV_IFO(IFO):
             
         self.apply_tunings(tunings)
         
-        return DCoffset
+        return DCoffset, out[0]
 
     def add_errsigs_block(self, noplot=True):
         """
@@ -927,7 +973,7 @@ class ADV_IFO(IFO):
         vprint(verbose, "\nMaxtem set to {}".format(mxtm))
 
 
-    def find_warm_detector(self, mirror_list, DCoffset, tol = 1e-4, verbose=False):
+    def find_warm_detector(self, mirror_list, DCoffset=None, tol = 1e-5, verbose=False):
         """
         Computes the thermal effects for the mirrors specified in mirror_list and sets the
         warm interferometer values. For an input test masse, the thermal lens is computed
@@ -935,47 +981,62 @@ class ADV_IFO(IFO):
 
     
         mirror_list  - List of mirror names to compute the thermal effect for
-        DCoffset     - The DARM DC-offset used in this file [degrees]
+        DCoffset     - Dictionary with the DC-offset used in this file. If None,
+                       the value is taken from self.kat.data['DCoffset']
+                       DCoffset = {'DARM': value [deg], 'MICH': value [deg]}
+        tol          - Relative tolerance for the RoCs and focal lengths.
         verbose      - If set to True, information is printed.
         """
         
         kat1 = self.kat.deepcopy()
+        if DCoffset is None:
+            DCoffset = self.kat.data['DCoffset']
+        elif not isinstance(DCoffset, dict):
+            raise pkex.BasePyKatException(("DCoffset is of type {}. Must be None or dictionary, "+
+                                           "e.g., {{'DARM': value [deg]}}").format(type(DCoffset)))
+
         # Cold IFO RoCs and focal lengthts
         new = copy.copy(kat1.data['cold_optics_parameters'])
         old1 = copy.copy(new)
         run = True
         a = 0
+        # Iteratively finding the warm IFO parameters
         while run:
             a += 1
             vprint(verbose, 'Iteration {}'.format(a))
+            # Keeps track of parameters from the two previous runs
             old2 = copy.copy(old1)
             old1 = copy.copy(new)
-            # Computing new paramaters
+            # Finding the needed maxtem
             vprint(verbose, ' Finding maxtem...',end=" ")
             kat2 = kat1.deepcopy()
             kat2.IFO.remove_modulators()
-            #pretune(kat2, 1e-7, verbose=False)
-            #kat2.IFO.set_DC_offset(DCoffset=DCoffset, verbose=False)
             kat2.IFO.find_maxtem(tol=1e-4)
+            kat1.maxtem = kat2.maxtem
+            # Re-tuning IFO
             vprint(verbose, '{}\n Re-tuning interferometer...'.format(kat2.maxtem), end=" ")
             pretune(kat2, 1e-7, verbose=False)
-            # adv.pretune_status(kat2)
             kat1.IFO.apply_tunings(kat2.IFO.get_tunings())
-            kat1.maxtem = kat2.maxtem
-            kat1.IFO.set_DC_offset(DCoffset=DCoffset, verbose=False)
+            # Setting DC-offset
+            for k,v in DCoffset.items():
+                kat1.IFO.set_DC_offset(DCoffset=v, offset_type=k, verbose=False)
             vprint(verbose, 'Done!\n Computing thermal effect...', end=" ")
+            # Computing the thermal effect
             new, out = compute_thermal_effect(kat1, mirror_list, nScale=True)
             vprint(verbose, 'Done!')
+
+            # Relative differences between new and previous parameters
             diff1 = np.zeros(len(new), dtype=float)
             diff2 = np.zeros(len(new), dtype=float)
             for i,(k,v) in enumerate(new.items()):
-                # Comparing the new and previous parameters
                 diff1[i] = np.abs((v - old1[k])/old1[k])
                 diff2[i] = np.abs((v - old2[k])/old2[k])
-                
+
             if diff1.max() < tol:
+                # Stop running if diff1 is small
                 run = False
-            elif diff2.max() < tol:
+            elif diff2.max() < tol*1e-1:
+                # Taking a half step if diff2 is small
                 for i,(k,v) in enumerate(new.items()):
                     new[k] = (v+old1[k])/2.0
                     print("{:.10f}, {:.10f},  {:.10f},  {:.10f}".format(old2[k], old1[k], v, new[k]))
@@ -1008,14 +1069,10 @@ class ADV_IFO(IFO):
         kat.IFO.remove_modulators()
         pretune(kat, 1e-7, verbose=False)
         self.apply_tunings(kat.IFO.get_tunings())
-        self.set_DC_offset(DCoffset=DCoffset, verbose=False)
-
-
+        for k,v in DCoffset.items():                
+            self.set_DC_offset(DCoffset=v, offset_type=k, verbose=False)
 
 def assert_adv_ifo_kat(kat):
-
-    #print(ADV_IFO)
-    #print(kat.IFO)
     
     if not isinstance(kat.IFO, ADV_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ADV_IFO compatiable kat\033[0m")
@@ -1134,8 +1191,6 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
     kat.IFO.mirrors = mirrors
 
 
-
-
     
 
     
@@ -1239,7 +1294,7 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
 
     
     kat.IFO.B4_f1  = Output(kat.IFO, "B4_f1",  "nB4",  "f1", phase = 177.49)
-    kat.IFO.B4_f2  = Output(kat.IFO, "B4_f2",  "nB4",  "f2", phase = 156.95)
+    kat.IFO.B4_f2  = Output(kat.IFO, "B4_f2",  "nB4",  "f2", phase = 152.18)
     
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nBSs*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowN",  "nNI2")
@@ -1250,7 +1305,8 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
     # Pretune LSC DOF
     kat.IFO.preARMN =  DOF(kat.IFO, "ARMN", kat.IFO.POW_X,   "", mirrors["EX"], 1, 1.0, sigtype="z")
     kat.IFO.preARMW =  DOF(kat.IFO, "ARMW", kat.IFO.POW_Y,   "", mirrors["EY"], 1, 1.0, sigtype="z")
-    kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]], [-0.5,-0.5,0.5,0.5], 6.0, sigtype="z")
+    kat.IFO.preMICH =  DOF(kat.IFO, "MICH"  , kat.IFO.B1,   "", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]],
+                           [-0.5,-0.5,0.5,0.5], 6.0, sigtype="z")
     kat.IFO.prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POW_BS,  "", mirrors["PRM"],  1, 10.0, sigtype="z")
     kat.IFO.preDARM = DOF(kat.IFO, "DARM", kat.IFO.POW_X, "", [mirrors["EX"], mirrors["EY"]], [-1,1], 1.0, sigtype="z")
     kat.IFO.preCARM = DOF(kat.IFO, "CARM", kat.IFO.POW_X, "", [mirrors["EX"], mirrors["EY"]], [-1,-1], 1.0, sigtype="z")
@@ -1258,8 +1314,8 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
         kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.POW_S,   "", mirrors["SRM"],  1, 10.0, sigtype="z")
     
     # Science mode control scheme obtained from Valeria Sequino. 
-    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3,  "I", mirrors["PRM"], 1, 100.0, sigtype="z")
-    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B4_f2,  "Q", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]],
+    kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3, "I", mirrors["PRM"], 1, 100.0, sigtype="z")
+    kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.B4_f2, "Q", [mirrors["IX"], mirrors["EX"], mirrors["IY"], mirrors["EY"]],
                         [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
     kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.B4_f2, "I", [mirrors["EX"], mirrors["EY"]], [-1, -1], 1.5, sigtype="z")
     kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.B1,   "",  [mirrors["EX"], mirrors["EY"]], [-1,1], 1.0, sigtype="z")
@@ -1337,36 +1393,41 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
     if not mirrors["PR3"] is None:
         kat.IFO.ASC_P_DOFs = kat.IFO.ASC_P_DOFs + (kat.IFO.PR3_P,)
 
+        
+    ##########################
+    # For thermal effects
+    ##########################
+        
+    if not 'mirror_properties' in kat.data:
+        # Mirror properties for computing thermal effects
+        MPs = {}
+        # Common properties. Check if this is true.
+        common_properties = {}
+        common_properties['K'] = 1.380        # Thermal conductivity. Check value!
+        common_properties['T0'] = 295.0       # Temperature. Check value!
+        common_properties['emiss'] = 0.89     # Emissivity. Check value!
+        common_properties['alpha'] = 0.54e-6  # Thermal expansion coeff. Check value!
+        common_properties['sigma'] = 0.164    # Poisson ratio. Check value!
+        common_properties['dndT'] = 8.7e-6    # dn/dT. Check value!
+        # Setting common propertis
+        for k,v in mirrors.items():
+            if not ('AR' in k or v is None):
+                # print(k)
+                MPs[v] = copy.deepcopy(common_properties)
 
-    # Mirror properties for computing thermal effects
-    MPs = {}
-    # Common properties. Check if this is true.
-    common_properties = {}
-    common_properties['K'] = 1.380        # Thermal conductivity. Check value!
-    common_properties['T0'] = 295.0       # Temperature. Check value!
-    common_properties['emiss'] = 0.89     # Emissivity. Check value!
-    common_properties['alpha'] = 0.54e-6  # Thermal expansion coeff. Check value!
-    common_properties['sigma'] = 0.164    # Poisson ratio. Check value!
-    common_properties['dndT'] = 8.7e-6    # dn/dT. Check value!
-    # Setting common propertis
-    for k,v in mirrors.items():
-        if not ('AR' in k or v is None):
-            # print(k)
-            MPs[v] = copy.deepcopy(common_properties)
-            
-    # Setting mirror specific properties
-    # HR coating absorptions. Values from Valeria Sequino. 
-    MPs[mirrors['EX']]['aCoat'] = 0.24e-6
-    MPs[mirrors['EY']]['aCoat'] = 0.24e-6
-    MPs[mirrors['IX']]['aCoat'] = 0.19e-6
-    MPs[mirrors['IY']]['aCoat'] = 0.28e-6
-    # Substrate absorption [1/m]. Using upper limits from [TDR, table 2.6].
-    MPs[mirrors['EX']]['aSub'] = 3.0e-5
-    MPs[mirrors['EY']]['aSub'] = 3.0e-5
-    MPs[mirrors['IX']]['aSub'] = 3.0e-5
-    MPs[mirrors['IY']]['aSub'] = 3.0e-5
-    
-    kat.IFO.mirror_properties = MPs
+        # Setting mirror specific properties
+        # HR coating absorptions. Values from Valeria Sequino. 
+        MPs[mirrors['EX']]['aCoat'] = 0.24e-6
+        MPs[mirrors['EY']]['aCoat'] = 0.24e-6
+        MPs[mirrors['IX']]['aCoat'] = 0.19e-6
+        MPs[mirrors['IY']]['aCoat'] = 0.28e-6
+        # Substrate absorption [1/m]. Using upper limits from [TDR, table 2.6].
+        MPs[mirrors['EX']]['aSub'] = 3.0e-5
+        MPs[mirrors['EY']]['aSub'] = 3.0e-5
+        MPs[mirrors['IX']]['aSub'] = 3.0e-5
+        MPs[mirrors['IY']]['aSub'] = 3.0e-5
+
+        kat.IFO.mirror_properties = MPs
 
     
     # Storing RoCs and focal lengths for the cold IFO. To be used when computing thermal effects
@@ -1382,10 +1443,9 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
         # kat.IFO.cold_ifo = cold
         kat.data['cold_optics_parameters'] = cold
 
+
     kat.IFO.update()
     kat.IFO.lockNames = None
-
-    
     
     return kat
     
@@ -1686,14 +1746,9 @@ def compute_thermal_effect(kat, mirror_list, nScale=False):
     kat1 = kat.deepcopy()
     mirrors = kat1.IFO.mirrors
     cold_ifo = kat1.data['cold_optics_parameters']
-    laser = kat1.getAll(pykat.components.laser)
-    if len(laser) > 1:
-        pkex.printWarning(("More than one laser is used. IFO.compute_thermal_effect() only "+
-                           "gives correct results if the main laser is first in the tuple " +
-                           "kat.getAll(pykat.components.laser)"))
-    # Input laser power
-    P_laser = laser[0].P.value
-    
+
+    new_params = compute_thermal_RoCs(kat1, mirror_list)
+
     code = ""
     Ms = {}
     for m in mirror_list:
@@ -1757,38 +1812,20 @@ def compute_thermal_effect(kat, mirror_list, nScale=False):
     q = (out['q_CP_x'] + out['q_CP_y'])/2.0
     
     #################################
-    # Compute thermal effects
+    # Compute thermal lensing
     #################################
-    # Dictionary for storing new component parameters
-    new_params = {}
     # Dictionary for storing auxiliary data
     output = {}
     for k,v in Ms.items():
-
-        # Computing new HR-RoC for end test masses
-        if k == mirrors['EY'] or k == mirrors['EX']:
-            # Formula from Valeria Sequino
-            new_params[k] = 0.1004 * P_laser + cold_ifo[k]
         
-        # Computing thermal lens and new HR-RoC for input test masses
-        elif k == mirrors['IY'] or k == mirrors['IX']:
-
-            # New RoC of HR-surface
-            # -------
-            # Formula from Valeria Sequino
-            new_params[k] = -0.07506 * P_laser + cold_ifo[k]
+        # Computing thermal lens for input test masses
+        if k == mirrors['IY'] or k == mirrors['IX']:
             
             # Praparing for computuing thermal lens
             # ------
             res = {}
             # Dictionary for mirror properties
             mp = copy.deepcopy(kat1.IFO.mirror_properties[k])
-            #mp['HR_RoC'] = v['HR'].Rc.value
-            #mp['AR_RoC'] = v['AR'].Rc.value
-            # Switching signs of RoC for mirrors depending on tracing direction
-            #if k == mirrors['IY'] or k == mirrors['IX'] or k == mirrors['PRM']:
-            #    mp['HR_RoC'] = -mp['HR_RoC']
-            #    mp['AR_RoC'] = -mp['AR_RoC']
 
             mp['thickness'] = v['SUB'].L.value
             mp['n'] = v['SUB'].n.value
@@ -1804,21 +1841,6 @@ def compute_thermal_effect(kat, mirror_list, nScale=False):
             res['f_thermal'], tmp = hellovinet(P_coat, P_sub_in, P_sub_out, mirror_properties = mp)
             res['r'] = tmp[0]
             res['OPL_data'] = tmp[1]
-
-            '''
-            # Switching signs of RoC for mirrors depending on tracing direction
-            if k == mirrors['IY'] or k == mirrors['IX'] or k == mirrors['PRM']:
-                res[k][1][0] = -res[k][1][0]
-                res[k][1][1] = -res[k][1][1]
-
-            # Computing effective thermal lens for input mirrors
-            if k == mirrors['IX'] or k == mirrors['IY']:
-                # Computing thickness of effective thermal lens
-                d = res[k][3][1][np.abs(res[k][0]).argmin()]
-                # Computing focal length
-                f = lensmaker(-res[k][1][1], mp['HR_RoC'], d, mp['n'])
-                res[k] += (f,)
-            '''
 
             # Combining CP and input mirror thermal lenses into one new lens at the CP
             if k == mirrors['IX']:
@@ -1836,8 +1858,33 @@ def compute_thermal_effect(kat, mirror_list, nScale=False):
     return new_params, output 
 
 
+def compute_thermal_RoCs(kat, mirror_list):
 
+    new_params = {}
+    kat1 = kat.deepcopy()
+    mirrors = kat1.IFO.mirrors
+    cold_ifo = kat1.data['cold_optics_parameters']
+    
+    laser = kat1.getAll(pykat.components.laser)
+    if len(laser) > 1:
+        pkex.printWarning(("More than one laser is used. IFO.compute_thermal_effect() only "+
+                           "gives correct results if the main laser is first in the tuple " +
+                           "kat.getAll(pykat.components.laser)"))
+    # Input laser power
+    P_laser = laser[0].P.value
 
-
-
+    for m in mirror_list:
+        # Input mirrors
+        if m == mirrors['IY'] or m == mirrors['IX']:
+            a = -0.07506
+        elif m == mirrors['EY'] or m == mirrors['EX']:
+            a = 0.1004
+        else:
+            raise pkex.BasePyKatException(("Thermal RoC not supported for component {}. "+
+                                           "Components must be test masses").format(m))
         
+        # New RoC of HR-surface, formula from Valeria Sequino
+        new_params[m] = a * P_laser + cold_ifo[m]
+
+    return new_params
+    

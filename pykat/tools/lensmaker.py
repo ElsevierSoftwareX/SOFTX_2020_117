@@ -8,7 +8,7 @@ def lensmaker(R1, R2, d, n=1.44963):
     This function assumes that the beam travels from R1 to R2. Positive R means that
     the surface's center of curvature is further along in the direction of propagation.
     Negative R indicates that a beam that reaches the surface already has passed the
-    center of curvature.
+    center of curvature. Thus,
     
     R1 > 0 ---> Convex 
     R2 < 0 ---> Convex

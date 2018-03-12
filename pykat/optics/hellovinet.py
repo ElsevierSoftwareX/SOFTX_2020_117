@@ -22,7 +22,7 @@ from pykat.tools.lensmaker import lensmaker
 
     
 
-def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOff=None, AR_zOff=None, **kwargs):
+def hellovinet(P_coat, P_sub_in, P_sub_out, **kwargs):
     """
     Computes the focal length of a thermal lens due to surface deformation and index of refraction change.
 
@@ -48,13 +48,6 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
      |  <----------   |    
      |                |      
 
-
-    RoC and z-offset signs and definitions:
-    ---------------------------------------
-    If r is the transverse coordinate, and if z (optical axis) increases in the direction AR --> HR,
-    then the z-axis passes through the mirror surface (AR or HR, they are fitted independently)
-    at the point (r, z) = (0, zOffset), and the surface's center of curvature is located at
-    (r, Z) = (0, RoC + zOffset). E.g., for Advanced Virgo IMs, both HR and AR surfaces have positive RoC.
     
     Inputs:
     -------
@@ -78,7 +71,11 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     dndT              - Mirror index of refraction change with temperature (default 8.7 ppm)
     N                 - Number of data points along the mirror radius a (default 176).
     nScale            - If set to true, the optical path length data is scaled to physical distance.
-    fitCurv           - If set to true, the curvature is fitted instead of the RoC. 
+    fitCurv           - If set to true, the curvature is fitted instead of the RoC.
+    zOff0             - Initial guess of the z-offset when fitting the curved surface of the thermal lens.
+                        If set, and if fitCurv is False, the z-offset is fitted together with the RoC.
+                        Otherwise, only the RoC is fitted such that the lens surface and the spherical
+                        surface are the same at r = 0 (optical axis).
 
     Returns:
     --------
@@ -111,7 +108,8 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     N = 176          # Number of data points along the mirror radius
     scale = 1.0      # Scales path-length data before fitting RoCs
     nScale = False   # If true, scale is set to 1/n
-    fitCurv = False  # If ture, the curvature is fitted instead of the RoC.
+    fitCurv = False  # If true, the curvature is fitted instead of the RoC.
+    zOff0 = None     # If not None, and fitCurv is False, the z-offset is fitted as well as the RoC.
 
     # Updating values specified as a dictionary. 
     if 'mirror_properties' in kwargs:
@@ -161,6 +159,9 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
             elif k == 'fitCurv':
                 fitCurv = v
                 continue
+            elif k == 'zOff0':
+                zOff0 = v
+                continue
             
     # Updating values specified as arguments. These have precedence
     # over the parameters specified in the dictionary. 
@@ -209,6 +210,9 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
             continue
         elif k == 'fitCurv':
             fitCurv = v
+            continue
+        elif k == 'zOff0':
+            zOff0 = v
             continue
             
     # Scales the optical path length data to physical distances
@@ -342,7 +346,7 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
         c = fit_curvature(r, OPL_AR, Rc0 = 0, w = w)
         rc = 1.0/c
     else:
-        out = fit_circle(r, OPL_AR, Rc0 = -2000, zOff0 = AR_zOff, w = w)
+        out = fit_circle(r, OPL_AR, Rc0 = -2000, zOff0 = zOff0, w = w)
         rc = out[0]
 
     # Computing focal length of the curved-flat thermal lens
