@@ -65,9 +65,6 @@ class ADV_IFO(IFO):
     @DARMoffset.setter
     def DARMoffset(self, value):
         if 'DCoffset' in self.kat.data:
-            pkex.printWarning(("Overwrites current DARM-offset in kat.IFO.DARMoffset, "+
-                               "but the tunings might have been added in the kat-file."+
-                               "Only add offset once if thermal functions are to be used"))
             self.kat.data['DCoffset']['DARM'] = float(value)
         else:
             self.kat.data['DCoffset'] = {'DARM': float(value)}
@@ -84,9 +81,6 @@ class ADV_IFO(IFO):
     @MICHoffset.setter
     def MICHoffset(self, value):
         if 'DCoffset' in self.kat.data:
-            pkex.printWarning(("Overwrites current MICH-offset in kat.IFO.DARMoffset, "+
-                               "but the tunings might have been added in the kat-file." +
-                               "Only add offset once if thermal functions are to be used"))
             self.kat.data['DCoffset']['MICH'] = float(value)
         else:
             self.kat.data['DCoffset'] = {'MICH': float(value)}
