@@ -64,10 +64,7 @@ class ADV_IFO(IFO):
 
     @DARMoffset.setter
     def DARMoffset(self, value):
-        if 'DCoffset' in self.kat.data:
-            self.kat.data['DCoffset']['DARM'] = float(value)
-        else:
-            self.kat.data['DCoffset'] = {'DARM': float(value)}
+        self.set_DC_offset(DCoffset=value, offset_type = 'DARM', verbose=False)
 
     @property
     def MICHoffset(self):
@@ -80,15 +77,12 @@ class ADV_IFO(IFO):
 
     @MICHoffset.setter
     def MICHoffset(self, value):
-        if 'DCoffset' in self.kat.data:
-            self.kat.data['DCoffset']['MICH'] = float(value)
-        else:
-            self.kat.data['DCoffset'] = {'MICH': float(value)}
-
+        self.set_DC_offset(DCoffset=value, offset_type = 'MICH', verbose=False)
+    
     @property
     def DCoffset(self):
         if 'DCoffset' not in self.kat.data:
-            return 0
+            return None
         else:
             return self.kat.data['DCoffset']
     
@@ -524,11 +518,28 @@ class ADV_IFO(IFO):
                        offset to. Must be DARM or MICH.
         """
 
+        if not "DCoffset" in self.kat.data:
+            self.kat.data['DCoffset'] = {}
+
         # Checking if DARM or MICH is used
         if offset_type == 'DARM' or offset_type == 'darm':
             isDARM = True
+            if self.DARMoffset != 0:
+                pkex.printWarning(("WARNING! A DARM offset is alredy set. The function"+
+                                   "set_DC_offset() overwrites previous DARM-offset in "+
+                                   "kat.IFO.DARMoffset, but the tunings might bee added "+
+                                   "in the kat-object. Make sure to only add offset once "+
+                                   "if thermal functions are to be used, or run pretune() "+
+                                   "in between to reset the offset."))
         elif offset_type == 'MICH' or offset_type == 'mich':
             isDARM = False
+            if self.MICHoffset != 0:
+                pkex.printWarning(("WARNING! A MICH offset is alredy set. The function"+
+                                   "set_DC_offset() overwrites previous MICH-offset in "+
+                                   "kat.IFO.MICHoffset, but the tunings might bee added "+
+                                   "in the kat-object. Make sure to only add offset once "+
+                                   "if thermal functions are to be used, or run pretune() "+
+                                   "in between to reset the offset."))
         else:
             raise pkex.BasePyKatException("\033[91m offset_type must be DARM or MICH. \033[0m")
 
@@ -537,18 +548,16 @@ class ADV_IFO(IFO):
         _kat = self.kat
         m = self.mirrors
         if DCoffset:
+            tunings = self.get_tunings()
             if isDARM:
-                self.DARMoffset = DCoffset
-                tunings = self.get_tunings()
-                tunings[m["EY"]] += self.DARMoffset
-                tunings[m["EX"]] -= self.DARMoffset
+                for name, factor in zip(self.DARM.optics, self.DARM.factors):
+                    tunings[name] += DCoffset*factor
+                self.kat.data['DCoffset']['DARM'] = DCoffset
+
             else:
-                self.MICHoffset = DCoffset
-                tunings = self.get_tunings()
-                tunings[m["IY"]] += self.MICHoffset/2.0
-                tunings[m["EY"]] += self.MICHoffset/2.0
-                tunings[m["IX"]] -= self.MICHoffset/2.0
-                tunings[m["EX"]] -= self.MICHoffset/2.0
+                self.kat.data['DCoffset']['MICH'] = DCoffset
+                for name, factor in zip(self.MICH.optics, self.MICH.factors):
+                    tunings[name] += DCoffset*factor
                 
             self.apply_tunings(tunings)
             
@@ -585,9 +594,9 @@ class ADV_IFO(IFO):
                                                                         DCoffset / 360.0 * _kat.lambda0))
         vprint(verbose, "   at dark port power: {:6.4} W".format(self.DCoffsetW))
 
-    def find_DC_offset(self, AS_power, offset_type = 'DARM', precision=1e-4, verbose=False):
+    def find_DC_offset(self, AS_power, offset_type = 'DARM', precision=1e-6, verbose=False):
         """
-        Returns the DC offset of DARM or MICH that corresponds to the specified power in the AS power.
+        Returns the DC offset of DARM or MICH that corresponds to the specified power in the B1 power.
         
         This function directly alters the tunings of the associated kat object.
         """
@@ -595,8 +604,22 @@ class ADV_IFO(IFO):
 
         if offset_type == 'DARM' or offset_type == 'darm':
             isDARM = True
+            if self.DARMoffset != 0:
+                pkex.printWarning(("WARNING! A DARM offset is alredy set. The function"+
+                                   "set_DC_offset() overwrites previous DARM-offset in "+
+                                   "kat.IFO.DARMoffset, but the tunings might bee added "+
+                                   "in the kat-object. Make sure to only add offset once "+
+                                   "if thermal functions are to be used, or run pretune() "+
+                                   "in between to reset the offset."))
         elif offset_type == 'MICH' or offset_type == 'mich':
             isDARM = False
+            if self.MICHoffset != 0:
+                pkex.printWarning(("WARNING! A MICH offset is alredy set. The function"+
+                                   "set_DC_offset() overwrites previous MICH-offset in "+
+                                   "kat.IFO.MICHoffset, but the tunings might bee added "+
+                                   "in the kat-object. Make sure to only add offset once "+
+                                   "if thermal functions are to be used, or run pretune() "+
+                                   "in between to reset the offset."))
         else:
             raise pkex.BasePyKatException("\033[91m offset_type must be DARM or MICH. \033[0m")
 
@@ -612,36 +635,35 @@ class ADV_IFO(IFO):
         kat.removeBlock("errsigs", False)
         
         kat.IFO.B1.add_signal()
+
+        tunings = self.get_tunings()
         
-        if isDARM:
-            
-            EXphi = float(kat.components[m['EX']].phi.value)
-            EYphi = float(kat.components[m['EY']].phi.value)
-        else:
-            EXphi = float(kat.components[m['EX']].phi.value)
-            EYphi = float(kat.components[m['EY']].phi.value)
-            IXphi = float(kat.components[m['IX']].phi.value)
-            IYphi = float(kat.components[m['IY']].phi.value)
+        #if isDARM:
+        #    EXphi = float(kat.components[m['EX']].phi.value)
+        #    EYphi = float(kat.components[m['EY']].phi.value)
+        #else:
+        #    EXphi = float(kat.components[m['EX']].phi.value)
+        #    EYphi = float(kat.components[m['EY']].phi.value)
+        #    IXphi = float(kat.components[m['IX']].phi.value)
+        #    IYphi = float(kat.components[m['IY']].phi.value)
 
         def powerDiff(phi):
             if isDARM:
-                kat.components[m['EY']].phi = EYphi + phi
-                kat.components[m['EX']].phi = EXphi - phi
+                for name, factor in zip(self.DARM.optics, self.DARM.factors):
+                    kat.components[name].phi = tunings[name] + phi*factor
+                    
+                #kat.components[m['EY']].phi = EYphi + phi
+                #kat.components[m['EX']].phi = EXphi - phi
 
-                #kat.WE.phi = EYphi + phi
-                #kat.NE.phi = EXphi - phi
             else:
-                kat.components[m['EY']].phi = EYphi + phi/2.0
-                kat.components[m['IY']].phi = IYphi + phi/2.0
+                for name, factor in zip(self.MICH.optics, self.MICH.factors):
+                    kat.components[name].phi = tunings[name] + phi*factor
+                    
+                #kat.components[m['EY']].phi = EYphi + phi/2.0
+                #kat.components[m['IY']].phi = IYphi + phi/2.0
 
-                kat.components[m['EX']].phi = EXphi - phi/2.0
-                kat.components[m['IX']].phi = IXphi - phi/2.0
-                
-                #kat.WE.phi = EYphi + phi/2.0
-                #kat.NE.phi = EXphi - phi/2.0
-                
-                #kat.WI.phi = IYphi + phi/2.0
-                #kat.NI.phi = IXphi - phi/2.0
+                #kat.components[m['EX']].phi = EXphi - phi/2.0
+                #kat.components[m['IX']].phi = IXphi - phi/2.0
                 
             out = kat.run()
             # print(verbose, "   ! ", out[self.B1.get_signal_name()], phi)
@@ -658,22 +680,30 @@ class ADV_IFO(IFO):
 
         self.DCoffsetW = AS_power
 
+        if not 'DCoffset' in self.kat.data:
+            self.kat.data['DCoffset'] = {}
+
         if isDARM:
-            self.DARMoffset = round(out[0], 6)
-            DCoffset  = self.DARMoffset
-            tunings[m["EY"]] += DCoffset
-            tunings[m["EX"]] -= DCoffset
+            self.kat.data['DCoffset']['DARM'] = round(out[0], 6)
+            DCoffset = self.DARMoffset
+            for name, factor in zip(self.DARM.optics, self.DARM.factors):
+                tunings[name] += self.DARMoffset*factor
+            #tunings[m["EY"]] += DCoffset
+            #tunings[m["EX"]] -= DCoffset
         else:
-            self.MICHoffset = round(out[0], 6)
-            DCoffset  = self.MICHoffset
-            tunings[m["EY"]] += DCoffset/2.0
-            tunings[m["IY"]] += DCoffset/2.0
-            tunings[m["EX"]] -= DCoffset/2.0
-            tunings[m["IX"]] -= DCoffset/2.0
+            self.kat.data['DCoffset']['MICH'] = round(out[0], 6)
+            DCoffset = self.MICHoffset
+            for name, factor in zip(self.MICH.optics, self.MICH.factors):
+                tunings[name] += self.MICHoffset*factor
+
+            #tunings[m["EY"]] += DCoffset/2.0
+            #tunings[m["IY"]] += DCoffset/2.0
+            #tunings[m["EX"]] -= DCoffset/2.0
+            #tunings[m["IX"]] -= DCoffset/2.0
             
         self.apply_tunings(tunings)
         
-        return DCoffset, out[0]
+        return DCoffset
 
     def add_errsigs_block(self, noplot=True):
         """
@@ -1011,6 +1041,8 @@ class ADV_IFO(IFO):
             vprint(verbose, '{}\n Re-tuning interferometer...'.format(kat2.maxtem), end=" ")
             pretune(kat2, 1e-7, verbose=False)
             kat1.IFO.apply_tunings(kat2.IFO.get_tunings())
+            if 'DCoffset' in kat1.data:
+                kat1.data['DCoffset'] = {}
             # Setting DC-offset
             for k,v in DCoffset.items():
                 kat1.IFO.set_DC_offset(DCoffset=v, offset_type=k, verbose=False)
@@ -1063,6 +1095,8 @@ class ADV_IFO(IFO):
         kat.IFO.remove_modulators()
         pretune(kat, 1e-7, verbose=False)
         self.apply_tunings(kat.IFO.get_tunings())
+        if 'DCoffset' in self.kat.data:
+                self.kat.data['DCoffset'] = {}
         for k,v in DCoffset.items():                
             self.set_DC_offset(DCoffset=v, offset_type=k, verbose=False)
 
@@ -1457,6 +1491,8 @@ def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precis
     
 def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
     assert_adv_ifo_kat(_kat)
+
+    
     
     # This function needs to apply a bunch of pretunings to the original
     # kat and associated IFO object passed in
@@ -1530,8 +1566,12 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False):
 
         vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
         IFO.preSRCL.apply_tuning(phi)
+
+    # Removing previously set DCoffset dictionary
+    _kat.data['DCoffset'] = {}
     
     vprint(verbose,"   ... done")
+
     
 
 
