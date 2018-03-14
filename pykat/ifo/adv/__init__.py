@@ -1963,3 +1963,116 @@ def compute_thermal_RoCs(kat, mirror_list):
 
     return new_params
     
+
+
+
+#def cavity_finesse_cmds(cavName, inputNodeName, cavNodeName):
+#    return ("pd {0}_cav {1}\n"+
+#            "pd {0}_in {2}\n"+
+#            "noplot {0}_cav\n"+
+#            "noplot {0}_in\n"+
+#            "set {0}_c {0}_cav re\n"+
+#            "set {0}_i {0}_in re\n"+
+#            "func {0}_finesse = pi()*${0}_c/(2*${0}_i + 1E-21)\n"
+#           ).format(cavName, cavNodeName, inputNodeName)
+
+#def add_cavity_finesse_block(kat, cavs):
+#    mirrors = kat.IFO.mirrors
+#    cmd = ""
+#    for cav in cavs:
+#        if cav == 'N' or cav == 'X':
+#            cmd += cavity_finesse_cmds(cav, "n{}1*".format(mirrors['IX']), "n{}2".format(mirrors['IX'])) 
+#        elif cav == 'W' or cav == 'Y':
+#            cmd += cavity_finesse_cmds(cav, "n{}1*".format(mirrors['IY']), "n{}2".format(mirrors['IY']))
+#        elif cav == 'PRC':
+#            cmd += cavity_finesse_cmds(cav, "n{}1*".format(mirrors['PRM']), 
+#                                       kat.components[mirrors['BS']].nodes[0].name+'*')
+#        else:
+#            raise pkex.BasePyKatException("Cavity name {} is not supported. Must be X, Y, or PRC")
+#    cmd += "yaxis lin abs\n"
+#    kat.parse(cmd, addToBlock="cavityFinesse")
+#    # print(cmd)
+#    names = []
+#    for c in cavs:
+#        names.append(c+"_finesse")  
+#    return names
+
+
+
+def cavity_finesse_cmds(cavName, inputNodeName, cavNodeName, f = None):
+    '''
+    Returns Finesse code for measuring cavity finesse.
+    
+    Inputs
+    ------
+    cavName        - Name of cavity. Only used for naming. 
+    inputNodeName  - Node name where to measure the input field.
+    cavNodeName    - Node name where to measure the intra-cavity field
+    f              - String with frequency name, thus, 'f1', 'f2', etc. If None or 0, 
+                     the carrier frequency is used.
+                     
+    Returns
+    -------
+    cmd  - Finesse commands
+    '''
+    cmd = ""
+    if f == 0 or f is None:
+        f = 0
+        cmd += ("ad {0}_cav_{3} {3} {1}\n"+
+                "ad {0}_in_{3} {3} {2}\n")
+    else:
+        cmd += ("ad {0}_cav_{3} ${3} {1}\n"+
+                "ad {0}_in_{3} ${3} {2}\n")
+        
+    cmd += ("noplot {0}_cav_{3}\n"+
+            "noplot {0}_in_{3}\n"+
+            "set {0}_c_{3} {0}_cav_{3} abs\n"+
+            "set {0}_i_{3} {0}_in_{3} abs\n"+
+            "func {0}_finesse_{3} = pi()*${0}_c_{3}*${0}_c_{3}/(2*${0}_i_{3}*${0}_i_{3} + 1E-21)\n")
+    cmd = cmd.format(cavName, cavNodeName, inputNodeName, f)
+    # print(cmd)
+    return cmd
+
+def add_cavity_finesse_block(kat, cavs, f=0):
+    '''
+    Adds finesse code for measuring cavity finesse in one or several cavities. Direclty alters the 
+    kat-object. 
+    
+    Inputs
+    ------
+    kat   - kat-object. 
+    cavs  - List with cavity names. Supported names: PRC, X or N, Y or W
+    f     - String with frequency name, thus, 'f1', 'f2', etc. If None or 0, 
+            the carrier frequency is used.
+            
+    Returns
+    -------
+    names - List with names of output signals.
+    
+    '''
+    if f == 0 or f is None:
+        f = 0
+    elif not isinstance(f, str):
+        raise pkex.BasePyKatException("f must be 0 or a string")
+    elif not f in kat.constants.keys():
+        raise pkex.BasePyKatException("f must be a frequeny in the kat-object")
+                
+    mirrors = kat.IFO.mirrors
+    cmd = ""
+    for cav in cavs:
+        if cav == 'N' or cav == 'X':
+            cmd += cavity_finesse_cmds(cav, "n{}1*".format(mirrors['IX']), "n{}2".format(mirrors['IX']), f=f) 
+        elif cav == 'W' or cav == 'Y':
+            cmd += cavity_finesse_cmds(cav, "n{}1*".format(mirrors['IY']), "n{}2".format(mirrors['IY']), f=f)
+        elif cav == 'PRC':
+            cmd += cavity_finesse_cmds(cav, "n{}1*".format(mirrors['PRM']), 
+                                       kat.components[mirrors['BS']].nodes[0].name+'*', f=f)
+        else:
+            raise pkex.BasePyKatException("Cavity name {} is not supported. Must be X, Y, or PRC")
+    cmd += "yaxis lin abs\n"
+    kat.parse(cmd, addToBlock="cavityFinesse")
+    # print(cmd)
+    names = []
+    for c in cavs:
+        names.append(c+"_finesse_{}".format(f))  
+    return names
