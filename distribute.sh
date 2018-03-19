@@ -2,4 +2,4 @@
 
 rm -r ./**/**.pyc
 
-python setup.py sdist --formats=gztar,zip upload
+python setup.py sdist --formats=zip upload
