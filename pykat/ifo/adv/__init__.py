@@ -1081,12 +1081,12 @@ class ADV_IFO(IFO):
                 # Updating IFO parameters
                 if isinstance(kat1.components[k], pykat.components.lens):
                     kat1.components[k].f = v 
-                    vprint(verbose, '  {}.f: {:.5e} m --> {:.5e} m'.format(k, kat2.components[k].f.value,
+                    vprint(verbose, '  {}.f: {:>11.5e} m --> {:>8.5e} m'.format(k, kat2.components[k].f.value,
                                                                           kat1.components[k].f.value))
                 elif (isinstance(kat1.components[k], pykat.components.mirror) or 
                       isinstance(kat1.components[k], pykat.components.beamSplitter)):
                     kat1.components[k].Rc = v
-                    vprint(verbose, '  {}.Rc: {:.3f} m --> {:.3f} m'.format(k, kat2.components[k].Rc.value,
+                    vprint(verbose, '  {}.Rc: {:>14.3f} m --> {:>11.3f} m'.format(k, kat2.components[k].Rc.value,
                                                                            kat1.components[k].Rc.value))
             vprint(verbose and not run, ' Converged!')            
 
