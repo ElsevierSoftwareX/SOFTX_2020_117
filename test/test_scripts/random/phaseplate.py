@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from pykat.optics.gaussian_beams import HG_mode, beam_param
 from pykat.optics.fft import *
@@ -23,7 +23,7 @@ def main():
     Converted to test script by A. Jones 22. March 2018.
     --------------------------------------------------------------
     """)
-    plt.close('all')
+    #plt.close('all')
     # wavelength
     Lambda = 1064.0E-9 
     # distance to propagate/focal length of lens
@@ -72,28 +72,28 @@ def main():
     off1=50
     off2=50
 
-    # plot hand tuned for certain ranges and sizes, not automtically scaled
-    fig=plt.figure(110)
-    fig.clear()
-    plt.subplot(1, 3, 1)
-    plt.imshow(abs(field))
-    plt.xlim(midx-off1,midx+off1)
-    plt.ylim(midy-off1,midy+off1)
-    plt.draw()
-    plt.subplot(1, 3, 2)
-    plt.imshow(plate)
-    #pl.xlim(midx-off2,midx+off2)
-    #pl.ylim(midy-off2,midy+off2)
-    plt.draw()
-    plt.subplot(1, 3, 3)
-    plt.imshow(abs(field2))
-    plt.xlim(midx-off2,midx+off2)
-    plt.ylim(midy-off2,midy+off2)
-    plt.draw()
-    if in_ipython():
-        plt.show(block=0)
-    else:
-        plt.show(block=1)
+    # # plot hand tuned for certain ranges and sizes, not automtically scaled
+    # fig=plt.figure(110)
+    # fig.clear()
+    # plt.subplot(1, 3, 1)
+    # plt.imshow(abs(field))
+    # plt.xlim(midx-off1,midx+off1)
+    # plt.ylim(midy-off1,midy+off1)
+    # plt.draw()
+    # plt.subplot(1, 3, 2)
+    # plt.imshow(plate)
+    # #pl.xlim(midx-off2,midx+off2)
+    # #pl.ylim(midy-off2,midy+off2)
+    # plt.draw()
+    # plt.subplot(1, 3, 3)
+    # plt.imshow(abs(field2))
+    # plt.xlim(midx-off2,midx+off2)
+    # plt.ylim(midy-off2,midy+off2)
+    # plt.draw()
+    # if in_ipython():
+    #     plt.show(block=0)
+    # else:
+    #     plt.show(block=1)
 
 
 # testing if the script is run from within ipython
