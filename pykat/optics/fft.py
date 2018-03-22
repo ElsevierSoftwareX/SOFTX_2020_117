@@ -124,7 +124,7 @@ class grid():
 		self.yaxis=-self.ysize/2.0 + self.ystep/2.0 + yvector*self.ystep + self.yoffset
 
 		# and some useful variables based on the axis
-		self.X,self.Y = np.meshgrid(self.xaxis,self.yaxis)
+		self.X,self.Y = np.meshgrid(self.yaxis,self.xaxis)
 		self.r_squared = (self.X)**2 + (self.Y)**2
 		self.r = np.sqrt(self.r_squared)
 		self.angle = np.arctan2(self.Y,self.X)
@@ -134,5 +134,5 @@ class grid():
 		self.yaxis_fft = np.fft.fftshift(np.fft.fftfreq(self.ypoints))/self.ystep
 
 		# some useful variables based on the frequency axis
-		self.fft_X,self.fft_Y = np.meshgrid(self.xaxis_fft, self.yaxis_fft)
+		self.fft_X,self.fft_Y = np.meshgrid(self.yaxis_fft, self.xaxis_fft)
 		self.fft_ir_squared= np.fft.ifftshift((self.fft_X)**2+(self.fft_Y)**2)
