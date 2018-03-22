@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import pykat
 import pykat.exceptions as pkex
 from pykat import isContainer
@@ -11,8 +13,9 @@ from scipy.optimize import brute
 from scipy.optimize import fmin
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
-# THE PLOTTING OPTION WILL BE REMOVED
-import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+from scipy.misc import comb
+
 
 
 class SensingMatrix(DataFrame):
@@ -101,9 +104,9 @@ def round_to_n(x, n):
     factor = (10 ** power)
     return round(x * factor) / factor
     
-def vprint(verbose, printstr):
+def vprint(verbose, printstr, end='\n'):
     if verbose:
-        print(printstr)
+        print(printstr, end=end)
         
 def BS_optical_path(thickness, n=1.44963098985906, angle=45.0):
     """
@@ -157,7 +160,7 @@ def find_peak(out, detector, minmax='max', debug=False):
         import matplotlib.pyplot as plt
         
         plt.figure()
-        plt.plot(out.x,out[detector])
+        plt.semilogy(out.x,out[detector])
         plt.show()
         
         print("max: ")
@@ -167,6 +170,7 @@ def find_peak(out, detector, minmax='max', debug=False):
         
     if len(_max) == 0 and minmax == "max":
         raise pkex.BasePyKatException("No maximum peaks found in {}".format(detector))
+        
     if len(_min) == 0 and minmax == "min":
         raise pkex.BasePyKatException("No minimum peaks found in {}".format(detector))
         
@@ -234,7 +238,7 @@ def scan_optics_string(_optics, _factors, _varName='scan', target="phi", linlog=
     #print()
     return _tuneStr
 
-def scan_f_cmds(DOF, linlog="lin", lower=10, upper=5000, steps=100):
+def scan_f_cmds(DOF, linlog="log", lower=10, upper=5000, steps=100):
     name = "_%s" % DOF.name
     cmds = DOF.fsig(name, 1)
     
@@ -273,16 +277,19 @@ def scan_optic_cmds(self, optics, factors, xlimits=[-100, 100], steps=200,relati
                               axis=1,
                               relative=relative)
                               
-def scan_DOF(kat, DOF, xlimits=[-100, 100], steps=200, relative=False): 
+def scan_DOF(kat, DOF, xlimits=[-100, 100], steps=200, relative=False, extra_cmds=None): 
     kat = kat.deepcopy()
     kat.parse(scan_DOF_cmds(DOF, xlimits=xlimits, steps=steps, relative=relative))
     
     if DOF.port is not None:
         kat.parse(DOF.signal())
     
+    if extra_cmds:
+        kat.parse(extra_cmds)
+        
     return kat.run(cmd_args=["-cr=on"])
 
-def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps=200,relative=False): 
+def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps=200,relative=False, extra_cmds=None): 
     """
     Scans one or more optics (by scanning the `target` parameter).
     
@@ -302,8 +309,11 @@ def scan_optics(kat, _optics, _factors, target="phi", xlimits=[-100, 100], steps
     factors=make_list_copy(_factors)
 
     kat.parse(scan_optic_cmds(_optics, _factors, target=target, xlimits=xlimits, steps=steps, relative=relative))
-
-    return kat.run(cmd_args="-cr=on")
+    
+    if extra_cmds:
+        kat.parse(extra_cmds)
+        
+    return kat.run(cmd_args=["-cr=on"])
 
 def optical_gain(DOF_sig, DOF_det, f=1, useDiff=True, deriv_h=1.0e-8):
     """
@@ -402,7 +412,7 @@ def scan_demod_phase_cmds(pd_detectors, demod_phase=1, relative=False, xaxis=1, 
         
     return rtn
     
-def optimise_demod_phase(_kat, DOF, ports, debug=False):
+def optimise_demod_phase(_kat, DOF, ports, minimise=False, debug=False):
     """
     This will optimise the demodulation phase at each port
     provide the largest slope in the detector outputs with respect
@@ -455,7 +465,7 @@ def optimise_demod_phase(_kat, DOF, ports, debug=False):
     if debug:
         print(kat & "OPTIMISE")
         
-    out = kat.run()
+    out = kat.run(cmd_args=["-cr=on"])
     
     if debug:
         print(out.y)
@@ -468,6 +478,9 @@ def optimise_demod_phase(_kat, DOF, ports, debug=False):
         x = np.deg2rad(out.x)
         R = np.sqrt(y1**2 + y2**2)
         phi = np.rad2deg(np.arctan2(y2,y1))
+        
+        if minimise:
+            phi += 90
         
         # All in I quadrature so no
         _kat.IFO.Outputs[port.name].phase = phi
@@ -517,7 +530,7 @@ def mismatch_cavities(base, node):
             mmx[c1][c2] = pykat.BeamParam.overlap(q1x, q2x)
             mmy[c1][c2] = pykat.BeamParam.overlap(q1y, q2y)
             
-    return 1-mmx, 1-mmy, list(zip(cavs, qxs, qys))
+    return 1-mmx.astype(float), 1-mmy.astype(float), list(zip(cavs, qxs, qys))
 
 def mismatch_scan_RoC(base, node, mirror, lower, upper, steps):
     _kat = base.deepcopy()
@@ -595,11 +608,118 @@ def mismatch_scan_L(base, node, length, lower, upper, steps):
     return out['qx'], out['qy']
 
 
+def modematch(kat, components, cavs, node, verbose = False):
+    '''
+    Mode matches the cavity eigenmmodes for the cavities in cavs by varying the
+    components in components. Computes mode overlaps between the cavity eigenmodes.
+    Minimises the maximum cavity mismatch. 
+    
+    Inputs
+    --------
+    kat         - kat-object to run
+    components  - list of names of components to vary. Each entry must be a lens (varies f), 
+                  mirror (Rc), BS (Rc) or space (L). 
+    cavs        - list with names of cavities to match
+    node        - name of node where to compute mismatches. Must be first or
+                  last node in IFO for reliable result.
+    verbose     - If true, prints the new optimised paramaters
+    
+    Returns
+    --------
+    kat1        - kat-object with the optimised component parameters. Deepcopy of kat.
+    out         - array with the new optimised values
+    
+    '''
+    Nc = len(cavs)
+    Np = len(components)
+    kat1 = kat.deepcopy()
+    kat2 = kat.deepcopy()
+    # Storing parameters to tune, and their initial values, in lists
+    attrs = []
+    attrs2 = []
+    p0 = []
+    for c in components:
+        if isinstance(kat1.components[c], pykat.components.lens):
+            p0.append(kat1.components[c].f.value)
+        elif (isinstance(kat1.components[c], pykat.components.mirror) or 
+              isinstance(kat1.components[c], pykat.components.beamSplitter)):
+            p0.append(kat1.components[c].Rc.value)
+        elif isinstance(kat1.components[c], pykat.components.space):
+            p0.append(kat1.components[c].L.value)
 
+        attrs.append(kat1.components[c])
+        attrs2.append(kat2.components[c])
 
+            
+    # Switching off cavity commands for cavities not in cavs
+    for cav in kat1.getAll(pykat.commands.cavity):
+        if not cav.name in cavs:
+            cav.remove()
 
+    # Cost function
+    def func(p):
+        for k in range(Np):
+            if isinstance(attrs[k], pykat.components.lens):
+                attrs[k].f = p[k]
+            elif isinstance(attrs[k], pykat.components.space):
+                attrs[k].L = p[k]
+            elif (isinstance(attrs[k], pykat.components.mirror) or 
+                  isinstance(attrs[k], pykat.components.beamSplitter)):
+                attrs[k].Rc = p[k]
+        
+        mmx, mmy, qs = pykat.ifo.mismatch_cavities(kat1, node)
+        mm = np.zeros(comb(Nc,2,exact=True), dtype=float)
+        cs = deepcopy(cavs)
+        k = 0
+        for c1 in cavs:
+            cs.pop(0)
+            for c2 in cs:
+                mm[k] = np.sqrt(mmx[c1][c2])*np.sqrt(mmy[c1][c2])
+                k += 1
+        # print(kat1.CPN_TL.f.value, kat1.CPW_TL.f.value, mm.mean())
+        return mm.max()
+        
+    if verbose: 
+        # Computing initial mismatch. Only for display
+        mmx, mmy, qs = pykat.ifo.mismatch_cavities(kat1, node)
+        mm0 = np.zeros(comb(Nc,2,exact=True), dtype=float)
+        cs = deepcopy(cavs)
+        k = 0
+        for c1 in cavs:
+            cs.pop(0)
+            for c2 in cs:
+                mm0[k] = np.sqrt(mmx[c1][c2])*np.sqrt(mmy[c1][c2])
+                k += 1
+        
+    # Optimising
+    opts = {'xtol': 1.0, 'ftol': 1.0e-7, 'disp': False}
+    out = minimize(func, p0, method='Nelder-Mead', options=opts)
+    
+    if not out['success']:
+        pkex.printWarning(out.message)
+        
+    # Setting new parameters to kat-object
+    for k in range(Np):
+        if isinstance(attrs2[k], pykat.components.lens):
+            attrs2[k].f = out.x[k]
+        elif isinstance(attrs2[k], pykat.components.space):
+            attrs2[k].L = out.x[k]
+        elif (isinstance(attrs2[k], pykat.components.mirror) or 
+              isinstance(attrs2[k], pykat.components.beamSplitter)):
+            attrs2[k].Rc = out.x[k]
 
-
+    if verbose:
+        print('Maximum mismatch: {:.2e} --> {:.2e}'.format(mm0.max(), out.fun))
+        for c in components:
+            if isinstance(kat.components[c], pykat.components.lens):
+                print(' {}.f: {:.5e} m --> {:.5e} m'.format(c, kat.components[c].f.value, kat2.components[c].f.value ))
+            elif isinstance(kat.components[c], pykat.components.space):
+                print(' {}.L: {:.5e} m --> {:.5e} m'.format(c, kat.components[c].L.value, kat2.components[c].L.value ))
+            elif (isinstance(kat.components[c], pykat.components.mirror) or 
+                  isinstance(kat.components[c], pykat.components.beamSplitter)):
+                print(' {}.Rc = {:.5e} m --> {:.5e} m'.format(c, kat.components[c].Rc.value, kat2.components[c].Rc.value ))
+                      
+    return kat2, out.x
 
 
 
@@ -638,7 +758,6 @@ def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=Fal
     optical_gain  - The optical gain (slope of the error signal). The unit
                     depends on the unit of x.
     '''
-    # THE PLOTTING OPTION WILL BE REMOVED
 
     if xbounds is None:
         xbounds = np.array([x[0],x[-1]])
@@ -692,6 +811,7 @@ def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=Fal
         
         # PLOTTING WILL BE REMOVED
         if isplot:
+            import matplotlib.pyplot as plt
             phases = np.linspace(min_phase, max_phase, (max_phase - min_phase)/step + 1)
             cm = plt.cm.Spectral_r
             norm = mpl.colors.Normalize(vmin=phases[0], vmax=phases[-1])
@@ -733,6 +853,7 @@ def ASC_demod_phase(kat, asc_dof, output, xaxis=[-1e-6, 1e-6, 50], err_tol = 1e-
 
     # THE PLOTTING OPTION WILL BE REMOVED
     if isplot:
+        import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.plot(x, c2r_errsig(y,demod_phase), 'b-', label='{} at {}'.format(asc_dof.name,cmd_str[1]))
@@ -818,6 +939,7 @@ def LSC_demod_phase(lsc_dof, xaxis=[-.1, .1, 50], err_tol = 1e-5, pwr_dof=None,
 
     # PLOTTING WILL BE REMOVED
     if isplot:
+        import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.plot(x, c2r_errsig(y,demod_phase), 'r-', label='{} error signal'.format(lsc_dof.name))
@@ -835,8 +957,6 @@ def LSC_demod_phase(lsc_dof, xaxis=[-.1, .1, 50], err_tol = 1e-5, pwr_dof=None,
         plt.show(fig)
     if verbose:
         print('{}: demod. phase =  {:.3e} deg, optical gain = {:.3e} W/deg'.format(lsc_dof.name,demod_phase, og))
-
-    
     return demod_phase, og
 
 def find_max_power(kat, scanstring, detector, P_tol=1e-4, isplot=False, isMax = True):
@@ -858,6 +978,7 @@ def find_max_power(kat, scanstring, detector, P_tol=1e-4, isplot=False, isMax = 
     #print(out[pwr_dof.signal_name()])
 
     if isplot:
+        import matplotlib.pyplot as plt
         plt.plot(x0, P0)
         plt.xlim(x0.min(),x0.max())
         plt.grid()
@@ -1239,11 +1360,14 @@ class Output(object):
     You can add many detectors at a given port, which readout different quadratures or types of transfer functions
     or signals.
     """
-    def __init__(self, IFO, name, nodeNames, f=None, phase=0, block=None):
+    def __init__(self, IFO, name, nodeNames, f_property_name=None, phase=0, block=None):
+        if f_property_name is not None and not isinstance(f_property_name, six.string_types):
+            raise Exception("f_property_name should be a property name of a frequency in class {}".format(IFO.__class__))
+            
         self.__IFO = IFO
         self.name = name
         self.nodeNames = make_list_copy(nodeNames)
-        self.f = f            # demodulation frequency, float
+        self.__f_property_name = f_property_name
         self.phase = phase    # demodulation phase for I quadrature, float
         self._block = block
     
@@ -1252,6 +1376,13 @@ class Output(object):
         """For referencing the kat object this DOF is associated with"""
         return self.__IFO.kat
           
+    @property
+    def f(self):
+        if self.__f_property_name is None:
+            return None
+        
+        return getattr(self.__IFO, self.__f_property_name)
+        
     def check_nodeName(self):
         self.nodeName = None
         

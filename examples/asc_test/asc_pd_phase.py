@@ -18,7 +18,7 @@ def run(tmpkat):
 
     # function for root finding
     def PD_q_test(x):
-        kat.PDrefl_q.phi[0]=x
+        kat.PDrefl_q.phase[0]=x
         out = kat.run(printout=0,printerr=0)
         print '\r root finding: function value %g                    ' % out.y,
         sys.stdout.flush()

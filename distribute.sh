@@ -1,5 +1,5 @@
 #!/bin/bash
 
-rm -r ./*/*.pyc
+rm -r ./**/**.pyc
 
 python setup.py sdist --formats=gztar,zip upload

@@ -18,19 +18,21 @@ import scipy.optimize as so
 import pylab
 from scipy.optimize import minimize
 import pykat.exceptions as pkex
+from pykat.tools.lensmaker import lensmaker
+
     
 
-def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOff=None, AR_zOff=None, **kwargs):
+def hellovinet(P_coat, P_sub_in, P_sub_out, **kwargs):
     """
-    Computes the effective change in optical path length in a mirror due to thermal lensing
-    and suface deformation effects from the power and absorbtion coefficients.
+    Computes the focal length of a thermal lens due to surface deformation and index of refraction change.
+
+    First, the powers absorbed by the substrate and the HR-surface are calculatd, and from this absorbed power,
+    an effective total change in optical path length is computed. This is due to four effects: thermo elastic
+    and thermo optic for both the substrate and the HR-coating. The total change in optical path length is then
+    converted into a lens of which the focal length is returned. 
     
-    If the initial HR_RoC and/or AR_RoC are specified as inputs, spherical surfaces are
-    fitted to the new deformed surfaces, and the resulting change in RoC is extraced. If also
-    the initial z-offsets are specified, both the RoCs and offsets are fitted.
-    
-    Based on Hello & Vinet, J. Phys. France 51 (1990) 1267-1282. Function written by Valeria
-    Sequino and Daniel Toyra, translated from Matlab function by ?.
+    Based on Hello & Vinet, J. Phys. France 51 (1990) 1267-1282. This PyKat function is written by Valeria
+    Sequino and Daniel Toyra, translated from a Matlab function used in SIS, written by Alessio Rocchi (?).
 
 
     Power definitions:
@@ -46,33 +48,18 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
      |  <----------   |    
      |                |      
 
-
-    RoC and z-offset signs and definitions:
-    ---------------------------------------
-    If r is the transverse coordinate, and if z (optical axis) increases in the direction AR --> HR,
-    then the z-axis passes through the mirror surface (AR or HR, they are fitted independently)
-    at the point (r, z) = (0, zOffset), and the surface's center of curvature is located at
-    (r, Z) = (0, RoC + zOffset). E.g., for Advanced Virgo IMs, both HR and AR surfaces have positive RoC.
     
     Inputs:
     -------
     P_coat            - Power on HR coating from vacuum side. See figure above.
     P_sub_in          - Power propagaint from AR-surface to HR-surface. See figure above.
     P_sub_out         - Power propagating from HR-surface to AR-surface. See figure above. 
-    HR_RoC            - Initial RoC of the HR surface [m]. If specified, the new RoC will be
-                        fitted to the deformed surface. For sign, see above. 
-    AR_RoC            - Same as for HR_RoC, but for the AR-surface.
-    HR_zOff           - Initial guess for the new HR-surface's offset along the optical axis [m].
-                        If given a numeric value, the offset will be fitted along with the RoC,
-                        which affects the RoC fitting. Set this to None (no fitting) or 0 (the
-                        offset should always be small).
-    AR_zOff           - Same as for HR_zOff above, but for the AR-surface.
-
-    mirror_properties - Dictionary where all the below properties can be specified directly.
+    
+    mirror_properties - Dictionary where all the below properties can be specified.
     
     thickness         - Mirror thickness [m] (default 0.2 m)
     aCoat             - Coating power absorption (default 2.5 ppm)
-    aSub              - Substrate power absorptio [1/m] default (30 ppm/m)
+    aSub              - Substrate power absorption [1/m] default (30 ppm/m)
     n                 - Mirror index of refraction (default SiO2, 1.452).
     a                 - Mirror radius [m] (default 0.175 m)
     w                 - Gaussian spot size [m] (default 0.049 m)
@@ -84,20 +71,20 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     dndT              - Mirror index of refraction change with temperature (default 8.7 ppm)
     N                 - Number of data points along the mirror radius a (default 176).
     nScale            - If set to true, the optical path length data is scaled to physical distance.
+    fitCurv           - If set to true, the curvature is fitted instead of the RoC.
+    zOff0             - Initial guess of the z-offset when fitting the curved surface of the thermal lens.
+                        If set, and if fitCurv is False, the z-offset is fitted together with the RoC.
+                        Otherwise, only the RoC is fitted such that the lens surface and the spherical
+                        surface are the same at r = 0 (optical axis).
 
     Returns:
     --------
-
-    r              - Array with distances from the optical axis [m]. 0 <= r <= a
-    fitData        - List that contains the RoC and z-offsets for the new fitted
-                     spherical surfaces, if the initial values for these parameters
-                     have been given as inputs.
-                     fitData = [ np.array(HR RoC, HR z-offset),
-                                 np.array(AR RoC, AR z-offset) ]
-    oplData        - List containing the four contributions to extra optical path length [m]
-                     as functions of r.
-                     oplData = [ coating thermo-optic,   coating thermo-elastic,
-                                 substrate thermo-optic, substrate thermo-elastic ]
+    f                       - Focal length of the thermal lens
+    [r, oplData, rc, d]     - r = array with the radial distances from the optical axis [m]. 0 <= r <= a
+                            - oplData = list with the optial path length changes due to the four effects:
+                              [thermo_optic_coating, thermo_elastic_coat, thermo_optic_sub, thermo_elastic_sub]
+                            - rc = RoC of the curved surface of the thermal lens
+                            - d = thickness of the thermal lens
     """ 
 
 
@@ -106,94 +93,128 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     #############################################    
     sigmab = 5.670367e-8   # Stephan-Boltzmann constant [W m**(-2) K**(-4)]
 
-    h=0.2          # test mass thickness [m]
-    aCoat=2.5e-6   # coating absorption 
-    aSub=3.0e-5    # substrate absorption  [1/m] [TDR, table 2.6]
-    n=1.452        # SiO2 refraction index
-    a=0.175        # test mass radius [m]
-    w=0.049        # Spot size at Virgo input mirrors
-    K=1.380        # SiO2 thermal conductivity
-    T0=295.0       # room temperature
-    emiss=0.89     # SiO2 emissivity
-    alpha=0.54e-6  # SiO2 thermal expansion coefficient
-    sigma=0.164    # SiO2 Poisson's ratio
-    dndT=8.7e-6    # Mirror index of refraction change with temperature (default 8.7 ppm)
-    N = 176        # Number of data points along the mirror radius
-    scale = 1.0    # Scales path-length data before fitting RoCs
-    nScale = False # If true, scale is set to 1/n
-
-    #Pin=125;       # IFO input power
-    #RecG=37.5;     # recycling gain
-    #Finesse=443;   # F-P cavity finesse not used
-
-
+    h=0.2            # test mass thickness [m]
+    aCoat=2.5e-6     # coating absorption 
+    aSub=3.0e-5      # substrate absorption  [1/m] [TDR, table 2.6]
+    n=1.452          # SiO2 refraction index
+    a=0.175          # test mass radius [m]
+    w=0.049          # Spot size at Virgo input mirrors
+    K=1.380          # SiO2 thermal conductivity
+    T0=295.0         # room temperature
+    emiss=0.89       # SiO2 emissivity
+    alpha=0.54e-6    # SiO2 thermal expansion coefficient
+    sigma=0.164      # SiO2 Poisson's ratio
+    dndT=8.7e-6      # Mirror index of refraction change with temperature (default 8.7 ppm)
+    N = 176          # Number of data points along the mirror radius
+    scale = 1.0      # Scales path-length data before fitting RoCs
+    nScale = False   # If true, scale is set to 1/n
+    fitCurv = False  # If true, the curvature is fitted instead of the RoC.
+    zOff0 = None     # If not None, and fitCurv is False, the z-offset is fitted as well as the RoC.
 
     # Updating values specified as a dictionary. 
     if 'mirror_properties' in kwargs:
         for k,v in kwargs['mirror_properties'].items():
             if k == 'aCoat':
                 aCoat = v
+                continue
             elif k == 'thickness':
                 h = v
+                continue
             elif k == 'aSub':
                 aSub = v
+                continue
             elif k == 'n':
                 n = v
+                continue
             elif k == 'a':
                 a = v
+                continue
             elif k == 'w':
                 w = v
+                continue
             elif k == 'K':
                 K = v
+                continue
             elif k == 'T0':
                 T0 = v
+                continue
             elif k == 'emiss':
                 emiss = v
+                continue
             elif k == 'alpha':
                 alpha = v
+                continue
             elif k == 'sigma':
                 sigma = v
+                continue
             elif k == 'dndT':
                 dndT = v
+                continue
             elif k == 'N':
                 N = v
+                continue
             elif k == 'nScale':
                 nScale = v
-
+                continue
+            elif k == 'fitCurv':
+                fitCurv = v
+                continue
+            elif k == 'zOff0':
+                zOff0 = v
+                continue
+            
     # Updating values specified as arguments. These have precedence
     # over the parameters specified in the dictionary. 
     for k, v in kwargs.items():
         if k == 'aCoat':
             aCoat = v
+            continue
         elif k == 'thickness':
             h = v
+            continue
         elif k == 'aSub':
             aSub = v
+            continue
         elif k == 'n':
             n = v
+            continue
         elif k == 'a':
             a = v
+            continue
         elif k == 'w':
             w = v
+            continue
         elif k == 'K':
             K = v
+            continue
         elif k == 'T0':
             T0 = v
+            continue
         elif k == 'emiss':
             emiss = v
+            continue
         elif k == 'alpha':
             alpha = v
+            continue
         elif k == 'sigma':
             sigma = v
+            continue
         elif k == 'dndT':
             dndT = v
+            continue
         elif k == 'N':
             N = v
+            continue
         elif k == 'nScale':
             nScale = v
-
-    
-
+            continue
+        elif k == 'fitCurv':
+            fitCurv = v
+            continue
+        elif k == 'zOff0':
+            zOff0 = v
+            continue
+            
     # Scales the optical path length data to physical distances
     if nScale:
         scale = 1.0/n
@@ -266,7 +287,7 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     ######################################################################################
     # To Valeria:
     # ----------
-    # I take responsibility for everything that below this line, so you don't
+    # I take responsibility for everything below this line, so you don't
     # need to check anything below here. /Daniel
     ######################################################################################
     
@@ -280,42 +301,58 @@ def hellovinet(P_coat, P_sub_in, P_sub_out, HR_RoC = None, AR_RoC = None, HR_zOf
     #        should affect 1. The other three contributions gets added as a
     #        thermal lens.
 
-    # Setting HR-deformation
-    OPL_HR = OPLtec*scale
-    # Setting AR-thermal
-    OPL_AR = (OPLs + OPLtes + OPLc)*scale
+    # Setting HR-deformation (not used)
+    # OPL_HR = OPLtec*scale
+    
+    # Setting AR-thermal deformation
+    OPL_AR = (OPLc + OPLtec + OPLs + OPLtes)*scale
 
-    fitData = []
-    # Computing new RoC for HR-surface, if initial HR_RoC was given. 
-    if not HR_RoC is None:
-        # Creating initial mirror surface
-        Z_HR0 = createSurface(r, HR_RoC, HR_zOff)
-        # Adding the distortion
-        Z_HR1 = Z_HR0 + OPL_HR
-        # Fitting
-        out = fit_circle(r, Z_HR1, Rc0 = HR_RoC, zOff0 = HR_zOff, w = w)
-        fitData.append(out)
-        #if isinstance(out, list):
-        #    HR_RoC1 = out[0]
-        #    HR_zOff1 = out[1]
-        #else:
-        #    HR_RoC1 = out
+    # Thickness of the equivalent lens
+    d = OPL_AR[np.abs(r).argmin()]
+    
+    # Computing new RoC for HR-surface, if initial HR_RoC was given. (not used)
+    #if not HR_RoC is None:
+    #    # Creating initial mirror surface
+    #    Z_HR0 = createSurface(r, HR_RoC, HR_zOff)
+    #    # Adding the distortion
+    #    Z_HR1 = Z_HR0 + OPL_HR
+    #    # Fitting
+    #    out = fit_circle(r, Z_HR1, Rc0 = HR_RoC, zOff0 = HR_zOff, w = w)
+    #    rocData.append(out)
+    #    #if isinstance(out, list):
+    #    #    HR_RoC1 = out[0]
+    #    #    HR_zOff1 = out[1]
+    #    #else:
+    #    #    HR_RoC1 = out
 
     # Computing new effective RoC for AR-surface, if initial AR_RoC was given.
-    if not AR_RoC is None:
-        ######################
-        # AR-surface
-        ######################
-        # Creating initial mirror surface
-        Z_AR0 = createSurface(r, AR_RoC, AR_zOff)
-        # Adding the distortion
-        Z_AR1 = Z_AR0 - OPL_AR
-        # Fitting
-        out = fit_circle(r, Z_AR1, Rc0 = AR_RoC, zOff0 = AR_zOff, w = w)
-        fitData.append(out)
+    #if not AR_RoC is None:
+    #    ######################
+    #    # AR-surface
+    #    ######################
+    #    # Creating initial mirror surface
+    #    Z_AR0 = createSurface(r, AR_RoC, AR_zOff)
+    #    # Adding the distortion
+    #    Z_AR1 = Z_AR0 - OPL_AR
+    #    # Fitting
+    #    rc = fit_circle(r, Z_AR1, Rc0 = AR_RoC, zOff0 = AR_zOff, w = w)
+    #    rocData.append(rc)
 
-    return r, fitData, oplData
+    #    f = lensmaker(rc, AR_RoC, d, n)
+    #    lensData.append(f)
+        
+    # Computing curvature of curved surface for the effective curved-flat thermal lens.
+    if fitCurv:
+        c = fit_curvature(r, OPL_AR, Rc0 = 0, w = w)
+        rc = 1.0/c
+    else:
+        out = fit_circle(r, OPL_AR, Rc0 = -2000, zOff0 = zOff0, w = w)
+        rc = out[0]
 
+    # Computing focal length of the curved-flat thermal lens
+    f = lensmaker(np.abs(rc), np.inf, d, n)
+
+    return f, [r, oplData, rc, d]
 
 
 def createSurface(r,Rc,zOffset=None):
@@ -423,6 +460,71 @@ def fit_circle(r, z, Rc0=None, zOff0=None, w=None, maxfev=2000):
     if not out['success']:
         msg = '  Warning: ' + out['message'].split('.')[0] + ' (nfev={:d}).'.format(out['nfev'])
 
-    return out['x']
+    return out.x
 
+
+
+def fit_curvature(r, z, Rc0=None, w=None):
+    '''
+    Fits a circle to the data (r,z) minimising the difference in curvature (1/RoC) between 
+    the cicle and the data (r, z).
+    
+    r     - Array with radial distances away from from the center of the mirror [m].
+    z     - Array with mirror heights (along optical axis) at the positions r [m].
+    Rc0   - Initial guess of curvature [1/m].
+    w     - Gaussian weights parameter [m]. Should be equal to beam spot radius.
+    '''
+    
+    N = len(z)
+    dx = r[1]-r[0]
+    dz = np.zeros(N)
+    ddz = np.zeros(N)
+    
+    # First derivatie with central difference of 4th order accuracy
+    dz[2:-2] = (z[:-4]/4.0 - 2.0*z[1:-3] + 2.0*z[3:-1] - z[4:]/4.0)/(3.0*dx)
+    # First derivative with central difference of 2nd order accuracy
+    dz[1] = (z[2] - z[0])/(2.0*dx)
+    dz[-2] = (z[-1] - z[-3])/(2.0*dx)
+    # First derivative with forward difference of 2nd order accuracy
+    dz[0] = (-3.0*z[0] + 4.0*z[1] - z[2])/(2.0*dx)
+    # First derivative with backward difference of 2nd order accuracy
+    dz[-1] = (3.0*z[-1] - 4.0*z[-2] + z[-3])/(2.0*dx)
+    
+    # Second derivative with central difference of 4h order accuracy
+    ddz[2:-2] = (-z[:-4]/4.0 + 4.0*z[1:-3] - (15.0/2.0)*z[2:-2] + 4.0*z[3:-1] - z[4:]/4.0)/(3.0*dx**2)
+    # Second derivative with central difference of 2h order accuracy
+    ddz[1] = (z[0] - 2.0*z[1] + z[2])/dx**2
+    ddz[-2] = (z[-3] - 2.0*z[-2] + z[-1])/dx**2
+    
+    # Second derivative with forward difference of 2nd order accuracy
+    ddz[0] = (2.0*z[0] - 5.0*z[1] + 4.0*z[2] - z[3] )/dx**2
+    # Second derivative with backward difference of 2nd order accuracy
+    ddz[-1] = (2.0*z[-1] - 5.0*z[-2] + 4.0*z[-3] - z[-4] )/dx**2
+    
+    # Computing curvature
+    curv = ddz/(1.0+dz**2)**(1.5)
+    
+    # Setting weights
+    if w is None:
+        weight = 1.0
+    else:
+        weight = np.exp(-2*r**2/w**2)
+            
+    def func(c):
+        return (weight*(curv-c)**2).sum()/np.abs(weight*curv).sum()
+    
+    # Initial guess of best fitting curvature
+    if not Rc0 is None:
+        p = (Rc0,)
+    else:
+        p = (0,)
+        
+    opts = {'xtol': 1.0e-9, 'ftol': 1.0e-9, 'maxiter': 10000, 'maxfev': 2000, 'disp': False}
+    out = minimize(func, p, method='Nelder-Mead', options=opts)
+    
+    if not out.success:
+        pkex.printWarning(out.message)
+
+    return out.x[0]
+    # return dz, ddz, curv, out
 

@@ -99,7 +99,7 @@ if USE_GUI:
 
 from multiprocessing import Process, Manager
 
-PYKAT_DATA = "PYKAT_DATA="
+PYKAT_DATA = "#PYKAT_DATA="
 NO_BLOCK = "NO_BLOCK"
 pykat_web = "www.gwoptics.org/pykat"
 
@@ -1212,9 +1212,10 @@ class kat(object):
             katScript = "".join(self.generateKatScript())       
             katfile.writelines(katScript)
             
-            katfile.write("")
-            katfile.write(PYKAT_DATA + self._data2str())
-            katfile.flush()
+            if len(self.data) > 0:
+                katfile.write("")
+                katfile.write(PYKAT_DATA + self._data2str())
+                katfile.flush()
             
     def saveScript(self, filename=None):
         """
@@ -1499,7 +1500,13 @@ class kat(object):
                     
                     # don't read comment lines
                     if line[0] == "#" or line[0] == "%":
-                        if keepComments:
+                        if line.startswith(PYKAT_DATA):
+                            # Checks if pykat data is included now as a comment
+                            vals = line.split("=", 1)
+                            if len(vals)==2:
+                                self._str2data(vals[1])
+                                
+                        elif keepComments:
                             self.addLine(line, self.__currentTag)
                             
                         continue
@@ -1521,14 +1528,6 @@ class kat(object):
                         if keepComments:
                             # If we're in a block comment add the hash and add it in
                             self.addLine("# " + line, self.__currentTag)
-                            
-                        continue
-                    
-                    if line.startswith(PYKAT_DATA):
-                        v = line.split("=", 1)
-                        
-                        if len(v)==2:
-                            self._str2data(v[1])
                             
                         continue
                     

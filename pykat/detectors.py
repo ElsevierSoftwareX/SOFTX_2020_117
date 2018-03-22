@@ -146,11 +146,16 @@ class BaseDetector(object) :
     def getFinesseText(self):
         """ Base class for individual finesse optical components """    
         #raise NotImplementedError("This function is not implemented")
+        rtn = []
+        
+        for _ in self._mask:
+            if _[0]+_[1] <= self._kat.maxtem:
+                rtn.append("mask {} {} {} {}".format(self.name, _[0], _[1], self._mask[_]))
         
         if self.noplot:
-            return ["noplot " + self.name]
-        else:
-            return []
+            rtn.append("noplot " + self.name)
+            
+        return rtn
         
     def getQGraphicsItem(self):    
         if not USE_GUI:
@@ -174,7 +179,14 @@ class BaseDetector(object) :
     def __str__(self): return self.name
 
     def mask(self, n, m, factor):
-        _id = str(n)+"_"+str(m)
+        """
+        Sets the mode mask to apply to this detector for the mode TEMnm. By default
+        all modes have a factor of 1.
+        
+        n,m - mode indicies
+        factor - float between 0 and 1
+        """
+        _id = (n,m)
         
         # if the mask is 1 then remove this so it doesn't get 
         # printed as by default the value is 1.0

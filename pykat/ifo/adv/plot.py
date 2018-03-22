@@ -78,8 +78,8 @@ def pretuning_powers(self, _kat, xlimits=[-10,10]):
     plt.tight_layout()
     plt.show(block=0)
     
-def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
-                            replaceDOFSignals=False, block=True, fig=None, legend=None, steps=100):
+def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None, replaceDOFSignals=False,
+                  block=True, fig=None, legend=None, steps=100, figsize=None):
     """
     Displays error signals for a given kat file. Can also be used to plot multiple
     DOF's error signals against each other for visualising any cross coupling.
@@ -135,17 +135,18 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     if fig is not None:
         _fig = fig
     else:
-        _fig = plt.figure()
+        _fig = plt.figure(figsize=figsize)
     
-    nrows = 2
-    ncols = 3
-    
-    if DOFs is not None:
-        n = len(DOFs)
-        
-        if n < 3:
-            nrows = 1
-            ncols = n
+    n = len(dofs)
+    if n < 4:
+        nrows = 1
+        ncols = n
+    elif n == 4:
+        nrows = 2
+        ncols = 2
+    else:
+        ncols = 3
+        nrows = int(np.ceil(n/ncols))
     
     for d, idx in zip(dofs, range(1, len(dofs)+1)):
         ax = _fig.add_subplot(nrows, ncols, idx)
