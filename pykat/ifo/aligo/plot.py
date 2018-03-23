@@ -79,7 +79,7 @@ def pretuning_powers(self, _kat, xlimits=[-10,10]):
     plt.show(block=0)
     
 def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
-                            replaceDOFSignals=False, block=True, fig=None, legend=None, steps=100):
+                            replaceDOFSignals=False, block=True, fig=None, label=None, steps=100):
     """
     Displays error signals for a given kat file. Can also be used to plot multiple
     DOF's error signals against each other for visualising any cross coupling.
@@ -91,7 +91,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     block: Boolean, for plot blocking terminal or not if being shown
     replaceDOFSignals: Bool, replaces already present signals for any DOF if already defined in kat. Regardless of this value, it will add default signals if none found.
     fig: figure, uses predefined figure, when defined it won't be shown automatically
-    legend: string, if no plotDOFs is defined this legend is shown
+    label: string, if no plotDOFs is defined this legend is shown
     
     Example:
         import pykat
@@ -172,13 +172,13 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
             DC_Offset = float(DC_Offset)
             
         if toShow is None:
-            ax.plot(out.x, out[d.signal_name()] + DC_Offset, label=legend)
+            ax.plot(out.x, out[d.signal_name()] + DC_Offset, label=label)
         else:
             for _ in toShow:
                 if legend is None:
                     legend = _.name
                     
-                ax.plot(out.x, out[_.signal_name()] + DC_Offset, label=legend)
+                ax.plot(out.x, out[_.signal_name()] + DC_Offset, label=label)
             
         ax.set_xlim([np.min(out.x), np.max(out.x)])
         ax.set_xlabel("{} [deg]".format(d.name))
@@ -190,7 +190,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
         
         ax.grid(True)
     
-    if toShow is not None or legend is not None:
+    if toShow is not None or label is not None:
         plt.legend(loc=0)
        
     plt.tight_layout()
@@ -386,8 +386,8 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}
     """
     kat = base.deepcopy()
 
-    kat.removeBlock("locks")
-    kat.removeBlock("errsigs")
+    kat.removeBlock("locks", False)
+    kat.removeBlock("errsigs", False)
 
     kat.parse(kat.IFO.DARM.transfer())
     kat.parse("qnoisedS NSR 1 $fs nAS")
