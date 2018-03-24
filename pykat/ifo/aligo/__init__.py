@@ -213,21 +213,21 @@ class ALIGO_IFO(IFO):
     def lengths_status(self):
         self.compute_derived_lengths()
         
-        print(" .--------------------------------------------------.")
-        print("| - arm length:                                     |")
-        print("| Lx   = {:11.7}m, Ly   = {:11.7}m          |".format(float(self.kat.LX.L), float(self.kat.LY.L)))
-        print("| - small MI and recycling lengths:                 | ")
-        print("| lx   = {:11.7}m, ly   = {:11.7}m          |".format(self.lx, self.ly))
-        print("| lpr  = {:11.7}m, lsr  = {:11.7}m          |".format(self.lpr, self.lsr))
-        print("| lMI  = {:11.7}m, lSchnupp = {:11.5}m      |".format(self.lMI, self.lSchnupp))
-        print("| lPRC = {:11.7}m, lSRC = {:11.7}m          |".format(self.lPRC, self.lSRC))
-        print("+---------------------------------------------------+")
-        print("| - associated cavity frequencies [Hz]:             |")
-        print("| fsrx   = {:11.8}, fsry   = {:11.8}        |".format(self.fsrX, self.fsrY))
-        print("| fsrPRC = {:11.8}, fsrSRC = {:11.8}        |".format(self.fsrPRC, self.fsrSRC))
-        print("| f1_PRC = {:11.8}                              |".format(self.f1_PRC))
-        print("| f1     = {:11.8}, f2     = {:11.9}        |".format(self.f1, self.f2))
-        print(" `--------------------------------------------------'")
+        print("  .-------------------------------------------------.")
+        print(" | - arm length:                                    |")
+        print(" | Lx   = {:11.7}m, Ly   = {:11.7}m         |".format(float(self.kat.LX.L), float(self.kat.LY.L)))
+        print(" | - small MI and recycling lengths:                | ")
+        print(" | lx   = {:11.7}m, ly   = {:11.7}m         |".format(self.lx, self.ly))
+        print(" | lpr  = {:11.7}m, lsr  = {:11.7}m         |".format(self.lpr, self.lsr))
+        print(" | lMI  = {:11.7}m, lSchnupp = {:11.5}m     |".format(self.lMI, self.lSchnupp))
+        print(" | lPRC = {:11.7}m, lSRC = {:11.7}m         |".format(self.lPRC, self.lSRC))
+        print(" +--------------------------------------------------+")
+        print(" | - associated cavity frequencies [Hz]:            |")
+        print(" | fsrx   = {:11.8}, fsry   = {:11.8}       |".format(self.fsrX, self.fsrY))
+        print(" | fsrPRC = {:11.8}, fsrSRC = {:11.8}       |".format(self.fsrPRC, self.fsrSRC))
+        print(" | f1_PRC = {:11.8}                             |".format(self.f1_PRC))
+        print(" | f1     = {:11.8}, f2     = {:11.9}       |".format(self.f1, self.f2))
+        print(" `-------------------------------------------------'")
     
     def remove_modulators(self):
         """
@@ -353,7 +353,7 @@ class ALIGO_IFO(IFO):
         else:
             pkex.printWarning("could not find ETMY lock")
     
-        if "PRCL_lock" in out.ylabels:
+        if "PRM_lock" in out.ylabels:
             if idx is None:
                 tuning["PRM"]  += float(out["PRM_lock"])
             else:
@@ -361,7 +361,7 @@ class ALIGO_IFO(IFO):
         else:
             pkex.printWarning("could not find PRCL lock")
     
-        if ("MICH_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
+        if ("ITMX_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
             if idx is None:
                 tuning["ITMX"] += float(out["ITMX_lock"])
                 tuning["ITMY"] += float(out["ITMY_lock"])
@@ -369,9 +369,9 @@ class ALIGO_IFO(IFO):
                 tuning["ITMX"] += float(out["ITMX_lock"][idx])
                 tuning["ITMY"] += float(out["ITMY_lock"][idx])
         else:
-            pkex.printWarning("could not find MICH (ITMY) lock")
+            pkex.printWarning("could not find MICH (ITMX, ITMY) lock")
     
-        if "SRCL_lock" in out.ylabels:
+        if "SRM_lock" in out.ylabels:
             if idx is None:
                 tuning["SRM"]  += float(out["SRM_lock"])
             else:
