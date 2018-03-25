@@ -338,7 +338,7 @@ class ALIGO_IFO(IFO):
         tuning = self.kat.IFO.get_tunings()
         last = np.size(out.x)
         if idx==None and last>1:
-            print("switching to last value of out")
+            #print("switching to last value of out")
             idx = last-1
 
         if "ETMX_lock" in out.ylabels:
