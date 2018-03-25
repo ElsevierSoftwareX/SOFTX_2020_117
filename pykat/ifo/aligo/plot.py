@@ -67,7 +67,7 @@ def pretuning_powers(self, _kat, xlimits=[-10,10]):
     idx=1
     fig = plt.figure()
     for d in dofs:
-        ax = fig.add_subplot(2,2,idx)
+        ax = fig.add_subplot(2,2,idx, label=d.name)
         idx+=1
         out = scan_DOF(kat, d, xlimits = np.multiply(d.scale, xlimits), relative = True)
         ax.semilogy(out.x,out[d.signal_name(kat)])
@@ -147,9 +147,15 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
             nrows = 1
             ncols = n
     
+    ax_list = _fig.axes
     for d, idx in zip(dofs, range(1, len(dofs)+1)):
-        ax = _fig.add_subplot(nrows, ncols, idx)
-        
+        ### TODO this seems fragile, needs more testing (adf 25032018)
+        if idx < len(ax_list)+1:
+            ax = ax_list[idx-1]
+            #print("reuse axis")
+        else:
+            ax = _fig.add_subplot(nrows, ncols, idx)
+            #print("new axis")
         kat.removeBlock("SCAN", False)
         
         scan_cmd = scan_optics_string(d.optics, d.factors, "scan", linlog="lin",
@@ -172,13 +178,13 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
             DC_Offset = float(DC_Offset)
             
         if toShow is None:
-            ax.plot(out.x, out[d.signal_name()] + DC_Offset, label=legend)
+            ax.plot(out.x, out[d.signal_name()] + DC_Offset, label=d.name +" "+ legend)
         else:
             for _ in toShow:
                 if legend is None:
                     legend = _.name
                     
-                ax.plot(out.x, out[_.signal_name()] + DC_Offset, label=legend)
+                ax.plot(out.x, out[_.signal_name()] + DC_Offset, label=d.name +" "+legend)
             
         ax.set_xlim([np.min(out.x), np.max(out.x)])
         ax.set_xlabel("{} [deg]".format(d.name))
@@ -197,7 +203,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     
     if fig is None:
         plt.show(block=block)
-    
+    return(fig)
     
 def amps_vs_dof(kat, DoF, f, n=None, m=None, xaxis = [-10,10,100], noplot=False):
 
@@ -270,7 +276,7 @@ def amps_vs_dofs(kat, f, n=None, m=None, xaxis = [-1,1,100]):
     fig = plt.figure(figsize=(17,8))
     axs = []
     for k in range(N):
-        axs.append(fig.add_subplot(2,3,k+1))
+        axs.append(fig.add_subplot(2,3,k+1), label = 'axis{}'.format(k))
     for ax, v in zip(axs,dic.keys()):
         for n in dic[v].keys():
             if n != 'x':
@@ -353,7 +359,7 @@ def pows_vs_dofs(kat, xaxis = [-1,1,100]):
     fig = plt.figure(figsize=(17,8))
     axs = []
     for k in range(N):
-        axs.append(fig.add_subplot(2,3,k+1))
+        axs.append(fig.add_subplot(2,3,k+1), label = 'axis{}'.format(k))
     for ax, v in zip(axs,dic.keys()):
         for n in dic[v].keys():
             if n != 'x':
