@@ -1924,6 +1924,9 @@ class kat(object):
     
     def _finesse_exec(self, binary_name="kat"):
         if len(self.__katdir) == 0:
+            if 'FINESSE_DIR' not in os.environ:
+                raise pkex.MissingFinesseEnvVar()
+                 
             # Get the environment variable for where Finesse is stored
             self.__finesse_dir = os.environ.get('FINESSE_DIR').strip()
             
