@@ -6,7 +6,7 @@ import pykat
 
 kat = pykat.finesse.kat()
 
-kat.parseCommands("""
+kat.parse("""
 l l1 1 0 nb
 bs bs1 1 0 0 0 na nb dump dump
 

@@ -4,7 +4,7 @@ import pykat
 
 kat = pykat.finesse.kat()
 
-kat.parseCommands("""
+kat.parse("""
 l l1 1 0 ni
 tem l1 0 0 1 0
 tem l1 1 0 1u 0
