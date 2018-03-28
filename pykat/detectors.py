@@ -102,6 +102,22 @@ class BaseDetector(object) :
             else:
                 raise pkex.BasePyKatException("Nodes should be a list or tuple of node names or a singular node name as a string.")
     
+    # def __deepcopy__(self, memo):
+    #     """
+    #     When deep copying a kat object we need to take into account
+    #     the instance specific properties.
+    #     """
+    #
+    #     # Here we create a copy of this object based of the base class
+    #     # of this one, otherwise we're making a copy of a copy of a copy...
+    #     result = self.__class__.__new__(self.__class__.__base__)
+    #     result._unfreeze()
+    #     memo[id(self)] = result
+    #     result.__dict__ = copy.deepcopy(self.__dict__, memo)
+    #
+    #     result._freeze()
+    #     return result
+    
     def __deepcopy__(self, memo):
         """
         When deep copying a kat object we need to take into account
@@ -111,11 +127,11 @@ class BaseDetector(object) :
         # Here we create a copy of this object based of the base class
         # of this one, otherwise we're making a copy of a copy of a copy...
         result = self.__class__.__new__(self.__class__.__base__)
-        result._unfreeze()
-        memo[id(self)] = result
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
-        result._freeze()
+        for _ in result._params:
+            _._updateOwner(result)
+            
         return result
                 
     def _register_param(self, param):
@@ -586,6 +602,8 @@ class pd(Detector1):
         """
         When deep copying a kat object we need to take into account
         the instance specific properties.
+        
+        PD code needs to override this as it needs to call set_demod_attrs.
         """
         
         # Here we create a copy of this object based of the base class
@@ -593,8 +611,12 @@ class pd(Detector1):
         result = self.__class__.__new__(self.__class__.__base__)
         result.__dict__ = copy.deepcopy(self.__dict__, memo)
         
+        # Need to update f/p attrs
         result.__set_demod_attrs()
         
+        for _ in result._params:
+            _._updateOwner(result)
+            
         return result
 
     def _get_fphi_str(self):
@@ -661,15 +683,15 @@ class pd(Detector1):
         self.__phase4 = Param("phase4", self, None)
         self.__phase5 = Param("phase5", self, None)
         
-        fs = [self.__f1, self.__f2, self.__f3, self.__f4, self.__f5]
-        ps = [self.__phase1, self.__phase2, self.__phase3, self.__phase4, self.__phase5]
+        self.__fs = [self.__f1, self.__f2, self.__f3, self.__f4, self.__f5]
+        self.__ps = [self.__phase1, self.__phase2, self.__phase3, self.__phase4, self.__phase5]
 
         for i in range(num_demods):
             f = 'f{0}'.format(i+1)
             #print("i {0} fs {1} f {2} keys {3}".format(i,len(fs),f, kwargs.keys()))
             
             if f in kwargs:
-                fs[i].value = kwargs[f]
+                self.__fs[i].value = kwargs[f]
             else:
                 raise pkex.BasePyKatException("Missing demodulation frequency {0} (f{0})".format(i+1))    
         
@@ -679,7 +701,7 @@ class pd(Detector1):
                 if kwargs[p] is None and i<num_demods-1:
                     raise pkex.BasePyKatException("Missing demodulation phase {0} (phase{0})".format(i+1))
                     
-                ps[i].value = kwargs[p]
+                self.__ps[i].value = kwargs[p]
             elif i<num_demods-1:
                 raise pkex.BasePyKatException("Missing demodulation phase {0} (phase{0})".format(i+1))
    

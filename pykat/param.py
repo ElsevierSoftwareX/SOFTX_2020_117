@@ -272,6 +272,9 @@ class Param(putable, putter):
             return float(self.value)
         
     def getFinesseText(self):
+        if self._owner() is None:
+            raise pkex.BasePyKatException("Owner has been removed but parameter (%s) is still referenced" % self.name)
+            
         if self._owner().removed:
             raise pkex.BasePyKatException("{0} has been removed from the simulation".format(self._owner().name))
             
