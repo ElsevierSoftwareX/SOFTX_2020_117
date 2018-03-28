@@ -1,52 +1,3 @@
-/*
-Virgo model without SRM. Based on the other PRITF.kat with 
-some added stuff tha came from the MATLAB files 
-(don't remember which one). A main change is that I modified 
-the cavity lenghts and RoCs in order to make the PRC 
-near-unstable instead of unstable, which it was in the 
-original file.
-
-Daniel Toyra
-dtoyra@star.sr.bham.ac.uk  
-*/
-
-
-# Notes to self
-# - Several references missing for claimed measured values. 
-# - Extract all thermal lenses and make them into one thermal lens at 
-#   each compensation plate.
-# - Function computing thermal lens from arm cavity power, absorption 
-#   coefficients and Roc of CP surfaces
-# - Python scirpt computing Finesse and rt-loss of a pretuned kat-file.
-#   The finesse should be measured from the gain of an fsig-sideband (PR wobbling)
-#   or carrier gain (not sure that works in general)
-# - Prepare file that computes arm cavity finesse as a function of etalon 
-#   tunings.
-
-# - After having thermal lens from Hello-Vinet, Plot PR-gain over thermal lens offset, and over PR-ROC.
-# - s
-
-
-# Setup file thermal effects file with maxmimised power at 14 W
-# -------------------------------------------------------------
-# 1. Set input power to 14 W. 
-# 2. Compute thermal effects given the powers for 14 W input power, 
-#    for the well tuned and matched file.
-# 3. Set new RoCs and IM thermal lenses of the kat-object according to the thermal 
-#    effects obtained. 
-# 4. "Mode match"/maximise powers by tuning AR_RoC of IMs and CP lenses.
-# 5. Store AR_RoCs and CP focal lengths in a permanent kat-file. 
-# 6. Store warm parameters in adv-tools file.  
-
-# Thermal effect computation (kat-file assumed to be prepared properly):
-# ---------------------------------------------------------------------- 
-# 1. Chose an input power (0 to 14 W should be tested. Should bring the IFO to the 
-#    state obtained above. For other values, start from 14 W and move towards
-#    new power)
-# 2. Compute new RoCs and thermal lenses, and set these to kat-object.
-# 3. Tune file, check maxtem needed, and obtain new powers.
-# 4. Repeat 2 and 3 until tolerance reached.
-
 %%% FTblock Laser
 ###########################################################################
 # The input power used during last Science run
@@ -219,8 +170,8 @@ m2 WEAR 0 $L_WEAR 0 nWEsub2 nWE2
 %%% FTblock SRC
 ###########################################################################
 
-# The SR mirror here is fully transmissive. This path is just here to 
-# enable for the the OMC. 
+# The SR mirror here is fully transmissive. Currently, this path is just 
+# here to enable for the the OMC. 
 
 s lsr 5.943 nBSe nSR1
 
@@ -246,33 +197,32 @@ s sMMT_ML_M1 0.6 nMMT_Lb nMMT_M1a
 
 # Telescope mirror 1
 bs MMT_M1 1 0 0 0 nMMT_M1a nMMT_M1b nMMT_M1c nMMT_M1d
+attr MMT_M1 Rc 1.44
 
 s sMMT_M1_M2 0.765 nMMT_M1b nMMT_M2a
 
 # Telescope mirror 2
 bs MMT_M2 1 0 0 0 nMMT_M2a nMMT_M2b nMMT_M2c nMMT_M2d
+attr MMT_M2 Rc 0.09 
 
 s sMMT_M2_L1 0.5 nMMT_M2b nMMT_L1a
 
 # Modematching lenses. 
-# ------------------------------------------------------
-# Focal length obtained via lensmaker's equation with
-# thin lens approximation, and assuming n = 1.44963. 
+# -----------------------------------------------------------
+# Focal length obtained from TDR through lensmaker's equation 
+# with thin lens approximation, and assuming n = 1.44963. 
 
 # lens MMT_L1 2.891 nMMT_L1a nMMT_L1b
 # s sMMT_L1_L2 0.12 nMMT_L1b nMMT_L2a
 # lens MMT_L2 1.724 nMMT_L2a nMMT_L2b
 
 # Adjusted the above values to modematch OMCs to the IFO
-lens MMT_L1 3.493 nMMT_L1a nMMT_L1b
+lens MMT_L1 4.027 nMMT_L1a nMMT_L1b
 s sMMT_L1_L2 0.12 nMMT_L1b nMMT_L2a
-lens MMT_L2 1.398 nMMT_L2a nMMT_L2b
-# ------------------------------------------------------
+lens MMT_L2 1.323 nMMT_L2a nMMT_L2b
+# -----------------------------------------------------------
 
 s sL2_OMC1 0.99 nMMT_L2b nOMC1_ICa
-
-attr MMT_M1 Rc 1.44
-attr MMT_M2 Rc 0.09 
 
 ###########################################################################
 %%% FTend OMCpath
@@ -287,7 +237,8 @@ attr MMT_M2 Rc 0.09
 # Transmission and reflection parameters have been manually
 # tuned to obtain a finesse of 210 (TDR page 249), and to impedance match
 # the cavity. UPDATE AS SOON AS WE GET ACTUAL VALUES!
-# The OMC separation distance of 0.9 cm is from TDR page 254. 
+# The OMC separation distance of 0.9 cm is from TDR page 254.
+ 
 # OMC 1
 # -----
 bs OMC1_IC 0.985107 0.014863 0 8.876 nOMC1_ICa nOMC1_ICb nOMC1_ICc nOMC1_ICd
@@ -312,7 +263,6 @@ bs OMC2_OC 0.985233 0.014737 0 8.876 nOMC2_OCa nOMC2_OCb nOMC2_OCc nOMC2_OCd
 s sOMC2_OC_CS2 0.0630 $nsilica nOMC2_OCb nOMC2_CS2a
 bs OMC2_CS2 0.9999665 33.5u 0 8.876 nOMC2_CS2a nOMC2_CS2b nOMC2_CS2c nOMC2_CS2d
 s sOMC2_CS2_IC 0.0600 $nsilica nOMC2_CS2b nOMC2_ICd
-
 
 ###########################################################################
 %%% FTend OMC
@@ -346,13 +296,14 @@ maxtem 2
 
 # HR-surfaces
 # -----------
-attr WI Rc -1424.5      # Measured WI RoC [VIR-0543A-14]
-attr NI Rc -1424.6      # Measured NI RoC [VIR-0544A-14]
-attr WE Rc 1696         # Measured WE RoC [VIR-0270A-15]
-attr NE Rc 1695         # Measured NE RoC [VIR-0269A-15]
-attr PR Rc -1477        # Measured PR RoC [VIR-0029A-15]
+attr WI Rc -1424.5      # Measured cold IFO WI RoC [VIR-0543A-14]
+attr NI Rc -1424.6      # Measured cold IFO NI RoC [VIR-0544A-14]
+attr WE Rc 1696         # Measured cold IFO WE RoC [VIR-0270A-15]
+attr NE Rc 1695         # Measured cold IFO NE RoC [VIR-0269A-15]
+attr PR Rc -1477        # Measured cold IFO PR RoC [VIR-0029A-15]
 attr SR Rc 1430         # Design [TDR, table 2.8]
-# Design RoCs for OMC [TDR page 247]
+
+# Design OMC RoCs [TDR page 247]
 attr OMC1_CS1 Rc 1.499  
 attr OMC1_CS2 Rc 1.499
 attr OMC2_CS1 Rc 1.499
@@ -360,22 +311,23 @@ attr OMC2_CS2 Rc 1.499
 
 # AR-surfaces
 # -----------
-# attr WIAR Rc -1420     # Designed WI AR RoC [TDR, table 2.6]
-# attr NIAR Rc -1420     # Designed NI AR RoC [TDR, table 2.6]
-attr WIAR Rc -1424.5    # Approximately the same as measured HR surface
+# attr WIAR Rc -1420     # Design WI AR RoC [TDR, table 2.6]
+# attr NIAR Rc -1420     # Design NI AR RoC [TDR, table 2.6]
+attr WIAR Rc -1424.5     # Approximately the same as measured HR surface
 attr NIAR Rc -1424.6     # Approximately the same as measured HR surface
 attr PRAR Rc -3.62       # Measured PR AR RoC [VIR-0029A-15]
 attr SRAR Rc 3.59        # Design [TDR, table 2.8]
 
 # Lenses
 # -----------
-# Compensation plate thermal lenses
-const f_CPN_TL 60509.52414597     # North 
-const f_CPW_TL 64643.60054991     # West
+# Compensation plate focal lengths for cold IFO. Values optimised to yield 
+# a well matched warm interferomter at 14 W.
+const f_CPN_TL 63689.093     # North 
+const f_CPW_TL 68509.756     # West
 
-#const f_CPN_TL 54000     # North 
-#const f_CPW_TL 930000     # West
-
+# Compensation plate lensing. Values from Valeria.
+# const f_CPN_TL 54000      # North 
+# const f_CPW_TL 930000     # West
 
 ###########################################################################
 %%% FTend ROCs
@@ -402,7 +354,7 @@ const L_NE 27u           # NE loss
 # Set to match measured roundtrip loss of 56 +- 5 ppm [Loggbook 38601]
 const L_WI 27u           # WI loss 
 const L_WE 27u           # WE loss 
-# These are included above
+# These are included in the above values. 
 # const L_NI 0.19u         # NI Absorbtion coating losses. From Valeria. Ref?
 # const L_WI 0.28u         # WI Absorbtion coating losses. From Valeria. Ref?
 # const L_NE 0.24u         # NE Absorbtion coating losses. From Valeria. Ref?
@@ -448,12 +400,12 @@ const L_CPN2 44u         # CPW (CP03) surface 2 reflectiviy [VIR-0153A-16]
 const PR_phi   0
 
 const NIAR_phi 0
-const NI_phi   -0.271
-const NE_phi   -0.271
+const NI_phi   0
+const NE_phi   0
 
 const WIAR_phi 0
-const WI_phi   0.271
-const WE_phi   0.271
+const WI_phi   0
+const WE_phi   0
 
 ###########################################################################
 %%% FTend Tunings
@@ -466,24 +418,6 @@ const WE_phi   0.271
 # Refractive index of silica
 const nsilica 1.44963
 const l_arm 2999.8         # Arm length
-
-
-# Lengths
-# -------------------------------------------------------------------------
-# Design [TDR, table 2.4]
-#const l_BS_POP 5.814        # BS to POP
-#const l_BS_CPN 5.367        # BS AR to CPN 
-#const l_BS_CPW 5.245        # BS HR to CPW
-
-
-# Derived lengths [TDR, table 2.4]
-# const l_PRCL 11.952         # power recycling cavity length [TDR, table 2.1]
-# const l_SRCL 11.952         # signal recycling cavity length [TDR, tab 2.1]
-# const l_Schnupp 0.23        # Schnupp asymmetry [TDR, table 2.4]
-# const l_PR_BS 5.925         # computed as BS-POP + n*POPthick + POP-PR [TDR, tab 2.4, pp 25]
-# const l_IMC_PR 11.67        # Extracted from Optocad (0.4084 on SIB1, 2.1240 under SIB1, 9.14136 on SIB1 to PRM)
-# const l_IMC1_IMC2 0.08625   # TDR, p. 123, Fig. 4.27
-# -------------------------------------------------------------------------
 
 
 ###########################################################################
@@ -553,120 +487,119 @@ pd P_WAC nWI2     # West
 %%% FTend Powers
 
 
-
 %%% FTblock Errsigs
 ###########################################################################
 
 # f for B1
 pd1 pdB1f6p $f1 0 nBSe
 pd1 pdB1f6q $f1 90 nBSe
-pd1 errB1_6 $f1 nBSe   # Added by DT
+pd1 errB1_6 $f1 nBSe
 
 pd1 pdB1f8p $f3 0 nBSe
 pd1 pdB1f8q $f3 90 nBSe
-pd1 errB1_8 $f3 nBSe   # Added by DT
+pd1 errB1_8 $f3 nBSe
 
 pd1 pdB1f56p $f2 0 nBSe
 pd1 pdB1f56q $f2 90 nBSe
-pd1 errB1_56 $f2 nBSe   # Added by DT
+pd1 errB1_56 $f2 nBSe
 
 pd1 pdB1f131p $f4b 0 nBSe
 pd1 pdB1f131q $f4b 90 nBSe
-pd1 errB1_131 $f4b nBSe   # Added by DT
+pd1 errB1_131 $f4b nBSe
 
 # f for B2
 pd1 pdB2f6p $f1 0 nPR1
 pd1 pdB2f6q $f1 90 nPR1
-pd1 errB2_6 $f1 nPR1   # Added by DT
+pd1 errB2_6 $f1 nPR1
 
 pd1 pdB2f8p $f3 0 nPR1
 pd1 pdB2f8q $f3 90 nPR1
-pd1 errB2_8 $f3 nPR1   # Added by DT
+pd1 errB2_8 $f3 nPR1
 
 pd1 pdB2f56p $f2 0 nPR1
 pd1 pdB2f56q $f2 90 nPR1
-pd1 errB2_56 $f2 nPR1   # Added by DT
+pd1 errB2_56 $f2 nPR1
 
 pd1 pdB2f131p $f4b 0 nPR1
 pd1 pdB2f131q $f4b 90 nPR1
-pd1 errB2_131 $f4b nPR1   # Added by DT
+pd1 errB2_131 $f4b nPR1
 
-pd1 pdB2f119p $f4 0 nPR1   # Added by DT
-pd1 pdB2f119q $f4 90 nPR1  # Added by DT
-pd1 errB2_119 $f4 nPR1     # Added by DT
+pd1 pdB2f119p $f4 0 nPR1
+pd1 pdB2f119q $f4 90 nPR1
+pd1 errB2_119 $f4 nPR1
 
 # f for B4
 pd1 pdB4f6p $f1 0 nB4
 pd1 pdB4f6q $f1 90 nB4
-pd1 errB4_6 $f1 nB4   # Added by DT
+pd1 errB4_6 $f1 nB4
 
 pd1 pdB4f8p $f3 0 nB4
 pd1 pdB4f8q $f3 90 nB4
-pd1 errB4_8 $f3 nB4   # Added by DT
+pd1 errB4_8 $f3 nB4
 
 pd1 pdB4f56p $f2 0 nB4
 pd1 pdB4f56q $f2 90 nB4
-pd1 errB4_56 $f2 nB4   # Added by DT
+pd1 errB4_56 $f2 nB4
 
 pd1 pdB4f131p $f4b 0 nB4
 pd1 pdB4f131q $f4b 90 nB4
-pd1 errB4_131 $f4b nB4   # Added by DT
+pd1 errB4_131 $f4b nB4
 
 # f for B5
 pd1 pdB5f6p $f1 0 nBSAR
 pd1 pdB5f6q $f1 90 nBSAR
-pd1 errB5_6 $f1 nBSAR   # Added by DT
+pd1 errB5_6 $f1 nBSAR
 
 pd1 pdB5f8p $f3 0 nBSAR
 pd1 pdB5f8q $f3 90 nBSAR
-pd1 errB5_8 $f3 nBSAR   # Added by DT
+pd1 errB5_8 $f3 nBSAR
 
 pd1 pdB5f56p $f2 0 nBSAR
 pd1 pdB5f56q $f2 90 nBSAR
-pd1 errB5_56 $f2 nBSAR   # Added by DT
+pd1 errB5_56 $f2 nBSAR
 
 pd1 pdB5f131p $f4b 0 nBSAR
 pd1 pdB5f131q $f4b 90 nBSAR
-pd1 errB5_131 $f4b nBSAR   # Added by DT
+pd1 errB5_131 $f4b nBSAR
 
 # f for B7
 pd1 pdB7f6p $f1 0 nNE2
 pd1 pdB7f6q $f1 90 nNE2
-pd1 errB7_6 $f1 nNE2   # Added by DT
+pd1 errB7_6 $f1 nNE2
 
 pd1 pdB7f8p $f3 0 nNE2
 pd1 pdB7f8q $f3 90 nNE2
-pd1 errB7_8 $f3 nNE2   # Added by DT
+pd1 errB7_8 $f3 nNE2
 
 pd1 pdB7f56p $f2 0 nNE2
 pd1 pdB7f56q $f2 90 nNE2
-pd1 errB7_56 $f2 nNE2   # Added by DT
+pd1 errB7_56 $f2 nNE2
 
 pd1 pdB7f131p $f4b 0 nNE2
 pd1 pdB7f131q $f4b 90 nNE2
-pd1 errB7_131 $f4b nNE2   # Added by DT
+pd1 errB7_131 $f4b nNE2
 
 # f for B8
 pd1 pdB8f6p $f1 0 nWE2
 pd1 pdB8f6q $f1 90 nWE2
-pd1 errB8_6 $f1 nWE2   # Added by DT
+pd1 errB8_6 $f1 nWE2
 
 pd1 pdB8f8p $f3 0 nWE2
 pd1 pdB8f8q $f3 90 nWE2
-pd1 errB8_8 $f3 nWE2   # Added by DT
+pd1 errB8_8 $f3 nWE2
 
 pd1 pdB8f56p $f2 0 nWE2
 pd1 pdB8f56q $f2 90 nWE2
-pd1 errB8_56 $f2 nWE2   # Added by DT
+pd1 errB8_56 $f2 nWE2
 
 pd1 pdB8f131p $f4b 0 nWE2
 pd1 pdB8f131q $f4b 90 nWE2
-pd1 errB8_131 $f4b nWE2   # Added by DT
+pd1 errB8_131 $f4b nWE2
 
 # PRCL 3f
 pd1 pdB2fx3p $f1_3f 0 nPR1
 pd1 pdB2fx3q $f1_3f 90 nPR1
-pd1 errB2_fx3 $f1_3f nPR1   # Added by DT
+pd1 errB2_fx3 $f1_3f nPR1   
 
 ###########################################################################
 %%% FTend Errsigs

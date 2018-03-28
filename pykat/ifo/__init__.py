@@ -627,6 +627,7 @@ def modematch(kat, components, cavs, node, verbose = False):
     Returns
     --------
     kat1        - kat-object with the optimised component parameters. Deepcopy of kat.
+    out         - array with the new optimised values
     
     '''
     Nc = len(cavs)

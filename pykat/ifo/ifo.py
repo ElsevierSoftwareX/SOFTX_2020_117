@@ -236,17 +236,19 @@ put f1m f $mx1
             tuning["ETMY"] += float(out["ETMY_lock"])
         else:
             print(" ** Warning: could not find ETMY lock")
-        if "PRCL_lock" in out.ylabels:
-            tuning["PRM"]  += float(out["PRCL_lock"])
+        if "PRM_lock" in out.ylabels:
+            tuning["PRM"]  += float(out["PRM_lock"])
         else:
             print(" ** Warning: could not find PRCL lock")
-        if ("MICH_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
-            tuning["ITMX"] += float(out["MICH_lock"])
+        if ("ITMX_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
+        #if ("MICH_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
+            #tuning["ITMX"] += float(out["MICH_lock"])
+            tuning["ITMX"] += float(out["ITMX_lock"])
             tuning["ITMY"] += float(out["ITMY_lock"])
         else:
             print(" ** Warning: could not find MICH (ITMY) lock")
-        if "SRCL_lock" in out.ylabels:
-            tuning["SRM"]  += float(out["SRCL_lock"])
+        if "SRM_lock" in out.ylabels:
+            tuning["SRM"]  += float(out["SRM_lock"])
         else:
             print(" ** Warning: could not find SRCL lock")
         set_tunings(kat, tuning)
