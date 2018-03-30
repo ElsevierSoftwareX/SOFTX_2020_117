@@ -190,6 +190,29 @@ def f__lkat_trace_callback(lkat, trace_info, getCavities, getNodes, getSpaces):
                                                  gouyy = space.gouy_y)
                                                  
 
+@canFreeze
+class GaussCommands(object):
+    """
+    Container class to store Gauss commands in
+    """
+    def __init__(self):
+        self._freeze()
+
+    def _add(self, cmd):
+        if hasattr(self, cmd.name):
+            raise pkex.BasePyKatException("Gauss command called %s already added" % cmd.name)
+            
+        self._unfreeze()
+        setattr(self, cmd.name, self)
+        self._freeze()
+        
+    def _remove(self, cmd):
+        if hasattr(self, cmd.name):
+            raise pkex.BasePyKatException("Gauss command called %s not found" % cmd.name)
+            
+        self._unfreeze()
+        delattr(self, cmd.name)
+        self._freeze()
 
 class BlockedKatFile(object):
     """
@@ -1071,6 +1094,7 @@ class kat(object):
             
             if isinstance(b, type):
                 items.append(b)
+            
 
         if parameter is None:
             return tuple(items)
@@ -2304,10 +2328,12 @@ class kat(object):
         except KeyboardInterrupt as ex:
             pkex.printWarning("Keyboard interrupt caught, stopped simulation.")
         except pkex.FinesseRunError as ex:
+            pykat.lastErrorKat = self
+            
             if rethrowExceptions:
                 raise ex 
             else:
-                pkex.PrintError("Error from Finesse:", ex)
+                pkex.PrintError("Error from Finesse (See 'pykat.lastErrorKat' for kat object):", ex)
                 
         except pkex.BasePyKatException as ex:
             if rethrowExceptions:

@@ -313,6 +313,7 @@ class ALIGO_IFO(IFO):
         This function directly alters the lengths of the associated kat object.
         """
         kat = self.kat
+        self.compute_derived_lengths()
         
         vprint(verbose, "-- adjusting PRC length")
         ltmp = 0.5 * clight / kat.IFO.f1
@@ -835,14 +836,16 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     else:
         nAS_RF = "nAS"
         
-    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1", nAS_RF,  "f1", phase=101)
-    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2", nAS_RF,  "f2", phase=14)
+    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  nAS_RF,  "f1", phase=101)
+    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  nAS_RF,  "f2", phase=14)
     kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", nAS_RF, "f36M", phase=14)
 
     kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nITMX2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nITMY2")
+    kat.IFO.TRX     = Output(kat.IFO, "TRX",   "nETMX2")
+    kat.IFO.TRY     = Output(kat.IFO, "TRY",  " nETMY2")
 
     # pretune LSC DOF
     kat.IFO.preARMX  =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
@@ -852,8 +855,15 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.preSRCL  =  DOF(kat.IFO, "SRCL", kat.IFO.AS_DC,   "", "SRM",  1, 10.0, sigtype="z")
      
     # Used by new pretuning scripts DOFs - based on lock aquisition stuff in martynov thesis
-    kat.IFO._preDARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2, "Q",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
-    kat.IFO._prePRCL =  DOF(kat.IFO, "PRCL", kat.IFO.REFL_f1,"I", "PRM",  1, 10.0, sigtype="z")
+    kat.IFO._preMICH =  DOF(kat.IFO, "preMICH", kat.IFO.AS_f2,   "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [1,1,-1,-1], 1.0, sigtype="z")
+    kat.IFO._preSRCL =  DOF(kat.IFO, "preSRCL", kat.IFO.AS_f2,   "I", "SRM", 1, 1.0, sigtype="z")
+    kat.IFO._prePRCL =  DOF(kat.IFO, "prePRCL", kat.IFO.REFL_f1, "I", "PRM", 1, 1.0, sigtype="z")
+    
+    kat.IFO._preALSX =  DOF(kat.IFO, "ALSX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
+    kat.IFO._preALSY =  DOF(kat.IFO, "ALSY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
+    
+    
+    
      
     # control scheme as in [1] Table C.1. Due to Finesse
     # conventions, the overall factor for all but PRCL are multiplied by -1
@@ -916,19 +926,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.lockNames = None
     
     return kat
-    
-
-    
-def scan_to_precision(kat, DOF, pretune_precision, minmax="max", phi=0.0, precision=90.0, debug=None, extra_cmds=None):
-    assert_aligo_ifo_kat(kat)
-    
-    while precision > pretune_precision * DOF.scale:
-        out = scan_DOF(kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision], extra_cmds=extra_cmds)
         
-        phi, precision = find_peak(out, DOF.port.name, minmax=minmax, debug=debug)
-         
-    return phi, precision
-    
     
 def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     assert_aligo_ifo_kat(_kat)
@@ -949,7 +947,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     
     kat.BS.setRTL(0.0, 1.0, 0.0) # set BS refl. for X arm
     
-    phi, precision = scan_to_precision(kat, IFO.preARMX, pretune_precision)
+    phi, precision = scan_to_precision(kat.IFO.preARMX, pretune_precision)
     phi = round(phi/pretune_precision)*pretune_precision
     phi = round_to_n(phi,5)
     
@@ -964,7 +962,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     make_transparent(kat,["PRM","SRM"])
     make_transparent(kat,["ITMX", "ETMX"])
     kat.BS.setRTL(1.0,0.0,0.0) # set BS refl. for Y arm
-    phi, precision = scan_to_precision(kat, IFO.preARMY, pretune_precision)
+    phi, precision = scan_to_precision(kat.IFO.preARMY, pretune_precision)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
@@ -975,7 +973,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     kat.removeBlock("locks", False)
     
     make_transparent(kat,["PRM","SRM"])
-    phi, precision = scan_to_precision(kat, IFO.preMICH, pretune_precision, minmax="min", precision=30.0)
+    phi, precision = scan_to_precision(kat.IFO.preMICH, pretune_precision, minmax="min", precision=30.0)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi,5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
@@ -985,7 +983,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     make_transparent(kat,["SRM"])
-    phi, precision = scan_to_precision(kat, IFO.prePRCL, pretune_precision)
+    phi, precision = scan_to_precision(kat.IFO.prePRCL, pretune_precision)
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi, 5)
     vprint(verbose, "   found max/min at: {} (precision = {:2g})".format(phi, precision))
@@ -995,7 +993,7 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
     
-    phi, precision = scan_to_precision(kat, IFO.preSRCL, pretune_precision, phi=0, precision=90.0, debug=("SRCL" in debug))
+    phi, precision = scan_to_precision(kat.IFO.preSRCL, pretune_precision, phi=0, precision=90.0, debug=("SRCL" in debug))
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi, 5) - 90.0
     

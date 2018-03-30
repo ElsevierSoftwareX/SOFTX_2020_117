@@ -333,6 +333,12 @@ class cavity(Command):
         
         
 class gauss(object):
+    """
+    Gauss is a differs in behaviour compared to other commands. It does not
+    add itself to the overall kat object, but instead it sets the node
+    components q value directly.
+    """
+    
     @staticmethod
     def parseFinesseText(text, kat):
         

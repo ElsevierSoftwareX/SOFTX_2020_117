@@ -18,6 +18,7 @@ if USE_GUI:
 import pykat.exceptions as pkex
 import pykat.external.six as six
 
+from pykat.freeze import canFreeze
 from pykat.components import Component, NodeGaussSetter
 from pykat.detectors import BaseDetector as Detector
 from pykat.optics.gaussian_beams import BeamParam
@@ -570,7 +571,7 @@ class NodeNetwork(object):
         else:
             return tuple(comps)
     
-    
+@canFreeze
 class Node(object):
 
     def __init__(self, name, network, id):
@@ -583,11 +584,25 @@ class Node(object):
         self.__q_comp = None
         self.__id = id
         self._isDump = False
+        self.__enabled = True
+        
+        self._freeze()
         
     def __str__(self): return self.__name
 
     def __repr__(self):
         return "<%s (%s) at %s>" % (self.__class__.__name__, self.__name, hex(id(self))) 
+        
+    @property
+    def enabled(self):
+        """
+        Boolean which enables or disables the Gaussian beam parameter being set at this node.
+        """
+        return self.__enabled
+    
+    @enabled.setter
+    def enabled(self, value):
+        self.__enabled = value
         
     @property
     def isDump(self): return self._isDump
@@ -609,7 +624,7 @@ class Node(object):
             return (self.__q_x, self.__q_y)
             
     @property
-    def qx(self): return self.__q_x
+    def qx(self): return self.__q_x 
     @property
     def qy(self): return self.__q_y
     
@@ -636,26 +651,26 @@ class Node(object):
             
         rtn = []
         
-        # to get the name of the gauss parameter is a bit convoluted...
-        # firstly the name is set in the NodeGaussSetter object which is
-        # connected to each component, so this has to be retrieved and 
-        # then applied.
-        if hasattr(self.__q_comp, self.name):
-            ns = getattr(self.__q_comp, self.name)
+        if self.enabled:
+            # to get the name of the gauss parameter is a bit convoluted...
+            # firstly the name is set in the NodeGaussSetter object which is
+            # connected to each component, so this has to be retrieved and 
+            # then applied.
+            if hasattr(self.__q_comp, self.name):
+                ns = getattr(self.__q_comp, self.name)
             
-            # if no name is present give it a default one
-            if ns.name != None:
-                name = ns.name
+                # if no name is present give it a default one
+                if ns.name != None:
+                    name = ns.name
+                else:
+                    name = "g_%s" % self.name
             else:
-                name = "g_%s" % self.name
-        else:
-            raise pkex.BasePyKatException("Node {0} is not connected to {1}".format(self.name, self.__q_comp.name))
-        
-        
-        if self.__q_x == self.__q_y:
-            rtn.append("gauss {name} {comp} {node} {w0:.15g} {z:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0=self.__q_x.w0, z=self.__q_x.z))
-        else:
-            rtn.append("gauss {name} {comp} {node} {w0x:.15g} {zx:.15g} {w0y:.15g} {zy:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0x=self.__q_x.w0, zx=self.__q_x.z, w0y=self.__q_y.w0, zy=self.__q_y.z))
+                raise pkex.BasePyKatException("Node {0} is not connected to {1}".format(self.name, self.__q_comp.name))
+    
+            if self.__q_x == self.__q_y:
+                rtn.append("gauss {name} {comp} {node} {w0:.15g} {z:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0=self.__q_x.w0, z=self.__q_x.z))
+            else:
+                rtn.append("gauss {name} {comp} {node} {w0x:.15g} {zx:.15g} {w0y:.15g} {zy:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0x=self.__q_x.w0, zx=self.__q_x.z, w0y=self.__q_y.w0, zy=self.__q_y.z))
             
         return rtn
         

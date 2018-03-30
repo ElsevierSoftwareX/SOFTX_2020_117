@@ -48,12 +48,22 @@ if USE_GUI:
     import pykat.gui.graphics
     from pykat.gui.graphics import *
 
+@canFreeze
 class NodeGaussSetter(object):
     def __init__(self, component, node):                
         self.__comp = weakref.ref(component)
         self.__node = weakref.ref(node)
         self.__name = None
+        self._freeze()
+     
+    @property
+    def enabled(self):
+        return self.__node().enabled
         
+    @enabled.setter
+    def enabled(self, value):
+        self.__node().enabled = value
+           
     @property
     def name(self):
         return self.__name
@@ -224,7 +234,7 @@ class Component(object):
         self._unfreeze()
         
         if not isinstance(ns, NodeGaussSetter):
-            raise exceptions.ValueError("Argument is not of type NodeGaussSetter")
+            raise pkex.ValueError("Argument is not of type NodeGaussSetter")
         
         name = str(ns.node.name)
         fget = lambda self: self.__get_node_setter(name)
@@ -1580,7 +1590,7 @@ class laser(Component):
         elif len(values) == 4:
             return laser(values[0],values[3],P=values[1],f=values[2], phase=0)
         else:
-            raise exceptions.FinesseParse("Laser Finesse code format incorrect '{0}'".format(text))
+            raise pkex.FinesseParse("Laser Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
         rtn = ['l {0} {1} {2} {3} {4}'.format(self.name, self.__power, self.__f_offset, self.__phase, self.nodes[0].name)]
@@ -1685,7 +1695,7 @@ class squeezer(Component):
                             db=values[2], angle=values[3],
                             entangled_carrier=entangled_carrier)
         else:
-            raise exceptions.FinesseParse("Squeezer Finesse code format incorrect '{0}'".format(text))
+            raise pkex.FinesseParse("Squeezer Finesse code format incorrect '{0}'".format(text))
     
     def getFinesseText(self):
         if self.entangled_carrier:

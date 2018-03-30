@@ -104,9 +104,9 @@ def round_to_n(x, n):
     factor = (10 ** power)
     return round(x * factor) / factor
     
-def vprint(verbose, printstr, end='\n'):
+def vprint(verbose, *printstr, end='\n'):
     if verbose:
-        print(printstr, end=end)
+        print(*printstr, end=end)
         
 def BS_optical_path(thickness, n=1.44963098985906, angle=45.0):
     """
@@ -135,6 +135,28 @@ def make_list_copy(_l):
         
         
     return _l[:] # copy the list, just to be save
+
+def scan_to_precision(DOF, target_precision, minmax="max", phi=0.0, precision=90.0, debug=None, extra_cmds=None):
+    """
+    Scans a DOF for a kat object to maximise or minimise the DOF's signal. 
+    
+    DOF - DOF object of the kat object
+    target_precision - how accurate to max/min to
+    minmax - "max" or "min"
+    phi - initial starting point
+    precision - look in phi-precision to phi+precision for min/max
+    debug - output extra information
+    extra_cmds - Extra commands to include in simulation run
+    
+    Returns phi of min/max and precision reached
+    """
+    while precision > target_precision * DOF.scale:
+        out = scan_DOF(DOF.kat, DOF, xlimits = [phi-1.5*precision, phi+1.5*precision], extra_cmds=extra_cmds)
+        
+        phi, precision = find_peak(out, DOF.port.name, minmax=minmax, debug=debug)
+         
+    return phi, precision
+
 
 def find_peak(out, detector, minmax='max', debug=False): 
     """
@@ -505,32 +527,39 @@ def mismatch_cavities(base, node):
     _kat.yaxis = "re:im"
     _kat.maxtem = 0
     
-    cavs = []
+    qs  = []
     qxs = []
     qys = []
 
-    for cav in _kat.getAll(pykat.commands.cavity):
+    gauss = list(_kat.getAll(pykat.commands.cavity))
+    
+    for _ in base.nodes.getNodes():
+        if base.nodes[_].q is not None:
+            gauss.append(base.nodes[_])
+    
+    for q in gauss:
         # Switch off all cavities
-        for _ in _kat.getAll(pykat.commands.cavity):
+        for _ in gauss:
             _.enabled = False
         # Then select one at a time
-        cav.enabled = True
-
+        q.enabled = True
+        
         out = _kat.run()
 
-        cavs.append(cav.name)
+        qs.append(q.name)
+        
         qxs.append(pykat.BeamParam(q=out['qx']))
         qys.append(pykat.BeamParam(q=out['qy']))
 
-    mmx = DataFrame(index=cavs, columns=cavs)
-    mmy = DataFrame(index=cavs, columns=cavs)
+    mmx = DataFrame(index=qs, columns=qs)
+    mmy = DataFrame(index=qs, columns=qs)
     
-    for c1, q1x, q1y in zip(cavs, qxs, qys):
-        for c2, q2x, q2y in zip(cavs, qxs, qys):
+    for c1, q1x, q1y in zip(qs, qxs, qys):
+        for c2, q2x, q2y in zip(qs, qxs, qys):
             mmx[c1][c2] = pykat.BeamParam.overlap(q1x, q2x)
             mmy[c1][c2] = pykat.BeamParam.overlap(q1y, q2y)
             
-    return 1-mmx.astype(float), 1-mmy.astype(float), list(zip(cavs, qxs, qys))
+    return 1-mmx.astype(float), 1-mmy.astype(float), list(zip(qs, qxs, qys))
 
 def mismatch_scan_RoC(base, node, mirror, lower, upper, steps):
     _kat = base.deepcopy()
