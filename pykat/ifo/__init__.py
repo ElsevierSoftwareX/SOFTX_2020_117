@@ -1129,7 +1129,27 @@ class IFO(object):
             vals.append(str(kwargs[key]))
         
         return "-".join(vals)
-
+        
+    def zero_locks(self, verbose=False):
+        """
+        Zeroes the error signals by running the currently setup locks in this kat object.
+        The corrected tunings are then applied to this object.  
+        """
+        
+        if verbose:
+            print("Old tunings")
+            print(self.get_tunings())
+        
+        base = self.kat.deepcopy()
+        base.noxaxis = True
+        base.verbose = False
+        out = base.run()
+        self.apply_lock_feedback(out)
+        
+        if verbose:
+            print("New tunings")
+            print(self.get_tunings())
+            
     def get_tuning_comps(self):
         return self.__tuning_comps
 

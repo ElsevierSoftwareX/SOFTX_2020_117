@@ -79,11 +79,18 @@ class BeamParam(object):
     def q(self): return self.__q
     
     @property
-    def z(self): return self.__q.real
+    def z(self):
+        return self.__q.real
+    @z.setter
+    def z(self, value):
+        self.__q = complex(1j*self.__q.imag + float(value))
     
     @property
     def zr(self): return self.__q.imag
-    
+    @zr.setter
+    def zr(self, value):
+        self.__q = complex(self.__q.real + 1j*float(value))
+        
     @property
     def w(self, z=None):
         return np.abs(self.__q)* np.sqrt(self.__lambda / (self.__nr * math.pi * self.__q.imag))
@@ -146,6 +153,9 @@ class BeamParam(object):
     @property
     def w0(self):
         return np.sqrt(self.__q.imag * self.__lambda / (self.__nr * math.pi))    
+    @w0.setter
+    def w0(self,value ):
+        self.__q = complex(self.__q.real + 1j*value**2 * (self.__nr * math.pi)/self.__lambda)
 
     @property
     def Rc(self):
