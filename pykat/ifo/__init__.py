@@ -104,9 +104,9 @@ def round_to_n(x, n):
     factor = (10 ** power)
     return round(x * factor) / factor
     
-def vprint(verbose, *printstr, end='\n'):
+def vprint(verbose, *printstr, **kwargs):
     if verbose:
-        print(*printstr, end=end)
+        print(*printstr, **kwargs)
         
 def BS_optical_path(thickness, n=1.44963098985906, angle=45.0):
     """

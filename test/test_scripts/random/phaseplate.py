@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 #import matplotlib.pyplot as plt
 
-from pykat.optics.gaussian_beams import HG_mode, beam_param
+from pykat.optics.gaussian_beams import HG_mode, BeamParam
 from pykat.optics.fft import *
 import numpy as np
 import scipy
@@ -44,8 +44,8 @@ def main():
     y = shape.yaxis
 
     ######## Generates input beam ################
-    gx = beam_param(w0=2e-3, z=0)
-    gy = beam_param(w0=2e-3, z=0)
+    gx = BeamParam(w0=2e-3, z=0)
+    gy = BeamParam(w0=2e-3, z=0)
     beam = HG_mode(gx,gy,0,0)
     global field, laser
     field = beam.Unm(x,y) 
