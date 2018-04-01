@@ -533,17 +533,17 @@ def mismatch_cavities(base, node):
 
     gauss = list(_kat.getAll(pykat.commands.cavity))
     
-    for _ in base.nodes.getNodes():
-        if base.nodes[_].q is not None:
-            gauss.append(base.nodes[_])
+    for _ in _kat.nodes.getNodes():
+        if _kat.nodes[_].q is not None:
+            gauss.append(_kat.nodes[_])
     
     for q in gauss:
         # Switch off all cavities
         for _ in gauss:
             _.enabled = False
+            
         # Then select one at a time
         q.enabled = True
-        
         out = _kat.run()
 
         qs.append(q.name)
