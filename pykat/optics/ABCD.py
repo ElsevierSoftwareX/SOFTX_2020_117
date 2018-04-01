@@ -2,6 +2,17 @@ import numpy as np
 from pykat.optics.gaussian_beams import BeamParam
 
 def apply(ABCD, q1, n1, n2):
+    """
+    Applied the matrix ABCD to a complex beam parameter
+    
+    ABCD: Component matrix
+    q1: input beam parameter
+    n1: input refractive index
+    n2: output refractive index
+    """
+    # make sure we have a complex here. We could have a beamParam object or a an actual complex value supplied
+    q1 = complex(q1)
+        
     return BeamParam(nr=n2, q=n2 * (ABCD[0,0] * q1/float(n1) + ABCD[0,1]) / (ABCD[1,0] * q1/float(n1) + ABCD[1,1]))
 
 def mirror_trans(n1, n2, Rc):

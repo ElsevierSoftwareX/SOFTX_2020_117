@@ -3199,16 +3199,40 @@ class kat(object):
             from tabulate import tabulate
             comp_w = lambda comp: self.data[self.data['nodes'][self.data['components'].index(comp)][0]]['q'].w/1e-3
             
-            data = [[_,
-                    int(self.data[_]['z']/1e-3),
-                    self.data[_]['gouy'],
-                    comp_w(_)] for _ in self.data['components'] if not self.data[_]['is_space']]
+            data =  [
+                        [
+                            _,
+                            int(self.data[_]['z']/1e-3),
+                            self.data[_]['gouy'],
+                            comp_w(_),
+                            self.data[_]['qout']
+                        ] for _ in self.data['components'] if not self.data[_]['is_space']
+                    ]
             
+            first_node = self.data['nodes'][0][0]
+            
+            data.insert(0,
+                            [
+                                first_node,
+                                0, # firstr point is always 0
+                                0, # firstr point is always 0
+                                self.data[first_node]['q'].w/1e-3,
+                                self.data[first_node]['q']
+                            ]   
+                        )
+                        
             last_node = self.data['nodes'][-1][-1]
-            data.append([last_node, int(self.data[last_node]['z']/1e-3), self.data[last_node]['gouy'], self.data[last_node]['q'].w/1e-3])
+            
+            data.append([
+                            last_node,
+                            int(self.data[last_node]['z']/1e-3),
+                            self.data[last_node]['gouy'],
+                            self.data[last_node]['q'].w/1e-3,
+                            self.data[last_node]['q']
+                        ])
             
             print (tabulate(data
-                , ["Name", "z (mm)", "Acc. Gouy [deg]", "Beam size (mm)"]
+                , ["Name", "z (mm)", "Acc. Gouy [deg]", "Beam size (mm)", "q"]
                 , tablefmt='psql'))
             
         def plot(self, filename=None, show=True, w_scale="milli", markers=[]):
@@ -3281,6 +3305,7 @@ class kat(object):
                 plt.savefig(filename)
             
             if show: plt.show()
+            
     
     def beamTrace(self, q_in, from_node, to_node):
         """
@@ -3341,13 +3366,16 @@ class kat(object):
 
             qxs.append( qnew )
 
-            data[comp.name] = {"z": L, "gouy": _g[-1], "gouy_i":gouy, "gouy_ref": gouy_ref, "is_space": isinstance(comp, pykat.components.space)}
+            data[comp.name] = {"qin": qxs[-1], "qout": qnew, "z": L, "gouy": _g[-1], "gouy_i":gouy, "gouy_ref": gouy_ref, "is_space": isinstance(comp, pykat.components.space)}
             
             if isinstance(comp, pykat.components.space):
                 data[comp.name]['L'] = comp.L.value
         
         bt = kat.BeamTrace()
-        bt.data = data
+        bt.data  = data
+        bt.q_in  = q_in 
+        bt.q_out = qnew
+        bt.Mabcd = Mabcd
         
         return bt
 

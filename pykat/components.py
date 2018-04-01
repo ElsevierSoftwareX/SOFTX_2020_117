@@ -691,7 +691,7 @@ class mirror(AbstractMirrorComponent):
         elif from_node == str(self.nodes[0]) and to_node == str(self.nodes[1]):
             return ABCD.mirror_trans(n1, n2, Rc)
         elif from_node == str(self.nodes[1]) and to_node == str(self.nodes[0]):
-            return ABCD.mirror_tran(n2, n1, -Rc)
+            return ABCD.mirror_trans(n2, n1, -Rc)
         elif from_node == str(self.nodes[1]) and to_node == str(self.nodes[1]):
             return ABCD.mirror_refl(n2, -Rc)
         else:
