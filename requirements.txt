@@ -5,3 +5,4 @@ six
 h5py
 pandas
 matplotlib
+tabulate
