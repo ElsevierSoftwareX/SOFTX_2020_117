@@ -3307,7 +3307,7 @@ class kat(object):
             if show: plt.show()
             
     
-    def beamTrace(self, q_in, from_node, to_node):
+    def beamTrace(self, q_in, from_node, to_node, direction='x'):
         """
         This function is separate from the Finesse tracing algorithm. It is purely 
         python based. From a given node to another this function will find the 
@@ -3333,7 +3333,7 @@ class kat(object):
         data['nodes'] = [(_.name, __.name) for _,__ in nodes_A]
         
         for comp, (from_node, to_node) in zip(path_A, nodes_A):
-            Mabcd = comp.ABCD(from_node, to_node)
+            Mabcd = comp.ABCD(from_node, to_node, direction=direction)
             qnew = apply_ABCD(Mabcd, qxs[-1].q, from_node.n, to_node.n )
 
             if Mabcd[1,0] != 0:

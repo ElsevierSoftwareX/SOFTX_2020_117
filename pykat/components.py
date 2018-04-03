@@ -860,23 +860,31 @@ class beamSplitter(AbstractMirrorComponent):
         else:
             Rc = math.inf
    
-        n1 = self.nodes[0].n
-        n2 = self.nodes[3].n
+        n1 = float(self.nodes[0].n)
+        n2 = float(self.nodes[3].n)
+        
+        alpha1 = self.alpha.value
+        alpha2 = np.rad2deg( np.arcsin( np.sin(np.deg2rad(self.alpha.value) ) * n1/n2) )
    
         if (from_node == str(self.nodes[0]) and to_node == str(self.nodes[1])) or \
             (from_node == str(self.nodes[1]) and to_node == str(self.nodes[0])):
             return refl(n1, Rc, self.alpha.value)
+            
         elif (from_node == str(self.nodes[2]) and to_node == str(self.nodes[3])) or \
             (from_node == str(self.nodes[3]) and to_node == str(self.nodes[2])):
             return refl(n2, -Rc, self.alpha.value)
+            
         elif from_node == str(self.nodes[0]) and to_node == str(self.nodes[2]):
-            return trans(n1, n2, Rc, self.alpha.value)
+            return trans(n1, n2, Rc, alpha1)
+            
         elif from_node == str(self.nodes[2]) and to_node == str(self.nodes[0]):
-            return trans(n2, n1, -Rc, self.alpha.value)
+            return trans(n2, n1, -Rc, alpha2)
+            
         elif from_node == str(self.nodes[1]) and to_node == str(self.nodes[3]):
-            return trans(n1, n2, Rc, self.alpha.value)
+            return trans(n1, n2, Rc, alpha1)
+            
         elif from_node == str(self.nodes[3]) and to_node == str(self.nodes[1]):
-            return trans(n2, n1, -Rc, self.alpha.value)
+            return trans(n2, n1, -Rc, alpha2)
         else:
             raise pkex.BasePyKatException("Check node combination {} and {} for {}".format(from_node, to_node, self.name))
             
