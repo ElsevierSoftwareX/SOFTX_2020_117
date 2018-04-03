@@ -3,3 +3,5 @@ include *.txt
 recursive-include docs *.txt
 recursive-include pykat *.svg
 recursive-include pykat *.html
+recursive-include pykat *.kat
+recursive-include pykat *.mplstyle
