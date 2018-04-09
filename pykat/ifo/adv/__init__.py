@@ -1117,7 +1117,7 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
     """
 
     # Pre-defined file-names
-    names = ['design_PR', 'design_PR_OMC', "avirgo_PR_OMC", 'avirgo_PR_OMC_22012018']
+    names = ['design_PR', 'design_PR_OMC', "avirgo_PR_OMC", 'avirgo_PR_OMC_22012018', 'avirgo_PR_OMC_14W_maxtem2']
     
     # Mirror names. Mapping to IFO-specific names to faciliate creating new IFO-specific files.
     # Change the values in the dictionary to the IFO-specific mirror names. Do not change the
