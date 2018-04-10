@@ -942,25 +942,6 @@ class ADV_IFO(IFO):
         for _ in inspect.getmembers(self, lambda x: isinstance(x, Output)):
             self.Outputs[_[0]] = _[1]
 
-
-
-    def thermal_lensing(self, thermal_mirror_list):
-
-        out = compute_thermal_effect(self.kat, thermal_mirror_list)
-        
-        mirrors = self.kat.IFO.mirrors
-        # Setting values to kat-object
-        for k,v in out.items():
-            # Setting new RoC (No RoC calculations yet)
-            # self.kat.components[k].Rc = v[1][0]
-            # Setting new lens
-            if k == mirrors['IX']:
-                self.kat.CPN_TL.f = float(v['f_CP_new'])
-            elif k == mirrors['IY']:
-                self.kat.CPW_TL.f = float(v['f_CP_new'])
-
-
-
     def find_maxtem(self, tol=1e-4, start = 0, stop = 10, verbose=False):
         '''
         Finding the minimum required maxtem for the power to converge to within the relative tolerance tol.
@@ -1136,7 +1117,7 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
     """
 
     # Pre-defined file-names
-    names = ['design_PR', 'design_PR_OMC', "avirgo_PR_OMC", 'avirgo_PR_OMC_22012018']
+    names = ['design_PR', 'design_PR_OMC', "avirgo_PR_OMC", 'avirgo_PR_OMC_22012018', 'avirgo_PR_OMC_14W_maxtem2']
     
     # Mirror names. Mapping to IFO-specific names to faciliate creating new IFO-specific files.
     # Change the values in the dictionary to the IFO-specific mirror names. Do not change the
@@ -1763,21 +1744,6 @@ def generate_locks(kat, gainsAdjustment = [0.1, 0.9, 0.9, 0.001, 0.02],
     return data
 
 
-def thermal_lensing(kat, mirror_list):
-    out = compute_thermal_effect(kat, mirror_list)
-    kat1 = kat.deepcopy()
-    mirrors = kat1.IFO.mirrors
-    # Setting values to kat-object
-    for k,v in out.items():
-        # Setting new RoC (No RoC calculations yet)
-        # kat1.components[k].Rc = v[1][0]
-        # Setting new lens
-        if k == mirrors['IX']:
-            kat1.CPN_TL.f = float(v['f_CP_new'])
-        elif k == mirrors['IY']:
-            kat1.CPW_TL.f = float(v['f_CP_new'])
-    return 
-
 def compute_thermal_effect(kat, mirror_list, lensing = True, RoC = True):
     '''
     Computes the thermal lensing of the input mirrors and merges these with the CP-lenses
@@ -1896,7 +1862,7 @@ def compute_thermal_effect(kat, mirror_list, lensing = True, RoC = True):
         for k,v in Ms.items():
             # Computing thermal lens for input test masses
             if k == mirrors['IY'] or k == mirrors['IX']:
-                # Praparing for computuing thermal lens
+                # Preparing for computuing thermal lens
                 # ------
                 res = {}
                 # Dictionary with mirror properties
@@ -2076,3 +2042,25 @@ def add_cavity_finesse_block(kat, cavs, f=0):
     for c in cavs:
         names.append(c+"_finesse_{}".format(f))  
     return names
+
+
+
+def rand_beta(kat, mirror_list, range):
+    """
+    Randomising mirror alignments uniformly between the values specifed in range. Mirror lists specifies which
+    mirrors to do this for. Returns a new kat object with the random misalignments set. Thus, this function does
+    not direclty alter the kat-object.
+    """
+    kat1 = kat.deepcopy()
+    rand = np.random.rand(len(mirror_list)*2)
+    rand = rand*(range[1]-range[0]) + range[0]
+    k = 0
+    for m in mirror_list:
+        if (not m in kat.components or not (isinstance(kat.components[m], pykat.components.mirror) or
+                                            isinstance(kat.components[m], pykat.components.beamSplitter))):
+            raise pkex.BasePyKatException("{} is not a mirror or a beam splitterin the kat-object".format(m))
+        kat1.components[m].xbeta = rand[k]
+        kat1.components[m].ybeta = rand[k+1]
+        k += 2
+    return kat1
+        
