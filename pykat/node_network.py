@@ -347,7 +347,7 @@ class NodeNetwork(object):
     def __contains__(self, value):
         return value in self.__nodes
     
-    def __nodeSearch(self, fnode, currcomp, branches, tnode):
+    def __nodeSearch(self, fnode, currcomp, branches, tnode, searched=None):
         """
         fnode: From node (Start)
         currcomp: Current component
@@ -355,7 +355,12 @@ class NodeNetwork(object):
         tnode: To node (Goal)
         """
         
-        if fnode == tnode:
+        if fnode in searched:
+            #already checked this node, stop us going around in circles
+            branches[-1][0] = True
+            return False 
+            
+        elif fnode == tnode:
             branches[-1][0] = True
             branches[-1][1] = True
             return True # Hurrah, we have found a path to the node
@@ -364,6 +369,9 @@ class NodeNetwork(object):
             return False # if the current node is a dump, we need to check another branch
 
         nextnode = None
+
+        searched[fnode] = True
+        
         
         if isinstance(currcomp, pykat.components.beamSplitter):
             # if we get to a beamsplitter then we need to 
@@ -389,26 +397,66 @@ class NodeNetwork(object):
             else:
                 raise pkex.BasePyKatException("Node not attached in path find to BS")
             
-            nextcomp = None
+            # Don't reflect or transmit if the BS doesn't
+            if currcomp.R.value is None:
+                _R = 1 - currcomp.T.value - currcomp.L.value
+            else:
+                _R = currcomp.R.value
+                
+            if currcomp.T.value is None:
+                _T = 1 - currcomp.R.value - currcomp.L.value
+            else:
+                _T = currcomp.T.value
             
-            if tn.components[0] == currcomp:
-                nextcomp = tn.components[1]
-            elif tn.components[1] == currcomp:
-                nextcomp = tn.components[0]
+            if _R == 0:
+                rn = None
             
-            if nextcomp is not None:
-                branches.append([False, False, tn, nextcomp, [currcomp]])
+            if _T == 0:
+                tn = None
             
-            if rn.components[0] == currcomp:
-                nextcomp = rn.components[1]
-            elif rn.components[1] == currcomp:
-                nextcomp = rn.components[0]
+            if tn is tnode or rn is tnode:
+                branches[-1][0] = True
+                branches[-1][1] = True
+                branches[-1][-1].append(currcomp)
+                return True
+            else:   
+                if tn is not None:
+                    nextcomp = None
             
-            if nextcomp is not None:
-                branches.append([False, False, rn, nextcomp, [currcomp]])
+                    if tn.components[0] == currcomp:
+                        nextcomp = tn.components[1]
+                    elif tn.components[1] == currcomp:
+                        nextcomp = tn.components[0]
             
-            return False
+                    if nextcomp is not None:
+                        branches.append([False, False, tn, nextcomp, [currcomp]])
             
+                if rn is not None:
+                    nextcomp = None
+            
+                    if rn.components[0] == currcomp:
+                        nextcomp = rn.components[1]
+                    elif rn.components[1] == currcomp:
+                        nextcomp = rn.components[0]
+            
+                    if nextcomp is not None:
+                        branches.append([False, False, rn, nextcomp, [currcomp]])
+            
+                return False
+        elif isinstance(currcomp, pykat.components.mirror):
+            if currcomp.T.value is None:
+                _T = 1 - currcomp.R.value - currcomp.L.value 
+            else:
+                _T = currcomp.T.value 
+                
+            if _T > 0:
+                if currcomp.nodes[0] == fnode:
+                    nextnode = currcomp.nodes[1]
+                elif currcomp.nodes[1] == fnode:
+                    nextnode = currcomp.nodes[0]
+                else:
+                    raise pkex.BasePyKatException("Unexpeceted condition")
+                
         elif isinstance(currcomp, pykat.components.dbs):
             if currcomp.nodes[0] == fnode:
                 nextnode = currcomp.nodes[2]
@@ -459,7 +507,7 @@ class NodeNetwork(object):
             
             branches[-1][-1].append(currcomp)
             
-            return self.__nodeSearch(nextnode, nextcomp, branches, tnode)
+            return self.__nodeSearch(nextnode, nextcomp, branches, tnode, searched)
 
             
     def getComponentsBetween(self, from_node, to_node, getNodes=False):
@@ -492,43 +540,64 @@ class NodeNetwork(object):
         if to_node.name not in self.__nodes:
             raise pkex.BasePyKatException("Node {0} cannot be found in this kat object".format(to_node))
         
-        branches = []
         
         fn = self.__nodes[from_node.name]
         tn = self.__nodes[to_node.name]
         
-        if fn.components[0] is not None:
-            branches.append([False, False, fn, fn.components[0], []])
+        found = False
         
-        if fn.components[1] is not None:
-            branches.append([False, False, fn, fn.components[1], []])
-        
-        
-        #print(branches)
-        #i=0
-        while len(branches) > 0 and branches[-1][1] != True:
-            #print(i)
-            #j=0
+        for comp in fn.components:
+            if found:
+                break
+            else:
+                found = False
+                
+            branches = []
             
-            while branches[-1][0] == False:
-                branch = branches[-1]
-                #print("START", j)
-                #print(branch)
+            #print("Trying", comp)
             
-                if not self.__nodeSearch(branch[2], branch[3], branches, tn):
-                    if len(branches) > 0 and branches[-1][0] != False:            
+            if comp is not None:
+                branches.append([False, False, fn, comp, []])
+        
+            searched = dict()
+        
+            #print(branches)
+            #i=0
+            while len(branches) > 0 and branches[-1][1] != True:
+                #print(i)
+                #j=0
+            
+                if len(branches) == 0:
+                    raise Exception("Could not find path between %s and %s" % (from_node, to_node))
+                
+                while len(branches) > 0 and branches[-1][0] == False:
+                    branch = branches[-1]
+                    #print("START", j)
+                    #print(branch)
+            
+                    found = self.__nodeSearch(branch[2], branch[3], branches, tn, searched)
+                    
+                    if not found:
+                        if len(branches) > 0 and branches[-1][0] != False:            
+                            branches.pop()
+                            #print("DEL", j)
+                    else:
+                        #print("FOUND", to_node)    
+                        found = True
+                        break
+                        
+                    #print("END", j)
+                
+                    #j+=1
+
+                if len(branches) > 0 and branches[-1][1] != True:
+                    while len(branches) > 0 and branches[-1][0] == True:
                         branches.pop()
-                        #print("DEL", j)
-                #print("END", j)
-                #j+=1
+                        #print("DEL",i)
             
-            if branches[-1][1] != True:
-                while len(branches) > 0 and branches[-1][0] == True:
-                    branches.pop()
-                    #print("DEL",i)
-            
-            #i += 1
-            
+                #i += 1
+
+                
         comps = []
         
         if len(branches) > 0  and branches[-1][0] == True and branches[-1][1] == True:
