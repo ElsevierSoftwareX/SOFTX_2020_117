@@ -532,14 +532,14 @@ class VOYAGER_IFO(IFO):
         
         self.set_REFL_gouy_telescope_phase(gouy_REFL_BS, gouy_A, gouy_B)
         
-        self.kat.IFO.ASC_REFL9A   = Output(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A",  self.kat.IFO.f1, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL9B   = Output(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B",  self.kat.IFO.f1, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL9A   = Output(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A", "f1", block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL9B   = Output(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B", "f1", block="REFL_gouy_tele")
 
-        self.kat.IFO.ASC_REFL45A  = Output(self.kat.IFO, "ASC_REFL45A",  "nREFL_WFS_A",  self.kat.IFO.f2, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL45B  = Output(self.kat.IFO, "ASC_REFL45B",  "nREFL_WFS_B",  self.kat.IFO.f2, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL45A  = Output(self.kat.IFO, "ASC_REFL45A",  "nREFL_WFS_A", "f2", block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL45B  = Output(self.kat.IFO, "ASC_REFL45B",  "nREFL_WFS_B", "f2", block="REFL_gouy_tele")
         
-        self.kat.IFO.ASC_REFL36A  = Output(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  self.kat.IFO.f36M, block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL36B  = Output(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  self.kat.IFO.f36M, block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL36A  = Output(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A", "36M", block="REFL_gouy_tele")
+        self.kat.IFO.ASC_REFL36B  = Output(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B", "36M", block="REFL_gouy_tele")
         
         self.update()
         
@@ -684,15 +684,15 @@ def make_kat(name="voyager_BSAR_LO", katfile=None, verbose = False, debug=False,
     # define ports and signals 
     
     # useful ports
-    kat.IFO.POP_f1  = Output(kat.IFO, "POP_f1",  "nPOP",  kat.IFO.f1, phase=101)
-    kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  kat.IFO.f2, phase=13)
-    kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", kat.IFO.f1, phase=101)
-    kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", kat.IFO.f2, phase=14)
+    kat.IFO.POP_f1  = Output(kat.IFO, "POP_f1",  "nPOP",  "f1", phase=101)
+    kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  "f2", phase=13)
+    kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", "f1", phase=101)
+    kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", "f2", phase=14)
     
         
-    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  "nSRM2", kat.IFO.f1, phase=101)
-    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  "nSRM2", kat.IFO.f2, phase=14)
-    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", "nSRM2", kat.IFO.f36M, phase=14)
+    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  "nSRM2", "f1", phase=101)
+    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  "nSRM2", "f2", phase=14)
+    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", "nSRM2", "f36M", phase=14)
     
     # AS_DC refers to what is coming out of the OMC now
     kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nOMC_OCc")

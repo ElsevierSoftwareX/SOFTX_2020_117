@@ -5,7 +5,6 @@
 ###############################################################
 import numpy as np
 from math import pi, log
-import pylab
 from scipy import fft, ifft
 from scipy.optimize import curve_fit
 
@@ -274,12 +273,12 @@ def peakdetect_fft(y_axis, x_axis, pad_len = 5):
     #pylab.plot(range(len(fft_data)), fft_data)
     #pylab.show()
     
-    pylab.plot(x_axis, y_axis)
-    pylab.hold(True)
-    pylab.plot(x_axis_ifft, y_axis_ifft)
-    #for max_p in max_peaks:
-    #    pylab.plot(max_p[0], max_p[1], 'xr')
-    pylab.show()
+    # pylab.plot(x_axis, y_axis)
+ #    pylab.hold(True)
+ #    pylab.plot(x_axis_ifft, y_axis_ifft)
+ #    #for max_p in max_peaks:
+ #    #    pylab.plot(max_p[0], max_p[1], 'xr')
+ #    pylab.show()
     return [max_peaks, min_peaks]
     
     
@@ -684,6 +683,8 @@ def _test():
     
     
 def _test_graph():
+    import pylab
+    
     i = 10000
     x = np.linspace(0,3.7*pi,i)
     y = (0.3*np.sin(x) + np.sin(1.3 * x) + 0.9 * np.sin(4.2 * x) + 0.06 *

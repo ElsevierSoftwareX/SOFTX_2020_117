@@ -3234,11 +3234,74 @@ class kat(object):
             print (tabulate(data
                 , ["Name", "z (mm)", "Acc. Gouy [deg]", "Beam size (mm)", "q"]
                 , tablefmt='psql'))
-            
-        def plot(self, filename=None, show=True, w_scale="milli", markers=[]):
+        
+        def plot_beamsize(self, w_scale="milli", show_components=False, ax=None, label=None, **kwargs):
             import matplotlib.pyplot as plt
             data = self.data
-            fig = plt.figure()
+
+            if ax is None:
+                ax = plt.subplot(111)
+
+            w_max = 0
+            g_max = 0
+            gouy  = 0
+            
+            for comp, (from_node, to_node) in zip(data['components'], data['nodes']):
+                gouy = data[comp]['gouy_i']
+                gouy_ref = data[comp]['gouy_ref']
+
+                if data[comp]['is_space']:
+                    L = data[comp]['L']
+                    q = data[from_node]['q']
+                    z = data[from_node]['z']
+                    _z = np.linspace(0, L, 1000)                
+                    g = np.rad2deg(q.gouy(_z+q.z))
+                            
+                    # want to plot accumulated gouy phase so need to use
+                    # a reference from where it started
+                    _g = gouy + np.rad2deg(q.gouy(_z + q.z)) - gouy_ref
+                    w  = q.beamsize(_z + q.z)/pykat.SI[w_scale]
+                
+                    w_max = max(w_max, w.max())
+                    g_max = max(g_max, _g.max())
+                
+                    l, = ax.plot(z+_z, w, label=label, **kwargs)
+                    label = None
+                        
+            if w_scale is None:
+                ax.set_ylabel("Beam size [m]")
+            else:
+                ax.set_ylabel("Beam size [%sm]"%pykat.SIlabel[w_scale])
+            
+            ax.set_xlabel("Distance [m]")
+            ax.set_ylim(0, w_max)
+        
+        def plot_components(self, ax=None):
+            import matplotlib.pyplot as plt
+            data = self.data
+
+            if ax is None:
+                ax = plt.subplot(111)
+
+            w_max = 0
+            g_max = 0
+            gouy  = 0
+            
+            for comp, (from_node, to_node) in zip(data['components'], data['nodes']):
+                gouy = data[comp]['gouy_i']
+                gouy_ref = data[comp]['gouy_ref']
+                
+                z = data[comp]['z']
+                ax.scatter(z, 0, marker='x', color='k')
+                ax.text(z, 0, comp+"\n", ha="center", va='bottom', zorder=100)
+            
+        def plot(self, filename=None, show=False, w_scale="milli", markers=[], c='r', fig=None, label=None):
+            import matplotlib.pyplot as plt
+            data = self.data
+
+            if fig is None:
+                fig = plt.figure()
+                
             ax1 = plt.subplot(211)
             ax2 = plt.subplot(212)
 
@@ -3265,8 +3328,8 @@ class kat(object):
                     w_max = max(w_max, w.max())
                     g_max = max(g_max, _g.max())
                 
-                    ax1.plot(z+_z, w, c='r')
-                    ax2.plot(z+_z, _g, c='r')
+                    ax1.plot(z+_z, w, c=c)
+                    ax2.plot(z+_z, _g, c=c)
                 else:
                     z = data[comp]['z']
                     ax1.scatter(z, 0, marker='x', color='k')
@@ -3276,10 +3339,10 @@ class kat(object):
                     ax2.text(z, 0, comp+"\n", ha="center", va='bottom',zorder=100)
         
             for _, z in markers:
-                ax1.scatter(z, 0, marker='x', color='r')
+                ax1.scatter(z, 0, marker='x', color=c)
                 ax1.text(z, 0, _+"\n", ha="center", va='bottom',zorder=100)
         
-                ax2.scatter(z, 0, marker='x', color='r')
+                ax2.scatter(z, 0, marker='x', color=c)
                 ax2.text(z, 0, _+"\n", ha="center", va='bottom',zorder=100)
             
             ax1.grid(True, zorder=-10)
@@ -3321,6 +3384,9 @@ class kat(object):
         # Get a list of components and the nodes in order between from and to nodes
         path_A, nodes_A = self.nodes.getComponentsBetween(from_node, to_node, True)
 
+        if len(path_A) == 0 or len(nodes_A) == 0:
+            raise Exception("Could not find path between %s and %s" % (from_node, to_node))
+            
         qxs = [q_in] # track the q values as we go
 
         L = 0 # length from first node
