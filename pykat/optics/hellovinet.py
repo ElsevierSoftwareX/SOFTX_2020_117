@@ -440,13 +440,13 @@ def fit_circle(r, z, Rc0=None, zOff0=None, w=None, maxfev=2000):
         Z = createSurface(r,Rc,zOff)
         if w is None:
             # Mean squared difference between map and the created sphere.
-            res = np.sqrt( ((Z - z)**2).sum() )/(len(z)*np.mean(z))
+            res = np.sqrt( ((Z - z)**2).sum() )/(len(z)*np.abs(np.mean(z)))
         else:
             # Weights centered around the center of the mirror xy-plane.
             weight = np.exp(-2*r**2/w**2)
             # Weighted mean squared difference between map and the created sphere.
             res = np.sqrt( ( weight*( (Z - z)**2 )).sum() )/np.abs(weight*z).sum()
-            return res
+        return res
 
     opts = {'xtol': 1.0e-5, 'ftol': 1.0e-9, 'maxiter': 10000, 'maxfev': maxfev, 'disp': False}
 
