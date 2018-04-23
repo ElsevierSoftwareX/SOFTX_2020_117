@@ -117,7 +117,7 @@ class BeamParam(object):
         else:
             w0 = np.array(w0)
         
-        q = z + 1j * math.pi * w0 **2 / wavelength
+        q = z + 1j * math.pi * w0 **2 / (wavelength/nr)
         
         return np.abs(q)*np.sqrt(wavelength / (nr * math.pi * q.imag))
     
@@ -142,7 +142,7 @@ class BeamParam(object):
         else:
             w0 = np.array(w0)
         
-        q = z + 1j * math.pi * w0 **2 / wavelength
+        q = z + 1j * math.pi * w0 **2 / (wavelength*nr)
         
         return np.arctan2(q.real, q.imag)
         
@@ -190,7 +190,7 @@ class BeamParam(object):
         else:
             w0 = np.array(w0)
         
-        q = z + 1j * math.pi * w0 **2 / wavelength
+        q = z + 1j * math.pi * w0 **2 / (wavelength*nr)
         
         return q.real * (1+ (q.imag/q.real)**2)
         

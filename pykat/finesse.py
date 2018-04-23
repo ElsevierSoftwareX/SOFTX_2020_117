@@ -3235,7 +3235,7 @@ class kat(object):
                 , ["Name", "z (mm)", "Acc. Gouy [deg]", "Beam size (mm)", "q"]
                 , tablefmt='psql'))
         
-        def plot_beamsize(self, w_scale="milli", show_components=False, ax=None, label=None, **kwargs):
+        def plot_beamsize(self, w_scale="milli", show_components=False, ax=None, label=None, dz=None, **kwargs):
             import matplotlib.pyplot as plt
             data = self.data
 
@@ -3245,36 +3245,44 @@ class kat(object):
             w_max = 0
             g_max = 0
             gouy  = 0
-            
+
             for comp, (from_node, to_node) in zip(data['components'], data['nodes']):
                 gouy = data[comp]['gouy_i']
                 gouy_ref = data[comp]['gouy_ref']
 
                 if data[comp]['is_space']:
-                    L = data[comp]['L']
                     q = data[from_node]['q']
-                    z = data[from_node]['z']
-                    _z = np.linspace(0, L, 1000)                
-                    g = np.rad2deg(q.gouy(_z+q.z))
-                            
+                    L = data[comp]['L']
+            
+                    if dz is None:
+                        dz = L/100.0
+        
+                    z = data[from_node]['z'] # starting distance
+                    _z = np.arange(0, L, dz) # Distance to propagate 
+            
+                    g = np.rad2deg(q.gouy(_z + q.z)) # gouy phase accumulated along this space
+
                     # want to plot accumulated gouy phase so need to use
                     # a reference from where it started
-                    _g = gouy + np.rad2deg(q.gouy(_z + q.z)) - gouy_ref
-                    w  = q.beamsize(_z + q.z)/pykat.SI[w_scale]
-                
+                    _g = gouy + g - gouy_ref
+            
+                    w = q.beamsize(_z + q.z) 
+                    w /= pykat.SI[w_scale]
+
                     w_max = max(w_max, w.max())
                     g_max = max(g_max, _g.max())
-                
+
                     l, = ax.plot(z+_z, w, label=label, **kwargs)
                     label = None
-                        
+
             if w_scale is None:
                 ax.set_ylabel("Beam size [m]")
             else:
                 ax.set_ylabel("Beam size [%sm]"%pykat.SIlabel[w_scale])
-            
+
             ax.set_xlabel("Distance [m]")
             ax.set_ylim(0, w_max)
+        
         
         def plot_components(self, ax=None):
             import matplotlib.pyplot as plt
@@ -3294,9 +3302,37 @@ class kat(object):
                 z = data[comp]['z']
                 ax.scatter(z, 0, marker='x', color='k')
                 ax.text(z, 0, comp+"\n", ha="center", va='bottom', zorder=100)
+        
+        def beamsize_z(self, dz=1e-3):
+            """
+            Gets the beamsize along the trace in steps of dz [m]
+            """
+            data = self.data
+            
+            if dz == 0:
+                raise Exception("dz=0") 
+                
+            __z = np.array([])
+            __w = np.array([])
+
+            for comp, (from_node, to_node) in zip(data['components'], data['nodes']):
+                if data[comp]['is_space']:
+                    L = data[comp]['L']
+                    q = data[from_node]['q']
+                    z = data[from_node]['z']
+
+                    _z = np.arange(0, L, dz)
+                    w  = q.beamsize(_z + q.z)/1e-3
+
+                    __z = np.hstack((__z, z + _z))
+                    __w = np.hstack((__w, w))
+
+            return __z, __w
+            
             
         def plot(self, filename=None, show=False, w_scale="milli", markers=[], c='r', fig=None, label=None):
             import matplotlib.pyplot as plt
+            
             data = self.data
 
             if fig is None:
@@ -3375,32 +3411,35 @@ class kat(object):
         This function is separate from the Finesse tracing algorithm. It is purely 
         python based. From a given node to another this function will find the 
         components between each node and trace a beam along it. 
-        
+
         Returns a dictionary data structure that contains the beam parameter, lengths
         and gouy phases at each node and component between the paths.
         """
-        from .optics.ABCD import apply as apply_ABCD
-        
+        from pykat.optics.ABCD import apply as apply_ABCD
+        from collections import OrderedDict
+    
         # Get a list of components and the nodes in order between from and to nodes
         path_A, nodes_A = self.nodes.getComponentsBetween(from_node, to_node, True)
-
+    
         if len(path_A) == 0 or len(nodes_A) == 0:
             raise Exception("Could not find path between %s and %s" % (from_node, to_node))
-            
+
         qxs = [q_in] # track the q values as we go
 
-        L = 0 # length from first node
-        gouy = 0 # Accumulated gouy from previous 
+        L = 0           # length from first node
+        gouy = 0        # Accumulated gouy from previous 
         gouy_ref = None # Gouy phase always accumulates from this reference value
-        _g = [0] # Array of gouy phase values over a space, initialised to 0 here
-        
+        _g = [0]        # Array of gouy phase values over a space, initialised to 0 here
+
         data = OrderedDict()
         data['components'] = [_.name for _ in path_A]
         data['nodes'] = [(_.name, __.name) for _,__ in nodes_A]
-        
+
         for comp, (from_node, to_node) in zip(path_A, nodes_A):
+            qin = pykat.BeamParam(q=qxs[-1], nr=float(from_node.n))
+        
             Mabcd = comp.ABCD(from_node, to_node, direction=direction)
-            qnew = apply_ABCD(Mabcd, qxs[-1].q, from_node.n, to_node.n )
+            qnew = apply_ABCD(Mabcd, qin, from_node.n, to_node.n )
 
             if Mabcd[1,0] != 0:
                 # The beam has been lensed so we need to make a new reference
@@ -3409,40 +3448,45 @@ class kat(object):
                 gouy_ref = None # get a new reference
 
             if isinstance(comp, pykat.components.space):
-                q = qxs[-1]
+            
                 z = np.linspace(0, comp.L.value, 1000)                
-                g = np.rad2deg(q.gouy(z+q.z))
+                g = np.rad2deg(qin.gouy(z+qin.z))
 
                 if gouy_ref is None:
                     # set new reference value
                     gouy_ref = g[0]
-            
+
                 # want to plot accumulated gouy phase so need to use
                 # a reference from where it started
-                _g = gouy + np.rad2deg(q.gouy(z+q.z))-gouy_ref
-            
-                data[from_node.name] = {"q": qxs[-1], "z": L, "gouy": _g[0]}
+                _g = gouy + np.rad2deg(qin.gouy(z+qin.z))-gouy_ref
+
+                data[from_node.name] = {"q": qin, "z": L, "gouy": _g[0]}
                 data[to_node.name] = {"q": qnew, "z": L+comp.L.value, "gouy": _g[-1]}
 
                 L += comp.L.value
 
             else:
-                data[from_node.name] = {"q": qxs[-1], "L": L, "gouy": _g[-1]}
+                data[from_node.name] = {"q": qin, "L": L, "gouy": _g[-1]}
                 data[to_node.name] = {"q": qnew, "L": L, "gouy": _g[-1]}
 
             qxs.append( qnew )
 
-            data[comp.name] = {"qin": qxs[-1], "qout": qnew, "z": L, "gouy": _g[-1], "gouy_i":gouy, "gouy_ref": gouy_ref, "is_space": isinstance(comp, pykat.components.space)}
-            
+            data[comp.name] = {
+                                "qin": qin, "qout": qnew,
+                                "z": L, "gouy": _g[-1],
+                                "gouy_i":gouy, "gouy_ref": gouy_ref,
+                                "is_space": isinstance(comp, pykat.components.space)
+                              }
+        
             if isinstance(comp, pykat.components.space):
                 data[comp.name]['L'] = comp.L.value
-        
+
         bt = kat.BeamTrace()
         bt.data  = data
         bt.q_in  = q_in 
         bt.q_out = qnew
         bt.Mabcd = Mabcd
-        
+
         return bt
 
 # printing pykat logo on first input
