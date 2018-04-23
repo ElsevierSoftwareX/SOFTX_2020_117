@@ -366,9 +366,9 @@ class ADV_IFO(IFO):
         """
 
         if f is None or f == 'f4' or f == '$f4' or f == 119144763:
-            self.add_modulator('$f4', '$mod_index_119M', 2, 'pm', 0)
+            self.add_modulator(119144763, 0.1, 1, 'pm', 0)
         elif f == 'f4b' or f == '$f4b' or  f == 131686317:
-            self.add_modulator('$f4b', '$mod_index_132M', 2, 'pm', 0)
+            self.add_modulator(131686317, 0.1, 1, 'pm', 0)
         else:
             raise pkex.BasePyKatException("f must be $f4 or $f4b from the kat-file")
 
@@ -2001,8 +2001,8 @@ def cavity_finesse_cmds(cavName, inputNodeName, cavNodeName, f = None):
 
 def add_cavity_finesse_block(kat, cavs, f=0):
     '''
-    Adds finesse code for measuring cavity finesse in one or several cavities. Direclty alters the 
-    kat-object. 
+    Adds finesse code for measuring the cavity finesse (=PowerGain*2/pi) at frequency f0 in
+    one or several cavities. This function directly alters the kat-object. 
     
     Inputs
     ------
@@ -2014,7 +2014,6 @@ def add_cavity_finesse_block(kat, cavs, f=0):
     Returns
     -------
     names - List with names of output signals.
-    
     '''
     if f == 0 or f is None:
         f = 0
@@ -2035,7 +2034,7 @@ def add_cavity_finesse_block(kat, cavs, f=0):
                                        kat.components[mirrors['BS']].nodes[0].name+'*', f=f)
         else:
             raise pkex.BasePyKatException("Cavity name {} is not supported. Must be X, Y, or PRC")
-    cmd += "yaxis lin abs\n"
+    #cmd += "noxaxis\nyaxis lin abs\n"
     kat.parse(cmd, addToBlock="cavityFinesse")
     # print(cmd)
     names = []
