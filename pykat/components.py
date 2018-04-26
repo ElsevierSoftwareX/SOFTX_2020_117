@@ -56,6 +56,9 @@ class NodeGaussSetter(object):
         self.__name = None
         self._freeze()
      
+    def __str__(self):
+        return self.__node().name
+        
     @property
     def enabled(self):
         return self.__node().enabled
@@ -66,12 +69,8 @@ class NodeGaussSetter(object):
            
     @property
     def name(self):
-        return self.__name
-        
-    @name.setter
-    def name(self, value):
-        self.__name = str(value)
-    
+        return self.node.name
+            
     @property
     def node(self):
         return self.__node()
@@ -274,7 +273,13 @@ class Component(object):
         to_node:   node object or node name as string
         direction: 'x' horizontal beam shape, 'y' vertical beam shape
         """
-        return np.eye(2)
+        assert(self._kat.nodes[from_node] in self.nodes)
+        assert(self._kat.nodes[to_node] in self.nodes)
+
+        if from_node == to_node:
+            return None
+        else:
+            return np.eye(2)
     
     @property
     def removed(self): return self.__removed
@@ -672,6 +677,9 @@ class mirror(AbstractMirrorComponent):
         return self._svgItem
         
     def ABCD(self, from_node, to_node, direction="x"):
+        assert(self._kat.nodes[from_node] in self.nodes)
+        assert(self._kat.nodes[to_node] in self.nodes)
+        
         direction = direction.lower()
         from_node = str(from_node)
         to_node = str(to_node)
@@ -695,7 +703,7 @@ class mirror(AbstractMirrorComponent):
         elif from_node == str(self.nodes[1]) and to_node == str(self.nodes[1]):
             return ABCD.mirror_refl(n2, -Rc)
         else:
-            raise pkex.BasePyKatException("Check nodes {} and {} are nodes of {}".format(from_node, to_node, self.name))
+            return None
     
     def nodeConnections(self):
         return (
@@ -842,6 +850,9 @@ class beamSplitter(AbstractMirrorComponent):
         return self._svgItem
         
     def ABCD(self, from_node, to_node, direction="x"):
+        assert(self._kat.nodes[from_node] in self.nodes)
+        assert(self._kat.nodes[to_node] in self.nodes)
+        
         direction = direction.lower()
         from_node = str(from_node)
         to_node = str(to_node)
@@ -886,7 +897,7 @@ class beamSplitter(AbstractMirrorComponent):
         elif from_node == str(self.nodes[3]) and to_node == str(self.nodes[1]):
             return trans(n2, n1, -Rc, alpha2)
         else:
-            raise pkex.BasePyKatException("Check node combination {} and {} for {}".format(from_node, to_node, self.name))
+            return None
             
     def nodeConnections(self):
         return (
@@ -1018,7 +1029,14 @@ class space(Component):
         return self._QItem
 
     def ABCD(self, from_node, to_node, direction="x"):
-        return ABCD.space(self.n.value, self.L.value)
+        assert(self._kat.nodes[from_node] in self.nodes)
+        assert(self._kat.nodes[to_node] in self.nodes)
+
+        if from_node == to_node:
+            return None
+        else:
+            return ABCD.space(self.n.value, self.L.value)
+            
         
     def nodeConnections(self):
         return (
@@ -1403,6 +1421,12 @@ class lens(Component):
         return self._svgItem
         
     def ABCD(self, from_node, to_node, direction="x"):
+        assert(self._kat.nodes[from_node] in self.nodes)
+        assert(self._kat.nodes[to_node] in self.nodes)
+        
+        if from_node == to_node:
+            return None
+            
         if self.f.value is not None:
             return ABCD.lens(self.f.value)
         else:
