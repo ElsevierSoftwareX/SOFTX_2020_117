@@ -70,6 +70,17 @@ class NodeGaussSetter(object):
     @property
     def name(self):
         return self.node.name
+    
+    @property
+    def gauss_name(self):
+        if self.__name is None:
+            return "g_%s" % self.node.name
+        else:
+            return self.__name
+        
+    @gauss_name.setter
+    def gauss_name(self, value):
+        self.__name = value
             
     @property
     def node(self):
@@ -518,8 +529,8 @@ class AbstractMirrorComponent(Component):
     
     @Rc.setter
     def Rc(self,value):
-        self.Rcx.value = SIfloat(value)
-        self.Rcy.value = SIfloat(value)
+        self.Rcx = value
+        self.Rcy = value
 
     def parseAttribute(self, key, value):
         if key in ["Rcx", "Rx", "ROCx", "rx", "rcx", "rocx"]:

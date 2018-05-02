@@ -378,6 +378,22 @@ class KatRun(object):
         self.yaxis = None
         self._freeze()
         
+    def __contains__(self, key):
+        """
+        The Finesse output file will output headers with re:im or abs:deg in the name.
+        This confuses some python scripts when checking whether some output is inside
+        this katrun or not.
+        
+        This tidies up the ylabels list and allows us to use:
+        
+            out = kat.run()
+        
+            if "output" in out:
+                print("it is")
+        
+        """
+        return key in set(_.split()[0] for _ in self.ylabels)
+        
     def info(self):
         
         kat = pykat.finesse.kat()
@@ -3204,7 +3220,7 @@ class kat(object):
             data =  [
                         [
                             _,
-                            int(self.data[_]['z']/1e-3),
+                            self.data[_]['z']/1e-3,
                             comp_w0(_),
                             comp_w(_),
                             comp_RoC(_),
@@ -3311,6 +3327,7 @@ class kat(object):
                 ax.scatter(z, 0, marker='x', color='k')
                 ax.text(z, 0, comp+"\n", ha="center", va='bottom', zorder=100)
 
+            
         def beamsize(self, z, z_ref=None):
             """
             Gets the beamsize (radius) along the trace for whatever z value you want.
@@ -3533,8 +3550,8 @@ class kat(object):
                 params["L"] += comp.L.value
 
             else:
-                data[from_node.name] = {"q": qin, "L": params["L"], "gouy": params["_g"][-1]}
-                data[to_node.name] = {"q": qnew, "L": params["L"], "gouy": params["_g"][-1]}
+                data[from_node.name] = {"q": qin, "L": params["L"], "gouy": params["_g"][-1], "z":params["L"]}
+                data[to_node.name] = {"q": qnew, "L": params["L"], "gouy": params["_g"][-1], "z":params["L"]}
 
             params["qxs"].append( qnew )
 
@@ -3579,7 +3596,7 @@ class kat(object):
             for comp, (from_node, to_node) in zip(path_A, nodes_A):
                 _do(params, comp, from_node, to_node)
 
-        bt = BeamTrace()
+        bt = kat.BeamTrace()
         bt.data  = data
         bt.q_in  = q_in 
         bt.q_out = params["qnew"]
