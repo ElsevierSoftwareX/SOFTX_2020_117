@@ -208,7 +208,7 @@ class BeamParam(object):
         return abs(4*q1.imag * q2.imag)/abs(q1.conjugate()-q2)**2
         
     
-     @staticmethod
+    @staticmethod
     def mismatch(q1, q2):       
         """
         The mismatch parameter (1-overlap) as taken from the Bayer-Helms paper.
