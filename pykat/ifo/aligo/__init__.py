@@ -342,45 +342,45 @@ class ALIGO_IFO(IFO):
             #print("switching to last value of out")
             idx = last-1
 
-        if "ETMX_lock" in out.ylabels:
+        if "ETMX_lock" in out:
             if idx is None:
-                tuning["ETMX"] += float(out["ETMX_lock"])
+                tuning["ETMX"] += float(out["ETMX_lock"].real)
             else:
-                tuning["ETMX"] += float(out["ETMX_lock"][idx])
+                tuning["ETMX"] += float(out["ETMX_lock"][idx].real)
         else:
             pkex.printWarning("could not find ETMX lock")
     
-        if "ETMY_lock" in out.ylabels:
+        if "ETMY_lock" in out:
             if idx is None:
-                tuning["ETMY"] += float(out["ETMY_lock"])
+                tuning["ETMY"] += float(out["ETMY_lock"].real)
             else:
-                tuning["ETMY"] += float(out["ETMY_lock"][idx])
+                tuning["ETMY"] += float(out["ETMY_lock"][idx].real)
         else:
             pkex.printWarning("could not find ETMY lock")
     
-        if "PRM_lock" in out.ylabels:
+        if "PRM_lock" in out:
             if idx is None:
-                tuning["PRM"]  += float(out["PRM_lock"])
+                tuning["PRM"]  += float(out["PRM_lock"].real)
             else:
-                tuning["PRM"]  += float(out["PRM_lock"][idx])
+                tuning["PRM"]  += float(out["PRM_lock"][idx].real)
         else:
             pkex.printWarning("could not find PRCL lock")
     
-        if ("ITMX_lock" in out.ylabels) and ("ITMY_lock" in out.ylabels):
+        if ("ITMX_lock" in out) and ("ITMY_lock" in out):
             if idx is None:
-                tuning["ITMX"] += float(out["ITMX_lock"])
-                tuning["ITMY"] += float(out["ITMY_lock"])
+                tuning["ITMX"] += float(out["ITMX_lock"].real)
+                tuning["ITMY"] += float(out["ITMY_lock"].real)
             else:
-                tuning["ITMX"] += float(out["ITMX_lock"][idx])
-                tuning["ITMY"] += float(out["ITMY_lock"][idx])
+                tuning["ITMX"] += float(out["ITMX_lock"][idx].real)
+                tuning["ITMY"] += float(out["ITMY_lock"][idx].real)
         else:
             pkex.printWarning("could not find MICH (ITMX, ITMY) lock")
     
-        if "SRM_lock" in out.ylabels:
+        if "SRM_lock" in out:
             if idx is None:
-                tuning["SRM"]  += float(out["SRM_lock"])
+                tuning["SRM"]  += float(out["SRM_lock"].real)
             else:
-                tuning["SRM"]  += float(out["SRM_lock"][idx])
+                tuning["SRM"]  += float(out["SRM_lock"][idx].real)
         else:
             pkex.printWarning("could not find SRCL lock")
             

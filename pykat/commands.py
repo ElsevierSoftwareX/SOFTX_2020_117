@@ -347,7 +347,7 @@ class cavity(Command):
         for cav in kat.getAll(pykat.commands.cavity):
             if self.name != cav.name:
                 cav.remove()
-
+                
         kat.noxaxis = True
         kat.signals.remove()
         
@@ -388,7 +388,7 @@ class gauss(object):
             c = kat.components[component]
             if hasattr(c, node):
                 ns = getattr(c, node)
-                ns.name = name
+                ns.gauss_name = name
             else:
                 raise pkex.BasePyKatException("Component '{0}' is not attached to node {1}".format(component, node))        
         else:

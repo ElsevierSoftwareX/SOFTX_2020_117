@@ -96,7 +96,7 @@ class BeamParam(object):
         return np.abs(self.__q)* np.sqrt(self.__lambda / (self.__nr * math.pi * self.__q.imag))
     
     def beamsize(self, z=None, wavelength=None, nr=None, w0=None):
-
+        
         if z is None:
             z = self.z
         else:
@@ -206,6 +206,68 @@ class BeamParam(object):
         Added on 20/4/2015
         """
         return abs(4*q1.imag * q2.imag)/abs(q1.conjugate()-q2)**2
+        
+    
+    @staticmethod
+    def mismatch(q1, q2):       
+        """
+        The mismatch parameter (1-overlap) as taken from the Bayer-Helms paper.
+        This expression for mismatch is less susceptible to float rounding than 
+        just 1-overlap for tiny mismatches ( M < 1e-16 )
+        
+        Added by Alexei Ciobanu on 02/05/2018
+        """
+        return abs(q1-q2)**2/abs(q1-q2.conjugate())**2
+        
+    @staticmethod
+    def overlap_contour(q1, M, t):
+        """
+        This function returns a set of beam parameters that are mismatched to q1 by
+        an overlap M. There are multiple beam parameters that can be X% overlapped
+        with one particular q value. This function is parameterised with t from 0
+        to 2pi, which can provide all the possible beam parameters that are M% mismatched.
+        
+        q1 - reference beam parameter
+        M  - Mismatch factor (1-overlap) [0 -> 1]
+        t  - Selection parameter [0 -> 2pi]
+        
+        Example:
+        Plots the contours of mismatch for 0.1% and 1% from some initial q value.
+        
+            import matplotlib.pyplot as plt
+            import pykat
+            import numpy as np
+
+            qin = pykat.BeamParam(w0=1e-3, z=20)
+            t = np.linspace(0, 2*np.pi, 100)
+
+            # use vectorised functions to select a cerain property of the beam paramters
+            vx  = np.vectorize(lambda q: q.z)
+            vy  = np.vectorize(lambda q: q.w/1e-3)
+
+            for mm in [1e-3, 2e-2]:
+                mmc = pykat.BeamParam.overlap_contour(qin, mm, t)
+        
+                plt.text(vx(mmc[20]), vy(mmc[20]), "%1.1f%%" % ((mm*100)),alpha=0.5, fontsize=8)
+                l, = plt.plot(vx(mmc),     vy(mmc),     ls='--', alpha=0.2, zorder=-10, c='k')
+    
+            plt.show()
+        
+        """
+        from numpy import vectorize
+        assert(M < 1 and M >= 0)
+        assert(q1.imag > 0)
+    
+        vbp = vectorize(lambda x: BeamParam(q=x))
+    
+        z1 = np.real(q1)
+        zR1 = np.imag(q1)
+        r = (2*np.sqrt(M)*zR1)/(1-M)
+        y0 = ((M+1)*zR1)/(1-M)
+        x0 = z1
+        q2 = r*np.cos(t) + x0 + 1j*(r*np.sin(t) + y0)
+        return vbp(q2)
+        
         
     def conjugate(self):
         return BeamParam(self.__lambda, self.__nr, self.__q.conjugate())
