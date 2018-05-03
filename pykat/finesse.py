@@ -763,7 +763,7 @@ class KatRun2D(object):
 class Signals(object):
     
     @canFreeze 
-    class fsig(object):
+    class _fsig(object):
         def __init__(self, param, name, amplitude, phase, signal):
             self._unfreeze()
             self._params = []
@@ -908,7 +908,7 @@ class Signals(object):
         if name is None:
             name = "sig_" + target._owner().name + "_" + target.name
         
-        self.targets.append(Signals.fsig(target, name, amplitude, phase, self))
+        self.targets.append(Signals._fsig(target, name, amplitude, phase, self))
         
     def getFinesseText(self):
         rtn = []
