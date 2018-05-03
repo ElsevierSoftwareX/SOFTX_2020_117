@@ -105,6 +105,12 @@ class grid():
 	# Data structure to describe the size and axes for a (x,y) data array
 	# of complex beam amplitudes. Also contain also data structures for
 	# FFT propagation
+
+        # Some notes on usage (Added by AJ 3.May.2018)
+        # when accessing an element of a beam[i,j], i described the x position
+        # and j described the y position
+        # when plotting using imshow, the positive x direction is down the positive
+        # y direction is right
 	
 	def __init__ (self, _xpoints, _ypoints, _xlength, _ylength, _xoffset, _yoffset):
 

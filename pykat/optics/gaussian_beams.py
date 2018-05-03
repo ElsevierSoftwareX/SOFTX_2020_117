@@ -207,6 +207,17 @@ class BeamParam(object):
         """
         return abs(4*q1.imag * q2.imag)/abs(q1.conjugate()-q2)**2
         
+    
+    @staticmethod
+    def mismatch(q1, q2):       
+        """
+        The mismatch parameter (1-overlap) as taken from the Bayer-Helms paper.
+        This expression for mismatch is less susceptible to float rounding than 
+        just 1-overlap for tiny mismatches ( M < 1e-16 )
+        
+        Added by Alexei Ciobanu on 02/05/2018
+        """
+        return abs(q1-q2)**2/abs(q1-q2.conjugate())**2
         
     @staticmethod
     def overlap_contour(q1, M, t):
