@@ -530,9 +530,9 @@ class NodeNetwork(object):
             
         if isinstance(to_node, NodeGaussSetter):
             to_node = to_node.node
-            
-        if to_node == from_node:
-            return []
+          
+        if from_node == to_node:
+            raise pkex.BasePyKatException("To and from nodes are the same so cannot find anything between them.")  
     
         if from_node.name not in self.__nodes:
             raise pkex.BasePyKatException("Node {0} cannot be found in this kat object".format(from_node))
@@ -540,7 +540,8 @@ class NodeNetwork(object):
         if to_node.name not in self.__nodes:
             raise pkex.BasePyKatException("Node {0} cannot be found in this kat object".format(to_node))
         
-        
+            
+            
         fn = self.__nodes[from_node.name]
         tn = self.__nodes[to_node.name]
         
@@ -702,7 +703,7 @@ class Node(object):
         self.__q_y = None
         self.__q_comp = None
     
-    def setGauss(self, component, *args):
+    def setGauss(self, component, *args, name=None):
         self.__q_comp = component
         
         if len(args) == 1:  
@@ -727,12 +728,7 @@ class Node(object):
             # then applied.
             if hasattr(self.__q_comp, self.name):
                 ns = getattr(self.__q_comp, self.name)
-            
-                # if no name is present give it a default one
-                if ns.name != None:
-                    name = ns.name
-                else:
-                    name = "g_%s" % self.name
+                name = ns.gauss_name
             else:
                 raise pkex.BasePyKatException("Node {0} is not connected to {1}".format(self.name, self.__q_comp.name))
     

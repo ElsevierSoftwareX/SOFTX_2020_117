@@ -1143,7 +1143,7 @@ class IFO(object):
         base = self.kat.deepcopy()
         base.noxaxis = True
         base.verbose = False
-        out = base.run()
+        out = base.run(cmd_args=["-cr=on"])
         self.apply_lock_feedback(out)
         
         if verbose:

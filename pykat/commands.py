@@ -331,6 +331,35 @@ class cavity(Command):
             
         return pykat.commands.cavity(v[1], c1, n1, c2, n2)
         
+    def trace_to_node(self, node):
+        """
+        This method traces a cavity's eigen mode to a
+        given node in the model. It does this by calling
+        the Finesse binary
+    
+        cav_name: cavity name
+        node: node to trace beam to
+        verbose: More or less info
+        base: The kat object to do the tracing with
+        """
+        kat = self._kat.deepcopy()
+
+        for cav in kat.getAll(pykat.commands.cavity):
+            if self.name != cav.name:
+                cav.remove()
+                
+        kat.noxaxis = True
+        kat.signals.remove()
+        
+        for _ in kat.detectors:
+            kat.detectors[_].remove()
+            
+        kat.parse("pd p %s" % self.__n1)
+
+        _, T = kat.run(getTraceData=True)
+        qx, qy, _ = T[0][node]
+    
+        return qx, qy
         
 class gauss(object):
     """
@@ -359,7 +388,7 @@ class gauss(object):
             c = kat.components[component]
             if hasattr(c, node):
                 ns = getattr(c, node)
-                ns.name = name
+                ns.gauss_name = name
             else:
                 raise pkex.BasePyKatException("Component '{0}' is not attached to node {1}".format(component, node))        
         else:
