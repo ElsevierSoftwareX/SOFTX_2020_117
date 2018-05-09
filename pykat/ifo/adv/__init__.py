@@ -202,6 +202,8 @@ class ADV_IFO(IFO):
         self.f1_PRC = 3.5 * self.fsrPRC
     
     def compute_derived_lengths(self, verbose=False):
+        # Optical path lengths
+        ######################################
         # Optical path length from PR HR to BS HR
         self.lpr = self.kat.lPR_POP.L + self.kat.sPOPsub.L*self.kat.sPOPsub.n + self.kat.lPOP_BS.L
         # Optical path length from BS HR to NI HR
@@ -211,16 +213,41 @@ class ADV_IFO(IFO):
         # Optical path length from BS HR to WI HR
         self.ly = (self.kat.lBS_CPW.L + self.kat.sCPWsub.L * self.kat.sCPWsub.n +
                    self.kat.sCPW_WI.L + self.kat.sWIsub.L * self.kat.sWIsub.n)
-        # self.ly = self.kat.ly1.L + self.kat.ITMYsub.L * self.kat.ITMYsub.n
-        # self.lsr = self.kat.ls1.L + self.kat.ls2.L + self.kat.ls3.L + self.kat.BSsub2.L * self.kat.BSsub2.n
         self.lsr = None
+        if self.isSRC:
+            pass
         # resulting combined distances (single, not roundtrip)
         self.lMI =  0.5 * (self.lx + self.ly)
         self.lPRC = self.lpr + self.lMI
-        # self.lSRC = self.lsr + self.lMI
         self.lSRC = None
+        if self.isSRC:
+            self.lSRC = self.lsr + self.lMI
+
         self.lSchnupp = self.lx - self.ly
-    
+
+        # Effective geometric distances (for mode matching)
+        ######################################################
+        ## From PR HR to BS HR
+        #self.lpr_g = self.kat.lPR_POP.L + self.kat.sPOPsub.L.value/self.kat.sPOPsub.n.value + self.kat.lPOP_BS.L
+        ## Optical path length from BS HR to NI HR
+        #self.lx_g = (self.kat.sBSsub1.L.value/self.kat.sBSsub1.n.value + self.kat.lBS_CPN.L +
+        #             self.kat.sCPNsub.L.value/self.kat.sCPNsub.n.value + self.kat.sCPN_NI.L +
+        #             self.kat.sNIsub.L.value/self.kat.sNIsub.n.value )
+        ## From BS HR to WI HR
+        #self.ly_g = (self.kat.lBS_CPW.L + self.kat.sCPWsub.L.value/self.kat.sCPWsub.n.value +
+        #             self.kat.sCPW_WI.L + self.kat.sWIsub.L.value/self.kat.sWIsub.n.value)
+        #self.lsr_g = None
+        #if self.isSRC:
+        #    pass
+        ## resulting combined distances (single, not roundtrip)
+        #self.lMI_g =  0.5 * (self.lx_g + self.ly_g)
+        #self.lPRC_g = self.lpr_g + self.lMI_g
+        #self.lSRC_g = None
+        #if self.isSRC:
+        #    self.lSRC_g = self.lsr_g + self.lMI_g
+
+        #self.lSchnupp_g = self.lx_g - self.ly_g
+        
         self.compute_derived_resonances()
     
     def suspend_mirrors_z(self):
@@ -574,6 +601,7 @@ class ADV_IFO(IFO):
             signame = kat.IFO.B1.add_signal()
         
             kat.noxaxis=True
+            kat.yaxis = 'lin abs'
         
             out = kat.run(cmd_args=["-cr=on"])
         
