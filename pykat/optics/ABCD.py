@@ -11,9 +11,9 @@ def apply(ABCD, q1, n1, n2):
     n2: output refractive index
     """
     # make sure we have a complex here. We could have a beamParam object or a an actual complex value supplied
-    q1 = complex(q1)
+    #_q1 = complex(q1)
         
-    return BeamParam(nr=n2, q=n2 * (ABCD[0,0] * q1/float(n1) + ABCD[0,1]) / (ABCD[1,0] * q1/float(n1) + ABCD[1,1]))
+    return BeamParam(nr=n2, q=n2 * (ABCD[0,0] * q1/float(n1) + ABCD[0,1]) / (ABCD[1,0] * q1/float(n1) + ABCD[1,1]), wavelength=q1.wavelength)
 
 def mirror_trans(n1, n2, Rc):
     return np.matrix([[1.0,0.0],[(n2-n1)/float(Rc),1.0]])

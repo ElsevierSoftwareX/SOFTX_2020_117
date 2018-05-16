@@ -2420,7 +2420,7 @@ class kat(object):
                 elif isinstance(obj, pykat.finesse.Signals):
                     obj.remove()
                 
-                elif isinstance(obj, pykat.finesse.Signals.fsig):
+                elif isinstance(obj, pykat.finesse.Signals._fsig):
                     obj._on_remove()
             
                 for b in self.__blocks:

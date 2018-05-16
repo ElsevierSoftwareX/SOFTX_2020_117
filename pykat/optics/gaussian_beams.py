@@ -72,6 +72,9 @@ class BeamParam(object):
     @wavelength.setter
     def wavelength(self,value): self.__lambda = SIfloat(value)
     
+    def __repr__(self):
+        return "<%s (w0=%s, w=%s, z=%s) at %s>" % (self.__class__.__name__, self.w0, self.w, self.z, hex(id(self)))
+        
     @property
     def nr(self): return self.__nr
     
@@ -100,7 +103,7 @@ class BeamParam(object):
         if z is None:
             z = self.z
         else:
-            z = np.array(z-self.z)
+            z = np.array(z+self.z)
                 
         if wavelength is None:
             wavelength = self.wavelength
@@ -310,6 +313,9 @@ class BeamParam(object):
         return BeamParam(self.__lambda, self.__nr, complex(a) - self.__q)
     
     def __div__(self, a):
+        return BeamParam(self.__lambda, self.__nr, self.__q / complex(a))
+        
+    def __truediv__(self, a):
         return BeamParam(self.__lambda, self.__nr, self.__q / complex(a))
     
     def __idiv__(self, a):
