@@ -3448,7 +3448,7 @@ class kat(object):
 
             if show: plt.show()
             
-    def beamTrace(self, q_in, from_node, to_node, *args, direction='x'):
+    def beamTrace(self, q_in, from_node, to_node, *args, direction='x', back_propagating=False):
         """
         This function is separate from the Finesse tracing algorithm. It is purely 
         python based. From a given node to another this function will find the 
@@ -3466,6 +3466,10 @@ class kat(object):
 
         Returns a dictionary data structure that contains the beam parameter, lengths
         and gouy phases at each node and component between the paths.
+        
+        back_propagating: If set to True will perform all the matrix calculations with 
+        the matrix inverses of the ABCDs. Useful for propagating a beam backwards 
+        through an optical system.
         """
         from pykat.optics.ABCD import apply as apply_ABCD
         from collections import OrderedDict
@@ -3518,6 +3522,10 @@ class kat(object):
         
             qin = pykat.BeamParam(q=params["qxs"][-1], nr=float(from_node.n))
             Mabcd = comp.ABCD(from_node, to_node, direction=direction)
+            if back_propagating:
+                Mabcd = np.linalg.inv(Mabcd)
+            else:
+                Mabcd = Mabcd
             qnew = apply_ABCD(Mabcd, qin, from_node.n, to_node.n )
         
             params['qin'] = qin

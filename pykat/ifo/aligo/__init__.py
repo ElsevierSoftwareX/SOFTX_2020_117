@@ -741,7 +741,7 @@ def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
               
-def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
+def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_DARM_lock=False, keepComments=False, preserveConstants=False):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
@@ -832,7 +832,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     # If we don't have an OMC then we need to attach
     # directly to the AS node. Otherwise use OMC refl
     if "OMC" in kat.getBlocks():
-        nAS_RF = "nOMC_ICb"
+        nAS_RF = ["nOMC_ICb","nAS"] # Output() class accepts list of node names and match to the first one it finds
     else:
         nAS_RF = "nAS"
         
@@ -871,7 +871,10 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, keepComm
     kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
     kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
     kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [-1, -1], 1.5, sigtype="z")
-    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
+    if use_RF_DARM_lock:
+        kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2,   "Q", ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
+    else:
+        kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
     kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", -1, 1e2, sigtype="z")
 
     kat.IFO.DARM_h =  DOF(kat.IFO, "DARM_h", None, "", ["LY", "LX"], [-1,1], 1.0, sigtype="phase")
