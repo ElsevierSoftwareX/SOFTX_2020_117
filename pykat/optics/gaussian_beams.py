@@ -128,7 +128,7 @@ class BeamParam(object):
         if z is None:
             z = self.z
         else:
-            z = np.array(z)
+            z = np.array(z+self.z)
                 
         if wavelength is None:
             wavelength = self.wavelength

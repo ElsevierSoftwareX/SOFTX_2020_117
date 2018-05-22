@@ -345,6 +345,12 @@ class Param(putable, putter):
     def __rsub__(self, a):
         return (a) - self.value
     
+    def __truediv__(self, a):
+        return self.value / (a)
+    
+    def __itruediv__(self, a):
+        return self.value / complex(a)
+    
     def __div__(self, a):
         return self.value / (a)
     

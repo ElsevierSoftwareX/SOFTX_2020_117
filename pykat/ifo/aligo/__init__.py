@@ -741,7 +741,8 @@ def assert_aligo_ifo_kat(kat):
     if not isinstance(kat.IFO, ALIGO_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
               
-def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_DARM_lock=False, keepComments=False, preserveConstants=False):
+def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_DARM_lock=False,
+             keepComments=False, preserveConstants=False):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
@@ -789,7 +790,8 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
         kat.IFO.rawBlocks.read(katfile)
     else:
         if name not in names:
-            pkex.printWarning("aLIGO name `{}' not recognised, options are {}, using default 'design'".format(name, names))
+            pkex.printWarning("aLIGO name `{}' not recognised, options are {}, "
+                              "using default 'design'".format(name, names))
         
         katkile = os.path.join(kat.IFO._data_path, name+".kat")
         
@@ -862,19 +864,18 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     kat.IFO._preALSX =  DOF(kat.IFO, "ALSX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
     kat.IFO._preALSY =  DOF(kat.IFO, "ALSY", kat.IFO.POW_Y,   "", "ETMY", 1, 1.0, sigtype="z")
     
-    
-    
-     
     # control scheme as in [1] Table C.1. Due to Finesse
     # conventions, the overall factor for all but PRCL are multiplied by -1
     # compared to the LIGO defintion, to match the same defintion. 
     kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
     kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
     kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [-1, -1], 1.5, sigtype="z")
+    
     if use_RF_DARM_lock:
-        kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2,   "Q", ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
+        kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2, "Q", ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
     else:
-        kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC,   "",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
+        kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC, "",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
+                            
     kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", -1, 1e2, sigtype="z")
 
     kat.IFO.DARM_h =  DOF(kat.IFO, "DARM_h", None, "", ["LY", "LX"], [-1,1], 1.0, sigtype="phase")

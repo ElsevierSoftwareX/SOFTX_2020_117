@@ -3284,13 +3284,13 @@ class kat(object):
                     z = data[from_node]['z'] # starting distance
                     _z = np.arange(0, L, dz) # Distance to propagate 
 
-                    g = np.rad2deg(q.gouy(_z + q.z)) # gouy phase accumulated along this space
+                    g = np.rad2deg(q.gouy(_z)) # gouy phase accumulated along this space
 
                     # want to plot accumulated gouy phase so need to use
                     # a reference from where it started
                     _g = gouy + g - gouy_ref
 
-                    w = q.beamsize(_z + q.z) 
+                    w = q.beamsize(_z) 
                     w /= pykat.SI[w_scale]
 
                     w_max = max(w_max, w.max())
@@ -3352,7 +3352,7 @@ class kat(object):
             funcs = []
 
             def _wz(z0, q):
-                return lambda x: q.beamsize(x - z0 + q.z)
+                return lambda x: q.beamsize(x - z0)
 
             for comp, (from_node, to_node) in zip(data['components'], data['nodes']):
                 if data[comp]['is_space']:
@@ -3397,12 +3397,12 @@ class kat(object):
                     q = data[from_node]['q']
                     z = data[from_node]['z']
                     _z = np.linspace(0, L, 1000)                
-                    g = np.rad2deg(q.gouy(_z+q.z))
+                    g = np.rad2deg(q.gouy(_z))
 
                     # want to plot accumulated gouy phase so need to use
                     # a reference from where it started
-                    _g = gouy + np.rad2deg(q.gouy(_z + q.z)) - gouy_ref
-                    w  = q.beamsize(_z + q.z)/pykat.SI[w_scale]
+                    _g = gouy + np.rad2deg(q.gouy(_z)) - gouy_ref
+                    w  = q.beamsize(_z)/pykat.SI[w_scale]
 
                     w_max = max(w_max, w.max())
                     g_max = max(g_max, _g.max())

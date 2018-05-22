@@ -230,11 +230,8 @@ bs2 BSAR2 50u 0 0 29.195 nBSi4 dump15 nSRBS dump16
 # Distance from beam splitter to Y arm input mirror
 s ly1 5.0126 nYBS nITMY1a
 
-# Thermal lens correction
-lens ITMY_therm $TLY_f nITMY1a nITM_th1
-s ITMY_th1 0 nITM_th1 nITM_th2
-lens ITMY_lens $SLY_f nITM_th2 nITM_th3
-s ITMY_th2 0 nITM_th3 nITMY1
+lens ITMY_lens $SLY_f nITMY1a nITMY1b
+s sITMY_th2 0 nITMY1b nITMY1
 
 # Y arm input mirror
 m2 ITMYAR 0 20u 0 nITMY1 nITMYs1
@@ -262,11 +259,8 @@ attr ITMY mass 40
 # Distance from beam splitter to X arm input mirror 
 s lx1 4.993 nXBS nITMX1a
 
-# Thermal lens correction
-lens ITMX_therm $TLX_f nITMX1a nITMX_th1
-s ITMX_th1 0 nITMX_th1 nITMX_th2
-lens ITMX_lens $SLX_f nITMX_th2 nITMX_th3
-s ITMX_th2 0 nITMX_th3 nITMX1
+lens ITMX_lens $SLX_f nITMX1a nITMX1b
+s sITMX_th2 0 nITMX1b nITMX1
 
 # X arm input mirror
 m2 ITMXAR 0 20u 0 nITMX1 nITMXs1 
@@ -338,7 +332,7 @@ dbs FI2 nFI2a nFI2b nFI2c nFI2d
 s sFI_OM1 2.9339 nFI2c nOM1a
 
 # OM1
-bs1 OM1 800u $Mloss 0 2.251 nOM1a nOM1b dump21 dump22 # T is set for high power; Loss is a guess
+bs1 OM1 800u $Mloss 0 2.251 nOM1a nOM1b nOM1c dump22 # T is set for high power; Loss is a guess
 attr OM1 Rc 4.6
 
 # Distance OM1 --> OM2
