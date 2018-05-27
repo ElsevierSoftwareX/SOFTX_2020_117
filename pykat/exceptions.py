@@ -70,13 +70,12 @@ class FinesseParse(BasePyKatException) :
     
 class MissingFinesseEnvVar(BasePyKatException) :    
     def __init__(self):
-        BasePyKatException.__init__(self, "The environment variable FINESSE_DIR was not defined")
+        BasePyKatException.__init__(self, "The environment variable FINESSE_DIR was not defined or is empty")
 
 class MissingFinesse(BasePyKatException) :    
     def __init__(self):
-        BasePyKatException.__init__(self, "Could not find the finesse executable 'kat' in '{0}'," \
-                                     "or you do not have the permissions to run it." \
-                                      .format(os.environ.get('FINESSE_DIR')))
+        BasePyKatException.__init__(self, "Could not find the finesse executable 'kat'" \
+                                     "or you do not have the permissions to run it.")
     
 class FinesseRunError(BasePyKatException) :
     def __init__(self, err, kat):

@@ -1001,7 +1001,7 @@ class kat(object):
         self.__commands = {}    # dictionary of commands
         self.__gui = None
         self.nodes = NodeNetwork(self)  
-        self.__katdir = katdir
+        self.__katdir = katdir # user specfied
         self.__katname = katname
         self.__tempdir = tempdir
         self.__tempname = tempname
@@ -1033,7 +1033,7 @@ class kat(object):
         self.__time_code = None
         self.__yaxis = "abs" # default yaxis
         self.__lambda0 = 1064e-9
-        self.__finesse_dir = None
+        self.__finesse_dir = None # binary dir to use
         
         if kat_code != None and kat_file != None:
             raise pkex.BasePyKatException("Specify either a Kat file or some Kat code, not both.")
@@ -1045,6 +1045,8 @@ class kat(object):
             self.load(kat_file)
     
         self._freeze()
+        
+        self._finesse_exec()
     
     def __and__(self, other):
         """
@@ -1079,14 +1081,11 @@ class kat(object):
         self.data.update(dic)
         
     @property
-    def binaryDirectory(self):
+    def binary_directory(self):
         """
         Returns the directory of the FINESSE binary that will be called when running the simulation. 
         """
-        if len(self.__katdir) == 0:
-            return os.environ.get('FINESSE_DIR')
-        else:
-            return self.__katdir
+        return self.__finesse_dir
       
     def deepcopy(self):
         return copy.deepcopy(self)
@@ -1963,17 +1962,20 @@ class kat(object):
             sys.exit(1)
     
     def _finesse_exec(self, binary_name="kat"):
-        if len(self.__katdir) == 0:
-            if 'FINESSE_DIR' not in os.environ:
-                raise pkex.MissingFinesseEnvVar()
-                 
+        from distutils.spawn import find_executable
+
+        if len(self.__katdir) > 0:
+            self.__finesse_dir = self.__katdir.strip()
+        elif 'FINESSE_DIR' in os.environ:
             # Get the environment variable for where Finesse is stored
             self.__finesse_dir = os.environ.get('FINESSE_DIR').strip()
-            
-            if self.__finesse_dir is None :
+        
+            if self.__finesse_dir is None or len(self.__finesse_dir.strip())==0:
                 raise pkex.MissingFinesseEnvVar()
+        elif find_executable('kat') is not None:
+            self.__finesse_dir = find_executable('kat').rstrip("kat")
         else:
-            self.__finesse_dir = self.__katdir.strip()
+            raise pkex.MissingFinesse()
             
         if len(self.__katname) == 0:
             katexe = binary_name
