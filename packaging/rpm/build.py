@@ -16,14 +16,14 @@ call("git pull".split())
 
 git_describe = str(check_output('git describe --tags'.split())).split("-")
 
-os.chdir("/root/pykat/packaging/rpm")
+os.chdir("/root/pykat")
 
 vals = {
     "version": git_describe[0],
     "release": git_describe[1],
 }
 
-with open("/root/pykat/packaging/rpm/finesse.spec", "w") as f:
+with open("/root/pykat/packaging/rpm/pykat.spec", "w") as f:
     s = string.Formatter().vformat(textwrap.dedent("""
             %define name pykat
             %define version {version}
@@ -62,8 +62,8 @@ with open("/root/pykat/packaging/rpm/finesse.spec", "w") as f:
             """), (), SafeDict(**vals))
             
     f.write(s)
-            
-call("rpmbuild -bb SPECS/finesse.spec".split())
+
+call("python setup.py bdist_rpm".split())
 
 #call("cp /root/pykat/packaging/rpm/rpmbuild/RPMS/x86_64/finesse-{version}-{release}.x86_64.rpm /host".format(**vals).split())
 
