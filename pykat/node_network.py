@@ -703,7 +703,13 @@ class Node(object):
         self.__q_y = None
         self.__q_comp = None
     
-    def setGauss(self, component, *args, name=None):
+    def setGauss(self, component, *args, **kwargs):
+        
+        if "name" in kwargs:
+            name = kwargs['name']
+        else:
+            name = None
+        
         self.__q_comp = component
         
         if len(args) == 1:  

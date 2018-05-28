@@ -3450,7 +3450,7 @@ class kat(object):
 
             if show: plt.show()
             
-    def beamTrace(self, q_in, from_node, to_node, *args, direction='x', back_propagating=False):
+    def beamTrace(self, q_in, from_node, to_node, *args, **kwargs):
         """
         This function is separate from the Finesse tracing algorithm. It is purely 
         python based. From a given node to another this function will find the 
@@ -3472,17 +3472,40 @@ class kat(object):
         back_propagating: If set to True will perform all the matrix calculations with 
         the matrix inverses of the ABCDs. Useful for propagating a beam backwards 
         through an optical system.
+        
+        Parameters
+        ----------
+        
+        q_in : complex, BeamParam
+            Beam parameter to start the trace with
+        from_node : str, Node
+            Name of a node (Or node objecct) to start the trace from
+        to_node : str, Node
+            Name of a node (Or node objecct) to end the trace at
+        
+        Other Parameters
+        ----------------
+        *args: str, Node
+            Additional nodes to continue trace to
+        direction : str
+            'x' or 'y' for horizontal or vertical beam propagation, default 'x'
+        back_propagating: Boolean
+            Whether to propagate beam in reverse
         """
         from pykat.optics.ABCD import apply as apply_ABCD
         from collections import OrderedDict
         import itertools
+        
+        direction = kwargs.get('direction', 'x')
+        back_propagating = kwargs.get('back_propagating', False)
     
         def pairwise(iterable):
             a, b = itertools.tee(iterable)
             next(b, None)
             return zip(a, b)
 
-        nodes = [from_node, to_node, *args]
+        nodes = [from_node, to_node]
+        nodes.extend(args)
     
         # Get a list of components and the nodes in order between from and to nodes
         path_and_nodes = []
