@@ -1,6 +1,10 @@
 import os
 from subprocess import call, check_output
 
+class SafeDict(dict):
+    def __missing__(self, key):
+        return '{' + key + '}'
+
 os.chdir("/root/pykat")
 
 call("git pull".split())
@@ -15,5 +19,5 @@ vals = {
 print(vals)
 
 os.chdir("/root")            
-call("fpm -s python -t rpm --no-python-dependencies --no-python-fix-dependencies --no-python-fix-name pykat/setup.py".split())
-call("cp pykat-{version}.{release}-1.noarch.rpm /host".format(**vals).split())
+call("fpm -s python -t deb pykat/setup.py".split())
+call("cp python-pykat_{version}.{release}_all.deb /host".format(**vals).split())
