@@ -29,6 +29,7 @@ kat.lambda0 = 1550e-9
 kat.parse(kat_code)
 kat.maxtem = 0
 kat.trace = 2
+
 out, T = kat.run(getTraceData=True)
 
 print (out.stdout)
@@ -41,6 +42,6 @@ print('beam_param.wavelength: {:.0f}nm'.format(bp.wavelength*1e9))
 print('w0 from beam_param.w0: {:.2f}um'.format(bp.w0*1e6))
 # and this does not really work as the wavelength cancels out
 # for z=0 and therefore the waist does not change
-print('w0 from beam_param.beamsize(): {:.2f}um'.format(bp.beamsize(z=0, wavelength=1550e-9)*1e6))
+print('w0 from beam_param.beamsize(): {:.2f}um'.format(bp.beamsize(z=-bp.z)*1e6))
 
-assert(bp.w0 == bp.beamsize(z=0, wavelength=1550e-9))
+assert(bp.w0 == bp.beamsize(z=-bp.z))
