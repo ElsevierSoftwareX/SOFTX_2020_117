@@ -2,7 +2,6 @@ import os
 import os.path
 import subprocess
 import pykat
-
 import subprocess
 
 branch = subprocess.check_output(["git","rev-parse","--abbrev-ref","HEAD"]).decode('utf8').rstrip()

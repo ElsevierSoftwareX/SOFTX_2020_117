@@ -3567,7 +3567,7 @@ class kat(object):
             if isinstance(comp, pykat.components.space):
 
                 z = np.linspace(0, comp.L.value, 1000)                
-                g = np.rad2deg(qin.gouy(z + qin.z))
+                g = np.rad2deg(qin.gouy(z))
 
                 if params["gouy_ref"] is None:
                     # set new reference value
@@ -3575,7 +3575,7 @@ class kat(object):
 
                 # want to plot accumulated gouy phase so need to use
                 # a reference from where it started
-                params['_g'] = params["gouy"] + np.rad2deg(qin.gouy(z+qin.z))-params["gouy_ref"]
+                params['_g'] = params["gouy"] + np.rad2deg(qin.gouy(z))-params["gouy_ref"]
 
                 data[from_node.name] = {"q": qin, "z": params["L"], "gouy": params['_g'][0]}
                 data[to_node.name] = {"q": qnew, "z": params["L"]+comp.L.value, "gouy": params["_g"][-1]}

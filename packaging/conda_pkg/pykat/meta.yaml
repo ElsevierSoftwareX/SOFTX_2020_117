@@ -4,7 +4,7 @@ package:
 
 source:
   git_rev: {{ environ['CONDA_BUILD_VERSION'] }}
-  git_url: ../../
+  git_url: ../../../
     
 build:
   noarch: python
@@ -19,6 +19,7 @@ requirements:
     - matplotlib
     - flask >=0.10.1
     - finesse >=2.2
+    - h5py
   build:
     - python
     - setuptools
@@ -38,6 +39,7 @@ test:
     - six
     - scipy
     - matplotlib
+    - h5py
     
   imports:
     - pykat
