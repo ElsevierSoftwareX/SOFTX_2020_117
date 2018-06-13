@@ -5,7 +5,6 @@ from __future__ import print_function
 
 import numpy as np
 import pykat
-import matplotlib.pyplot as plt
 
 kat = pykat.finesse.kat()
 kat.parse("""
