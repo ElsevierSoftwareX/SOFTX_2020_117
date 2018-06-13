@@ -1,6 +1,7 @@
 # easy test to make sure beam tracing is tracking the gouy phase accumulation
 # and shape along a path correctly. Here I just expand and lens a beam back again
 # Gouy phase should be about 360 deg in total.
+from __future__ import print_function
 
 import numpy as np
 import pykat

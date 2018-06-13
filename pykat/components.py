@@ -700,7 +700,7 @@ class mirror(AbstractMirrorComponent):
         elif direction == "y" and self.Rcy.value is not None:
             Rc = self.Rcy.value
         else:
-            Rc = math.inf
+            Rc = np.inf
         
         n1 = self.nodes[0].n
         n2 = self.nodes[1].n
@@ -880,7 +880,7 @@ class beamSplitter(AbstractMirrorComponent):
         elif direction == "y" and self.Rcy.value is not None:
             Rc = self.Rcy.value
         else:
-            Rc = math.inf
+            Rc = np.inf
    
         n1 = float(self.nodes[0].n)
         n2 = float(self.nodes[3].n)
