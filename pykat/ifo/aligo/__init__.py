@@ -878,7 +878,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
                             
     kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", -1, 1e2, sigtype="z")
 
-    kat.IFO.DARM_h =  DOF(kat.IFO, "DARM_h", None, "", ["LY", "LX"], [-1,1], 1.0, sigtype="phase")
+    kat.IFO.DARM_h =  DOF(kat.IFO, "DARM_h", kat.IFO.AS_DC, "", ["LY", "LX"], [-1,1], 1.0, sigtype="phase")
     
     kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM, kat.IFO.SRCL)
     kat.IFO.CAV_POWs = (kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.POW_BS)

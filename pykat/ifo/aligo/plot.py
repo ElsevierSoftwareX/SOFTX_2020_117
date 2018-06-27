@@ -380,8 +380,17 @@ def pow_lsc(kat,xaxis = [-1,1,100]):
 
 def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}):
     """
-    Plots strain sensitivity
-    
+    Plots strain sensitivity.
+
+    Uses the kat.IFO.DARM_h degree of freedom for generating the gravitational wave signal.
+    To try different readouts you need to change the the DARM_h.port, not the DARM degree of
+    freedom which is moving the end test masses.
+
+    Example:
+        ax = plt.subplot(111)
+        strain_sensitivity(kat, ax=ax, plot_cmds={'label':'DC'})
+        plt.legend()
+
     base - LIGO model
     lower, upper, steps - frequency vector
     ax - Matplotlib axes to use, if None it creates internally
@@ -392,19 +401,25 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}
     kat.removeBlock("locks", False)
     kat.removeBlock("errsigs", False)
 
-    kat.parse(kat.IFO.DARM.transfer())
-    kat.parse("qnoisedS NSR 1 $fs nAS")
-    
+    kat.parse(kat.IFO.DARM_h.transfer())
+
+    if kat.IFO.DARM_h.port.f is None:
+        kat.parse("qnoisedS NSR 1 $fs {node}".format(node=kat.IFO.DARM_h.port.nodeName))
+    else:
+        kat.parse("qnoisedS NSR 2 {f} {phi} $fs {node}".format(f=kat.IFO.DARM_h.port.f,
+                                                               phi=kat.IFO.DARM_h.port.phase,
+                                                               node=kat.IFO.DARM_h.port.nodeName))
+
     if ax is None:
         ax = plt.subplot(111)
-    
+
     out = kat.IFO.DARM_h.scan_f(linlog="log", lower=lower, upper=upper, steps=steps)
 
     ax.loglog(out.x, abs(out["NSR"]), **plot_cmds)
 
     ax.set_ylabel("Sensitivity [h/sqrt{Hz}]")
     ax.set_xlabel("Frequency [Hz]")
-    
+
     if ax is None:
         plt.gcf().tight_layout()
         plt.show()

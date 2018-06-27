@@ -1235,15 +1235,43 @@ class IFO(object):
     
     def sensing_matrix(self, DOFs, detectors, frequency=1):
         """
-        Computes a sensing matrix for a collection of DOFs and detectors at a particular signal frequency.
+        Computes a sensing matrix for a collection of DOFs and
+        detectors at a particular signal frequency.
         
-        The function returns an augmented Pandas DataFrame object. This function adds two methods to the
-        DataFrame:
-            sens = kat.IFO.sensing_matrix(DOFs, detectors, 1)
-            sens.print() # Will show an ascii table of the sensing matrix
-            sens.radar_plot(detector_name) # Will display sensing matrix in polar plot form
+        Example:
+            import pykat
+            from pykat.ifo import aligo
+
+            base = aligo.make_kat("design_with_IMC_HAM2_FI_OMC")
+            base.maxtem = 2
+
+            base = aligo.setup(base)
+
+            kat = base.deepcopy() # Make a copy of the model
+
+            DOFs = ["DARM", "CARM", "PRCL", "SRCL", "MICH"]
+
+            # Add some detectors in to measure the transfer function
+            # from each degree of freedom specified above to each one
+            # of these outputs. Here we pick either the I or Q quadrature
+            detectors = [
+                kat.IFO.REFL_f1.add_transfer('I'),
+                kat.IFO.REFL_f1.add_transfer('Q'),
+                kat.IFO.REFL_f2.add_transfer('I'),
+                kat.IFO.REFL_f2.add_transfer('Q'),
+                kat.IFO.POP_f2.add_transfer('I'),
+                kat.IFO.POP_f2.add_transfer('Q'),
+                kat.IFO.AS_f2.add_transfer('I'),
+                kat.IFO.AS_f2.add_transfer('Q'),
+                kat.IFO.AS_DC.add_transfer()
+            ]
+
+            sens = kat.IFO.sensing_matrix(DOFs, detectors)
+            print(sens)
+            
+            
         
-        DOFs: collection of DOF objects
+        DOFs: list of DOF names
         detectors: list of detector names
         frequency: frequency to compute sensing matrix at [Hz]
         Returns: Pandas DataFrame
@@ -1265,11 +1293,11 @@ class IFO(object):
             kat.removeBlock("powers", False)
             kat.removeBlock("errsigs", False)
     
-            kat.parse(self.DOFs[DOF].fsig(fsig=frequency) )
+            kat.parse( self.DOFs[DOF].fsig(fsig=frequency) )
     
             data.append(kat.run()[detectors])
     
-        return SensingMatrix(data, columns=detectors, index=DOFs)
+        return SensingMatrix(np.real(data), columns=detectors, index=DOFs)
     
 class DOF(object):
     """
