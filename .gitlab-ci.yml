@@ -1,8 +1,8 @@
 before_script:
   - apk add --update ca-certificates openssl && update-ca-certificates
   
-  - wget --no-check-certificate https://agentx20.sr.bham.ac.uk:8080/static/scripts/brumsofttes_unsafe_certcheck.sh.sh
-  - chmod +x brumsofttest.sh
+  - wget --no-check-certificate https://agentx20.sr.bham.ac.uk:8080/static/scripts/brumsofttes_unsafe_certcheck.sh
+  - chmod +x brumsofttes_unsafe_certcheck.sh
 
 python_2.7:
   script:
