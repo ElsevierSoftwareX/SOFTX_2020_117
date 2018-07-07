@@ -24,10 +24,5 @@ kat.m2.Rc = T.data['m2']['qin'].Rc
 
 T = kat.beamTrace(bp, "n0", "n5")
 
-T.print()
-
-# T.plot()
-# plt.show()
-
 assert(np.allclose(359.99993233082711, T.data['s3']['gouy']))
 assert(np.allclose(999.9999999999994+0.00029526246744265j, T.data['s3']['qout'].q))
