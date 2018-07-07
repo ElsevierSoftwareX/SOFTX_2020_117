@@ -1,17 +1,17 @@
 before_script:
   - apk add --update ca-certificates openssl && update-ca-certificates
   
-  - wget --no-check-certificate https://agentx20.sr.bham.ac.uk:8080/static/scripts/brumsofttest.sh
+  - wget --no-check-certificate https://agentx20.sr.bham.ac.uk:8080/static/scripts/brumsofttes_unsafe_certcheck.sh.sh
   - chmod +x brumsofttest.sh
 
 python_2.7:
   script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 18 -g $CI_COMMIT_SHA
+    - ./brumsofttes_unsafe_certcheck.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 18 -g $CI_COMMIT_SHA
 
 python_3.5:
   script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 20 -g $CI_COMMIT_SHA
+    - ./brumsofttes_unsafe_certcheck.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 20 -g $CI_COMMIT_SHA
 
 python_3.6:
   script:
-    - ./brumsofttest.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 19 -g $CI_COMMIT_SHA
+    - ./brumsofttes_unsafe_certcheck.sh -s https://agentx20.sr.bham.ac.uk:8080 -u 1 -t 19 -g $CI_COMMIT_SHA
