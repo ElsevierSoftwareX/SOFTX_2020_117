@@ -1,6 +1,7 @@
 before_script:
   - apk add --update ca-certificates openssl && update-ca-certificates
-  - wget https://agentx20.sr.bham.ac.uk:8080/static/scripts/brumsofttest.sh
+  
+  - wget --no-check-certificate https://agentx20.sr.bham.ac.uk:8080/static/scripts/brumsofttest.sh
   - chmod +x brumsofttest.sh
 
 python_2.7:
