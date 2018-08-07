@@ -646,6 +646,8 @@ class surfacemap(object):
         elif isinstance(m,int):
             nVals = range(n,n+1)
             mVals.append(range(m,m+1))
+        else:
+            raise Exception("Unhandled `m` argument: %s" % m)
             
         # Amplitudes
         A = []
@@ -1410,9 +1412,9 @@ class surfacemap(object):
         Returns: A
         A  - List of amplitudes of the removed Zernike polynomials.
         '''
-        if m=='all':
-            m = range(-n,n+1,2)
-            
+        if m == 'all':
+            m = list(range(-n,n+1,2))
+
         R = self.find_radius(unit='meters')
         A = self.zernikeConvol(n,m)
         rho, phi= self.createPolarGrid()
@@ -1423,15 +1425,11 @@ class surfacemap(object):
                 Z = zernike(m[k], n, rho, phi)
                 self.data[self.notNan] = self.data[self.notNan]-A[k]*Z[self.notNan]
                 self.zernikeRemoved = (m[k], n, A[k])
-#        elif isinstance(m, range):
-#            for k in range(len(m)):
-#                Z = zernike(m[k], n, rho, phi)
-#                self.data[self.notNan] = self.data[self.notNan]-A[k]*Z[self.notNan]
-#                self.zernikeRemoved = (m[k], n, A[k])
         else:
             Z = zernike(m, n, rho, phi)
             self.data[self.notNan] = self.data[self.notNan]-A*Z[self.notNan]
             self.zernikeRemoved = (m, n, A)
+            
         return A
         
 class mergedmap:

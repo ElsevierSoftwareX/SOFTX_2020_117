@@ -430,7 +430,8 @@ class KatRun(object):
     def plot(self, detectors=None, filename=None, show=True,
                    yaxis=None, legend=True, loc=0, title=None, styles=None,
                    ylabel=None, y2label=None, xlabel=None, x2label=None,
-                   xlim=None, x2lim=None, ylim=None, y2lim=None, return_fig=False):
+                   xlim=None, x2lim=None, ylim=None, y2lim=None, return_fig=False,
+                   xscale=None, y1scale=None, y2scale=None):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
@@ -457,6 +458,8 @@ class KatRun(object):
                                 of length 2.
             x2lim, y2lim:       Limits of x- and y-axes of the second plot. List or tuple
                                 of length 2.
+            xscale, y1scale     SI scale either axes. See pykat.SI dictionary for possible
+            y2scale:            values
         """
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
@@ -546,6 +549,8 @@ class KatRun(object):
         detectors = list(set(detectors))
         detectors.sort()
 
+        _x = self.x/pykat.SI[xscale]
+        
         for det in detectors:
             if not hasattr(kat, det) or (hasattr(kat, det) and not getattr(kat, det).noplot):
 
@@ -553,13 +558,13 @@ class KatRun(object):
                     ax = pyplot.subplot(2,1,1)
 
                 if styles is not None and det in styles:
-                    l, = plot_cmd1(self.x, _func1(self[det]), styles[det], label=det)
+                    l, = plot_cmd1(_x, _func1(self[det])/pykat.SI[y1scale], styles[det], label=det)
                 else:
-                    l, = plot_cmd1(self.x, _func1(self[det]), label=det)
+                    l, = plot_cmd1(_x, _func1(self[det])/pykat.SI[y1scale], label=det)
 
                 if dual_plot:
                     pyplot.subplot(2,1,2)
-                    plot_cmd2(self.x, _func2(self[det]), color=l.get_color(), ls=l.get_linestyle(), label=det)
+                    plot_cmd2(_x, _func2(self[det])/pykat.SI[y2scale], color=l.get_color(), ls=l.get_linestyle(), label=det)
 
         if dual_plot:
             if ylabel is None:
@@ -571,17 +576,17 @@ class KatRun(object):
                 if "im" in kat.yaxis:  y2label = "Imaginary part [au]"
 
             if xlim is None:
-                xlim = (self.x.min(), self.x.max())
+                xlim = (_x.min(), _x.max())
 
             if x2lim is None:
-                 x2lim = (self.x.min(), self.x.max())
+                 x2lim = (_x.min(), _x.max())
 
         else:
             if ylabel is None:
                 ylabel = "[au]"
 
             if xlim is None:
-                xlim = (self.x.min(), self.x.max())
+                xlim = (_x.min(), _x.max())
 
 
         if xlabel is None:
@@ -614,7 +619,7 @@ class KatRun(object):
         else:
             pyplot.xlabel(xlabel, fontsize=font_label_size)
             pyplot.ylabel(ylabel)
-            pyplot.xlim(self.x.min(), self.x.max())
+            pyplot.xlim(xlim[0], xlim[1])
 
             if title is not None:
                 pyplot.title(title, fontsize=font_label_size)

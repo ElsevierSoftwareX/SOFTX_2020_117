@@ -1503,7 +1503,7 @@ class modulator(Component):
     def type(self): return self.__type
     @type.setter
     def type(self, value):
-        accepted = ["am", "pm", "yaw", "pitch"]
+        accepted = ["am", "pm", "yaw", "pitch", "w0", 'z']
         
         if value not in accepted:
             raise pkex.BasePyKatException("Modulator type must be: " + ", ".join(accepted))

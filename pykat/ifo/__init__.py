@@ -1233,6 +1233,21 @@ class IFO(object):
         
         return dofs
     
+    def update(self):
+        """
+        Iterates through the IFO and updates the DOFs and Outputs dictionaries with the latest ports and DOFs that have
+        been added to the interferometer object.
+        """
+        self.DOFs = {}
+    
+        for _ in inspect.getmembers(self, lambda x: isinstance(x, DOF)):
+            self.DOFs[_[0]] = _[1]
+        
+        self.Outputs = {}
+    
+        for _ in inspect.getmembers(self, lambda x: isinstance(x, Output)):
+            self.Outputs[_[0]] = _[1]
+            
     def sensing_matrix(self, DOFs, detectors, frequency=1):
         """
         Computes a sensing matrix for a collection of DOFs and
