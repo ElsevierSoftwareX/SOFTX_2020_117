@@ -356,7 +356,7 @@ def pows_vs_dofs(kat, xaxis = [-1,1,100]):
     fig = plt.figure(figsize=(17,8))
     axs = []
     for k in range(N):
-        axs.append(fig.add_subplot(2,3,k+1), label = 'axis{}'.format(k))
+        axs.append(fig.add_subplot(2,3,k+1, label = 'axis{}'.format(k)))
     for ax, v in zip(axs,dic.keys()):
         for n in dic[v].keys():
             if n != 'x':
