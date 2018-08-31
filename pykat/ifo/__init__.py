@@ -14,7 +14,7 @@ from scipy.optimize import fmin
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
 from scipy.optimize import minimize
-from scipy.misc import comb
+from scipy.special import comb
 
 
 
@@ -669,10 +669,10 @@ def modematch(kat, components, cavs, node, verbose = False):
     p0 = []
     for c in components:
         if isinstance(kat1.components[c], pykat.components.lens):
-            p0.append(kat1.components[c].f.value)
+            p0.append(1.0/kat1.components[c].f.value)
         elif (isinstance(kat1.components[c], pykat.components.mirror) or 
               isinstance(kat1.components[c], pykat.components.beamSplitter)):
-            p0.append(kat1.components[c].Rc.value)
+            p0.append(1.0/kat1.components[c].Rc.value)
         elif isinstance(kat1.components[c], pykat.components.space):
             p0.append(kat1.components[c].L.value)
 
@@ -689,28 +689,33 @@ def modematch(kat, components, cavs, node, verbose = False):
     def func(p):
         for k in range(Np):
             if isinstance(attrs[k], pykat.components.lens):
-                attrs[k].f = p[k]
+                attrs[k].f = 1/p[k]
             elif isinstance(attrs[k], pykat.components.space):
                 attrs[k].L = p[k]
             elif (isinstance(attrs[k], pykat.components.mirror) or 
                   isinstance(attrs[k], pykat.components.beamSplitter)):
-                attrs[k].Rc = p[k]
+                attrs[k].Rc = 1/p[k]
+
+        isStable, m_max = isCavsStable(kat1)
         
-        mmx, mmy, qs = pykat.ifo.mismatch_cavities(kat1, node)
-        mm = np.zeros(comb(Nc,2,exact=True), dtype=float)
-        cs = deepcopy(cavs)
-        k = 0
-        for c1 in cavs:
-            cs.pop(0)
-            for c2 in cs:
-                mm[k] = np.sqrt(mmx[c1][c2])*np.sqrt(mmy[c1][c2])
-                k += 1
-        # print(kat1.CPN_TL.f.value, kat1.CPW_TL.f.value, mm.mean())
-        return mm.max()
+        if isStable:
+            mmx, mmy, qs = mismatch_cavities(kat1, node)
+            mm = np.zeros(comb(Nc,2,exact=True), dtype=float)
+            cs = deepcopy(cavs)
+            k = 0
+            for c1 in cavs:
+                cs.pop(0)
+                for c2 in cs:
+                    mm[k] = np.sqrt(mmx[c1][c2])*np.sqrt(mmy[c1][c2])
+                    k += 1
+            # print(kat1.CPN_TL.f.value, kat1.CPW_TL.f.value, mm.mean())
+            m_max = mm.max()
+        print(m_max, p)
+        return m_max
         
     if verbose: 
         # Computing initial mismatch. Only for display
-        mmx, mmy, qs = pykat.ifo.mismatch_cavities(kat1, node)
+        mmx, mmy, qs = mismatch_cavities(kat1, node)
         mm0 = np.zeros(comb(Nc,2,exact=True), dtype=float)
         cs = deepcopy(cavs)
         k = 0
@@ -719,23 +724,25 @@ def modematch(kat, components, cavs, node, verbose = False):
             for c2 in cs:
                 mm0[k] = np.sqrt(mmx[c1][c2])*np.sqrt(mmy[c1][c2])
                 k += 1
-        
+                
     # Optimising
-    opts = {'xtol': 1.0, 'ftol': 1.0e-7, 'disp': False}
+    opts = {'xtol': 1e-5, 'ftol': 1.0e-6, 'disp': False}
     out = minimize(func, p0, method='Nelder-Mead', options=opts)
-    
+
     if not out['success']:
         pkex.printWarning(out.message)
-        
+    p1 = out.x
     # Setting new parameters to kat-object
     for k in range(Np):
         if isinstance(attrs2[k], pykat.components.lens):
-            attrs2[k].f = out.x[k]
+            p1[k] = 1.0/p1[k]
+            attrs2[k].f = p1[k]
         elif isinstance(attrs2[k], pykat.components.space):
-            attrs2[k].L = out.x[k]
+            attrs2[k].L = p1[k]
         elif (isinstance(attrs2[k], pykat.components.mirror) or 
               isinstance(attrs2[k], pykat.components.beamSplitter)):
-            attrs2[k].Rc = out.x[k]
+            p1[k] = 1.0/p1[k]
+            attrs2[k].Rc = p1[k]
 
     if verbose:
         print('Maximum mismatch: {:.2e} --> {:.2e}'.format(mm0.max(), out.fun))
@@ -748,7 +755,7 @@ def modematch(kat, components, cavs, node, verbose = False):
                   isinstance(kat.components[c], pykat.components.beamSplitter)):
                 print(' {}.Rc = {:.5e} m --> {:.5e} m'.format(c, kat.components[c].Rc.value, kat2.components[c].Rc.value ))
                       
-    return kat2, out.x
+    return kat2, p1
 
 
 
@@ -764,6 +771,23 @@ def c2r_errsig(z, phase):
     phase  - the demodulation phase [deg].
     '''
     return np.real(z*np.exp(-1j*phase*np.pi/180.0))
+
+def isCavsStable(kat):
+    isStable = True
+    kat1 = kat.deepcopy()
+
+    code = ''
+    for cav in kat1.getAll(pykat.commands.cavity):
+        code += 'cp {0} x m\ncp {0} y m\n'.format(cav)
+    code += 'noxaxis'
+    kat1.parse(code)
+    out = kat1.run()
+    ymax = np.abs(out.y).max()
+
+    if ymax >= 1:
+        isStable = False
+    return isStable, ymax
+
 
 def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=False):
     '''
