@@ -213,7 +213,7 @@ class ADV_IFO(IFO):
         # Optical path length from BS HR to WI HR
         self.ly = (self.kat.lBS_CPW.L + self.kat.sCPWsub.L * self.kat.sCPWsub.n +
                    self.kat.sCPW_WI.L + self.kat.sWIsub.L * self.kat.sWIsub.n)
-        self.lsr = None
+        self.lsr = self.kat.lsr.L + self.kat.sBSsub2.L*self.kat.sBSsub2.n
         if self.isSRC:
             pass
         # resulting combined distances (single, not roundtrip)
