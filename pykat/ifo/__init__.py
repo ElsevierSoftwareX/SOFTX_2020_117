@@ -710,7 +710,7 @@ def modematch(kat, components, cavs, node, verbose = False):
                     k += 1
             # print(kat1.CPN_TL.f.value, kat1.CPW_TL.f.value, mm.mean())
             m_max = mm.max()
-        print(m_max, p)
+        #print(m_max, p)
         return m_max
         
     if verbose: 
