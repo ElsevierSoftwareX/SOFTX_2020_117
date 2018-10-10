@@ -125,7 +125,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None, replaceDOFSign
     toShow = None
     
     if plotDOFs is not None:
-        toShow = self._strToDOFs(plotDOFs)
+        toShow = kat.IFO._strToDOFs(plotDOFs)
     
         # Check if other DOF signals we need to include for plotting
         for _ in toShow:
