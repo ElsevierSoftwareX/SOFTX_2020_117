@@ -199,6 +199,8 @@ class ADV_IFO(IFO):
         self.fsrPRC = 0.5 * clight / self.lPRC
         # self.fsrSRC = 0.5 * clight / self.lSRC
         self.fsrSRC = None
+        if self.isSRC:
+            self.fsrSRC = 0.5 * clight / self.lSRC
         self.f1_PRC = 3.5 * self.fsrPRC
     
     def compute_derived_lengths(self, verbose=False):
@@ -213,17 +215,17 @@ class ADV_IFO(IFO):
         # Optical path length from BS HR to WI HR
         self.ly = (self.kat.lBS_CPW.L + self.kat.sCPWsub.L * self.kat.sCPWsub.n +
                    self.kat.sCPW_WI.L + self.kat.sWIsub.L * self.kat.sWIsub.n)
-        self.lsr = None
-        if self.isSRC:
-            pass
+
         # resulting combined distances (single, not roundtrip)
         self.lMI =  0.5 * (self.lx + self.ly)
         self.lPRC = self.lpr + self.lMI
+        self.lSchnupp = self.lx - self.ly
+        self.lsr = None
         self.lSRC = None
         if self.isSRC:
+            self.lsr = self.kat.lsr.L + self.kat.sBSsub2.L*self.kat.sBSsub2.n
             self.lSRC = self.lsr + self.lMI
 
-        self.lSchnupp = self.lx - self.ly
 
         # Effective geometric distances (for mode matching)
         ######################################################
@@ -1356,7 +1358,7 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
     kat.IFO.preDARM = DOF(kat.IFO, "DARM", kat.IFO.POW_X, "", [mirrors["EX"], mirrors["EY"]], [-1,1], 1.0, sigtype="z")
     kat.IFO.preCARM = DOF(kat.IFO, "CARM", kat.IFO.POW_X, "", [mirrors["EX"], mirrors["EY"]], [-1,-1], 1.0, sigtype="z")
     if isSRC:
-        kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.POW_S,   "", mirrors["SRM"],  1, 10.0, sigtype="z")
+        kat.IFO.preSRCL =  DOF(kat.IFO, "SRCL", kat.IFO.B1,   "", mirrors["SRM"],  1, 10.0, sigtype="z")
     
     # Science mode control scheme obtained from Valeria Sequino. 
     kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.B2_f3, "I", mirrors["PRM"], 1, 100.0, sigtype="z")
@@ -1599,6 +1601,8 @@ def pretune_status(_kat):
     kat.noxaxis = True
     
     pretune_DOFs = [kat.IFO.preARMN, kat.IFO.preARMW, kat.IFO.prePRCL, kat.IFO.preMICH]
+    if kat.IFO.isSRC:
+        pretune_DOFs.append(kat.IFO.preSRCL)
     
     _detStr=""
     
