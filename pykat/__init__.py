@@ -22,6 +22,7 @@ import six
 ########################
 # Global helper functions
 isContainer = lambda c: (not isinstance(c, six.string_types)) and hasattr(c, "__iter__")
+is_container = lambda c: (not isinstance(c, six.string_types)) and hasattr(c, "__iter__")
 ########################
 
 import imp

@@ -1452,21 +1452,65 @@ class Output(object):
     You can add many detectors at a given port, which readout different quadratures or types of transfer functions
     or signals.
     """
-    def __init__(self, IFO, name, nodeNames, f_property_name=None, phase=0, block=None):
+    
+    def __init__(self, IFO, name, nodeNames, f_property_name=None, phase=0, block=None,
+                 alternate_node_name=None):
+        """
+        An Output object is a generic description of an output port of an interferometer.
+        At an output port, such as the AS port, we can do DC or RF demodulations. Each
+        output can then compute the transfer functions or or photodiode error signals,
+        or optical amplitudes.
+        
+        Parameters
+        ----------
+        IFO : pykat.ifo.IFO
+            Interferometer class to associate with
+        name : str
+            Name of the output
+        nodeNames : list(str)
+            List of nodes that this output uses, one for normal detectors, multiple for
+            balanced homodyne like outputs.
+        f_property_name : str
+            Name of the frequency attribute in IFO. This should be a name of a frequency
+            attribute in the IFO class, this is used when computing what frequency to
+            demodulate at. None means a DC output
+        phase : foat
+            Demodulation phase
+        block : str
+            Which block in the kat object to add the commands to
+        """
         if f_property_name is not None and not isinstance(f_property_name, six.string_types):
             raise Exception("f_property_name should be a property name of a frequency in class {}".format(IFO.__class__))
             
         self.__IFO = IFO
         self.name = name
-        self.nodeNames = make_list_copy(nodeNames)
+        self.__nodeNames = make_list_copy(nodeNames)
+        
+        if alternate_node_name is None:
+            self.__alternate_node_name = None
+        else:
+            self.__alternate_node_name = make_list_copy(alternate_node_name)
+        
         self.__f_property_name = f_property_name
         self.phase = phase    # demodulation phase for I quadrature, float
         self._block = block
     
+        if pykat.is_container(nodeNames):
+            self.num_nodes = len(nodeNames)
+            self.__nodeNames = [self.__nodeNames]
+        else:
+            self.num_nodes = 1
+            self.__nodeNames = [self.__nodeNames]
+        
+        if self.num_nodes > 1 and self.__f_property_name is not None:
+            raise Exception("Can't use multiple node outputs and RF calculations")
+    
+    
     @property
     def kat(self):
-        """For referencing the kat object this DOF is associated with"""
+        """For referencing the actual kat object this output is associated with"""
         return self.__IFO.kat
+        
           
     @property
     def f(self):
@@ -1475,20 +1519,23 @@ class Output(object):
         
         return getattr(self.__IFO, self.__f_property_name)
         
+        
     def check_nodeName(self):
         self.nodeName = None
         
-        for node in self.nodeNames:
-            _node = node
-            if _node[-1] == "*":
-                _node = _node[:-1]
-                
-            if _node in self.__IFO.kat.nodes:
-                self.nodeName=node
+        if self.__alternate_node_name is not None:
+            _nodes = zip(self.__nodeNames, self.__alternate_node_name)
+        else:
+            _nodes = self.__nodeNames
+
+        for nodes in _nodes:
+            if all([_.strip('* ') in self.__IFO.kat.nodes for _ in nodes]):
+                self.nodeName = nodes
                 break
                 
         if self.nodeName==None:
-            raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name,self.nodeNames))
+            raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name, self.__nodeNames))
+
 
     def get_amplitude_name(self, f, n=None, m=None):
         ''''
@@ -1513,7 +1560,11 @@ class Output(object):
             rtn = "{}_{}_{}{}_ad".format(self.name,fstr,n,m)
         return rtn
     
+    
     def get_amplitude_cmds(self, f, n=None, m=None):
+        if self.num_nodes != 1:
+            raise Exception("Amplitude output doesn't work for multiple node outputs")
+            
         rtn = []
         
         self.check_nodeName()
@@ -1521,11 +1572,12 @@ class Output(object):
         name = self.get_amplitude_name(f, n=n, m=m)
         
         if n==None and m==None:
-            rtn.append("ad {} {} {}".format(name, f, self.nodeName))
+            rtn.append("ad {} {} {}".format(name, f, self.nodeName[0]))
         else:
-            rtn.append("ad {} {} {} {} {}".format(name, f, n, m, self.nodeName))
+            rtn.append("ad {} {} {} {} {}".format(name, f, n, m, self.nodeName[0]))
             
         return rtn
+        
     
     def _pdtype(self, name, sigtype):
         rtn = []
@@ -1536,6 +1588,7 @@ class Output(object):
             rtn.append("pdtype {} x-split".format(name))
         
         return rtn
+    
     
     def add_signal(self, quad=None, sigtype=None):
         """
@@ -1561,6 +1614,7 @@ class Output(object):
         self.__IFO.kat.parse(cmds, addToBlock=self._block)
         return self.get_signal_name(quad, sigtype)
         
+        
     def get_signal_name(self, quad="I", sigtype='z'):
         
         name = self.name
@@ -1574,6 +1628,7 @@ class Output(object):
             name += "_Y"
             
         return name
+        
         
     def get_signal_cmds(self, dof=None, **kwargs):
         """
@@ -1620,18 +1675,19 @@ class Output(object):
         name = self.get_signal_name(quad=quad, sigtype=sigtype)
                 
         if self.f==None:
-            rtn.append("pd {} {}".format(name, self.nodeName))
+            rtn.append("pd {} {}".format(name, self.nodeName[0]))
         else:
             if quad !="I" and quad != "Q":
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")
                 
             phase = self.IQ_phase(quad, self.phase)
             
-            rtn.append("pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName))
+            rtn.append("pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName[0]))
         
         rtn.extend(self._pdtype(name, sigtype))
         
         return rtn
+        
         
     def IQ_phase(self, quad, phase):
         if phase is None:
@@ -1645,10 +1701,12 @@ class Output(object):
                 
         return phase
     
+    
     def add_transfer(self, quad=None, sigtype="z"):
         cmds = self.get_transfer_cmds(quad=quad, sigtype=sigtype)
         self.__IFO.kat.parse(cmds, addToBlock=self._block)
         return self.get_transfer_name(quad, sigtype)
+        
         
     def get_transfer_name(self, quad="I", sigtype="z"):
         name = self.name
@@ -1663,32 +1721,49 @@ class Output(object):
             
         return name + "_TF"
         
+        
     def get_transfer_cmds(self, quad="I", sigtype="z", phase2=None):
         self.check_nodeName()
         
         name = self.get_transfer_name(quad=quad, sigtype=sigtype)
         
         rtn = []
+        
+        if self.num_nodes == 2:
+            cmd = 'hd'
+        elif self.num_nodes == 1:
+            cmd = 'pd1'
+        else:
+            raise Exception("Unexpected number of nodes")
             
         if self.f is None:
             if phase2 is None:
-                rtn.append("pd1 {} {} {}".format(name, "$fs", self.nodeName))
+                if cmd == 'pd1':
+                    rtn.append("{} {} {} {}".format(cmd, name, "$fs", *self.nodeName))
+                elif cmd == 'hd':
+                    rtn.append("{} {} 180 {} {}".format(cmd, name, *self.nodeName))
+                else:
+                    raise Expection("Unexpected command")
             else:
-                rtn.append("pd1 {} {} {} {}".format(name, "$fs", phase2, self.nodeName))
+                if self.num_nodes != 1: raise Exception("Can't do RF homodyne output")
+                rtn.append("pd1 {} {} {} {}".format(name, "$fs", phase2, self.nodeName[0]))
         else:
+            if self.num_nodes != 1: raise Exception("Can't do RF homodyne output")
+            
             if quad not in ("I", "Q"):
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
                 
             phase = self.IQ_phase(quad, self.phase)
             
             if phase2 is None:
-                rtn.append("pd2 {} {} {} {} {}".format(name, self.f , phase, "$fs", self.nodeName))
+                rtn.append("pd2 {} {} {} {} {}".format(name, self.f , phase, "$fs", self.nodeName[0]))
             else:
-                rtn.append("pd2 {} {} {} {} {} {}".format(name, self.f, phase, "$fs", phase2, self.nodeName))
+                rtn.append("pd2 {} {} {} {} {} {}".format(name, self.f, phase, "$fs", phase2, self.nodeName[0]))
         
         rtn.extend(self._pdtype(name, sigtype))
         
         return rtn    
+          
                 
     def get_diff_cmds(self, quad='I', sigtype='z'):
         '''
@@ -1700,14 +1775,14 @@ class Output(object):
         name = self.get_transfer_name(quad=quad, sigtype=sigtype)
         rtn = []
         if self.f is None:
-            rtn.append("pd {} {}".format(name, self.nodeName))
+            rtn.append("pd {} {}".format(name, self.nodeName[0]))
         else:
             if quad not in ("I", "Q"):
                 raise pkex.BasePyKatException("quadrature must be 'I' or 'Q'")            
                 
             phase = self.IQ_phase(quad, self.phase)
             
-            rtn.append("pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName))
+            rtn.append("pd1 {} {} {} {}".format(name, self.f, phase, self.nodeName[0]))
 
         rtn.extend(self._pdtype(name, sigtype))
                 
