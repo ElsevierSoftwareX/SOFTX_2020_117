@@ -773,20 +773,29 @@ def c2r_errsig(z, phase):
     return np.real(z*np.exp(-1j*phase*np.pi/180.0))
 
 def isCavsStable(kat):
-    isStable = True
+    is_stable = True
     kat1 = kat.deepcopy()
 
     code = ''
+    cp_names = []
     for cav in kat1.getAll(pykat.commands.cavity):
         code += 'cp {0} x m\ncp {0} y m\n'.format(cav)
+        cp_names.append('{0}_x_m'.format(cav))
+        cp_names.append('{0}_y_m'.format(cav))
+
     code += 'noxaxis'
     kat1.parse(code)
     out = kat1.run()
-    ymax = np.abs(out.y).max()
+
+    cp_outs = []
+    for name in cp_names:
+        cp_outs.append(out[name])
+
+    ymax = np.abs(cp_outs).max()
 
     if ymax >= 1:
-        isStable = False
-    return isStable, ymax
+        is_stable = False
+    return is_stable, ymax
 
 
 def opt_demod_phase(cdata, x, xbounds=None, err_tol=1e-5, xatol=1e-9, isplot=False):
