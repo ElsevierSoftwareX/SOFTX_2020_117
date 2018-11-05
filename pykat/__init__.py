@@ -50,9 +50,19 @@ from pykat.style import use as set_plot_style
 
 from .SIfloat import SIfloat
 
-kat = finesse.kat()
-v = kat.finesse_version()
-
+try:
+	kat = finesse.kat()
+	v = kat.finesse_version()
+except pkex.MissingFinesse:
+	from warnings import warn
+	msg = "Could not find the finesse executable 'kat'" \
+		"or you do not have the permissions to run it."
+	warn(msg)
+	class nokat(object):
+		def __getattribute__(self, attr):
+			warn(msg)
+	kat = nokat()
+	v = str(__min_req_finesse__)
 if float(v.split('-')[0]) < __min_req_finesse__:
     raise pkex.BasePyKatException("Pykat %s requires Finesse version %s or higher. You have have %s" % (__version__ ,
                                                                                               str(__min_req_finesse__),

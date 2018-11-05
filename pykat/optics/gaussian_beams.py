@@ -35,7 +35,7 @@ class BeamParam(object):
     """
     
     def __init__(self, wavelength=1064e-9, nr=1, *args, **kwargs):
-        if self.__class__ != BeamParam:
+        if self.__class__ == gauss_param or self.__class__ == beam_param:
             warnings.warn("Name changed. Use BeamParam instead of gauss_param or beam_param.")
             
         self.__q = None
