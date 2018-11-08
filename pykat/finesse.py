@@ -508,7 +508,7 @@ class KatRun(object):
             _func2 = lambda x: np.rad2deg(np.angle(x))
 
             plot_cmd1 = plot_cmd
-            plot_cmd2 = pyplot.plot if kat.xaxis.scale == "lin" else pyplot.semilogx
+            plot_cmd2 = ax2.plot if kat.xaxis.scale == "lin" else pyplot.semilogx
 
             dual_plot = True
         elif "db:deg" in kat.yaxis:
@@ -539,7 +539,8 @@ class KatRun(object):
             plot_cmd1 = plot_cmd
 
         if dual_plot:
-            fig = plt.figure(width="full", height=1)
+            fig, (ax, ax2) = pyplot.subplots(2, 1, sharex=True)
+            #fig = plt.figure(width="full", height=1)
         else:
             fig = plt.figure(width="full")
 
@@ -555,15 +556,16 @@ class KatRun(object):
             if not hasattr(kat, det) or (hasattr(kat, det) and not getattr(kat, det).noplot):
 
                 if dual_plot:
-                    ax = pyplot.subplot(2,1,1)
-
+                    #ax = pyplot.subplot(2,1,1)
+                    pyplot.sca(ax)
                 if styles is not None and det in styles:
                     l, = plot_cmd1(_x, _func1(self[det])/pykat.SI[y1scale], styles[det], label=det)
                 else:
                     l, = plot_cmd1(_x, _func1(self[det])/pykat.SI[y1scale], label=det)
 
                 if dual_plot:
-                    pyplot.subplot(2,1,2)
+                    pyplot.sca(ax2)
+                    #ax2 = pyplot.subplot(2,1,2)
                     plot_cmd2(_x, _func2(self[det])/pykat.SI[y2scale], color=l.get_color(), ls=l.get_linestyle(), label=det)
 
         if dual_plot:
@@ -598,16 +600,32 @@ class KatRun(object):
         font_label_size = pyplot.rcParams["font.size"]-1
 
         if dual_plot:
-            ax = pyplot.subplot(2,1,1)
-            pyplot.xlabel(xlabel, fontsize=font_label_size)
-            pyplot.ylabel(ylabel, fontsize=font_label_size)
-            pyplot.xlim(xlim[0], xlim[1])
+            #ax = pyplot.subplot(2,1,1)
+            #pyplot.xlabel(xlabel, fontsize=font_label_size)
+            #pyplot.ylabel(ylabel, fontsize=font_label_size)
+            #pyplot.xlim(xlim[0], xlim[1])
+            #if ylim is not None:
+            #    pyplot.ylim(ylim[0],ylim[1])
+            # 
+            #if title is not None:
+            #    pyplot.title(title, fontsize=font_label_size)
+            
+            #ax.set_xlabel(xlabel, fontsize=font_label_size)
+            ax.set_ylabel(ylabel, fontsize=font_label_size)
+            ax.set_xlim(xlim[0], xlim[1])
             if ylim is not None:
-                pyplot.ylim(ylim[0],ylim[1])
+                ax.set_ylim(ylim[0],ylim[1])
 
             if title is not None:
-                pyplot.title(title, fontsize=font_label_size)
+                ax.set_title(title, fontsize=font_label_size)
 
+            ax2.set_xlabel(x2label, fontsize=font_label_size)
+            ax2.set_ylabel(y2label, fontsize=font_label_size)
+
+            ax2.set_xlim(x2lim[0], x2lim[1])
+            if y2lim is not None:
+                ax2.set_ylim(y2lim[0],y2lim[1])
+            """
             pyplot.subplot(2,1,2)
             pyplot.xlabel(x2label, fontsize=font_label_size)
             pyplot.ylabel(y2label, fontsize=font_label_size)
@@ -615,7 +633,7 @@ class KatRun(object):
             pyplot.xlim(x2lim[0], x2lim[1])
             if y2lim is not None:
                 pyplot.ylim(y2lim[0],y2lim[1])
-
+            """
         else:
             pyplot.xlabel(xlabel, fontsize=font_label_size)
             pyplot.ylabel(ylabel)
