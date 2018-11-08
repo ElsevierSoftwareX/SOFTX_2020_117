@@ -9,105 +9,93 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# Should be either display (showing in windows) or paper (saving for paper/report/etc.)
-__mode__ = None
 __DPI__ = None
+
 
 def in_ipython():
     try:
-        cfg = get_ipython() 
-        return True
+        __IPYTHON__
     except NameError:
         return False
-        
-        
-def init_pykat_plotting(mode="display", dpi=100, fmts=None):
+    else:
+        return True
+
+
+# `mode` should be either display (showing in windows)
+# or paper (saving for paper/report/etc.)
+def init_pykat_plotting(mode="display", dpi=None, fmts=None):
     import matplotlib as mpl
-    
-    __DPI__ = int(dpi)
-    
+    import pykat.style
+
     if fmts is None:
-        fmts=['svg', 'pdf']
-        
+        fmts = ['svg']
+
     if in_ipython():
         try:
             from IPython.display import set_matplotlib_formats
-            set_matplotlib_formats(*fmts)
             ipy = get_ipython()
             ipy.magic("matplotlib inline")
-        except:
+            set_matplotlib_formats(*fmts)
+        except NameError:
             pass
-    
+
     if mode == "display":
-        __mode__ = mode
-        
+        pykat.style.use(["default"])
     elif mode == "paper":
-        __mode__ = mode
-        
         mpl.use("pgf")
-
-        pgf_with_pdflatex = {
-            "pgf.texsystem": "pdflatex",
-            "text.usetex": True,
-            "pgf.preamble": [
-                 r"\\usepackage{amsmath, amssymb}",
-                 r"\\usepackage{mathtools, siunitx}" ,
-                 r"\\usepackage{amsmath}",
-                 r"\\usepackage[utf8x]{inputenc}",
-                 r"\\usepackage[T1]{fontenc}"
-                 ]
-        }
-
-        mpl.rcParams.update(pgf_with_pdflatex)
+        pykat.style.use(["default", "paper"])
     else:
-        raise(BaseException("Plotting mode must be either 'display' or 'paper'."))
+        raise (BaseException(
+            "Plotting mode must be either 'display' or 'paper'."))
+
+    if dpi is None:
+        __DPI__ = mpl.rcParams['figure.dpi']
+    else:
+        __DPI__ = int(dpi)
+        mpl.rcParams.update({'figure.dpi': __DPI__})
+        mpl.rcParams.update({'savefig.dpi': __DPI__})
 
     if (mpl.__version__ < '1.5'):
-        mpl.rcParams['axes.color_cycle'] = ['b', 'r', 'k', 'g', 'c', 'm', 'y']
-    else:
-        mpl.rcParams['axes.prop_cycle']=mpl.cycler('color', ['b', 'r', 'k', 'g', 'c', 'm', 'y'])
-        
-    mpl.rcParams['lines.linewidth'] = 1.2
-    mpl.rcParams.update({"figure.figsize": (6, 3.708)})
-    mpl.rcParams.update({'font.size': 11})
-    mpl.rcParams.update({'figure.dpi': __DPI__})
-    mpl.rcParams.update({'savefig.dpi': __DPI__})
-    mpl.rcParams.update({'font.family': "serif"})
-    mpl.rcParams.update({'axes.grid': True})
-    
-    mpl.rcParams.update({'axes.titlesize': "medium"})
-    mpl.rcParams.update({'axes.xmargin': 0})
-    mpl.rcParams.update({'legend.fontsize': "small"})
-    mpl.rcParams.update({'axes.axisbelow': True})
-    mpl.rcParams.update({'grid.linewidth': 0.25})
-    mpl.rcParams.update({'grid.linestyle': ":"})
-    mpl.rcParams.update({'grid.color': (0.6,0.6,0.6,1)})
-    mpl.rcParams.update({'savefig.bbox': "tight"})
-    mpl.rcParams.update({'savefig.pad_inches': 0.05})
-    mpl.rcParams.update({'xtick.labelsize': "small"})
-    mpl.rcParams.update({'ytick.labelsize': "small"})
-    mpl.rcParams.update({'axes.formatter.useoffset': True})
+        # prop_cycle doesn't exist pre-1.5, and unknown rcParams are ignored,
+        # so we have to hardcode the color cycle
+        mpl.rcParams.update({'axes.color_cycle': ['0000FF', 'FF0000', '000000', '00FF00', 'FF00FF']})
 
-def figure(width="full", height=0.618, textwidth=6, **kwargs):
+
+def figure(width=None, height=None, textwidth=None, **kwargs):
     """
     Options:
-        width: 'full', 'half' (0.49*textwidth) (default: full)
-        height: relative height to width (default: 1/golden ratio = 0.618)
-        textwidth: Width of text in inches (default: 9.84252 in = 25 cm )
+        width: 'full', 'half' (0.49*textwidth) (default: None (use current
+        value))
+        height: relative height to width (default: None (use current value))
+        textwidth: Width of text in inches (default: None (use current value))
     """
+    import matplotlib as mpl
     import matplotlib.pyplot as plt
-    
+    fig_size = mpl.rcParams["figure.figsize"]
+
+    if width is None:
+        width = "full"
+    if height is None:
+        height = fig_size[1] / fig_size[0]
+    if textwidth is None:
+        textwidth = fig_size[0]
+
     if width == "full":
-        fig_size = [textwidth, textwidth*height]
+        fig_size[0] = textwidth
     elif width == "half":
-        fig_size = [textwidth*0.49, textwidth*height*0.49]
+        fig_size[0] = 0.49 * textwidth
+        fig_size[1] = 0.49 * textwidth * height
     else:
-        raise(BaseException("width must be either 'full' or 'half'."))
-        
+        raise (BaseException("width must be either 'full', 'half' or None."))
+
     fig = plt.figure(figsize=fig_size, dpi=__DPI__)
-    
+
     return fig
-    
-    
-    
-    
+
+
+def subplot(*args, **kwargs):
+    import matplotlib.pyplot as plt
+
+    ax = plt.subplot(*args, **kwargs)
+
+    return ax
