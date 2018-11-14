@@ -3,15 +3,18 @@ patch.facecolor: r
 
 # FONT
 font.size : 11
+font.family : serif
 
 # TEXT
 text.usetex : False
 
 # AXES
 axes.grid : True
-axes.formatter.useoffset : True
+axes.formatter.useoffset : False
 axes.formatter.use_locale : False
-axes.prop_cycle: cycler('color', ['0000FF', 'FF0000', '000000', '00FF00', 'FF00FF'])
+axes.prop_cycle : cycler('color', ['0000FF', 'FF0000', '000000', '00FF00', 'FF00FF'])
+axes.axisbelow : True
+axes.xmargin : 0
 
 #TICKS
 xtick.labelsize : 9
@@ -27,6 +30,9 @@ figure.titlesize : 12
 figure.figsize : 6, 3.708
 figure.dpi : 96
 
+# LINES
+lines.linewidth : 1.2
+
 # IMAGES
 image.cmap : magma
 image.origin : lower
@@ -34,6 +40,7 @@ image.origin : lower
 # SAVING FIGURES
 savefig.dpi : 300
 savefig.bbox : tight
+savefig.pad_inches : 0.05
 
 pdf.compression : 9
 pdf.fonttype : 42
