@@ -343,7 +343,8 @@ class cavity(Command):
         base: The kat object to do the tracing with
         """
         kat = self._kat.deepcopy()
-
+        kat.maxtem = 0 # always need a maxtem
+        
         for cav in kat.getAll(pykat.commands.cavity):
             if self.name != cav.name:
                 cav.remove()
@@ -357,7 +358,7 @@ class cavity(Command):
         kat.parse("pd p %s" % self.__n1)
 
         _, T = kat.run(getTraceData=True)
-        qx, qy, _ = T[0][node]
+        qx, qy, _ = T[0][str(node)]
     
         return qx, qy
         

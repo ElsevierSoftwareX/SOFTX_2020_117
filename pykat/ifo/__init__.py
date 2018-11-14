@@ -1551,13 +1551,13 @@ class Output(object):
             _nodes = zip(self.__nodeNames, self.__alternate_node_name)
         else:
             _nodes = self.__nodeNames
-
+        
         for nodes in _nodes:
             if all([_.strip('* ') in self.__IFO.kat.nodes for _ in nodes]):
                 self.nodeName = nodes
                 break
                 
-        if self.nodeName==None:
+        if self.nodeName is None:
             raise pkex.BasePyKatException("port {}: cannot find any of these nodes: '{}'".format(self.name, self.__nodeNames))
 
 

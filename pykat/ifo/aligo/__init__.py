@@ -834,13 +834,15 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     # If we don't have an OMC then we need to attach
     # directly to the AS node. Otherwise use OMC refl
     if "OMC" in kat.getBlocks():
-        nAS_RF = ["nOMC_ICb","nAS"] # Output() class accepts list of node names and match to the first one it finds
+        alt_nAS = "nAS" 
+        nAS_RF = "nOMC_ICb" 
     else:
+        alt_nAS = None
         nAS_RF = "nAS"
         
-    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  nAS_RF,  "f1", phase=101)
-    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  nAS_RF,  "f2", phase=14)
-    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", nAS_RF, "f36M", phase=14)
+    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  nAS_RF,  "f1", phase=101, alternate_node_name=alt_nAS)
+    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  nAS_RF,  "f2", phase=14, alternate_node_name=alt_nAS)
+    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", nAS_RF, "f36M", phase=14, alternate_node_name=alt_nAS)
 
     kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")

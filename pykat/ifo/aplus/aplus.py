@@ -244,8 +244,13 @@ class APLUS_IFO(IFO):
             self.kat.nodes.replaceNode(self.kat.sHAM2in, 'nIMCout', 'nLaserOut')
         
         if removeHAM2:
+            L = self.kat.sFI_IM3.L + self.kat.sIM3_IM4.L + self.kat.sPRCin.L
             self.kat.removeBlock("HAM2")
-            self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
+            self.kat.parse("""
+            s sPRCin 0 nLaserOut nFI1
+            dbs FI nFI1 nFI2 nFI3 nREFL
+            s sFI_PRM {} nFI3 nPRM1
+            """.format(L), addToBlock='PRC')
 
 
     def adjust_PRC_length(self, verbose=False):
@@ -647,6 +652,8 @@ def make_kat(katfile=None, verbose=False, debug=False,
     kat.IFO.update()
 
     kat.IFO.lockNames = None
+
+    kat.noxaxis = True
     
     return kat
         
@@ -866,7 +873,7 @@ def pretune_status(_kat):
 
     tunings = kat.IFO.get_tunings()
     
-    if tunings['keys']["maxtem"] == -1:
+    if tunings['keys']["maxtem"] is None or tunings['keys']["maxtem"] == -1:
         _maxtemStr="off"
     else:
         _maxtemStr = "{}".format(tunings['keys']["maxtem"])

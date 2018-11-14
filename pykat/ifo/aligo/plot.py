@@ -404,11 +404,11 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}
     kat.parse(kat.IFO.DARM_h.transfer())
 
     if kat.IFO.DARM_h.port.f is None:
-        kat.parse("qnoisedS NSR 1 $fs {node}".format(node=kat.IFO.DARM_h.port.nodeName))
+        kat.parse("qnoisedS NSR 1 $fs {node}".format(node=kat.IFO.DARM_h.port.nodeName[0]))
     else:
         kat.parse("qnoisedS NSR 2 {f} {phi} $fs {node}".format(f=kat.IFO.DARM_h.port.f,
                                                                phi=kat.IFO.DARM_h.port.phase,
-                                                               node=kat.IFO.DARM_h.port.nodeName))
+                                                               node=kat.IFO.DARM_h.port.nodeName[0]))
 
     if ax is None:
         ax = plt.subplot(111)
