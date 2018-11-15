@@ -1,1 +1,9 @@
-v0.0, 23/07/2013 -- Initial release.
+PyKat-1.1.297
+
+Adding in A+ model and files
+
+pykat.ifo plot_strain_sensitivity now returns the kat object that it runs to get the plot
+
+Plotting is now done using Matplotlib styles now
+
+Pykat can be run without having Finesse installed now
