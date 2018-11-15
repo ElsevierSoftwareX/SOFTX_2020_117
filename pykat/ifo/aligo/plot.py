@@ -423,3 +423,5 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}
     if ax is None:
         plt.gcf().tight_layout()
         plt.show()
+        
+    return kat

@@ -395,6 +395,10 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}
     lower, upper, steps - frequency vector
     ax - Matplotlib axes to use, if None it creates internally
     plt - Dict of keyword arguments to pass to loglog
+    
+    Returns
+    -------
+    Kat object that was run to generate the plot
     """
     kat = base.deepcopy()
 
@@ -426,3 +430,5 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}
     if ax is None:
         plt.gcf().tight_layout()
         plt.show()
+        
+    return kat
