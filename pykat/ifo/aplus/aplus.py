@@ -501,7 +501,7 @@ def make_kat(katfile=None, verbose=False, debug=False,
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['design', 'design_low_power', 'design_with_IMC_HAM2', 'design_with_IMC_HAM2_FI_OMC']
+    names = ['design']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")

@@ -749,22 +749,11 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     
     The `name` argument selects from default aLIGO files included in Pykat:
     
-        - design: A file based on the design parameters for the final aLIGO setup.
-          125W input, T_SRM = 20%.
-    
-        - design_low_power: A file based on the design parameters for the final aLIGO setup.
-          20W input, T_SRM = 35%. The higher SRM transmission mirror is used for low power
-          operation. 20W input power from O1 observation.
-        
-        - design_with_IMC_HAM2: A file based on `design` but has the IMC and HAM2 blocks
-          which contain design parameter input optics
-    
-        - design_with_IMC_HAM2_FI_OMC: A file with the OMC and IMC, most complete file
     
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['design', 'design_low_power', 'design_with_IMC_HAM2', 'design_with_IMC_HAM2_FI_OMC']
+    names = ['design']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
