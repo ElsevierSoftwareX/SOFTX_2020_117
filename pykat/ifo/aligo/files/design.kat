@@ -1,0 +1,431 @@
+%%% FTblock header
+#--------------------------------------------------------------------------
+# An aLIGO design file base on older aLIGO_IFO_AWC_tuning_DCoff_maxtem4.kat
+# (details in the original file header)
+#
+# updated to re-include locks 
+# (errsig, powers and locks blocks, plus EOMs 1 and 2 (9 and 45kHz))
+# 
+# - R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
+# - Advanced LIGO, CQG, 2015 
+#   http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
+# - G. Billingsley. LIGO core optics reference page. https://galaxy.ligo. caltech.edu/optics/
+# 
+# Anna Green, Andreas Freise, 28th November 2016
+#--------------------------------------------------------------------------
+#
+# References used for aLIGO parameters
+# [1] R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
+# [2] Advanced LIGO, CQG, 2015 
+#     http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
+# [3] G. Billingsley. LIGO core optics reference page. https://galaxy.ligo.caltech.edu/optics/
+# [4] D. Martynov, `Lock Acquisition and Sensitivity Analysis of Advanced
+#     LIGO Interferometers', PhD thesis, Caltech, 2015
+#     http://thesis.library.caltech.edu/8899/1/DenisMartynovThesis.pdf
+# [4] A. Staley, `Locking the Advanced LIGO Gravitational Wave Detector:
+#     with a focus on the Arm Length Stabilization Technique', PhD thesis,
+#     Columbia University, 2015
+#     https://academiccommons.columbia.edu/catalog/ac:189457
+#
+# Changes since 12/2016:
+#
+# - 09.05.2017, Daniel Brown
+#       Based on design file at the time. Adding in IMC and HAM2 from old aligo kat files.
+#       Simplified the IMC/HAM2 parameters.
+#
+#       Documents used:
+#           * D0902838-v5 - Design values and layout for IMC/HAM2
+#           * T1000247-v3 - Values for IM mirror distances
+#       Notes:
+#           * Input FI is just placed inbetween IM2 and IM3 halfway. From D0902838
+#             this then separates the beam that is then reflected from IM2 again
+#             and off another mirror? This extra path isn't included nREFL is just
+#             at the FI output
+#           * As no design lengths are specfied for HAM2 distances I used LHO values
+#             from T1000247. 
+#
+# - 06.12.2016, initial corrections compared to previous files, Anna and Andreas
+#
+#   Bug fixes
+#   - AR coatings of ETMs and ITMs were using mirror components with non-zero
+#     reflectivity. This is wrng as it causes residual resoances with the HR
+#     surfaces and ignores the wedge in the substrate. Instead the mirror component
+#     should have losses but no reflectivity. Alternatively beamsplitter components
+#     with non-zero reflectivity can be used to detect the AR reflections
+#   - Same as above for PRM and SRM AR coatings
+#   - change order of `cav' commands, arm cavities need to come first
+#
+#   Change of parameter values
+#   - BS substrate length were assymetric and did not match substrate thickness,
+#     changed to symmetric 0.0687m, using pykat.GWdetectors.aLIGO.BSpath(0.06)
+#   - changed SRM transmission from 35% to 20%, matching the aLIGO 2015 paper
+#   - changed arm length to L=3994.4692, see [4], Table 10.2
+#
+#   Changes in file structure
+#   - removed length calculation fucntions for PRC and SRC sub-length
+#     and added length values into space components
+#   - removed maxtem 4 command from HOMs block
+#   
+#   Naming changes
+#   - changed naming for thermal lens components
+#   - changed naming of PRMHR to PRM and node names in PRM substrate
+#   - changed naming of SRMHR to SRM and node names in SRM substrate
+#   - changed name of ITMHR to ITM and ETMHR to ETM
+#   - changed names of arm spaces from LXarm, LYarm to LX, LY
+#		- changed name of HOMs block to cavities
+#		- changed PR2 node4 name from dump11 to nAPOP (auxilliary POP)
+#
+#
+# - 01.07.2017, Daniel Toyra
+# 
+#       Adding in OMC and OMCpath from old aligo kat files. Simplified the OMC 
+#       to single surface mirrors. Replaced the path between the SRM and the 
+#       OMCpath with equivalent pure vacuum propagation. Added an ideal Faraday 
+#       isolator (dbs-component). 
+#      
+#       Documents used:
+#           *
+#       Notes:
+#           * 
+#       TODO:
+#           * Correct detector nodes. Check parameters for OMC and OMCpath. 
+#--------------------------------------------------------------------------
+%%% FTend header
+
+
+%%% FTblock laser
+###########################################################################
+# Laser and input optics
+l L0 125 0.0 0.0 ni
+bs jitter 1 0 0 0 ni n0 dump dump
+
+s lmod1 1 n0 n1
+
+# modulators for core interferometer sensing - Advanced LIGO, CQG, 2015 
+# http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
+# 9MHz (CARM, PRC, SRC loops)
+const f1 9099471
+const f2 45497355
+
+mod mod1 $f1 0.18 1 pm n1 n2
+s lmod2 1 n2 n3
+
+# 45MHz (MICH, SRC loops)
+mod mod2 $f2 0.18 1 pm n3 nLaserOut
+###########################################################################
+%%% FTend laser
+
+%%% FTblock IMC
+#####################################################################################
+s sIMCin 0 nLaserOut nMC1in
+
+bs1 MC1 6000u 0 0 44.59 nMC1in nMC1refl nMC1trans nMC1fromMC3
+s sMC1_MC2 16.24057 nMC1trans nMC2in
+
+bs1 MC2 0 0u 0 0.82 nMC2in nMC2refl nMC2trans dump
+s sMC2_MC3 16.24057 nMC2refl nMC3in
+attr MC2 Rc 27.24
+
+bs1 MC3 6000u 0 0 44.59 nMC3in nMC3refl nMC3trans nMCreturn_refl
+s sMC3substrate 0.0845 $nsilica nMC3trans nMC3ARin
+bs2 MC3AR 0 0 0 28.9661 nMC3ARin dump nIMCout dump
+
+s sMC3_MC1 0.465 nMC3refl nMC1fromMC3
+#####################################################################################
+%%% FTend IMC
+
+%%% FTblock HAM2
+#####################################################################################
+s sHAM2in 0.4282 nIMCout nIM11
+
+# IM1 a.k.a. SM1
+bs1 IM1 0 0 0 53 nIM11 nIM12 dump dump
+
+s sIM1_IM2 1.2938 nIM12 nIM21
+
+# IM2 a.k.a. PMMT1
+bs1 IM2 0 0 0 7 nIM21 nIM22 dump dump
+attr IM2 Rc 12.8
+
+s sIM2_FI 0.260 nIM22 nFI1
+
+# Input faraday isolator
+dbs FI nFI1 nFI2 nFI3 nREFL
+
+s sFI_IM3 0.910 nFI3 nIM31
+
+# IM3 a.k.a PMMT2
+bs1 IM3 0 0 0 7.1 nIM31 nIM32 dump dump
+attr IM3 Rc -6.24
+
+s sIM3_IM4 1.210 nIM32 nIM41
+
+# a.k.a SM2
+bs1 IM4 0 0 0 45 nIM41 nHAM2out dump dump
+#####################################################################################
+%%% FTend HAM2
+
+%%% FTblock PRC
+###########################################################################
+s sPRCin 0.4135 nHAM2out nPRM1
+
+# PRM
+# AR surface
+m2 PRMAR 0 40u 0 nPRM1 nPRMs1
+# Substrate
+s sPRMsub1 0.0737 $nsilica nPRMs1 nPRMs2
+# HR surface
+m1 PRM 0.03 8.5u $phi_PRM nPRMs2 nPRM2
+attr PRM Rc 11.009
+# Distance between PRM and PR2
+s lp1 16.6107 nPRM2 nPR2a
+# PR2
+bs1 PR2 250u $Mloss 0 -0.79 nPR2a nPR2b nPOP nAPOP
+attr PR2 Rc -4.545 
+# Distance from PR2 to PR3
+s lp2 16.1647 nPR2b nPR3a
+# PR3
+bs1 PR3 0 $Mloss 0 0.615 nPR3a nPR3b dump dump
+attr PR3 Rc 36.027
+# Distance from PR3
+s lp3 19.5381 nPR3b nPRBS
+
+###########################################################################
+%%% FTend PRC
+
+%%% FTblock BS
+###########################################################################
+# BS beamsplitter
+##------------------------------------------------------------ 
+## BS 
+##                             ^ 
+##                  to IMY     |      
+##                             |      ,'-.
+##                             |     +    `. 
+##                        nYBS |   ,'       :'
+##      nPR3b                  |  +i1      +
+##         ---------------->    ,:._  i2 ,'
+##    from the PRC       nPRBS + \  `-. + nXBS
+##                           ,' i3\   ,' --------------->
+##                          +      \ +     to IMX
+##                        ,'     i4.'
+##                       `._      ..
+##                          `._ ,' |nSRBS
+##                             -   |
+##                                 |to the SRC
+##                                 |
+##                                 v
+##------------------------------------------------------------
+bs1 BS 0.5 $Mloss $phi_BS 45 nPRBS nYBS nBSi1 nBSi3
+s BSsub1 0.0687 $nsilica nBSi1 nBSi2
+s BSsub2 0.0687 $nsilica nBSi3 nBSi4
+bs2 BSAR1 50u 0 0 -29.195 nBSi2 dump14 nXBS nPOX
+bs2 BSAR2 50u 0 0 29.195 nBSi4 dump15 nSRBS dump16
+
+###########################################################################
+%%% FTend BS
+
+%%% FTblock Yarm
+###########################################################################
+# Distance from beam splitter to Y arm input mirror
+s ly1 5.0126 nYBS nITMY1a
+
+lens ITMY_lens $SLY_f nITMY1a nITMY1b
+s sITMY_th2 0 nITMY1b nITMY1
+
+# Y arm input mirror
+m2 ITMYAR 0 20u 0 nITMY1 nITMYs1
+s ITMYsub 0.2 $nsilica nITMYs1 nITMYs2
+m1 ITMY 0.014 $Mloss $phi_ITMY nITMYs2 nITMY2
+attr ITMY Rc -1934
+
+# Y arm length
+s LY $Larm nITMY2 nETMY1
+
+# Y arm end mirror
+m1 ETMY 5u $Mloss $phi_ETMY nETMY1 nETMYs1
+s ETMYsub 0.2 $nsilica nETMYs1 nETMYs2
+m2 ETMYAR 0 500u 0 nETMYs2 nPTY
+attr ETMY Rc 2245
+attr ETMY mass 40
+attr ITMY mass 40
+
+###########################################################################
+%%% FTend Yarm
+
+%%% FTblock Xarm
+###########################################################################
+
+# Distance from beam splitter to X arm input mirror 
+s lx1 4.993 nXBS nITMX1a
+
+lens ITMX_lens $SLX_f nITMX1a nITMX1b
+s sITMX_th2 0 nITMX1b nITMX1
+
+# X arm input mirror
+m2 ITMXAR 0 20u 0 nITMX1 nITMXs1 
+s ITMXsub 0.2 $nsilica nITMXs1 nITMXs2
+m1 ITMX 0.014 $Mloss $phi_ITMX nITMXs2 nITMX2
+attr ITMX Rc -1934
+
+# X arm length
+s LX $Larm nITMX2 nETMX1
+
+# X arm end mirror
+m1 ETMX 5u $Mloss $phi_ETMX nETMX1 nETMXs1
+s ETMXsub 0.2 $nsilica nETMXs1 nETMXs2
+m2 ETMXAR 0 500u 0 nETMXs2 nPTX 
+attr ETMX Rc 2245
+attr ETMX mass 40
+attr ITMX mass 40
+
+###########################################################################
+%%% FTend Xarm
+
+%%% FTblock SRC
+###########################################################################
+# Distance to SR3
+s ls3 19.3661 nSRBS nSR3b
+# SR3
+bs1 SR3 0 $Mloss 0 0.785 nSR3b nSR3a dump dump
+attr SR3 Rc 35.972841
+# Distance from SR3 to SR2
+s ls2 15.4435 nSR3a nSR2b
+# SR2
+bs1 SR2 0 $Mloss 0 -0.87 nSR2b nSR2a dump dump
+attr SR2 Rc -6.406
+# Distance from SR2 to SRM
+s ls1 15.7586 nSR2a nSRM1
+# Signal recycling mirror SRM-08
+m1 SRM 0.20 8.7u $phi_SRM nSRM1 nSRMs1
+s SRMsub 0.0749 $nsilica nSRMs1 nSRMs2
+m2 SRMAR 0 50n 0 nSRMs2 nSRM2
+#bs2 SRMAR 50n 0 0 0 nSRMs2 nSRMAR1 nSRM2 nSRMAR2
+attr SRM Rc -5.6938
+
+s sSRM_FI 0.7278 nSRM2 nFI2a
+
+###########################################################################
+%%% FTend SRC
+
+%%% FTblock FI
+###########################################################################
+
+# (Loctions and angles based on the solid work file D1000342-v14 give ~5% 
+# mismatch. Thus lom1, lom3omc have been adjusted to get ~99.7% overlap at the OMC)
+
+# Distance SRM --> Faraday Isolator (FI)
+
+
+# Directional beam splitter (ideal Faraday Isolator with 4 ports)
+# ----------------------------------------------------------------
+# Description of node connections, inputNode --> outputNode
+# --
+# nFI2a (SRM)    --> nFI2c (OMC)
+# nFI2b (SQZ)    --> nFI2a (SRM)
+# nFI2c (OMC)    --> nFI2d (Unused)
+# nFI2d (Unused) --> nFI2b (SQZ)
+
+dbs FI2 nFI2a nFI2b nFI2c nFI2d
+
+# Distance FI2 --> OM1  
+s sFI_OM1 2.9339 nFI2c nOM1a
+
+# OM1
+bs1 OM1 800u $Mloss 0 2.251 nOM1a nOM1b nOM1c dump22 # T is set for high power; Loss is a guess
+attr OM1 Rc 4.6
+
+# Distance OM1 --> OM2
+s sOM1_OM2 1.395 nOM1b nOM2a 
+
+# OM2
+bs1 OM2 10u $Mloss 0 4.399 nOM2a nOM2b nOM2c nOM2d  # T is a guess
+attr OM2 Rc 1.7058
+
+# Distance OM2 --> OM3
+
+s sOM2_OM3 0.631 nOM2b nOM3a 
+bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3c nOM3d # T is a guess
+
+# Distance OM3 --> OMC input coupler IC
+s sOM3_OMC 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
+
+###########################################################################
+%%% FTend FI
+
+%%% FTblock OMC
+###########################################################################
+# OMC (as built parameters: D1300507-v1)
+
+# Input Coupler IC (flat mirror)
+bs1 OMC_IC 0.0076 10u 0 2.7609 nOMC_ICa nOMC_ICb nOMC_ICc nOMC_ICd
+
+# Distance from IC to OC  
+s lIC_OC 0.2815 1 nOMC_ICc nOMC_OCa
+
+# Output Coupler OC (flat mirror)
+bs1 OMC_OC 0.0075 10u 0 4.004 nOMC_OCa nOMC_OCb nAS nOMC_OCd
+
+# Distance from OC to CM1
+s lOC_CM1 0.2842 1 nOMC_OCb nOMC_CM1a
+
+# Curved Mirror CM1
+bs1 OMC_CM1 36u 10u 0 4.004 nOMC_CM1a nOMC_CM1b nOMC_CM1c nOMC_CM1d
+attr OMC_CM1 Rc 2.57321
+
+# Distance from CM1 to CM2 
+s lCM1_CM2 0.2815 1 nOMC_CM1b nOMC_CM2a
+
+# Curved Mirror CM2
+bs1 OMC_CM2 35.9u 10u 0 4.004 nOMC_CM2a nOMC_CM2b nOMC_CM2c nOMC_CM2d
+attr OMC_CM2 Rc 2.57369
+
+# Distance from CM2 to IC
+s lCM2_IC 0.2842 1 nOMC_CM2b nOMC_ICd
+
+###########################################################################
+%%% FTend OMC
+
+
+%%% FTblock cavities
+###########################################################################
+cav cavIMC MC2 nMC2in MC2 nMC2refl 
+cav cavXARM ITMX nITMX2 ETMX nETMX1
+cav cavYARM ITMY nITMY2 ETMY nETMY1
+cav cavSRX SRM nSRM1 ITMX nITMXs2
+cav cavSRY SRM nSRM1 ITMY nITMYs2
+cav cavPRX PRM nPRM2 ITMX nITMXs2
+cav cavPRY PRM nPRM2 ITMY nITMYs2
+cav cavOMC OMC_IC nOMC_ICc OMC_IC nOMC_ICd
+
+###########################################################################
+%%% FTend cavities
+
+%%% FTblock constants
+###########################################################################
+const nsilica 1.44963098985906
+const nTGG 1.954
+const nCalcite 1.65846
+const Mloss 37.5u
+const Larm 3994.4692
+const fM 36.397884M
+const fP 54.596826M
+const TLY_f 34.5k         # Thermal lens ITMY
+const TLX_f 34.5k         # Thermal lens ITMX
+const SLY_f inf           # Substrate lens ITMY
+const SLX_f inf           # Substrate lens ITMX
+const th_f 34.5k
+###########################################################################
+%%% FTend constants
+
+%%% FTblock tunings
+###########################################################################
+const phi_SRM 90.0
+const phi_PRM 0.0
+const phi_ITMX 0.0
+const phi_ITMY 0.0
+const phi_ETMX 0.0
+const phi_ETMY 0.0
+const phi_BS 0
+###########################################################################
+%%% FTend tunings
