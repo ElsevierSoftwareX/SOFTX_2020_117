@@ -14,9 +14,9 @@ kat.L0.P.value = 1
 kat.verbose = False
 
 # We'll be regenerating these blocks so remove them now
-kat.removeBlock('locks')
-kat.removeBlock('errsigs')
-kat.removeBlock('powers')
+kat.removeBlock('locks', failOnBlockNotFound=False)
+kat.removeBlock('errsigs', failOnBlockNotFound=False)
+kat.removeBlock('powers', failOnBlockNotFound=False)
     
 kat.ETMX.mass = None
 kat.ETMY.mass = None
