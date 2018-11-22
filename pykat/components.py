@@ -1441,7 +1441,10 @@ class lens(Component):
         if self.f.value is not None:
             return ABCD.lens(self.f.value)
         else:
-            return ABCD.lens(1/self.p.value)
+            if self.p.value == 0:
+                return ABCD.lens(np.inf)
+            else:
+                return ABCD.lens(1/self.p.value)
     
     def nodeConnections(self):
         return (
