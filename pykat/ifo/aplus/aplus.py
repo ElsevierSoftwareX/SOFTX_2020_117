@@ -26,9 +26,9 @@ import pkg_resources
 from scipy.constants import c as clight
 from scipy.optimize import fmin
 
-class ALIGO_IFO(IFO):   
+class APLUS_IFO(IFO):   
     """
-    This contains aLIGO specific methods for computing interferometer
+    This contains aLIGO A+ specific methods for computing interferometer
     variables.
     
     Functions that operate on the kat/IFO objects, manipulate their
@@ -41,60 +41,61 @@ class ALIGO_IFO(IFO):
 
     def __init__(self, kat, tuning_keys_list, tunings_components_list):
         IFO.__init__(self, kat, tuning_keys_list, tunings_components_list)
+        self._f1 = np.nan
+        self._f2 = np.nan
+        self._f3 = np.nan
         self._f36M = np.nan
-    
-    @property
-    def DCoffset(self):
-        if 'DCoffset' not in self.kat.data:
-            return 0
-        else:
-            return float(self.kat.data['DCoffset'])
-
-    @DCoffset.setter
-    def DCoffset(self, value):
-        self.kat.data['DCoffset'] = float(value)
-    
-    @property
-    def DCoffsetW(self):
-        if 'DCoffsetW' not in self.kat.data:
-            return 0
-        else:
-            return float(self.kat.data['DCoffsetW'])
-
-    @DCoffsetW.setter
-    def DCoffsetW(self, value):
-        self.kat.data['DCoffsetW'] = float(value)
 
     @property
     def f1(self):
-        return self.kat.mod1.f.value
-        
+        return self._f1
     @f1.setter
     def f1(self, value):
-        self.kat.mod1.f.value = value
+        self._f1 = float(value)
+        self.f36M = self.f2 - self.f1
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f1':
+                    a.port.f = self.f1
                 
     @property
     def f2(self):
-        return self.kat.mod2.f.value
-        
+        return self._f2
     @f2.setter
     def f2(self, value):
-        self.kat.mod2.f.value = value
+        self._f2 = float(value)
+        self.f36M = self.f2 - self.f1
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f2':
+                    a.port.f = self.f2
+        
+    @property
+    def f3(self):
+        return self._f3
+    @f3.setter
+    def f3(self, value):
+        self._f3 = float(value)
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-2:] == 'f3':
+                    a.port.f = self.f3
         
     @property
     def f36M(self):
-        return self.f2 - self.f1
-        
-    def createPorts(self):
-        # useful ports
-        self.POP_f1  = Output(self, "POP_f1",  "nPOP",  "f1", phase=101)
-        self.POP_f2  = Output(self, "POP_f2",  "nPOP",  "f2", phase=13)
-        self.REFL_f1 = Output(self, "REFL_f1", "nREFL", "f1", phase=101)
-        self.REFL_f2 = Output(self, "REFL_f2", "nREFL", "f2", phase=14)
-        self.AS_DC   = Output(self, "AS_DC", "nAS")
-        self.POW_BS  = Output(self, "PowBS", "nPRBS*")
-        self.POW_X   = Output(self, "PowX",  "nITMX2")
-        self.POW_Y   = Output(self, "PowY",  "nITMY2")
+        return self._f36M
+    @f36M.setter
+    def f36M(self, value):
+        self._f36M = float(value)
+        # Updating ports
+        if hasattr(self, 'LSC_DOFs'):
+            for a in self.LSC_DOFs:
+                if a.port.name[-4:] == 'f36M':
+                    a.port.f = self.f36M
+
     
     def compute_derived_resonances(self):
         clight
@@ -103,6 +104,7 @@ class ALIGO_IFO(IFO):
         self.fsrPRC = 0.5 * clight / self.lPRC
         self.fsrSRC = 0.5 * clight / self.lSRC
         self.f1_PRC = 3.5 * self.fsrPRC
+    
     
     def compute_derived_lengths(self, verbose=False):
         """
@@ -125,6 +127,7 @@ class ALIGO_IFO(IFO):
         self.lSchnupp = self.lx - self.ly
     
         self.compute_derived_resonances()
+    
     
     def suspend_mirrors_z(self):
         """
@@ -154,39 +157,7 @@ class ALIGO_IFO(IFO):
         self.kat.parse(code)
     
         return code
-
-
-    def suspend_mirrors_pitch(self):
-        """
-        Suspends the main mirrors in an aLIGO model in pitch in the
-        supplied kat object.
-    
-        Returns the commands used for reference.
         
-        TODO: Assumes all suspensions are QUADS currently.
-        """
-    
-        code = """
-        tf2 QUAD 2.38663 0.0 {-0.0050+86.8639i,-0.0050+61.0536i,-0.0050+32.0042i,-0.0050+21.3735i,-0.0050+20.6567i,-0.0050+19.0823i,-0.0050+22.3646i,-0.0050+17.2518i,-0.0050+16.5670i,-0.0050+15.0288i,-0.0050+12.4591i,-0.0050+13.1589i,-0.0050+10.0625i,-0.0050+8.4105i,-0.0050+8.4829i,-0.0050+6.2308i,-0.0050+6.5431i,-0.0050+5.5092i,-0.0050+2.7083i,-0.0050+3.2843i,-0.0050+2.8957i,-0.0050+3.7645i,-0.0050+14.0137i,-0.0050+3.4691i} {-0.0050+86.8639i,-0.0050+61.0536i,-0.0050+32.0042i,-0.0050+21.3735i,-0.0050+20.6566i,-0.0050+19.0823i,-0.0050+17.2493i,-0.0050+16.5665i,-0.0050+22.3646i,-0.0050+15.0288i,-0.0050+12.4591i,-0.0050+13.1589i,-0.0050+9.4995i,-0.0050+8.4829i,-0.0050+5.5072i,-0.0050+6.2177i,-0.0050+6.7464i,-0.0050+6.5428i,-0.0050+2.7591i,-0.0050+2.8957i,-0.0050+3.7645i,-0.0050+14.0137i,-0.0050+3.4691i}
-    
-        attr ETMY iy 1 rymech QUAD
-        attr ETMX iy 1 rymech QUAD
-        attr ITMY iy 1 rymech QUAD
-        attr ITMX iy 1 rymech QUAD
-                              
-        attr PRM  iy 1 rymech QUAD
-        attr PR2  iy 1 rymech QUAD
-        attr PR3  iy 1 rymech QUAD
-                              
-        attr SRM  iy 1 rymech QUAD
-        attr SR2  iy 1 rymech QUAD
-        attr SR3  iy 1 rymech QUAD
-                              
-        attr BS   iy 1 rymech QUAD
-        """
-        self.kat.parse(code)
-    
-        return code
     
     def fix_mirrors(self, z=True, pitch=True, yaw=True):
         """
@@ -210,6 +181,7 @@ class ALIGO_IFO(IFO):
                 mirror.Ix = None
                 mirror.rxmech = None
         
+        
     def lengths_status(self):
         self.compute_derived_lengths()
         
@@ -228,6 +200,7 @@ class ALIGO_IFO(IFO):
         print(" | f1_PRC = {:11.8}                             |".format(self.f1_PRC))
         print(" | f1     = {:11.8}, f2     = {:11.9}       |".format(self.f1, self.f2))
         print(" `-------------------------------------------------'")
+    
     
     def remove_modulators(self):
         """
@@ -271,38 +244,14 @@ class ALIGO_IFO(IFO):
             self.kat.nodes.replaceNode(self.kat.sHAM2in, 'nIMCout', 'nLaserOut')
         
         if removeHAM2:
+            L = self.kat.sFI_IM3.L + self.kat.sIM3_IM4.L + self.kat.sPRCin.L
             self.kat.removeBlock("HAM2")
-            self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
+            self.kat.parse("""
+            s sPRCin 0 nLaserOut nFI1
+            dbs FI nFI1 nFI2 nFI3 nREFL
+            s sFI_PRM {} nFI3 nPRM1
+            """.format(L), addToBlock='PRC')
 
-
-    def remove_FI_OMC(self, removeFI=True, removeOMC=True):
-        """
-        Method for removing the OMC and the FI blocks in kat-objects having these
-        included. The FI block contains an ideal Faraday isolator as well as the
-        path from the isolator to the OMC, which is used to mode match the OMC to
-        the interferometer. The node nAS is re-set such that it always corresponds
-        to the "last" node of the output path (dark port, asymmetric port, etc). 
-
-        Parameters
-        ----------
-        removeFI  : Boolean
-                    If True, the Faraday isolator is removed along with the path
-                    to the OMC.
-        removeOMC : Boolean
-                    If True, the OMC is removed. Must be True if removeFI = True.
-        """
-        
-        if removeFI and not removeOMC:
-            raise pkex.BasePyKatException("Must remove OMC if removing FI")
-        if removeFI:
-            self.kat.nodes.replaceNode(self.kat.sSRM_FI, 'nFI2a', 'nAS')
-            self.kat.removeBlock('FI')
-            self.kat.removeBlock('OMC')
-            self.kat.cavOMC.remove()
-        elif removeOMC:
-            self.kat.nodes.replaceNode(self.kat.sOM3_OMC, 'nOMC_ICa', 'nAS')
-            self.kat.removeBlock('OMC')
-            self.kat.cavOMC.remove()
 
     def adjust_PRC_length(self, verbose=False):
         """
@@ -322,6 +271,7 @@ class ALIGO_IFO(IFO):
         kat.lp1.L += delta_l
     
         kat.IFO.compute_derived_lengths(kat)
+
 
     def apply_lock_feedback(self, out, idx=None):
         """
@@ -385,120 +335,7 @@ class ALIGO_IFO(IFO):
             pkex.printWarning("could not find SRCL lock")
             
         self.kat.IFO.apply_tunings(tuning)
-    
-    def set_DC_offset(self, DCoffset=None, verbose=False):
-        """
-        Sets the DC offset for this inteferometer.
-        
-        This function directly alters the tunings of the associated kat object.
-        
-        DCoffset - degrees of additional DC offset to apply current tunings
-        """
-        _kat = self.kat
-        
-        if DCoffset is not None:
-            self.DCoffset = DCoffset
-        
-            vprint(verbose, "-- applying user-defined DC offset:")
-        
-            tunings = self.get_tunings()
-        
-            tunings["ETMY"] += self.DCoffset
-            tunings["ETMX"] -= self.DCoffset
-        
-            self.apply_tunings(tunings)        
-        
-            # Compute the DC offset powers
-            kat = _kat.deepcopy()
-        
-            signame = kat.IFO.AS_DC.add_signal()
-            kat.parse("ad adp00 0 0 0 nAS")
-        
-            kat.noxaxis=True
-        
-            out = kat.run(cmd_args=["-cr=on"])
-            
-            TEM00_DC = abs(out['adp00'])**2
-            
-            _kat.IFO.DCoffsetW = float(out[signame])
-        else:
-            # Finding light power in AS port (mostly due to RF sidebands now)
-            kat = _kat.deepcopy()
-        
-            signame = kat.IFO.AS_DC.add_signal()
-        
-            kat.noxaxis=True
-        
-            out = kat.run()
-        
-            print("-- adjusting DCoffset based on light in dark port:")
-        
-            waste_light = round(float(out[signame]),1)
-        
-            print("   waste light in AS port of {:2} W".format(waste_light))
-        
-            #kat_lock = _kat.deepcopy()
-        
-            self.find_DC_offset(_kat, 2*waste_light)
-        
-            _kat.parse("ad adp00 0 0 0 nAS")
-            _kat.noxaxis=True
-        
-            out = _kat.run(cmd_args=["-cr=on"])
-            
-            TEM00_DC = abs(out['adp00'])**2
-            
-        vprint(verbose, "   DCoffset = {:6.4} deg ({:6.4}m)".format(self.DCoffset, self.DCoffset / 360.0 * _kat.lambda0 ))
-        vprint(verbose, "   at dark port power: {:6.4}W".format(self.DCoffsetW))
-        vprint(verbose, "   at dark port power (TEM00 0Hz): {:6.4}W".format(TEM00_DC))
 
-    def find_DC_offset(self, AS_power, precision=1e-4, verbose=False):
-        """
-        Returns the DC offset of DARM that corresponds to the specified power in the AS power.
-        
-        This function directly alters the tunings of the associated kat object.
-        """
-        vprint(verbose, "   finding DC offset for AS power of {:3g} W".format(float(AS_power)))
-    
-        _kat = self.kat
-        
-        kat = _kat.deepcopy()
-        kat.verbose = False
-        kat.noxaxis = True
-        
-        kat.removeBlock("locks", False)
-        kat.removeBlock("errsigs", False)
-        
-        kat.IFO.AS_DC.add_signal()
-    
-        Xphi = float(kat.ETMX.phi)
-        Yphi = float(kat.ETMY.phi)
-
-        def powerDiff(phi):
-            kat.ETMY.phi = Yphi + phi
-            kat.ETMX.phi = Xphi - phi
-        
-            out = kat.run()
-            print("   ! ", out[self.AS_DC.get_signal_name()], phi)
-            
-            return np.abs(out[self.AS_DC.get_signal_name()] - AS_power)
-
-        vprint(verbose, "   starting peak search...")
-        out = fmin(powerDiff, 0, xtol=precision, ftol=1e-3, disp=verbose)
-    
-        vprint(verbose, "   ... done")
-        vprint(verbose, "   DC offset for AS_DC={} W is: {}".format(AS_power, out[0]))
-    
-        self.DCoffset = round(out[0], 6)
-        self.DCoffsetW = AS_power
-    
-        tunings = self.get_tunings()
-        tunings["ETMY"] += self.DCoffset
-        tunings["ETMX"] -= self.DCoffset
-    
-        self.apply_tunings(tunings)
-        
-        return self.DCoffset
 
     def add_errsigs_block(self, noplot=True):
         """
@@ -634,94 +471,6 @@ class ALIGO_IFO(IFO):
         
         return cmds
     
-    def add_REFL_gouy_telescope(self, loss=0, gouy_REFL_BS=0, gouy_A=0, gouy_B=90):
-        """
-        Adds in the gouy phase telescope for WFS detectors and the IFO port objects.
-        Commands added into block "REFL_gouy_tele". This attaches to the
-        nREFL node which should be from an isolator on the input path.
-        
-        Also adds the relevant IFO port objects for generating detectors:
-            * ASC_REFL9A, ASC_REFL9B
-            * ASC_REFL45A, ASC_REFL45B
-            * ASC_REFL36A, ASC_REFL36B
-        
-        These ports are associated with the block "REFL_gouy_tele".
-        
-        loss: Total loss accumulated along telescope up to the WFS BS [0 -> 1]
-        gouy_REFL_BS:  Gouy phase along path from isolator to WFS BS [deg]
-        gouy_A: Gouy phase along A path from BS to WFS [deg]
-        gouy_B: Gouy phase along B path from BS to WFS [deg]
-        """
-        
-        self.kat.removeBlock("REFL_gouy_tele", False) # Remove old one
-        
-        self.kat.parse("""
-        s  sFI_REFL_WFS_LOSS 0 nREFL nREFL_loss1
-        m2 mREFL_WFS_loss 0 {} 0 nREFL_loss1 nREFL_loss2
-        s  sFI_REFL_WFS 0 nREFL_loss2 nREFL_WFS_BS1
-        bs WFS_REFL_BS 0.5 0.5 0 0 nREFL_WFS_BS1 nREFL_WFS_BS2 nREFL_WFS_BS3 dump
-        s  sWFS_REFL_A  0 nREFL_WFS_BS3 nREFL_WFS_A
-        s  sWFS_REFL_B  0 nREFL_WFS_BS2 nREFL_WFS_B
-        """.format(loss), addToBlock="REFL_gouy_tele", exceptionOnReplace=True)
-        
-        self.set_REFL_gouy_telescope_phase(gouy_REFL_BS, gouy_A, gouy_B)
-        
-        self.kat.IFO.ASC_REFL9A   = Output(self.kat.IFO, "ASC_REFL9A",  "nREFL_WFS_A",  "f1", block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL9B   = Output(self.kat.IFO, "ASC_REFL9B",  "nREFL_WFS_B",  "f1", block="REFL_gouy_tele")
-
-        self.kat.IFO.ASC_REFL45A  = Output(self.kat.IFO, "ASC_REFL45A",  "nREFL_WFS_A",  "f2", block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL45B  = Output(self.kat.IFO, "ASC_REFL45B",  "nREFL_WFS_B",  "f2", block="REFL_gouy_tele")
-        
-        self.kat.IFO.ASC_REFL36A  = Output(self.kat.IFO, "ASC_REFL36A",  "nREFL_WFS_A",  "f36M", block="REFL_gouy_tele")
-        self.kat.IFO.ASC_REFL36B  = Output(self.kat.IFO, "ASC_REFL36B",  "nREFL_WFS_B",  "f36M", block="REFL_gouy_tele")
-        
-        self.update()
-        
-    def set_REFL_gouy_telescope_phase(self, gouy_REFL_BS, gouy_A, gouy_B):
-        """
-        Sets the gouy phase from the the FI to the REFL WFS BS, and then
-        the gouy on each path to the A and B detectors. Units all in degrees.
-        """
-        
-        if "REFL_gouy_tele" in self.kat.getBlocks():
-            self.kat.sFI_REFL_WFS.gouy = gouy_REFL_BS
-            self.kat.sWFS_REFL_A.gouy = gouy_A
-            self.kat.sWFS_REFL_B.gouy = gouy_B
-        else:
-            raise pkex.BasePyKatException("\033[91mREFL Gouy phase telescope isn't in the kat object, see kat.IFO.add_REFL_gouy_telescope()\033[0m")
-        
-    def scan_REFL_gouy_telescope_gouy_cmds(self, start, end, steps=20, xaxis=1, AB_gouy_diff=None, relative=False):
-        """
-        This will return commands to scan the REFL gouy telescope gouy phase of the A and B paths.
-        """
-        if "REFL_gouy_tele" not in self.kat.getBlocks():
-            raise pkex.BasePyKatException("\033[91mREFL Gouy phase telescope isn't in the kat object, see kat.IFO.add_REFL_gouy_telescope()\033[0m")
-        
-        if xaxis not in [1, 2]:
-            raise pkex.BasePyKatException("xaxis value must be 1 or 2")
-        elif xaxis == 1:
-            xaxis_cmd = "xaxis"
-        elif xaxis == 2:
-            xaxis_cmd = "x2axis"
-            
-        if AB_gouy_diff is None:
-            AB_gouy_diff = self.kat.sWFS_REFL_B.gouy - self.kat.sWFS_REFL_A.gouy
-            
-        if relative:
-            put = "put*"
-        else:
-            put = "put"
-            
-        cmds = ("var REFL_GOUY_SCAN 0\n"
-        "{xaxis} REFL_GOUY_SCAN re lin {start} {end} {steps}\n"
-        "{put} sWFS_REFL_A gx $x{axis}\n"
-        "{put} sWFS_REFL_A gy $x{axis}\n"
-        "func REFL_SCAN_B = $x{axis} + {AB_gouy_diff}\n"
-        "{put} sWFS_REFL_B gx $REFL_SCAN_B\n"
-        "{put} sWFS_REFL_B gy $REFL_SCAN_B\n").format(xaxis=xaxis_cmd, axis=xaxis, start=start, end=end, steps=steps, AB_gouy_diff=AB_gouy_diff, put=put)
-        
-        return cmds
-    
     def update(self):
         """
         Iterates through the IFO and updates the DOFs and Outputs dictionaries with the latest ports and DOFs that have
@@ -737,19 +486,18 @@ class ALIGO_IFO(IFO):
         for _ in inspect.getmembers(self, lambda x: isinstance(x, Output)):
             self.Outputs[_[0]] = _[1]
             
-def assert_aligo_ifo_kat(kat):
-    if not isinstance(kat.IFO, ALIGO_IFO):
-        raise pkex.BasePyKatException("\033[91mkat file is not an ALIGO_IFO compatiable kat\033[0m")
+            
+            
+def assert_aplus_ifo_kat(kat):
+    if not isinstance(kat.IFO, APLUS_IFO):
+        raise pkex.BasePyKatException("\033[91mkat file is not an APLUS_IFO compatiable kat\033[0m")
               
-def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_DARM_lock=False,
+def make_kat(katfile=None, verbose=False, debug=False,
              keepComments=False, preserveConstants=False):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
-    
-    The `name` argument selects from default aLIGO files included in Pykat:
-    
-    
+
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
@@ -764,13 +512,13 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     
     # Create empty object to just store whatever DOFs, port, variables in
     # that will be used by processing functions
-    kat.IFO = ALIGO_IFO(kat,
+    kat.IFO = APLUS_IFO(kat,
                         # Define which keys are used for a tuning description
                         ["maxtem", "phase"],
                         # Define which mirrors create the tuning description
                         ["PRM", "ITMX", "ETMX", "ITMY", "ETMY", "BS", "SRM"])
     
-    kat.IFO._data_path=pkg_resources.resource_filename('pykat.ifo', os.path.join('aligo','files'))
+    kat.IFO._data_path=pkg_resources.resource_filename('pykat.ifo', os.path.join('aplus','files'))
 
     kat.IFO.rawBlocks = BlockedKatFile()
     
@@ -778,11 +526,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
         kat.load(katfile, keepComments=keepComments, preserveConstants=preserveConstants)
         kat.IFO.rawBlocks.read(katfile)
     else:
-        if name not in names:
-            pkex.printWarning("aLIGO name `{}' not recognised, options are {}, "
-                              "using default 'design'".format(name, names))
-        
-        katkile = os.path.join(kat.IFO._data_path, name+".kat")
+        katkile = os.path.join(kat.IFO._data_path, "design.kat")
         
         kat.load(katkile, keepComments=keepComments, preserveConstants=preserveConstants)
         kat.IFO.rawBlocks.read(katkile)
@@ -820,25 +564,17 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", "f1", phase=101)
     kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", "f2", phase=14)
     
-    # If we don't have an OMC then we need to attach
-    # directly to the AS node. Otherwise use OMC refl
-    if "OMC" in kat.getBlocks():
-        alt_nAS = "nAS" 
-        nAS_RF = "nOMC_ICb" 
-    else:
-        alt_nAS = None
-        nAS_RF = "nAS"
-        
-    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  nAS_RF,  "f1", phase=101, alternate_node_name=alt_nAS)
-    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  nAS_RF,  "f2", phase=14, alternate_node_name=alt_nAS)
-    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", nAS_RF, "f36M", phase=14, alternate_node_name=alt_nAS)
+    kat.IFO.AS_DC  = Output(kat.IFO, "AS_DC",  "nAS")
+    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  "nAS",  "f1", phase=101)
+    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  "nAS",  "f2", phase=14)
+    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", "nAS", "f36M", phase=14)
 
-    kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
+    kat.IFO.BHD     = Output(kat.IFO, "BHD",  ["nBHD1", "nBHD2"])
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nITMX2")
     kat.IFO.POW_Y   = Output(kat.IFO, "PowY",  "nITMY2")
     kat.IFO.TRX     = Output(kat.IFO, "TRX",   "nETMX2")
-    kat.IFO.TRY     = Output(kat.IFO, "TRY",  " nETMY2")
+    kat.IFO.TRY     = Output(kat.IFO, "TRY",   "nETMY2")
 
     # pretune LSC DOF
     kat.IFO.preARMX  =  DOF(kat.IFO, "ARMX", kat.IFO.POW_X,   "", "ETMX", 1, 1.0, sigtype="z")
@@ -861,70 +597,69 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     kat.IFO.PRCL =  DOF(kat.IFO, "PRCL", kat.IFO.POP_f1,  "I", "PRM", 1, 100.0, sigtype="z")
     kat.IFO.MICH =  DOF(kat.IFO, "MICH", kat.IFO.POP_f2,  "Q", ["ITMX", "ETMX", "ITMY", "ETMY"], [-0.5,-0.5,0.5,0.5], 100.0, sigtype="z")
     kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.REFL_f1, "I", ["ETMX", "ETMY"], [-1, -1], 1.5, sigtype="z")
-    
-    if use_RF_DARM_lock:
-        kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2, "Q", ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
-    else:
-        kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_DC, "",  ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
-                            
+    kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.AS_f2,   "Q", ["ETMX", "ETMY"], [-1,1], 1.0, sigtype="z")
     kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.REFL_f2, "I", "SRM", -1, 1e2, sigtype="z")
 
-    kat.IFO.DARM_h =  DOF(kat.IFO, "DARM_h", kat.IFO.AS_DC, "", ["LY", "LX"], [-1,1], 1.0, sigtype="phase")
+    kat.IFO.DARM_h =  DOF(kat.IFO, "DARM_h", kat.IFO.BHD, "", ["LY", "LX"], [-1,1], 1.0, sigtype="phase")
     
     kat.IFO.LSC_DOFs = (kat.IFO.PRCL, kat.IFO.MICH, kat.IFO.CARM, kat.IFO.DARM, kat.IFO.SRCL)
     kat.IFO.CAV_POWs = (kat.IFO.POW_X, kat.IFO.POW_Y, kat.IFO.POW_BS)
-    
-    # Pitch DOfs
-    # There is a difference in the way LIGO and Finesse define positive and negative
-    # rotations of the cavity mirrors. For LIGO the rotational DOFs assume ITM + rotation
-    # is clockwise and ETM + rotation is anticlockwise.
-    # I'll be explict here for future reference.
-    cav_mirrors = ["ETMX", "ETMXAR", "ETMY", "ETMYAR", "ITMX", "ITMXAR", "ITMY", "ITMYAR"]
 
-    # LIGO definitions
-    # Based on figure 7 in T0900511-v4
-    CHARD_factors   = np.array([ 1, 1, 1, 1,-1,-1,-1,-1])
-    DHARD_factors   = np.array([ 1, 1,-1,-1,-1,-1, 1, 1])
-    CSOFT_factors   = np.array([-1,-1,-1,-1,-1,-1,-1,-1])
-    # DSOFT_factors   = np.array([-1,-1, 1, 1, 1, 1,-1,-1])   # Wrong!
-    DSOFT_factors   = np.array([-1,-1, 1, 1,-1,-1, 1, 1])
+    # Ignore angular stuff for now
     
-    # Finesse definitions
-    # negative for ITM rotations
-    ITMS = np.in1d(cav_mirrors, np.array(["ITMX", "ITMXAR", "ITMY", "ITMYAR"]))
-    CHARD_factors[ITMS] *= -1
-    DHARD_factors[ITMS] *= -1
-    CSOFT_factors[ITMS] *= -1
-    DSOFT_factors[ITMS] *= -1
-
-    kat.IFO.CHARD_P = DOF(kat.IFO, "CHARD_P", None , None, cav_mirrors, CHARD_factors, 1, sigtype="pitch")
-    kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", None , None, cav_mirrors, DHARD_factors, 1, sigtype="pitch")
-    kat.IFO.CSOFT_P = DOF(kat.IFO, "CSOFT_P", None , None, cav_mirrors, CSOFT_factors, 1, sigtype="pitch")
-    kat.IFO.DSOFT_P = DOF(kat.IFO, "DSOFT_P", None , None, cav_mirrors, DSOFT_factors, 1, sigtype="pitch")
-    kat.IFO.PRM_P   = DOF(kat.IFO, "PRM_P"  , None , None, ["PRM", "PRMAR"], [1,1], 1, sigtype="pitch")
-    kat.IFO.PRC2_P  = DOF(kat.IFO, "PRC2_P" , None , None, ["PR2"], [1], 1, sigtype="pitch")
-    kat.IFO.PRC3_P  = DOF(kat.IFO, "PRC3_P" , None , None, ["PR3"], [1], 1, sigtype="pitch")
-    kat.IFO.SRM_P   = DOF(kat.IFO, "SRM_P"  , None , None, ["SRM", "SRMAR"], [1,1], 1, sigtype="pitch")
-    kat.IFO.SRC2_P  = DOF(kat.IFO, "SRC2_P" , None , None, ["SR2"], [1], 1, sigtype="pitch")
-    kat.IFO.SRC3_P  = DOF(kat.IFO, "SRC3_P" , None , None, ["SR3"], [1], 1, sigtype="pitch")
-    kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, ["BS", "BSAR1", "BSAR2"], [1,1,1], 1, sigtype="pitch")
-    
-    kat.IFO.ASC_P_DOFs = (kat.IFO.CHARD_P, kat.IFO.DHARD_P,
-                          kat.IFO.CSOFT_P, kat.IFO.DSOFT_P,
-                          kat.IFO.PRM_P, kat.IFO.PRC2_P,
-                          kat.IFO.PRC3_P, kat.IFO.SRM_P,
-                          kat.IFO.SRC2_P, kat.IFO.SRC3_P,
-                          kat.IFO.MICH_P)
+    # # Pitch DOfs
+    # # There is a difference in the way LIGO and Finesse define positive and negative
+    # # rotations of the cavity mirrors. For LIGO the rotational DOFs assume ITM + rotation
+    # # is clockwise and ETM + rotation is anticlockwise.
+    # # I'll be explict here for future reference.
+    # cav_mirrors = ["ETMX", "ETMXAR", "ETMY", "ETMYAR", "ITMX", "ITMXAR", "ITMY", "ITMYAR"]
+    #
+    # # LIGO definitions
+    # # Based on figure 7 in T0900511-v4
+    # CHARD_factors   = np.array([ 1, 1, 1, 1,-1,-1,-1,-1])
+    # DHARD_factors   = np.array([ 1, 1,-1,-1,-1,-1, 1, 1])
+    # CSOFT_factors   = np.array([-1,-1,-1,-1,-1,-1,-1,-1])
+    # # DSOFT_factors   = np.array([-1,-1, 1, 1, 1, 1,-1,-1])   # Wrong!
+    # DSOFT_factors   = np.array([-1,-1, 1, 1,-1,-1, 1, 1])
+    #
+    # # Finesse definitions
+    # # negative for ITM rotations
+    # ITMS = np.in1d(cav_mirrors, np.array(["ITMX", "ITMXAR", "ITMY", "ITMYAR"]))
+    # CHARD_factors[ITMS] *= -1
+    # DHARD_factors[ITMS] *= -1
+    # CSOFT_factors[ITMS] *= -1
+    # DSOFT_factors[ITMS] *= -1
+    #
+    # kat.IFO.CHARD_P = DOF(kat.IFO, "CHARD_P", None , None, cav_mirrors, CHARD_factors, 1, sigtype="pitch")
+    # kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", None , None, cav_mirrors, DHARD_factors, 1, sigtype="pitch")
+    # kat.IFO.CSOFT_P = DOF(kat.IFO, "CSOFT_P", None , None, cav_mirrors, CSOFT_factors, 1, sigtype="pitch")
+    # kat.IFO.DSOFT_P = DOF(kat.IFO, "DSOFT_P", None , None, cav_mirrors, DSOFT_factors, 1, sigtype="pitch")
+    # kat.IFO.PRM_P   = DOF(kat.IFO, "PRM_P"  , None , None, ["PRM", "PRMAR"], [1,1], 1, sigtype="pitch")
+    # kat.IFO.PRC2_P  = DOF(kat.IFO, "PRC2_P" , None , None, ["PR2"], [1], 1, sigtype="pitch")
+    # kat.IFO.PRC3_P  = DOF(kat.IFO, "PRC3_P" , None , None, ["PR3"], [1], 1, sigtype="pitch")
+    # kat.IFO.SRM_P   = DOF(kat.IFO, "SRM_P"  , None , None, ["SRM", "SRMAR"], [1,1], 1, sigtype="pitch")
+    # kat.IFO.SRC2_P  = DOF(kat.IFO, "SRC2_P" , None , None, ["SR2"], [1], 1, sigtype="pitch")
+    # kat.IFO.SRC3_P  = DOF(kat.IFO, "SRC3_P" , None , None, ["SR3"], [1], 1, sigtype="pitch")
+    # kat.IFO.MICH_P  = DOF(kat.IFO, "MICH_P" , None , None, ["BS", "BSAR1", "BSAR2"], [1,1,1], 1, sigtype="pitch")
+    #
+    # kat.IFO.ASC_P_DOFs = (kat.IFO.CHARD_P, kat.IFO.DHARD_P,
+    #                       kat.IFO.CSOFT_P, kat.IFO.DSOFT_P,
+    #                       kat.IFO.PRM_P, kat.IFO.PRC2_P,
+    #                       kat.IFO.PRC3_P, kat.IFO.SRM_P,
+    #                       kat.IFO.SRC2_P, kat.IFO.SRC3_P,
+    #                       kat.IFO.MICH_P)
     
     kat.IFO.update()
 
     kat.IFO.lockNames = None
+
+    kat.noxaxis = True
     
     return kat
         
     
 def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
-    assert_aligo_ifo_kat(_kat)
+    assert_aplus_ifo_kat(_kat)
     
     # This function needs to apply a bunch of pretunings to the original
     # kat and associated IFO object passed in
@@ -1003,7 +738,7 @@ def pretune_2(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     This will pretune the arms and PRC cavities. This should be used in conjunction with the
     pretune_SRCL function after the DC offset has been set.
     """
-    assert_aligo_ifo_kat(_kat)
+    assert_aplus_ifo_kat(_kat)
     
     # This function needs to apply a bunch of pretunings to the original
     # kat and associated IFO object passed in
@@ -1072,7 +807,7 @@ def pretune_SRCL(_kat, verbose=False, debug=False):
     It works slightly better with distorted interferometer models compared
     to just using pretune().
     """
-    assert_aligo_ifo_kat(_kat)
+    assert_aplus_ifo_kat(_kat)
     
     IFO = _kat.IFO
     
@@ -1116,12 +851,11 @@ def pretune_SRCL(_kat, verbose=False, debug=False):
     
     deg = (out.x[SRCL_metric.argmin()] % 360) - 180
     IFO.preSRCL.apply_tuning(-deg)
-    
 
 
 
 def pretune_status(_kat):
-    assert_aligo_ifo_kat(_kat)
+    assert_aplus_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     kat.verbose = False
@@ -1142,7 +876,7 @@ def pretune_status(_kat):
     if tunings['keys']["maxtem"] is None or tunings['keys']["maxtem"] == -1:
         _maxtemStr="off"
     else:
-        _maxtemStr = "{:3}".format(tunings['keys']["maxtem"])
+        _maxtemStr = "{}".format(tunings['keys']["maxtem"])
         
     print(" .--------------------------------------------------.")
     print(" | pretuned for maxtem = {}, phase = {:2}            |".format(_maxtemStr, int(kat.phase)))
@@ -1176,7 +910,7 @@ def pretune_status(_kat):
 
 # probably extra and can be removed
 def power_ratios(_kat):
-    assert_aligo_ifo_kat(_kat)
+    assert_aplus_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     kat.verbose = False
@@ -1219,7 +953,7 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
                     
     NOTE: gainsAdjustment, gains, accuracies and rms are specified in the order of DARM, CARM, PRCL, MICH, SRCL.
     """
-    assert_aligo_ifo_kat(kat)
+    assert_aplus_ifo_kat(kat)
         
     # optical gains in W/rad
     
@@ -1293,7 +1027,7 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
     
     return data
 
-def setup(_base, DC_offset_pm=20, verbose=False, debug=False):
+def setup(base, verbose=False, debug=False):
     """
     Runs a preparation routine to produce a LIGO model at a resonable operating point.
     
@@ -1306,9 +1040,9 @@ def setup(_base, DC_offset_pm=20, verbose=False, debug=False):
     # Will change later when this works with the 
     old = True
     
-    assert_aligo_ifo_kat(_base)
+    assert_aplus_ifo_kat(base)
     
-    base = _base.deepcopy()
+    base = base.deepcopy()
     base.verbose = False
 
     base.removeBlock('locks',   False)
@@ -1333,12 +1067,6 @@ def setup(_base, DC_offset_pm=20, verbose=False, debug=False):
     
     if not old:
         _pretune_PRCL(base, verbose=verbose, debug=debug)
-    
-    # Set DC offset 
-    DCoffset = DC_offset_pm*1e-12 / base.lambda0 * 180.0
-    base.IFO.set_DC_offset(DCoffset=DCoffset, verbose=verbose)
-    
-    if not old:
         _pretune_SRCL(base, verbose=verbose, debug=debug)
         
     if verbose:

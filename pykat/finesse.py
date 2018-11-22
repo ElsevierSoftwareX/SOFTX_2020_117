@@ -479,17 +479,6 @@ class KatRun(object):
         if yaxis is not None:
             kat.yaxis = yaxis
 
-        if "log" in kat.yaxis:
-            if kat.xaxis.scale == "log":
-                plot_cmd = pyplot.loglog
-            else:
-                plot_cmd = pyplot.semilogy
-        else:
-            if kat.xaxis.scale == "log":
-                plot_cmd = pyplot.semilogx
-            else:
-                plot_cmd = pyplot.plot
-
         dual_plot = False
         _func1 = np.abs
         _func2 = None
@@ -497,20 +486,43 @@ class KatRun(object):
         plot_cmd1 = None
         plot_cmd2 = None
 
+        if "re:im" in kat.yaxis or "abs:deg" in kat.yaxis or "db:deg" in kat.yaxis:
+            dual_plot = True
+
+        if dual_plot:
+            fig = plt.figure(width="full", height=1)
+            ax1 = fig.add_subplot(2, 1, 1)
+            ax2 = fig.add_subplot(2, 1, 2)
+        else:
+            fig = plt.figure(width="full")
+            ax1 = fig.add_subplot(1, 1, 1)
+            ax2 = ax1
+
+        if "log" in kat.yaxis:
+            if kat.xaxis.scale == "log":
+                plot_cmd1 = ax1.loglog
+                plot_cmd2 = ax2.loglog
+            else:
+                plot_cmd1 = ax1.semilogy
+                plot_cmd2 = ax2.semilogy
+        else:
+            if kat.xaxis.scale == "log":
+                plot_cmd1 = ax1.semilogx
+                plot_cmd2 = ax2.semilogx
+            else:
+                plot_cmd1 = ax1.plot
+                plot_cmd2 = ax2.plot
+
         if "re:im" in kat.yaxis:
             _func1 = np.real
             _func2 = np.imag
-            plot_cmd1 = plot_cmd2 = plot_cmd
 
-            dual_plot = True
         elif "abs:deg" in kat.yaxis:
             _func1 = np.abs
             _func2 = lambda x: np.rad2deg(np.angle(x))
 
-            plot_cmd1 = plot_cmd
-            plot_cmd2 = pyplot.plot if kat.xaxis.scale == "lin" else pyplot.semilogx
+            plot_cmd2 = ax2.plot if kat.xaxis.scale == "lin" else ax2.semilogx
 
-            dual_plot = True
         elif "db:deg" in kat.yaxis:
             if "db" not in original_yaxis:
                 _func1 = lambda x: 10*np.log10(x)
@@ -519,32 +531,23 @@ class KatRun(object):
 
             _func2 = lambda x: np.rad2deg(np.angle(x))
 
-            plot_cmd1 = plot_cmd
-            plot_cmd2 = pyplot.plot if kat.xaxis.scale == "lin" else pyplot.semilogx
+            plot_cmd2 = ax2.plot if kat.xaxis.scale == "lin" else ax2.semilogx
 
-            dual_plot = True
         elif "abs" in kat.yaxis:
             # _func1 = np.abs
             _func1 = np.real
-            plot_cmd1 = plot_cmd
         elif "db" in kat.yaxis:
             if "db" not in original_yaxis:
                 _func1 = lambda x: 10*np.log10(x)
             else:
                 _func1 = lambda x: x
 
-            plot_cmd1 = plot_cmd
         elif "deg" in kat.yaxis:
             _func1 = lambda x: np.rad2deg(np.angle(x))
-            plot_cmd1 = plot_cmd
-
-        if dual_plot:
-            fig = plt.figure(width="full", height=1)
-        else:
-            fig = plt.figure(width="full")
 
         if detectors is None:
             detectors = [lbl.split()[0] for lbl in self.ylabels]
+
 
         detectors = list(set(detectors))
         detectors.sort()
@@ -553,17 +556,12 @@ class KatRun(object):
         
         for det in detectors:
             if not hasattr(kat, det) or (hasattr(kat, det) and not getattr(kat, det).noplot):
-
-                if dual_plot:
-                    ax = pyplot.subplot(2,1,1)
-
                 if styles is not None and det in styles:
                     l, = plot_cmd1(_x, _func1(self[det])/pykat.SI[y1scale], styles[det], label=det)
                 else:
                     l, = plot_cmd1(_x, _func1(self[det])/pykat.SI[y1scale], label=det)
 
                 if dual_plot:
-                    pyplot.subplot(2,1,2)
                     plot_cmd2(_x, _func2(self[det])/pykat.SI[y2scale], color=l.get_color(), ls=l.get_linestyle(), label=det)
 
         if dual_plot:
@@ -598,33 +596,33 @@ class KatRun(object):
         font_label_size = pyplot.rcParams["font.size"]-1
 
         if dual_plot:
-            ax = pyplot.subplot(2,1,1)
-            pyplot.xlabel(xlabel, fontsize=font_label_size)
-            pyplot.ylabel(ylabel, fontsize=font_label_size)
-            pyplot.xlim(xlim[0], xlim[1])
+            #ax = plt.subplot(2,1,1)
+            ax1.set_xlabel(xlabel, fontsize=font_label_size)
+            ax1.set_ylabel(ylabel, fontsize=font_label_size)
+            ax1.set_xlim(xlim[0], xlim[1])
             if ylim is not None:
-                pyplot.ylim(ylim[0],ylim[1])
+                ax1.set_ylim(ylim[0],ylim[1])
 
             if title is not None:
-                pyplot.title(title, fontsize=font_label_size)
+                ax1.set_title(title, fontsize=font_label_size)
 
-            pyplot.subplot(2,1,2)
-            pyplot.xlabel(x2label, fontsize=font_label_size)
-            pyplot.ylabel(y2label, fontsize=font_label_size)
+            #plt.subplot(2,1,2)
+            ax2.set_xlabel(x2label, fontsize=font_label_size)
+            ax2.set_ylabel(y2label, fontsize=font_label_size)
 
-            pyplot.xlim(x2lim[0], x2lim[1])
+            ax2.set_xlim(x2lim[0], x2lim[1])
             if y2lim is not None:
-                pyplot.ylim(y2lim[0],y2lim[1])
+                ax2.set_ylim(y2lim[0],y2lim[1])
 
         else:
-            pyplot.xlabel(xlabel, fontsize=font_label_size)
-            pyplot.ylabel(ylabel)
-            pyplot.xlim(xlim[0], xlim[1])
+            ax1.set_xlabel(xlabel, fontsize=font_label_size)
+            ax1.set_ylabel(ylabel)
+            ax1.set_xlim(xlim[0], xlim[1])
 
             if title is not None:
-                pyplot.title(title, fontsize=font_label_size)
+                ax1.set_title(title, fontsize=font_label_size)
             if ylim is not None:
-                pyplot.ylim(ylim[0],ylim[1])
+                ax1.set_ylim(ylim[0],ylim[1])
 
         pyplot.margins(0, 0.05)
         pyplot.tight_layout()

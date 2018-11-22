@@ -8,6 +8,7 @@ style_dir = os.path.split(os.path.realpath(__file__))[0]
 available = [os.path.splitext(f)[0]
              for f in os.listdir(style_dir) if f.endswith(".mplstyle")]
 
+
 def get_style_path(style):
     if isinstance(style, str) or hasattr(style, 'keys'):
         # If name is a single str or dict, make it a single element list.
@@ -18,9 +19,11 @@ def get_style_path(style):
                   styles))
     return styles
 
+
 def use(style):
     import matplotlib.pyplot as plt
     plt.style.use(get_style_path(style))
+
 
 def context(style, after_reset=False):
     import matplotlib.pyplot as plt

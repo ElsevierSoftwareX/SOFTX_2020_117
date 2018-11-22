@@ -1,0 +1,20 @@
+
+
+These files were moved here for reference on 21/11/2018
+
+- design: A file based on the design parameters for the final aLIGO setup.
+  125W input, T_SRM = 20% 
+    
+- design_low_power: A file based on the design parameters for the final aLIGO setup.
+  20W input, T_SRM = 35%. The higher SRM transmission mirror is used for low power
+  operation. 20W input power from O1 observation.
+        
+- design_with_IMC_HAM2: A file based on `design` but has the IMC and HAM2 blocks
+  which contain design parameter input optics
+    
+- design_with_IMC_HAM2_FI_OMC: A file with the OMC and IMC, most complete file
+
+
+The file 'design_with_IMC_HAM2_FI_OMC' has now been renamed design.kat in the
+aligo/files folder.
+

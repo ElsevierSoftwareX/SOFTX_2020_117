@@ -1,94 +1,10 @@
 %%% FTblock header
 #--------------------------------------------------------------------------
-# An aLIGO design file base on older aLIGO_IFO_AWC_tuning_DCoff_maxtem4.kat
-# (details in the original file header)
-#
-# updated to re-include locks 
-# (errsig, powers and locks blocks, plus EOMs 1 and 2 (9 and 45kHz))
-# 
-# - R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
-# - Advanced LIGO, CQG, 2015 
-#   http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
-# - G. Billingsley. LIGO core optics reference page. https://galaxy.ligo. caltech.edu/optics/
-# 
-# Anna Green, Andreas Freise, 28th November 2016
+# An A+ design file originlly made for the BHD workshop in October 2018.
+# This file is based on the full design aLIGO model and then adapted for
+# the new design choices
 #--------------------------------------------------------------------------
-#
-# References used for aLIGO parameters
-# [1] R. Abbott. Advanced LIGO length sensing and control final design. LIGO Document T1000298, 2010.
-# [2] Advanced LIGO, CQG, 2015 
-#     http://iopscience.iop.org/article/10.1088/0264-9381/32/7/074001/meta#cqg507871s4-8
-# [3] G. Billingsley. LIGO core optics reference page. https://galaxy.ligo.caltech.edu/optics/
-# [4] D. Martynov, `Lock Acquisition and Sensitivity Analysis of Advanced
-#     LIGO Interferometers', PhD thesis, Caltech, 2015
-#     http://thesis.library.caltech.edu/8899/1/DenisMartynovThesis.pdf
-# [4] A. Staley, `Locking the Advanced LIGO Gravitational Wave Detector:
-#     with a focus on the Arm Length Stabilization Technique', PhD thesis,
-#     Columbia University, 2015
-#     https://academiccommons.columbia.edu/catalog/ac:189457
-#
-# Changes since 12/2016:
-#
-# - 09.05.2017, Daniel Brown
-#       Based on design file at the time. Adding in IMC and HAM2 from old aligo kat files.
-#       Simplified the IMC/HAM2 parameters.
-#
-#       Documents used:
-#           * D0902838-v5 - Design values and layout for IMC/HAM2
-#           * T1000247-v3 - Values for IM mirror distances
-#       Notes:
-#           * Input FI is just placed inbetween IM2 and IM3 halfway. From D0902838
-#             this then separates the beam that is then reflected from IM2 again
-#             and off another mirror? This extra path isn't included nREFL is just
-#             at the FI output
-#           * As no design lengths are specfied for HAM2 distances I used LHO values
-#             from T1000247. 
-#
-# - 06.12.2016, initial corrections compared to previous files, Anna and Andreas
-#
-#   Bug fixes
-#   - AR coatings of ETMs and ITMs were using mirror components with non-zero
-#     reflectivity. This is wrng as it causes residual resoances with the HR
-#     surfaces and ignores the wedge in the substrate. Instead the mirror component
-#     should have losses but no reflectivity. Alternatively beamsplitter components
-#     with non-zero reflectivity can be used to detect the AR reflections
-#   - Same as above for PRM and SRM AR coatings
-#   - change order of `cav' commands, arm cavities need to come first
-#
-#   Change of parameter values
-#   - BS substrate length were assymetric and did not match substrate thickness,
-#     changed to symmetric 0.0687m, using pykat.GWdetectors.aLIGO.BSpath(0.06)
-#   - changed SRM transmission from 35% to 20%, matching the aLIGO 2015 paper
-#   - changed arm length to L=3994.4692, see [4], Table 10.2
-#
-#   Changes in file structure
-#   - removed length calculation fucntions for PRC and SRC sub-length
-#     and added length values into space components
-#   - removed maxtem 4 command from HOMs block
-#   
-#   Naming changes
-#   - changed naming for thermal lens components
-#   - changed naming of PRMHR to PRM and node names in PRM substrate
-#   - changed naming of SRMHR to SRM and node names in SRM substrate
-#   - changed name of ITMHR to ITM and ETMHR to ETM
-#   - changed names of arm spaces from LXarm, LYarm to LX, LY
-#		- changed name of HOMs block to cavities
-#		- changed PR2 node4 name from dump11 to nAPOP (auxilliary POP)
-#
-#
-# - 01.07.2017, Daniel Toyra
-# 
-#       Adding in OMC and OMCpath from old aligo kat files. Simplified the OMC 
-#       to single surface mirrors. Replaced the path between the SRM and the 
-#       OMCpath with equivalent pure vacuum propagation. Added an ideal Faraday 
-#       isolator (dbs-component). 
-#      
-#       Documents used:
-#           *
-#       Notes:
-#           * 
-#       TODO:
-#           * Correct detector nodes. Check parameters for OMC and OMCpath. 
+# CHANGES
 #--------------------------------------------------------------------------
 %%% FTend header
 
@@ -230,7 +146,7 @@ bs2 BSAR2 50u 0 0 29.195 nBSi4 dump15 nSRBS dump16
 # Distance from beam splitter to Y arm input mirror
 s ly1 5.0126 nYBS nITMY1a
 
-lens ITMY_lens $TLY_f nITMY1a nITMY1b
+lens ITMY_lens $SLY_f nITMY1a nITMY1b
 s sITMY_th2 0 nITMY1b nITMY1
 
 # Y arm input mirror
@@ -259,7 +175,7 @@ attr ITMY mass 40
 # Distance from beam splitter to X arm input mirror 
 s lx1 4.993 nXBS nITMX1a
 
-lens ITMX_lens $TLX_f nITMX1a nITMX1b
+lens ITMX_lens $SLX_f nITMX1a nITMX1b
 s sITMX_th2 0 nITMX1b nITMX1
 
 # X arm input mirror
@@ -297,10 +213,9 @@ attr SR2 Rc -6.406
 # Distance from SR2 to SRM
 s ls1 15.7586 nSR2a nSRM1
 # Signal recycling mirror SRM-08
-m1 SRM 0.20 8.7u $phi_SRM nSRM1 nSRMs1
+m1 SRM 0.32 8.7u $phi_SRM nSRM1 nSRMs1
 s SRMsub 0.0749 $nsilica nSRMs1 nSRMs2
 m2 SRMAR 0 50n 0 nSRMs2 nSRM2
-#bs2 SRMAR 50n 0 0 0 nSRMs2 nSRMAR1 nSRM2 nSRMAR2
 attr SRM Rc -5.6938
 
 s sSRM_FI 0.7278 nSRM2 nFI2a
@@ -308,15 +223,8 @@ s sSRM_FI 0.7278 nSRM2 nFI2a
 ###########################################################################
 %%% FTend SRC
 
-%%% FTblock FI
+%%% FTblock OUTPATH
 ###########################################################################
-
-# (Loctions and angles based on the solid work file D1000342-v14 give ~5% 
-# mismatch. Thus lom1, lom3omc have been adjusted to get ~99.7% overlap at the OMC)
-
-# Distance SRM --> Faraday Isolator (FI)
-
-
 # Directional beam splitter (ideal Faraday Isolator with 4 ports)
 # ----------------------------------------------------------------
 # Description of node connections, inputNode --> outputNode
@@ -328,64 +236,88 @@ s sSRM_FI 0.7278 nSRM2 nFI2a
 
 dbs FI2 nFI2a nFI2b nFI2c nFI2d
 
-# Distance FI2 --> OM1  
-s sFI_OM1 2.9339 nFI2c nOM1a
+# Distance FI2 --> OM0, length guess
+s sFI_OMo 2 nFI2c nOM0a
 
-# OM1
-bs1 OM1 800u $Mloss 0 2.251 nOM1a nOM1b nOM1c dump22 # T is set for high power; Loss is a guess
-attr OM1 Rc 4.6
+# Initial steering mirror on HAM6 for AS
+bs1 OM0 0.008 0 0 45 nOM0a nOM0b nAS nOM0d
 
-# Distance OM1 --> OM2
-s sOM1_OM2 1.395 nOM1b nOM2a 
+s sOM0_BHDBS 1 nOM0b nBHDBSc # OM0 to BHD BS, length guess
 
-# OM2
-bs1 OM2 10u $Mloss 0 4.399 nOM2a nOM2b nOM2c nOM2d  # T is a guess
-attr OM2 Rc 1.7058
+# BHD BS
+bs1 BHDBS 0.5 0 0 45 nBHDBSa nBHDBSb nBHDBSc nBHDBSd
 
-# Distance OM2 --> OM3
+# Path from BHD BS to OMCA
+s sBSHD_OMA1 1 nBHDBSa nOMA1a 
+bs1 OMA1 0 0 0 0 nOMA1a nOMA1b dump dump
+s sOMA1_OMA2 1.5 nOMA1b nOMA2a 
+bs1 OMA2 0 0 0 0 nOMA2a nOMA2b dump dump
+s sOMA2_OMA3 1 nOMA2b nOMA3a
+bs1 OMA3 0 0 0 45 nOMA3a nOMA3b dump dump
+s sOMA3_OMC 0.5 nOMA3b nOMCA_ICa 
 
-s sOM2_OM3 0.631 nOM2b nOM3a 
-bs1 OM3 10u $Mloss 0 30.037 nOM3a nOM3b nOM3c nOM3d # T is a guess
+attr OMA1 Rc 1.037
+attr OMA2 Rc 1.239
 
-# Distance OM3 --> OMC input coupler IC
-s sOM3_OMC 0.2034 nOM3b nOMC_ICa # By design should be ~0.31
+# Path from BHD BS to OMCB
+s sBSHD_OMB1 1 nBHDBSd nOMB1a 
+bs1 OMB1 0 0 0 0 nOMB1a nOMB1b dump dump
+s sOMB1_OMB2 1.5 nOMB1b nOMB2a 
+bs1 OMB2 0 0 0 0 nOMB2a nOMB2b dump dump
+s sOMB2_OMB3 1 nOMB2b nOMB3a
+bs1 OMB3 0 0 0 45 nOMB3a nOMB3b dump dump
+s sOMB3_OMC 0.5 nOMB3b nOMCB_ICa 
 
+attr OMB1 Rc 1.037
+attr OMB2 Rc 1.239
 ###########################################################################
-%%% FTend FI
+%%% FTend OUTPATH
 
-%%% FTblock OMC
+
+%%% FTblock LO
 ###########################################################################
-# OMC (as built parameters: D1300507-v1)
-
-# Input Coupler IC (flat mirror)
-bs1 OMC_IC 0.0076 10u 0 2.7609 nOMC_ICa nOMC_ICb nOMC_ICc nOMC_ICd
-
-# Distance from IC to OC  
-s lIC_OC 0.2815 1 nOMC_ICc nOMC_OCa
-
-# Output Coupler OC (flat mirror)
-bs1 OMC_OC 0.0075 10u 0 4.004 nOMC_OCa nOMC_OCb nAS nOMC_OCd
-
-# Distance from OC to CM1
-s lOC_CM1 0.2842 1 nOMC_OCb nOMC_CM1a
-
-# Curved Mirror CM1
-bs1 OMC_CM1 36u 10u 0 4.004 nOMC_CM1a nOMC_CM1b nOMC_CM1c nOMC_CM1d
-attr OMC_CM1 Rc 2.57321
-
-# Distance from CM1 to CM2 
-s lCM1_CM2 0.2815 1 nOMC_CM1b nOMC_CM2a
-
-# Curved Mirror CM2
-bs1 OMC_CM2 35.9u 10u 0 4.004 nOMC_CM2a nOMC_CM2b nOMC_CM2c nOMC_CM2d
-attr OMC_CM2 Rc 2.57369
-
-# Distance from CM2 to IC
-s lCM2_IC 0.2842 1 nOMC_CM2b nOMC_ICd
-
+# ref G1800283
+s sPR2_LOM 5 nPOP nLOMa
+bs LOM 1 0 0 45 nLOMa nLOMb dump dump
+s LOM_LOLens 5 nLOMb nLOLensa
+lens LOLens -12.8 nLOLensa nLOLensb
+s sLOLens_BHDBS 1 nLOLensb nBHDBSb
 ###########################################################################
-%%% FTend OMC
+%%% FTend LO
 
+
+%%% FTblock OMCA
+###########################################################################
+# OMCA (as built parameters original OMC: D1300507-v1)
+bs1 OMCA_IC 0.0076 10u 0 2.7609 nOMCA_ICa nOMCA_ICb nOMCA_ICc nOMCA_ICd  # Input Coupler IC (flat mirror)
+s sICA_OCA 0.2815 1 nOMCA_ICc nOMCA_OCa                                    # Distance from IC to OC  
+bs1 OMCA_OC 0.0075 10u 0 4.004 nOMCA_OCa nOMCA_OCb nBHD1 nOMCA_OCd       # Output Coupler OC (flat mirror)
+s sOCA_CMA1 0.2842 1 nOMCA_OCb nOMCA_CM1a                                  # Output Coupler OC (flat mirror)
+bs1 OMCA_CM1 36u 10u 0 4.004 nOMCA_CM1a nOMCA_CM1b nOMCA_CM1c nOMCA_CM1d # Curved Mirror CM1
+attr OMCA_CM1 Rc 2.57321
+s sCMA1_CMA2 0.2815 1 nOMCA_CM1b nOMCA_CM2a                                # Curved Mirror CM1
+bs1 OMCA_CM2 35.9u 10u 0 4.004 nOMCA_CM2a nOMCA_CM2b nOMCA_CM2c nOMCA_CM2d # Curved Mirror CM2
+attr OMCA_CM2 Rc 2.57369
+s sCMA1_ICA 0.2842 1 nOMCA_CM2b nOMCA_ICd                                  # Distance from CM2 to IC
+###########################################################################
+%%% FTend OMCA
+
+
+%%% FTblock OMCB
+###########################################################################
+# OMCB (as built parameters original OMC: D1300507-v1)
+bs1 OMCB_IC 0.0076 10u 0 2.7609 nOMCB_ICa nOMCB_ICb nOMCB_ICc nOMCB_ICd  # Input Coupler IC (flat mirror)
+s sICB_OCB 0.2815 1 nOMCB_ICc nOMCB_OCa                                    # Distance from IC to OC  
+bs1 OMCB_OC 0.0075 10u 0 4.004 nOMCB_OCa nOMCB_OCb nBHD2 nOMCB_OCd       # Output Coupler OC (flat mirror)
+s sOCB_CMB1 0.2842 1 nOMCB_OCb nOMCB_CM1a                                  # Output Coupler OC (flat mirror)
+bs1 OMCB_CM1 36u 10u 0 4.004 nOMCB_CM1a nOMCB_CM1b nOMCB_CM1c nOMCB_CM1d # Curved Mirror CM1
+attr OMCB_CM1 Rc 2.57321
+s sCMB1_CMB2 0.2815 1 nOMCB_CM1b nOMCB_CM2a                                # Curved Mirror CM1
+bs1 OMCB_CM2 35.9u 10u 0 4.004 nOMCB_CM2a nOMCB_CM2b nOMCB_CM2c nOMCB_CM2d # Curved Mirror CM2
+attr OMCB_CM2 Rc 2.57369
+s sCMB1_ICB 0.2842 1 nOMCB_CM2b nOMCB_ICd                                  # Distance from CM2 to IC
+###########################################################################
+%%% FTend OMCB
 
 %%% FTblock cavities
 ###########################################################################
@@ -396,7 +328,8 @@ cav cavSRX SRM nSRM1 ITMX nITMXs2
 cav cavSRY SRM nSRM1 ITMY nITMYs2
 cav cavPRX PRM nPRM2 ITMX nITMXs2
 cav cavPRY PRM nPRM2 ITMY nITMYs2
-cav cavOMC OMC_IC nOMC_ICc OMC_IC nOMC_ICd
+cav cavOMCA OMCA_IC nOMCA_ICc OMCA_IC nOMCA_ICd
+cav cavOMCB OMCB_IC nOMCB_ICc OMCB_IC nOMCB_ICd
 
 ###########################################################################
 %%% FTend cavities
@@ -412,6 +345,9 @@ const fM 36.397884M
 const fP 54.596826M
 const TLY_f 34.5k         # Thermal lens ITMY
 const TLX_f 34.5k         # Thermal lens ITMX
+const SLY_f inf           # Substrate lens ITMY
+const SLX_f inf           # Substrate lens ITMX
+const th_f 34.5k
 ###########################################################################
 %%% FTend constants
 

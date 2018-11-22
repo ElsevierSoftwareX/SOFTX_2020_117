@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from . import assert_aligo_ifo_kat
+from . import assert_aplus_ifo_kat
 from .. import scan_optics_string
 
 from pykat.ifo.plot import *
@@ -15,7 +15,7 @@ def f1_PRC_resonance(_kat, ax=None, show=True):
     f1 (~ 9MHz) in the PRC, to check the resonance
     condition.
     """
-    assert_aligo_ifo_kat(_kat)
+    assert_aplus_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     
@@ -58,7 +58,7 @@ def f1_PRC_resonance(_kat, ax=None, show=True):
     if show: plt.show()
 
 def pretuning_powers(self, _kat, xlimits=[-10,10]):
-    assert_aligo_ifo_kat(_kat)
+    assert_aplus_ifo_kat(_kat)
     
     kat = _kat.deepcopy()
     kat.verbose = False
@@ -356,7 +356,7 @@ def pows_vs_dofs(kat, xaxis = [-1,1,100]):
     fig = plt.figure(figsize=(17,8))
     axs = []
     for k in range(N):
-        axs.append(fig.add_subplot(2,3,k+1, label = 'axis{}'.format(k)))
+        axs.append(fig.add_subplot(2,3,k+1), label = 'axis{}'.format(k))
     for ax, v in zip(axs,dic.keys()):
         for n in dic[v].keys():
             if n != 'x':
@@ -395,6 +395,10 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}
     lower, upper, steps - frequency vector
     ax - Matplotlib axes to use, if None it creates internally
     plt - Dict of keyword arguments to pass to loglog
+    
+    Returns
+    -------
+    Kat object that was run to generate the plot
     """
     kat = base.deepcopy()
 
@@ -403,12 +407,15 @@ def strain_sensitivity(base,lower=10,upper=5000,steps=100, ax=None, plot_cmds={}
 
     kat.parse(kat.IFO.DARM_h.transfer())
 
-    if kat.IFO.DARM_h.port.f is None:
-        kat.parse("qnoisedS NSR 1 $fs {node}".format(node=kat.IFO.DARM_h.port.nodeName[0]))
+    if kat.IFO.DARM_h.port.num_nodes == 1:
+        if kat.IFO.DARM_h.port.f is None:
+            kat.parse("qnoisedS NSR 1 $fs {node}".format(node=kat.IFO.DARM_h.port.nodeName[0]))
+        else:
+            kat.parse("qnoisedS NSR 2 {f} {phi} $fs {node}".format(f=kat.IFO.DARM_h.port.f,
+                                                                   phi=kat.IFO.DARM_h.port.phase,
+                                                                   node=kat.IFO.DARM_h.port.nodeName[0]))
     else:
-        kat.parse("qnoisedS NSR 2 {f} {phi} $fs {node}".format(f=kat.IFO.DARM_h.port.f,
-                                                               phi=kat.IFO.DARM_h.port.phase,
-                                                               node=kat.IFO.DARM_h.port.nodeName[0]))
+        kat.parse("qhdS NSR 180 {} {}".format(*kat.IFO.DARM_h.port.nodeName))
 
     if ax is None:
         ax = plt.subplot(111)
