@@ -1281,7 +1281,7 @@ class IFO(object):
             import pykat
             from pykat.ifo import aligo
 
-            base = aligo.make_kat("design_with_IMC_HAM2_FI_OMC")
+            base = aligo.make_kat("design")
             base.maxtem = 2
 
             base = aligo.setup(base)

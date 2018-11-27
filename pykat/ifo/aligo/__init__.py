@@ -749,22 +749,11 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     
     The `name` argument selects from default aLIGO files included in Pykat:
     
-        - design: A file based on the design parameters for the final aLIGO setup.
-          125W input, T_SRM = 20%.
-    
-        - design_low_power: A file based on the design parameters for the final aLIGO setup.
-          20W input, T_SRM = 35%. The higher SRM transmission mirror is used for low power
-          operation. 20W input power from O1 observation.
-        
-        - design_with_IMC_HAM2: A file based on `design` but has the IMC and HAM2 blocks
-          which contain design parameter input optics
-    
-        - design_with_IMC_HAM2_FI_OMC: A file with the OMC and IMC, most complete file
     
     keepComments: If true it will keep the original comments from the file
     preserveComments: If true it will keep the const commands in the kat
     """
-    names = ['design', 'design_low_power', 'design_with_IMC_HAM2', 'design_with_IMC_HAM2_FI_OMC']
+    names = ['design']
     
     if debug:
         kat = finesse.kat(tempdir=".",tempname="test")
@@ -998,7 +987,8 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     vprint(verbose, "   scanning SRCL (maximising carrier power, then adding 90 deg)")
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
-    
+    # adf: maybe add a temporal differential tuning of MICH or DARM here to increase the power at SRM
+    # (correct light mode > waste/dirt light)    
     phi, precision = scan_to_precision(kat.IFO.preSRCL, pretune_precision, phi=0, precision=90.0, debug=("SRCL" in debug))
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi, 5) - 90.0
@@ -1128,62 +1118,6 @@ def pretune_SRCL(_kat, verbose=False, debug=False):
     deg = (out.x[SRCL_metric.argmin()] % 360) - 180
     IFO.preSRCL.apply_tuning(-deg)
     
-    
-def setup(base, old=True, DC_offset_pm=20, verbose=False):
-    """
-    Runs a preparation routine to produce a LIGO model at a resonable operating point.
-    This uses the pretune2 and pretune_SRCL methods which allow you 
-    """
-    assert_aligo_ifo_kat(base)
-    
-    base = base.deepcopy()
-    base.verbose = False
-
-    base.removeBlock('locks', False)
-    base.removeBlock('errsigs', False)
-    base.removeBlock('powers', False)
-
-    base.phase = 2
-    base.IFO.fix_mirrors()
-
-    kat = base.deepcopy()
-    kat.IFO.remove_modulators()
-
-    if old:
-        pretune(kat,pretune_precision=1e-3, verbose=verbose)
-    else:
-        pretune_2(kat, pretune_precision=1e-3, verbose=verbose)
-
-    # Apply the tunings to our base kat file
-    base.IFO.apply_tunings(kat.IFO.get_tunings())
-    base.IFO.adjust_PRC_length(verbose=verbose)
-
-    if verbose:
-        pretune_status(base)
-        base.IFO.lengths_status()
-
-    # Set DC offset and plot
-    DCoffset = DC_offset_pm*1e-12 / base.lambda0 * 180.0
-    base.IFO.set_DC_offset(DCoffset=DCoffset, verbose=verbose)
-
-    if not old:
-        pretune_SRCL(base, verbose=verbose)
-
-    errsigs_cmds = base.IFO.add_errsigs_block()
-
-    # Generates a dictionary of the lock values to use
-    locks = generate_locks(base, verbose=verbose)
-
-    # Takes these values and then generates the commands and adds them to
-    # the lock block of the kat
-    lock_cmds = base.IFO.add_locks_block(locks, verbose=verbose)
-
-    base.SRCL_lock.accuracy /= 10
-    
-    return base
-
-
-
 
 
 
@@ -1206,7 +1140,7 @@ def pretune_status(_kat):
 
     tunings = kat.IFO.get_tunings()
     
-    if tunings['keys']["maxtem"] == -1:
+    if tunings['keys']["maxtem"] is None or tunings['keys']["maxtem"] == -1:
         _maxtemStr="off"
     else:
         _maxtemStr = "{:3}".format(tunings['keys']["maxtem"])
@@ -1360,7 +1294,7 @@ def generate_locks(kat, gainsAdjustment = [0.5, 0.005, 1.0, 0.5, 0.025],
     
     return data
 
-def setup(base, DC_offset_pm=20, verbose=False, debug=False):
+def setup(_base, DC_offset_pm=20, verbose=False, debug=False):
     """
     Runs a preparation routine to produce a LIGO model at a resonable operating point.
     
@@ -1373,9 +1307,9 @@ def setup(base, DC_offset_pm=20, verbose=False, debug=False):
     # Will change later when this works with the 
     old = True
     
-    assert_aligo_ifo_kat(base)
+    assert_aligo_ifo_kat(_base)
     
-    base = base.deepcopy()
+    base = _base.deepcopy()
     base.verbose = False
 
     base.removeBlock('locks',   False)
@@ -1401,6 +1335,7 @@ def setup(base, DC_offset_pm=20, verbose=False, debug=False):
     if not old:
         _pretune_PRCL(base, verbose=verbose, debug=debug)
     
+    # Set DC offset 
     DCoffset = DC_offset_pm*1e-12 / base.lambda0 * 180.0
     base.IFO.set_DC_offset(DCoffset=DCoffset, verbose=verbose)
     

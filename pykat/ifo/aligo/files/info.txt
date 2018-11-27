@@ -1,0 +1,14 @@
+
+At the time of writing:
+
+design_with_IMC_HAM2_FI_OMC.kat
+and
+design.kat
+
+are identical. We keep the former for
+backwards compatibility with some
+examples. Please change/use only
+design.kat in the future.
+
+Andreas Freise, 21/11/2018
+
