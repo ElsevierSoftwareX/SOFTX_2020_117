@@ -987,7 +987,8 @@ def pretune(_kat, pretune_precision=1.0e-4, verbose=False, debug={}):
     vprint(verbose, "   scanning SRCL (maximising carrier power, then adding 90 deg)")
     kat = _kat.deepcopy()
     kat.removeBlock("locks", False)
-    
+    # adf: maybe add a temporal differential tuning of MICH or DARM here to increase the power at SRM
+    # (correct light mode > waste/dirt light)    
     phi, precision = scan_to_precision(kat.IFO.preSRCL, pretune_precision, phi=0, precision=90.0, debug=("SRCL" in debug))
     phi=round(phi/pretune_precision)*pretune_precision
     phi=round_to_n(phi, 5) - 90.0
