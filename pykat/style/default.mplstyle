@@ -12,7 +12,7 @@ text.usetex : False
 axes.grid : True
 axes.formatter.useoffset : False
 axes.formatter.use_locale : False
-axes.prop_cycle : cycler('color', ['0000FF', 'FF0000', '000000', '00FF00', 'FF00FF'])
+axes.prop_cycle : cycler('color', ['b', 'r', 'k', 'g', 'c', 'm', 'y'])
 axes.axisbelow : True
 axes.xmargin : 0
 
