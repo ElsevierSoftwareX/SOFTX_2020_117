@@ -1119,6 +1119,24 @@ class ADV_IFO(IFO):
         for k,v in DCoffset.items():                
             self.set_DC_offset(DCoffset=v, offset_type=k, verbose=False)
 
+    def _strToDOFs(self, DOFs):
+        dofs = []
+
+        for _ in DOFs:
+            if isinstance(_, six.string_types):
+                if _ in self.DOFs:
+                    dofs.append(self.DOFs[_])
+                else:
+                    raise pkex.BasePyKatException(
+                        "Could not find DOF called `%s`. Possible DOF options: %s" % (
+                        _, str(list(self.DOFs.keys()))))
+            else:
+                raise pkex.BasePyKatException(
+                    "'%s' not possible DOF options: %s" % (
+                    _, str(list(self.DOFs.keys()))))
+
+        return dofs
+
 def assert_adv_ifo_kat(kat):
     
     if not isinstance(kat.IFO, ADV_IFO):

@@ -125,7 +125,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None, replaceDOFSign
     toShow = None
     
     if plotDOFs is not None:
-        toShow = self._strToDOFs(plotDOFs)
+        toShow = kat.IFO._strToDOFs(plotDOFs)
     
         # Check if other DOF signals we need to include for plotting
         for _ in toShow:
@@ -171,9 +171,11 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None, replaceDOFSign
         else:
             for _ in toShow:
                 if legend is None:
-                    legend = _.name
+                    _legend = _.name
+                else:
+                    _legend = legend
                     
-                ax.plot(out.x, out[_.signal_name()] - DC_Offset, label=legend)
+                ax.plot(out.x, out[_.signal_name()] - DC_Offset, label=_legend)
             
         ax.set_xlim([np.min(out.x), np.max(out.x)])
         ax.set_xlabel("{} [deg]".format(d.name))
