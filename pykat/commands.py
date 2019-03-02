@@ -38,7 +38,6 @@ class Command(object):
         self.__removed = False
         self.__name = name.strip("*")
         self._putters = []
-    
         
     def __deepcopy__(self, memo):
         """
@@ -53,7 +52,7 @@ class Command(object):
         
         for _ in result._putters:
             _._updateOwner(result)
-
+            
         result._freeze()
         return result
     
@@ -203,11 +202,10 @@ class lock(Command):
     def __init__(self, name, variable, gain, accuracy, offset=None, singleLock=False):
         Command.__init__(self, name, False)
 
-        self.__params = []
         self.__variable = variable
         self.__gain = gain
         self.__accuracy = accuracy
-        self.__offset = Param("offset", self, SIfloat(offset))
+        self.__offset = offset
         
         self.singleLock = singleLock
         self.enabled = True
@@ -217,9 +215,6 @@ class lock(Command):
         self._putters.append(self.output)
 
         self._freeze()
-
-    def _register_param(self, param):
-        self.__params.append(param)
         
     @property
     def offset(self): return self.__offset
@@ -245,7 +240,7 @@ class lock(Command):
                                                             gain=str(self.gain),
                                                             accuracy=str(self.accuracy))
             
-            if self.offset.value is not None:
+            if self.offset is not None:
                 cmds += " %s" % str(self.offset)
                 
             if self.singleLock:
@@ -254,9 +249,6 @@ class lock(Command):
                 rtn.append("lock %s" % cmds)
             
             rtn.extend(self.output._getPutFinesseText())
-            
-            for p in self.__params:
-                rtn.extend(p.getFinesseText())
             
             return rtn
         else:
