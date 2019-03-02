@@ -175,7 +175,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
         
         # Get a lock offset if used
         if (d.name + '_lock') in _kat.commands:
-            DC_Offset = _kat.commands[d.name + '_lock'].offset.value
+            DC_Offset = _kat.commands[d.name + '_lock'].offset
         
         if DC_Offset is None:
             DC_Offset = 0
