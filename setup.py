@@ -49,5 +49,10 @@ setup(
                        'ifo/adv/files/*.kat',
                        'ifo/voyager/files/*.kat',
                        'style/*.mplstyle']},
-    include_package_data=True
+    include_package_data=True,
+    entry_points={
+        'console_scripts': [
+            'pykat = pykat.__main__:cli'
+            ],
+        },
 )
