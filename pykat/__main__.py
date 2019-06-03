@@ -45,12 +45,8 @@ from .finesse import kat as katparser
               help="Display results as figure.")
 @click.option("--save-figure", type=click.File("wb", lazy=False),
               help="Save image of figure to file.")
-@click.option("--kat-path", type=click.Path(exists=True), envvar="KATPATH",
-              help="Path to Finesse 2 directory. If not specified, the "
-              "environment variable KATPATH is searched.")
 @click.version_option(version=__version__, prog_name="Pykat")
-def cli(file, xstart, xstop, xsteps, xscale, trace, maxtem, ignored_blocks, plot, save_figure,
-        kat_path):
+def cli(file, xstart, xstop, xsteps, xscale, trace, maxtem, ignored_blocks, plot, save_figure):
     """Base CLI command group"""
     kat = katparser()
     kat.load(file.name)
