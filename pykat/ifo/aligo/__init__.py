@@ -193,10 +193,21 @@ class ALIGO_IFO(IFO):
         This function will iterate through the main mirrors
         and remove any suspension settings on them. This can be
         done individuallly or for z, pitch, and yaw.
+        kat code for the original attr commands is returned in a 
+        dict object separated into z, pitch and yaw.
         """
+        
+        old_attr={'z':[],'pitch':[],'yaw':[]}
     
         for mirror in ["ETMY","ETMX","ITMY","ITMX","PRM","PR2","PR3","SRM","SR2","SR3","BS"]:
             mirror = self.kat.components[mirror]
+            
+            if mirror.mass != None: old_attr['z'].append(mirror.mass.getFinesseText()[0])
+            if mirror.zmech != None: old_attr['z'].append(mirror.zmech.getFinesseText()[0])
+            if mirror.Iy != None: old_attr['pitch'].append(mirror.Iy.getFinesseText()[0])
+            if mirror.rymech != None: old_attr['pitch'].append(mirror.rymech.getFinesseText()[0])
+            if mirror.Ix != None: old_attr['yaw'].append(mirror.Ix.getFinesseText()[0])
+            if mirror.rxmech != None: old_attr['yaw'].append(mirror.rxmech.getFinesseText()[0])
         
             if z:
                 mirror.mass = None
@@ -209,6 +220,29 @@ class ALIGO_IFO(IFO):
             if yaw:
                 mirror.Ix = None
                 mirror.rxmech = None
+            
+            return old_attr
+
+    def restore_susp(self, old_attr, z=True, pitch=True, yaw=True):
+        """
+        This is a pair function to fix_mirrors. 
+        It will restore any suspension settings previously stored as kat code strings 
+        in a dict object of format
+            old_attr={'z':[],'pitch':[],'yaw':[]}
+        This can be done individuallly or for z, pitch, and yaw.
+        """
+        if z:
+            for ii in old_attr['z']:
+                self.kat.parse(ii)
+
+        if pitch:
+            for ii in old_attr['pitch']:
+                self.kat.parse(ii)
+
+        if yaw:
+            for ii in old_attr['yaw']:
+                self.kat.parse(ii)
+
         
     def lengths_status(self):
         self.compute_derived_lengths()
@@ -256,8 +290,9 @@ class ALIGO_IFO(IFO):
         spaces between the laser and HAM2 and PRC. Assumes spaces exists
         with name and node:
             sHAM2in and node nIMCout
-            sPRCin  and node nHAM2out
         
+        If removing HAM2, adds a replacement dbs, `FI`, directly before the PRM,
+        to restore the REFL port.
         
         This function alters the kat object directly.
         """
@@ -272,7 +307,11 @@ class ALIGO_IFO(IFO):
         
         if removeHAM2:
             self.kat.removeBlock("HAM2")
-            self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
+            # self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut') #without FI restoration.
+            self.kat.parse("""
+            s sIO 0 nLaserOut nFI1
+            dbs FI  nFI1 nFI2 nHAM2out nREFL
+            """,addToBlock='PRC') #dummy space needed between mod2 and FI.
 
 
     def remove_FI_OMC(self, removeFI=True, removeOMC=True):
@@ -1327,7 +1366,7 @@ def setup(_base, DC_offset_pm=20, verbose=False, debug=False):
     base.removeBlock('powers',  False)
 
     base.phase = 2
-    base.IFO.fix_mirrors()
+    susp_attr = base.IFO.fix_mirrors()
 
     kat = base.deepcopy()
     kat.IFO.remove_modulators()
@@ -1364,5 +1403,7 @@ def setup(_base, DC_offset_pm=20, verbose=False, debug=False):
     #Takes these values and then generates the commands and adds them to
     #the lock block of the kat
     lock_cmds = base.IFO.add_locks_block(locks, verbose=verbose)
+    
+    base.IFO.restore_susp(susp_attr)
     
     return base
