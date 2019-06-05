@@ -1493,6 +1493,7 @@ class modulator(Component):
             value = float(value)
             if not value.is_integer():
                 raise pkex.BasePyKatException("modulator order must be an integer between 1 and 6 or 's' for single sideband")
+            value = int(value)
             if value <= 1 and value > 6:
                 raise pkex.BasePyKatException("modulator order must be between 1 and 6 or 's' for single sideband")
 
