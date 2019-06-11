@@ -1,6 +1,6 @@
 numpy >= 1.12
 flask >= 0.10.1
-scipy
+scipy >= 0.14.0
 six
 h5py
 pandas

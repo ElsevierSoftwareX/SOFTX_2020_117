@@ -8,9 +8,8 @@ from scipy.integrate import dblquad
 from pykat.optics.romhom import ROMWeights
 from math import factorial
 from pykat.math.hermite import hermite
-from scipy.misc import comb
 from scipy.integrate import newton_cotes
-from scipy.special import gammainc
+from scipy.special import comb, gammainc
 from pykat.math import newton_weights
 
 import time

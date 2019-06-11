@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.misc import factorial as fac
+from scipy.special import factorial as fac
 from six.moves import xrange
 import math
 
