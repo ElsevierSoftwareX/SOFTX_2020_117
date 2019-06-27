@@ -27,7 +27,8 @@ from .finesse import kat as katparser
 @click.option("--xscale", type=click.Choice(["lin", "log"]), help="Scaling for the xaxis.")
 @click.option("--trace", type=click.Choice(["tem", "cavity", "mismatch", "beams", "gouy",
                                             "coupling", "modechanges", "nodes", "all"]),
-              multiple=True, help="Show simulation trace results: "
+              multiple=True, help="Show simulation trace results. This option can be specified "
+                                  "multiple times. The following values are supported: "
                                   "'tem': list TEM modes used, "
                                   "'cavity': cavity eigenvalues and other parameters, "
                                   "'mismatch': mode mismatch parameters for the initial setup, "
