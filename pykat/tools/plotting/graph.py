@@ -23,15 +23,14 @@ class NodeGraph(object):
 
     def node_graph(self, engine="fdp", node_style="filled", node_font="Helvetica",
                    node_font_size=10, node_width=0.2, node_shape="point", node_color="red",
-                   node_dump_color="black", edge_arrowhead="dot", graph_splines="compound",
-                   graph_font="Helvetica", graph_font_size=8, component_color="LightSkyBlue",
-                   laser_color="Orange", space_color="MediumSlateBlue",
-                   detector_color="YellowGreen"):
+                   node_dump_color="black", edge_arrowhead="dot", graph_font="Helvetica",
+                   graph_font_size=8, component_color="LightSkyBlue", laser_color="Orange",
+                   space_color="MediumSlateBlue", detector_color="YellowGreen"):
         """Create Graphviz node graph"""
         graph = Digraph(engine=engine)
         graph.attr("node", style=node_style, fontname=node_font, fontsize=str(node_font_size))
         graph.attr("edge", arrowhead=edge_arrowhead)
-        graph.attr("graph", splines=graph_splines, fontname=graph_font,
+        graph.attr("graph", fontname=graph_font,
                    fontsize=str(graph_font_size))
 
         def add_kat_node(from_id, node):
