@@ -7,3 +7,4 @@ pandas
 matplotlib
 tabulate
 click >= 7.0
+graphviz

@@ -46,8 +46,10 @@ from .finesse import kat as katparser
               help="Display results as figure.")
 @click.option("--save-figure", type=click.File("wb", lazy=False),
               help="Save image of figure to file.")
+@click.option("--display-graph", is_flag=True, help="Generate and display model node graph.")
 @click.version_option(version=__version__, prog_name="Pykat")
-def cli(file, xstart, xstop, xsteps, xscale, trace, maxtem, ignored_blocks, plot, save_figure):
+def cli(file, xstart, xstop, xsteps, xscale, trace, maxtem, ignored_blocks, plot, save_figure,
+        display_graph):
     """Base CLI command group"""
     kat = katparser()
     kat.load(file.name)
@@ -106,3 +108,8 @@ def cli(file, xstart, xstop, xsteps, xscale, trace, maxtem, ignored_blocks, plot
             click.echo("Cannot plot or save figure without an xaxis defined in FILE.",
                        err=True)
             sys.exit(1)
+
+    if display_graph:
+        from .tools.plotting.graph import NodeGraph
+        nodegraph = NodeGraph(kat)
+        nodegraph.view_pdf()
