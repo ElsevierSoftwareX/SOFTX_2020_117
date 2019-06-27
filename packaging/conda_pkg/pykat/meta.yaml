@@ -21,7 +21,7 @@ requirements:
     - finesse >=2.2
     - h5py
     - graphviz
-    - pygraphviz
+    - python-graphviz
     - click
   build:
     - python
