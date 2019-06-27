@@ -15,6 +15,8 @@ from .finesse import kat as katparser
 
 @click.command(help="Python interface and tools for FINESSE")
 @click.argument("file", type=click.File())
+@click.option("--simulate/--no-simulate", is_flag=True, default=True,
+              help="Simulate FILE.")
 @click.option("--xstart", type=float,
               help="Simulation start value. If specified, this overrides the xaxis start "
               "value specified in the parsed file.")
@@ -25,6 +27,7 @@ from .finesse import kat as katparser
               help="Number of steps to simulate between --start and --stop. If specified, "
               "this overrides the number of xaxis steps specified in the parsed file.")
 @click.option("--xscale", type=click.Choice(["lin", "log"]), help="Scaling for the xaxis.")
+@click.option("--noxaxis", is_flag=True, default=False, help="Switch off x-axis.")
 @click.option("--trace", type=click.Choice(["tem", "cavity", "mismatch", "beams", "gouy",
                                             "coupling", "modechanges", "nodes", "all"]),
               multiple=True, help="Show simulation trace results. This option can be specified "
@@ -48,66 +51,73 @@ from .finesse import kat as katparser
               help="Save image of figure to file.")
 @click.option("--display-graph", is_flag=True, help="Generate and display model node graph.")
 @click.version_option(version=__version__, prog_name="Pykat")
-def cli(file, xstart, xstop, xsteps, xscale, trace, maxtem, ignored_blocks, plot, save_figure,
-        display_graph):
+def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, maxtem, ignored_blocks,
+        plot, save_figure, display_graph):
     """Base CLI command group"""
     kat = katparser()
     kat.load(file.name)
     has_xaxis = hasattr(kat, "xaxis")
 
-    if xstart is not None or xstop is not None or xsteps is not None or xscale is not None:
-        if not has_xaxis:
-            click.echo("Limits can only be overridden when an xaxis is defined in FILE.",
-                       err=True)
-            sys.exit(1)
-        # Override xaxis.
-        limits = kat.xaxis.limits
-        set_limits = False
-        if xstart is not None:
-            limits[0] = xstart
-            set_limits = True
-        if xstop is not None:
-            limits[1] = xstop
-            set_limits = True
-        if xsteps is not None:
-            kat.xaxis.steps = xsteps
-        if xscale is not None:
-            kat.xaxis.scale = xscale
-        
-        if set_limits:
-            kat.xaxis.limits = np.array(limits).astype(float)
-
-    if maxtem:
-        kat.maxtem = maxtem
-
-    if trace:
-        traceval = 0
-        if "all" in trace:
-            traceval = 255
-        else:
-            traceints = {"tem": 1, "cavity": 2, "mismatch": 4, "beams": 8,
-                        "gouy": 16, "coupling": 32, "modechanges": 64, "nodes": 128}
-            for tracetype in trace:
-                traceval |= traceints[tracetype]
-        kat.trace = traceval
-
     if ignored_blocks:
         for block in ignored_blocks:
             kat.removeBlock(block)
 
-    results = kat.run()
+    if simulate:
+        if xstart is not None or xstop is not None or xsteps is not None or xscale is not None:
+            if not has_xaxis:
+                click.echo("Limits can only be overridden when an xaxis is defined in FILE.",
+                        err=True)
+                sys.exit(1)
+            if noxaxis:
+                click.echo("Limits can only be set when --noxaxis is unset.", err=True)
+                sys.exit(1)
+            # Override xaxis.
+            limits = kat.xaxis.limits
+            set_limits = False
+            if xstart is not None:
+                limits[0] = xstart
+                set_limits = True
+            if xstop is not None:
+                limits[1] = xstop
+                set_limits = True
+            if xsteps is not None:
+                kat.xaxis.steps = xsteps
+            if xscale is not None:
+                kat.xaxis.scale = xscale
+            
+            if set_limits:
+                kat.xaxis.limits = np.array(limits).astype(float)
 
-    if kat.trace:
-        click.echo(results.stdout)
+        if noxaxis:
+            kat.noxaxis = True
 
-    if has_xaxis:
-        if plot or save_figure is not None:
-            results.plot(show=plot, filename=save_figure)
-    else:
-        if save_figure is not None:
-            click.echo("Cannot plot or save figure without an xaxis defined in FILE.",
-                       err=True)
-            sys.exit(1)
+        if maxtem:
+            kat.maxtem = maxtem
+
+        if trace:
+            traceval = 0
+            if "all" in trace:
+                traceval = 255
+            else:
+                traceints = {"tem": 1, "cavity": 2, "mismatch": 4, "beams": 8,
+                            "gouy": 16, "coupling": 32, "modechanges": 64, "nodes": 128}
+                for tracetype in trace:
+                    traceval |= traceints[tracetype]
+            kat.trace = traceval
+
+        results = kat.run()
+
+        if kat.trace:
+            click.echo(results.stdout)
+
+        if has_xaxis:
+            if plot or save_figure is not None:
+                results.plot(show=plot, filename=save_figure)
+        else:
+            if save_figure is not None:
+                click.echo("Cannot plot or save figure without an xaxis defined in FILE.",
+                        err=True)
+                sys.exit(1)
 
     if display_graph:
         from .tools.plotting.graph import NodeGraph
