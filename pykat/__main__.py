@@ -56,20 +56,22 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, maxtem, i
     """Base CLI command group"""
     kat = katparser()
     kat.load(file.name)
-    has_xaxis = hasattr(kat, "xaxis")
+    has_xaxis = hasattr(kat, "xaxis") and not noxaxis
 
     if ignored_blocks:
         for block in ignored_blocks:
             kat.removeBlock(block)
 
+    if display_graph:
+        from .tools.plotting.graph import NodeGraph
+        nodegraph = NodeGraph(kat)
+        nodegraph.view_pdf()
+
     if simulate:
         if xstart is not None or xstop is not None or xsteps is not None or xscale is not None:
             if not has_xaxis:
-                click.echo("Limits can only be overridden when an xaxis is defined in FILE.",
-                        err=True)
-                sys.exit(1)
-            if noxaxis:
-                click.echo("Limits can only be set when --noxaxis is unset.", err=True)
+                click.echo("Limits can only be overridden when an xaxis is defined in FILE and "
+                           "when --noxaxis is unset.", err=True)
                 sys.exit(1)
             # Override xaxis.
             limits = kat.xaxis.limits
@@ -88,8 +90,12 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, maxtem, i
             if set_limits:
                 kat.xaxis.limits = np.array(limits).astype(float)
 
-        if noxaxis:
+        if not has_xaxis:
             kat.noxaxis = True
+            if save_figure is not None:
+                click.echo("Cannot plot or save figure without an xaxis defined in FILE.",
+                           err=True)
+                sys.exit(1)
 
         if maxtem:
             kat.maxtem = maxtem
@@ -110,16 +116,7 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, maxtem, i
         if kat.trace:
             click.echo(results.stdout)
 
-        if has_xaxis:
-            if plot or save_figure is not None:
-                results.plot(show=plot, filename=save_figure)
-        else:
-            if save_figure is not None:
-                click.echo("Cannot plot or save figure without an xaxis defined in FILE.",
-                        err=True)
-                sys.exit(1)
-
-    if display_graph:
-        from .tools.plotting.graph import NodeGraph
-        nodegraph = NodeGraph(kat)
-        nodegraph.view_pdf()
+        if has_xaxis and (plot or save_figure is not None):
+            results.plot(show=plot, filename=save_figure)
+        elif not kat.trace and not display_graph:
+            click.echo("No output requested.")
