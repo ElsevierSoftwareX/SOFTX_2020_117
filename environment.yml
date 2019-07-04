@@ -12,4 +12,3 @@ dependencies:
 - matplotlib
 - finesse=2.2
 - ipython
-- graphviz
