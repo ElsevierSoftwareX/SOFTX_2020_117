@@ -4,8 +4,13 @@ Based on node_graph project by Sebastian Steinlechner: https://github.com/sestei
 """
 
 import tempfile
-from graphviz import Digraph
 from ...components import laser, space
+from ...exceptions import BasePyKatException
+
+try:
+    from graphviz import Digraph
+except ImportError:
+    raise BasePyKatException("The 'graphviz' Python library is required to generate node graphs.")
 
 
 class NodeGraph(object):
