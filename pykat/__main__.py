@@ -59,11 +59,19 @@ from .finesse import kat as katparser
 @click.option("--save-figure", type=click.File("wb", lazy=False),
               help="Save image of figure to file.")
 @click.option("--display-graph", is_flag=True, help="Generate and display model node graph.")
+@click.option("--finesse-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True),
+              envvar='FINESSE_DIR', help="Path to directory containing the Finesse 'kat' "
+              "executable. If not specified, the environment variable FINESSE_DIR is used.")
 @click.version_option(version=__version__, prog_name="Pykat")
 def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, maxtem,
-        deriv_h, lambda0, ignored_blocks, plot, save_figure, display_graph):
+        deriv_h, lambda0, ignored_blocks, plot, save_figure, display_graph, finesse_dir):
     """Base CLI command group"""
-    kat = katparser()
+    if finesse_dir is None:
+        # Use default as required by kat object.
+        finesse_dir = ""
+    else:
+        click.echo("Using kat binary in %s" % finesse_dir)
+    kat = katparser(katdir=finesse_dir)
     kat.load(file.name)
     has_xaxis = hasattr(kat, "xaxis") and not noxaxis
 
