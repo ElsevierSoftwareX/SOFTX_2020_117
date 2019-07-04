@@ -1042,6 +1042,7 @@ class kat(object):
         self.deriv_h = None
         self.scale = None
         self.__trace = None
+        self.__powers = None
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = False
@@ -1216,6 +1217,11 @@ class kat(object):
             self.__maxtem = -1
         else:
             self.__maxtem = int(value)
+
+    @property
+    def powers(self): return self.__powers
+    @powers.setter
+    def powers(self,value): self.__powers = int(value)
 
     @property
     def phase(self): return self.__phase
@@ -1683,6 +1689,11 @@ class kat(object):
                     elif(first == "lambda"):
                         v = line.split()
                         self.lambda0 = SIfloat(v[-1])
+                    elif(first == "powers"):
+                        v = line.split()
+                        if len(v) != 2:
+                            raise pkex.BasePyKatException("powers command `{0}` is incorrect.".format(line))
+                        self.powers = int(v[1])
                     elif(first == "yaxis"):
                         v = line.split(" ", 1)
                         self.yaxis = v[-1]
@@ -2782,6 +2793,7 @@ class kat(object):
                 pkex.BasePyKatException("Couldn't understand vacuum input list")
 
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
+        if self.powers != None: out.append("powers {0}\n".format(self.powers))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.trace != None: out.append("trace {0}\n".format(self.trace))
         if self.maxtem != None:
