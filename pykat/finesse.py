@@ -640,6 +640,18 @@ class KatRun(object):
         if return_fig:
             return fig
 
+    @property
+    def raw_output(self):
+        """Contents of stdout with the Finesse banner removed."""
+        # Remove everything above the second occurrance of a line with
+        # 72 dashes (the bottom of the Finesse banner).
+        output = self.stdout.split("-" * 72)
+        if len(output) <= 2:
+            # No dashes found - return what we have.
+            return self.stdout
+        output = "".join(output[2:])
+        return output
+
     def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
             pickle.dump(self, outfile)

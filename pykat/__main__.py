@@ -136,7 +136,7 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, m
         results = kat.run()
 
         if kat.trace or powers:
-            click.echo(results.stdout)
+            click.echo(results.raw_output)
 
         if has_xaxis and (plot or save_figure is not None):
             results.plot(show=plot, filename=save_figure)
