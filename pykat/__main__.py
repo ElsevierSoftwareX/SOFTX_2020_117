@@ -42,7 +42,7 @@ from .finesse import kat as katparser
                                   "'nodes': nodes found during cavity tracing, "
                                   "'all': all trace results.")
 @click.option("--powers", type=click.Choice(["dc", "carrier", "tem00"]),
-              multiple=True, help="Show powers at each node in the interferometer. This "
+              multiple=True, help="Show powers (W) at each node in the interferometer. This "
                                   "option can be specified multiple times. The following "
                                   "values are supported: "
                                   "'dc': list dc powers, "
@@ -50,6 +50,8 @@ from .finesse import kat as katparser
                                   "'tem00': list powers in the TEM00 mode.")
 @click.option("--maxtem", type=str, help="Maximum transverse electric mode. Can be either "
               "an integer or 'off'.")
+@click.option("--deriv-h", type=float, help="Step size for numerical differentiation.")
+@click.option("--lambda0", type=str, help="Reference wavelength (m). Supports SI prefixes.")
 @click.option("--ignore-block", "ignored_blocks", multiple=True,
               help="Ignore the specified block. Can be specified multiple times.")
 @click.option("--plot/--no-plot", default=True, show_default=True,
@@ -59,7 +61,7 @@ from .finesse import kat as katparser
 @click.option("--display-graph", is_flag=True, help="Generate and display model node graph.")
 @click.version_option(version=__version__, prog_name="Pykat")
 def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, maxtem,
-        ignored_blocks, plot, save_figure, display_graph):
+        deriv_h, lambda0, ignored_blocks, plot, save_figure, display_graph):
     """Base CLI command group"""
     kat = katparser()
     kat.load(file.name)
@@ -106,6 +108,12 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, m
 
         if maxtem:
             kat.maxtem = maxtem
+        
+        if deriv_h:
+            kat.deriv_h = deriv_h
+
+        if lambda0:
+            kat.lambda0 = lambda0
 
         if trace:
             traceval = 0
