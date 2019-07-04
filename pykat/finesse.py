@@ -634,7 +634,7 @@ class KatRun(object):
             fig.savefig(filename)
 
         if show:
-            pyplot.show(fig)
+            pyplot.show()
             pyplot.ion()
 
         if return_fig:
