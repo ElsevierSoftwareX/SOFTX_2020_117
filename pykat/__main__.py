@@ -18,15 +18,16 @@ from .finesse import kat as katparser
               help="Simulate FILE in Finesse. Can be set to --no-simulate if for example "
               "you only want to display the node graph for the model specified in FILE.")
 @click.option("--xstart", type=float,
-              help="Simulation start value. If specified, this overrides the xaxis start "
+              help="Set simulation start value. If specified, this overrides the xaxis start "
               "value specified in the parsed file.")
 @click.option("--xstop", type=float,
-              help="Simulation stop value. If specified, this overrides the xaxis stop "
+              help="Set simulation stop value. If specified, this overrides the xaxis stop "
               "value specified in the parsed file.")
 @click.option("--xsteps", type=int,
-              help="Number of steps to simulate between --start and --stop. If specified, "
+              help="Set number of steps to simulate between --start and --stop. If specified, "
               "this overrides the number of xaxis steps specified in the parsed file.")
-@click.option("--xscale", type=click.Choice(["lin", "log"]), help="Scaling for the xaxis.")
+@click.option("--xscale", type=click.Choice(["lin", "log"]),
+              help="Set scaling for the xaxis.")
 @click.option("--noxaxis", is_flag=True, default=False, help="Switch off x-axis.")
 @click.option("--trace", type=click.Choice(["tem", "cavity", "mismatch", "beams", "gouy",
                                             "coupling", "modechanges", "nodes", "all"]),
@@ -48,15 +49,15 @@ from .finesse import kat as katparser
                                   "'dc': list dc powers, "
                                   "'carrier': list powers in the f=0 fields, "
                                   "'tem00': list powers in the TEM00 mode.")
-@click.option("--maxtem", type=str, help="Maximum transverse electric mode. Can be either "
+@click.option("--maxtem", type=str, help="Set maximum transverse electric mode. Can be either "
               "an integer or 'off'.")
 @click.option("--phase", type=int, help="Set Gouy phase behaviour.")
 @click.option("--retrace", type=click.Choice(["force", "off"]),
               help="Set retrace behaviour: 'force' recomputes the Gaussian parameters at each "
               "node for every data point, and will trace a cavity even if it is unstable; 'off' "
               "switches off retracing even if it normally would be done.")
-@click.option("--deriv-h", type=float, help="Step size for numerical differentiation.")
-@click.option("--lambda0", type=str, help="Reference wavelength (m). Supports SI prefixes.")
+@click.option("--deriv-h", type=float, help="Set step size for numerical differentiation.")
+@click.option("--lambda0", type=str, help="Set reference wavelength (m). Supports SI prefixes.")
 @click.option("--print-frequencies", is_flag=True, default=False,
               help="Print a table listing all the frequencies used in the simulation: carriers, "
               "modulation sidebands and signal/quantum sidebands.")
@@ -69,7 +70,8 @@ from .finesse import kat as katparser
               help="Display results as figure.")
 @click.option("--save-figure", type=click.File("wb", lazy=False),
               help="Save image of figure to file.")
-@click.option("--display-graph", is_flag=True, help="Generate and display model node graph.")
+@click.option("--display-graph", is_flag=True, help="Generate and display model node graph "
+              "using default system document viewer.")
 @click.option("--save-input", is_flag=True, default=False,
               help="Save generated Finesse input file.")
 @click.option("--save-output", is_flag=True, default=False,
