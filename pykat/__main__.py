@@ -4,9 +4,8 @@ Sean Leavey
 <sean.leavey@ligo.org>
 """
 
-from __future__ import print_function
-
 import sys
+import os
 import numpy as np
 import click
 
@@ -59,18 +58,21 @@ from .finesse import kat as katparser
 @click.option("--save-figure", type=click.File("wb", lazy=False),
               help="Save image of figure to file.")
 @click.option("--display-graph", is_flag=True, help="Generate and display model node graph.")
+@click.option("--save-input", is_flag=True, default=False,
+              help="Save generated Finesse input file.")
+@click.option("--save-output", is_flag=True, default=False,
+              help="Save generated Finesse output file.")
 @click.option("--finesse-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True),
               envvar='FINESSE_DIR', help="Path to directory containing the Finesse 'kat' "
               "executable. If not specified, the environment variable FINESSE_DIR is used.")
 @click.version_option(version=__version__, prog_name="Pykat")
 def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, maxtem,
-        deriv_h, lambda0, ignored_blocks, plot, save_figure, display_graph, finesse_dir):
+        deriv_h, lambda0, ignored_blocks, plot, save_figure, display_graph, save_input,
+        save_output, finesse_dir):
     """Base CLI command group"""
     if finesse_dir is None:
         # Use default as required by kat object.
         finesse_dir = ""
-    else:
-        click.echo("Using kat binary in %s" % finesse_dir)
     kat = katparser(katdir=finesse_dir)
     kat.load(file.name)
     has_xaxis = hasattr(kat, "xaxis") and not noxaxis
@@ -141,10 +143,10 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, m
                 powerval |= powerints[powertype]
             kat.parse("powers %i" % powerval)
 
-        results = kat.run()
+        results = kat.run(save_output=save_output, save_kat=save_input)
 
-        if kat.trace or powers:
-            click.echo(results.raw_output)
+        if (kat.trace or powers) and results.rundata:
+            click.echo(results.rundata)
 
         if has_xaxis and (plot or save_figure is not None):
             results.plot(show=plot, filename=save_figure)
