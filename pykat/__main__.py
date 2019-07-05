@@ -57,6 +57,12 @@ from .finesse import kat as katparser
               "switches off retracing even if it normally would be done.")
 @click.option("--deriv-h", type=float, help="Step size for numerical differentiation.")
 @click.option("--lambda0", type=str, help="Reference wavelength (m). Supports SI prefixes.")
+@click.option("--print-frequencies", is_flag=True, default=False,
+              help="Print a table listing all the frequencies used in the simulation: carriers, "
+              "modulation sidebands and signal/quantum sidebands.")
+@click.option("--print-noises", is_flag=True, default=False,
+              help="Print a list of all the quantum noise sources being considered in the "
+              "simulation and at which components and nodes it is present.")
 @click.option("--ignore-block", "ignored_blocks", multiple=True,
               help="Ignore the specified block. Can be specified multiple times.")
 @click.option("--plot/--no-plot", default=True, show_default=True,
@@ -73,8 +79,8 @@ from .finesse import kat as katparser
               "executable. If not specified, the environment variable FINESSE_DIR is used.")
 @click.version_option(version=__version__, prog_name="Pykat")
 def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, maxtem, phase,
-        retrace, deriv_h, lambda0, ignored_blocks, plot, save_figure, display_graph, save_input,
-        save_output, finesse_dir):
+        retrace, deriv_h, lambda0, print_frequencies, print_noises, ignored_blocks, plot,
+        save_figure, display_graph, save_input, save_output, finesse_dir):
     """Base CLI command group"""
     if finesse_dir is None:
         # Use default as required by kat object.
@@ -93,6 +99,9 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, m
         nodegraph.view_pdf()
 
     if simulate:
+        # Default flag for showing simulation output. Overridden below as necessary.
+        output_to_show = False
+
         if xstart is not None or xstop is not None or xsteps is not None or xscale is not None:
             if not has_xaxis:
                 click.echo("Limits can only be overridden when an xaxis is defined in FILE and "
@@ -132,6 +141,12 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, m
             kat.deriv_h = deriv_h
         if lambda0 is not None:
             kat.lambda0 = lambda0
+        if print_frequencies:
+            kat.parse("frequency")
+            output_to_show = True
+        if print_noises:
+            kat.parse("printnoises")
+            output_to_show = True
 
         if trace:
             traceval = 0
@@ -143,20 +158,22 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, m
                 for tracetype in trace:
                     traceval |= traceints[tracetype]
             kat.trace = traceval
-        
+            output_to_show = True
+
         if powers:
             powerval = 0
             powerints = {"dc": 1, "carrier": 2, "tem00": 4}
             for powertype in powers:
                 powerval |= powerints[powertype]
             kat.parse("powers %i" % powerval)
+            output_to_show = True
 
         results = kat.run(save_output=save_output, save_kat=save_input)
 
-        if (kat.trace or powers) and results.rundata:
+        if output_to_show and results.rundata:
             click.echo(results.rundata)
 
         if has_xaxis and (plot or save_figure is not None):
             results.plot(show=plot, filename=save_figure)
-        elif not kat.trace and not powers and not display_graph:
+        elif not output_to_show and not display_graph:
             click.echo("No output requested.")
