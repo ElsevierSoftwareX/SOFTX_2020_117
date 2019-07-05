@@ -15,7 +15,8 @@ from .finesse import kat as katparser
 @click.command(help="Python interface and tools for FINESSE")
 @click.argument("file", type=click.File())
 @click.option("--simulate/--no-simulate", is_flag=True, default=True,
-              help="Simulate FILE.")
+              help="Simulate FILE in Finesse. Can be set to --no-simulate if for example "
+              "you only want to display the node graph for the model specified in FILE.")
 @click.option("--xstart", type=float,
               help="Simulation start value. If specified, this overrides the xaxis start "
               "value specified in the parsed file.")
@@ -49,6 +50,11 @@ from .finesse import kat as katparser
                                   "'tem00': list powers in the TEM00 mode.")
 @click.option("--maxtem", type=str, help="Maximum transverse electric mode. Can be either "
               "an integer or 'off'.")
+@click.option("--phase", type=int, help="Set Gouy phase behaviour.")
+@click.option("--retrace", type=click.Choice(["force", "off"]),
+              help="Set retrace behaviour: 'force' recomputes the Gaussian parameters at each "
+              "node for every data point, and will trace a cavity even if it is unstable; 'off' "
+              "switches off retracing even if it normally would be done.")
 @click.option("--deriv-h", type=float, help="Step size for numerical differentiation.")
 @click.option("--lambda0", type=str, help="Reference wavelength (m). Supports SI prefixes.")
 @click.option("--ignore-block", "ignored_blocks", multiple=True,
@@ -66,8 +72,8 @@ from .finesse import kat as katparser
               envvar='FINESSE_DIR', help="Path to directory containing the Finesse 'kat' "
               "executable. If not specified, the environment variable FINESSE_DIR is used.")
 @click.version_option(version=__version__, prog_name="Pykat")
-def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, maxtem,
-        deriv_h, lambda0, ignored_blocks, plot, save_figure, display_graph, save_input,
+def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, maxtem, phase,
+        retrace, deriv_h, lambda0, ignored_blocks, plot, save_figure, display_graph, save_input,
         save_output, finesse_dir):
     """Base CLI command group"""
     if finesse_dir is None:
@@ -116,13 +122,15 @@ def cli(file, simulate, xstart, xstop, xsteps, xscale, noxaxis, trace, powers, m
                            err=True)
                 sys.exit(1)
 
-        if maxtem:
+        if maxtem is not None:
             kat.maxtem = maxtem
-        
-        if deriv_h:
+        if phase is not None:
+            kat.phase = phase
+        if retrace is not None:
+            kat.retrace = retrace
+        if deriv_h is not None:
             kat.deriv_h = deriv_h
-
-        if lambda0:
+        if lambda0 is not None:
             kat.lambda0 = lambda0
 
         if trace:
