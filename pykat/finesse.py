@@ -2262,8 +2262,6 @@ class kat(object):
             path = os.path.split(katfile.name)[0]
             outfile = root[0] + ".out"
 
-            pb.finish()
-
             if self.verbose: print("Used Finesse %s at %s" % (r.katVersion, r.katPath))
 
             traceData = None
