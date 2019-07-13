@@ -6,3 +6,5 @@ h5py
 pandas
 matplotlib
 tabulate
+click >= 7.0
+graphviz
