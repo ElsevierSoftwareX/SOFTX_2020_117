@@ -981,11 +981,15 @@ class ADV_IFO(IFO):
         sigs.append(kat1.IFO.POW_BS.add_signal())
         sigs.append(kat1.IFO.POW_X.add_signal())
         sigs.append(kat1.IFO.POW_Y.add_signal())
+        if kat1.IFO.isSRC:
+            sigs.append(kat1.IFO.B1p.add_signal())
+
+        nsigs = len(sigs)
         kat1.parse('noxaxis\nyaxis abs')
         run = True
-        P_old = np.zeros([2,3], dtype=float) + 1e-9
-        P = np.zeros(3, dtype=float) + 1e-9
-        rdiff = np.ones([2,3],dtype=float)
+        P_old = np.zeros([2, nsigs], dtype=float) + 1e-9
+        P = np.zeros(nsigs, dtype=float) + 1e-9
+        rdiff = np.ones([2, nsigs], dtype=float)
         mxtm = 0
         while run and mxtm <= stop:
             vprint(verbose, mxtm, ": ")
@@ -1350,6 +1354,7 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
     
     # Useful signals
     kat.IFO.B1   = Output(kat.IFO, "B1", "nB1")
+    kat.IFO.B1p = Output(kat.IFO, "B1", "nSR2")
 
     kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", "f1", phase = 174.75)
     kat.IFO.B2_f2 = Output(kat.IFO, "B2_f2", "nB2", "f2", phase = 49.94)
@@ -1810,7 +1815,7 @@ def compute_thermal_effect(kat, mirror_list, lensing = True, RoC = True):
 
 
     Returns
-    -------
+    -------gi
 
     new_params     - Dictionary with the new parameter values. E.g., {'CPN_TL': 1000, 'NI': -1700}
                      would mean that the focal length of the new compund CP+NI lens should be set
