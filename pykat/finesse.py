@@ -365,16 +365,22 @@ class KatRun(object):
     def __init__(self):
         self._unfreeze()
         self.runtime = None
+        self.save_input = False
+        self.save_output = False
         self.StartDateTime = datetime.datetime.now()
         self.x = None
-        self.stdout = None
+        self.__stdout = None
         self.stderr = None
+        self.__rundata = None
         self.runDateTime = None
         self.y = None
         self.xlabel = None
         self.ylabels = None
+        self.infile = None
+        self.outfile = None
         self.katScript = None
         self.katVersion = None
+        self.katPath = None
         self.yaxis = None
         self._freeze()
 
@@ -634,11 +640,36 @@ class KatRun(object):
             fig.savefig(filename)
 
         if show:
-            pyplot.show(fig)
+            pyplot.show()
             pyplot.ion()
 
         if return_fig:
             return fig
+
+    @property
+    def stdout(self):
+        """Standard output from Finesse."""
+        return self.__stdout
+    
+    @stdout.setter
+    def stdout(self, stdout):
+        self.__stdout = stdout
+        # Extract run data from stdout.
+
+        # Remove everything above the second occurrance of a line with
+        # 72 dashes (the bottom of the Finesse banner).
+        rundata = stdout.split("-" * 72)
+        if len(rundata) <= 2:
+            # No dashes found - nothing to do.
+            rundata = ""
+        else:
+            rundata = "".join(rundata[2:])
+        self.__rundata = rundata
+
+    @property
+    def rundata(self):
+        """Contents of stdout with the Finesse banner removed."""
+        return self.__rundata
 
     def saveKatRun(self, filename):
         with open(filename,'w') as outfile:
@@ -1030,6 +1061,7 @@ class kat(object):
         self.deriv_h = None
         self.scale = None
         self.__trace = None
+        self.__powers = None
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = False
@@ -1204,6 +1236,11 @@ class kat(object):
             self.__maxtem = -1
         else:
             self.__maxtem = int(value)
+
+    @property
+    def powers(self): return self.__powers
+    @powers.setter
+    def powers(self,value): self.__powers = int(value)
 
     @property
     def phase(self): return self.__phase
@@ -1671,6 +1708,11 @@ class kat(object):
                     elif(first == "lambda"):
                         v = line.split()
                         self.lambda0 = SIfloat(v[-1])
+                    elif(first == "powers"):
+                        v = line.split()
+                        if len(v) != 2:
+                            raise pkex.BasePyKatException("powers command `{0}` is incorrect.".format(line))
+                        self.powers = int(v[1])
                     elif(first == "yaxis"):
                         v = line.split(" ", 1)
                         self.yaxis = v[-1]
@@ -2065,6 +2107,8 @@ class kat(object):
             r.katScript = "".join(self.generateKatScript())
             r.katScript += "time\n"
 
+            r.katPath = kat_exec
+
             if (plot==None):
                 # ensure we don't do any plotting. That should be handled
                 # by user themselves
@@ -2081,7 +2125,6 @@ class kat(object):
                 katfile = open( filepath, 'w' )
 
             katfile.writelines(r.katScript)
-
             katfile.flush()
 
             pipe_name = katfile.name + str(uuid.uuid4())
@@ -2164,7 +2207,7 @@ class kat(object):
                             (tag, line) = v
 
                             if tag == "version":
-                                r.katVersion = line
+                                r.katVersion = line.strip()
                             elif tag == "progress" and self.verbose:
                                 var = line.split("\t")
 
@@ -2218,6 +2261,8 @@ class kat(object):
             base = os.path.basename(root[0])
             path = os.path.split(katfile.name)[0]
             outfile = root[0] + ".out"
+
+            if self.verbose: print("Used Finesse %s at %s" % (r.katVersion, r.katPath))
 
             traceData = None
 
@@ -2275,20 +2320,6 @@ class kat(object):
                         finally:
                             ifile.close()
 
-
-            if save_output:
-                newoutfile = "{0}.out".format(base)
-
-                cwd = os.path.os.getcwd()
-                newoutfile = os.path.join(cwd,newoutfile)
-
-                if os.path.isfile(newoutfile):
-                    os.remove(newoutfile)
-
-                os.rename(outfile, newoutfile)
-
-                if self.verbose: print ("\nOutput data saved to '{0}'".format(newoutfile))
-
             # can't see why this check is needed, causes problems when only detectors
             # not parsed as pykat objects are used
             #if len(self.detectors.keys()) > 0:
@@ -2307,6 +2338,25 @@ class kat(object):
                 r.ylabels = [s.strip() for s in hdr[1:]]
                 #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf
 
+            r.save_output = save_output
+
+            if save_output:
+                newoutfile = "{0}.out".format(base)
+
+                cwd = os.path.os.getcwd()
+                newoutfile = os.path.join(cwd,newoutfile)
+
+                if os.path.isfile(newoutfile):
+                    os.remove(newoutfile)
+
+                os.rename(outfile, newoutfile)
+
+                r.outfile = newoutfile
+
+                if self.verbose: print("Output data saved to '{0}'".format(newoutfile))
+
+            r.save_input = save_kat
+
             if save_kat:
                 if kat_name is None:
                     kat_name = "pykat_output"
@@ -2319,7 +2369,9 @@ class kat(object):
 
                 os.rename(katfile.name, newkatfile)
 
-                if self.verbose: print ("Kat file saved to '{0}'".format(newkatfile))
+                r.infile = newkatfile
+
+                if self.verbose: print("Kat file saved to '{0}'".format(newkatfile))
 
             katfile.close()
             perfData = []
@@ -2770,6 +2822,7 @@ class kat(object):
                 pkex.BasePyKatException("Couldn't understand vacuum input list")
 
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
+        if self.powers != None: out.append("powers {0}\n".format(self.powers))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.trace != None: out.append("trace {0}\n".format(self.trace))
         if self.maxtem != None:

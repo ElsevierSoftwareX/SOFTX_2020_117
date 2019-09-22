@@ -20,6 +20,9 @@ requirements:
     - flask >=0.10.1
     - finesse >=2.2
     - h5py
+    - graphviz
+    - python-graphviz
+    - click
   build:
     - python
     - setuptools

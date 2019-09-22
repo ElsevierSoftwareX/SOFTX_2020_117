@@ -221,7 +221,7 @@ class ALIGO_IFO(IFO):
                 mirror.Ix = None
                 mirror.rxmech = None
             
-            return old_attr
+        return old_attr
 
     def restore_susp(self, old_attr, z=True, pitch=True, yaw=True):
         """

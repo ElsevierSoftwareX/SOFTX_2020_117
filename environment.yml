@@ -1,4 +1,4 @@
-name: pykat_test
+name: pykatcli
 channels:
 - gwoptics
 - defaults
@@ -11,3 +11,4 @@ dependencies:
 - pandas
 - matplotlib
 - finesse=2.2
+- ipython
