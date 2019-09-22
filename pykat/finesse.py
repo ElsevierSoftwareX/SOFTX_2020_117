@@ -2804,7 +2804,7 @@ class kat(object):
 
         if self.vacuum != None:
 
-            if isinstance(self.vacuum, collections.Container):
+            if isinstance(self.vacuum, collections.abc.Container):
                 objs = []
 
                 if len(self.vacuum) > 0:
