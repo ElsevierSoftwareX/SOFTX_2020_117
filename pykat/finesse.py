@@ -62,6 +62,10 @@ except ImportError:
     # Python 3
     from itertools import zip_longest as izip_longest
 
+try:
+    Container = collections.Container
+except ImportError:
+    Container = collections.abc.Container
 
 try:
     # Add exception in Python 2
@@ -2804,7 +2808,7 @@ class kat(object):
 
         if self.vacuum != None:
 
-            if isinstance(self.vacuum, collections.abc.Container):
+            if isinstance(self.vacuum, Container):
                 objs = []
 
                 if len(self.vacuum) > 0:
