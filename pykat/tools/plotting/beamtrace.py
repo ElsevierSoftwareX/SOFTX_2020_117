@@ -4,6 +4,14 @@ import copy
 import numpy as np
 
 def plot_beam_trace(_kat, from_node, to_node):
+    """Plots the beam radius between two nodes.
+
+    Args:
+        _kat (pykat.finesse.kat): The kat object containing the parsed katcode
+        from_node (str): Node at which to start plotting
+        to_node (str): Node to end plotting
+
+    """
     import pylab
     
     if _kat == None:
