@@ -218,6 +218,8 @@ class lock(Command):
         
     @property
     def offset(self): return self.__offset
+    @offset.setter
+    def offset(self, value): self.__offset = SIfloat(value)
     
     @staticmethod
     def parseFinesseText(line, kat):
