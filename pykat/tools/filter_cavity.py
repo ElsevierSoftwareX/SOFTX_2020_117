@@ -45,5 +45,5 @@ def filter_cavity_parameters(P, lambda0, m, Titm, Tsrm, L, loss=0):
     delta = np.sqrt(1 - epsilon) * gamma_f
 
     phi = -delta / FSR * 180.0
-    T = 2.0 * gamma_f / FSR * 2 * np.pi
+    T = 2.0 * gamma_f / FSR * 2 * np.pi - loss
     return phi, T
