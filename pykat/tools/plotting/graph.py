@@ -5,8 +5,6 @@ Based on node_graph project by Sebastian Steinlechner: https://github.com/sestei
 
 import tempfile
 from ...components import laser, space
-from graphviz import Digraph
-
 
 class NodeGraph(object):
     """Pykat node graph plotter."""
@@ -27,6 +25,7 @@ class NodeGraph(object):
                    graph_font_size=8, component_color="LightSkyBlue", laser_color="Orange",
                    space_color="MediumSlateBlue", detector_color="YellowGreen"):
         """Create Graphviz node graph"""
+        from graphviz import Digraph
         graph = Digraph(engine=engine)
         graph.attr("node", style=node_style, fontname=node_font, fontsize=str(node_font_size))
         graph.attr("edge", arrowhead=edge_arrowhead)
