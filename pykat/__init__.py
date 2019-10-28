@@ -11,7 +11,7 @@ try:
 except (NameError, ImportError) as ex:
     __version__ = "develop"
 
-__min_req_finesse__ = 2.2
+__min_req_finesse__ = '2.2.11'
 
 # This flag is used to switch on the gui features in pkat at import time
 USE_GUI = False
@@ -65,11 +65,15 @@ except pkex.MissingFinesse:
 	warn(msg)
 	kat = nokat()
 	v = str(__min_req_finesse__)
-if float(v.split('-')[0]) < __min_req_finesse__:
-    raise pkex.BasePyKatException("Pykat %s requires Finesse version %s or higher. You have have %s" % (__version__ ,
+    
+version_found    = v.split('-')[0].split('.')
+version_required = __min_req_finesse__.split('-')[0].split('.')
+
+for a,b in zip(version_found, version_required):
+    if a < b:
+        raise pkex.BasePyKatException("Pykat %s requires Finesse version %s or higher. You have have %s" % (__version__ ,
                                                                                               str(__min_req_finesse__),
                                                                                               v))
-
 def info():
     print("Pykat version: " + __version__)
     print("Pykat loaded from: " + __file__)
