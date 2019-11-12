@@ -10,7 +10,9 @@ text.usetex : False
 
 # AXES
 axes.grid : True
-axes.formatter.useoffset : False
+axes.formatter.useoffset : True
+axes.formatter.offset_threshold : 4
+axes.formatter.use_mathtext : True
 axes.formatter.use_locale : False
 axes.prop_cycle : cycler('color', ['b', 'r', 'k', 'g', 'c', 'm', 'y'])
 axes.axisbelow : True
