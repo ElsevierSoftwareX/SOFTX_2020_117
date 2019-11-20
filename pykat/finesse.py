@@ -3013,7 +3013,7 @@ class kat(object):
             # show dialog
             dialog.exec_()
 
-            if len(dialog.selectedFiles()) is 0:
+            if len(dialog.selectedFiles()) == 0:
                 # no filename specified
                 return
 
