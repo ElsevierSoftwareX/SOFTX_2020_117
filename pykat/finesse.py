@@ -676,12 +676,12 @@ class KatRun(object):
         return self.__rundata
 
     def saveKatRun(self, filename):
-        with open(filename,'w') as outfile:
+        with open(filename, 'wb') as outfile:
             pickle.dump(self, outfile)
 
     @staticmethod
     def loadKatRun(filename):
-        with open(filename,'r') as infile:
+        with open(filename, 'rb') as infile:
             return pickle.load(infile)
 
     def get(self, value): return self[value]
