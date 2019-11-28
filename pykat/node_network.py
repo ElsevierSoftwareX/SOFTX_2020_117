@@ -739,9 +739,9 @@ class Node(object):
                 raise pkex.BasePyKatException("Node {0} is not connected to {1}".format(self.name, self.__q_comp.name))
     
             if self.__q_x == self.__q_y:
-                rtn.append("gauss* {name} {comp} {node} {w0:.15g} {z:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0=self.__q_x.z, z=self.__q_x.zr))
+                rtn.append("gauss* {name} {comp} {node} {w0:.15g} {z:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0=self.__q_x.w0, z=self.__q_x.z))
             else:
-                rtn.append("gauss* {name} {comp} {node} {w0x:.15g} {zx:.15g} {w0y:.15g} {zy:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0x=self.__q_x.z, zx=self.__q_x.zr, w0y=self.__q_y.z, zy=self.__q_y.zr))
+                rtn.append("gauss* {name} {comp} {node} {w0x:.15g} {zx:.15g} {w0y:.15g} {zy:.15g}".format(name=name, node=self.name, comp=self.__q_comp.name, w0x=self.__q_x.w0, zx=self.__q_x.z, w0y=self.__q_y.w0, zy=self.__q_y.z))
             
         return rtn
         
