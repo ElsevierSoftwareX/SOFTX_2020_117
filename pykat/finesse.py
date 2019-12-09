@@ -2022,7 +2022,7 @@ class kat(object):
             if self.__finesse_dir is None or len(self.__finesse_dir.strip())==0:
                 raise pkex.MissingFinesseEnvVar()
         elif find_executable('kat') is not None:
-            self.__finesse_dir = find_executable('kat').rstrip("kat")
+            self.__finesse_dir = os.path.dirname(find_executable('kat'))
         else:
             raise pkex.MissingFinesse()
 
