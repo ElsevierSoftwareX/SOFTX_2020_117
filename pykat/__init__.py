@@ -11,7 +11,7 @@ try:
 except (NameError, ImportError) as ex:
     __version__ = "develop"
 
-__min_req_finesse__ = '2.2.11'
+__min_req_finesse__ = '2.3.0'
 
 # This flag is used to switch on the gui features in pkat at import time
 USE_GUI = False
