@@ -3258,7 +3258,7 @@ class kat(object):
                 # remove any mutliple whitespace
                 line = " ".join(line.split())
                 # add to a list all the positions of any inline comment markers
-                i = [line.find('#'), line.find('\\')]
+                i = [line.find('#'), line.find('%'), line.find('\\')]
                 #i = filter(lambda a: a != -1, i)
                 i = [a for a in i if a != -1]
 
