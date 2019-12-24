@@ -441,7 +441,7 @@ class KatRun(object):
                    yaxis=None, legend=True, loc=0, title=None, styles=None,
                    ylabel=None, y2label=None, xlabel=None, x2label=None,
                    xlim=None, x2lim=None, ylim=None, y2lim=None, return_fig=False,
-                   xscale=None, y1scale=None, y2scale=None, grid=True):
+                   xscale=None, y1scale=None, y2scale=None, grid=False):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
