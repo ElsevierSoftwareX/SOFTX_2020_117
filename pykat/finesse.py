@@ -441,7 +441,7 @@ class KatRun(object):
                    yaxis=None, legend=True, loc=0, title=None, styles=None,
                    ylabel=None, y2label=None, xlabel=None, x2label=None,
                    xlim=None, x2lim=None, ylim=None, y2lim=None, return_fig=False,
-                   xscale=None, y1scale=None, y2scale=None):
+                   xscale=None, y1scale=None, y2scale=None, grid=False):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
@@ -470,6 +470,7 @@ class KatRun(object):
                                 of length 2.
             xscale, y1scale     SI scale either axes. See pykat.SI dictionary for possible
             y2scale:            values
+            grid:               True | False - whether to display a grid.
         """
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
@@ -615,6 +616,8 @@ class KatRun(object):
 
             if title is not None:
                 ax1.set_title(title, fontsize=font_label_size)
+            
+            ax1.grid(grid)
 
             #plt.subplot(2,1,2)
             ax2.set_xlabel(x2label, fontsize=font_label_size)
@@ -623,6 +626,8 @@ class KatRun(object):
             ax2.set_xlim(x2lim[0], x2lim[1])
             if y2lim is not None:
                 ax2.set_ylim(y2lim[0],y2lim[1])
+            
+            ax2.grid(grid)
 
         else:
             ax1.set_xlabel(xlabel, fontsize=font_label_size)
@@ -633,6 +638,8 @@ class KatRun(object):
                 ax1.set_title(title, fontsize=font_label_size)
             if ylim is not None:
                 ax1.set_ylim(ylim[0],ylim[1])
+
+            ax1.grid(grid)
 
         pyplot.margins(0, 0.05)
         pyplot.tight_layout()
@@ -3271,7 +3278,7 @@ class kat(object):
                 # remove any mutliple whitespace
                 line = " ".join(line.split())
                 # add to a list all the positions of any inline comment markers
-                i = [line.find('#'), line.find('\\')]
+                i = [line.find('#'), line.find('%'), line.find('\\')]
                 #i = filter(lambda a: a != -1, i)
                 i = [a for a in i if a != -1]
 
