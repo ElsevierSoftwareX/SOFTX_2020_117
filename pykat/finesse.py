@@ -1051,6 +1051,7 @@ class kat(object):
         self.printmatrix = None
         self.__variables = {}
         self.IFO = None
+        self.multisig = False
         self.mf = []
 
         self.data = {}
@@ -1664,6 +1665,8 @@ class kat(object):
                         obj = pykat.detectors.ad.parseFinesseText(line)
                     elif(first[0:2] == "xd"):
                         obj = pykat.detectors.xd.parseFinesseText(line)
+                    elif(first[0:3] == "tf3"):
+                        obj = pykat.commands.tf3.parseFinesseText(line)
                     elif(first[0:3] == "tf2"):
                         obj = pykat.commands.tf2.parseFinesseText(line)
                     elif(first[0:2] == "tf"):
@@ -1709,6 +1712,8 @@ class kat(object):
                         after_process[0].append((line, self.__currentTag))
                     elif(first == "noxaxis"):
                         self.noxaxis = True
+                    elif(first == 'multisig'):
+                        self.multisig = True
                     elif(first == "lambda"):
                         v = line.split()
                         self.lambda0 = SIfloat(v[-1])
@@ -2264,7 +2269,6 @@ class kat(object):
             root = os.path.splitext(katfile.name)
             base = os.path.basename(root[0])
             path = os.path.split(katfile.name)[0]
-            outfile = root[0] + ".out"
 
             if self.verbose: print("Used Finesse %s at %s" % (r.katVersion, r.katPath))
 
@@ -2324,41 +2328,6 @@ class kat(object):
                         finally:
                             ifile.close()
 
-            # can't see why this check is needed, causes problems when only detectors
-            # not parsed as pykat objects are used
-            #if len(self.detectors.keys()) > 0:
-
-            if hasattr(self, "x2axis") and self.noxaxis == False:
-                [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
-
-                r.xlabel = hdr[0]
-                r.ylabel = hdr[1]
-                r.zlabels = [s.strip() for s in hdr[2:]]
-                #r.zlabels = map(str.strip, hdr[2:])
-            else:
-                [r.x, r.y, hdr] = self.readOutFile(outfile)
-
-                r.xlabel = hdr[0]
-                r.ylabels = [s.strip() for s in hdr[1:]]
-                #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf
-
-            r.save_output = save_output
-
-            if save_output:
-                newoutfile = "{0}.out".format(base)
-
-                cwd = os.path.os.getcwd()
-                newoutfile = os.path.join(cwd,newoutfile)
-
-                if os.path.isfile(newoutfile):
-                    os.remove(newoutfile)
-
-                os.rename(outfile, newoutfile)
-
-                r.outfile = newoutfile
-
-                if self.verbose: print("Output data saved to '{0}'".format(newoutfile))
-
             r.save_input = save_kat
 
             if save_kat:
@@ -2377,10 +2346,51 @@ class kat(object):
 
                 if self.verbose: print("Kat file saved to '{0}'".format(newkatfile))
 
+            def _process_out_file(r, outfile):
+                if r.save_output:
+                    newoutfile = "{0}.out".format(base)
+
+                    cwd = os.path.os.getcwd()
+                    newoutfile = os.path.join(cwd,newoutfile)
+
+                    if os.path.isfile(newoutfile):
+                        os.remove(newoutfile)
+
+                    os.rename(outfile, newoutfile)
+
+                    r.outfile = newoutfile
+
+                    if self.verbose: print("Output data saved to '{0}'".format(newoutfile))
+                    
+                if hasattr(self, "x2axis") and self.noxaxis == False:
+                    [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
+
+                    r.xlabel = hdr[0]
+                    r.ylabel = hdr[1]
+                    r.zlabels = [s.strip() for s in hdr[2:]]
+                else:
+                    [r.x, r.y, hdr] = self.readOutFile(outfile)
+
+                    r.xlabel = hdr[0]
+                    r.ylabels = [s.strip() for s in hdr[1:]]
+
+            r.save_output = save_output
+            
+            if not self.multisig:
+                outfile = root[0] + ".out"
+                _process_out_file(r, outfile)
+                rtn = [r]
+            else:
+                multisigs = {_.name for _ in self.signals.targets}
+                rtn = {}
+                
+                for sig in multisigs:
+                    rtn[sig] = copy.deepcopy(r)
+                    outfile = root[0] + "." + sig + ".out"
+                    _process_out_file(rtn[sig], outfile)
+                
             katfile.close()
             perfData = []
-
-            rtn = [r]
 
             if sys.version > '3':
                 long = int
@@ -2837,6 +2847,9 @@ class kat(object):
 
         if self.noxaxis == True:
             out.append("noxaxis\n")
+            
+        if self.multisig == True:
+            out.append('multisig\n')
 
         if self.yaxis is not None:
             out.append("yaxis {0}\n".format(self.yaxis))

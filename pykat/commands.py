@@ -527,6 +527,36 @@ class tf2(Command):
         
         return rtn
         
+        
+class tf3(Command):
+            
+    def __init__(self, name, hdf, frequency_dataset, data_dataset):
+        Command.__init__(self, name, False)
+        self.hdf = hdf
+        self.frequency_dataset = frequency_dataset
+        self.data_dataset = data_dataset
+        self._freeze()
+    
+    @staticmethod
+    def parseFinesseText(text):
+        values = text.split()
+        
+        if len(values) != 5:
+            print(values)
+            raise pkex.BasePyKatException("Transfer function Finesse code format incorrect '{0}'".format(text))
+
+        _tf = tf3(*values[1:])
+        
+        return _tf
+        
+    def getFinesseText(self):
+        rtn = "tf3 {name} {hdf} {fds} {dds} ".format(name=self.name,
+                                                     hdf=self.hdf,
+                                                     fds=self.frequency_dataset,
+                                                     dds=self.data_dataset)
+        return rtn
+        
+        
 class xaxis(Command):
     """
     The xaxis object is a unique object to each pykat.finesse.kat instance. It provides
