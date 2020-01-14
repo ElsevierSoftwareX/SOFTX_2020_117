@@ -882,6 +882,8 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  "nSRM2",  "f2", phase=14)
     kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", "nSRM2", "f36M", phase=14)
 
+    kat.IFO.AS_A_f2  = Output(kat.IFO, "AS_A_f2",  "nAS_A", "f2", phase=20)
+    
     kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nITMX2")
@@ -947,7 +949,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     DSOFT_factors[ITMS] *= -1
 
     kat.IFO.CHARD_P = DOF(kat.IFO, "CHARD_P", None , None, cav_mirrors, CHARD_factors, 1, sigtype="pitch")
-    kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", None , None, cav_mirrors, DHARD_factors, 1, sigtype="pitch")
+    kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", kat.IFO.AS_A_f2, 'Q', cav_mirrors, DHARD_factors, 1, sigtype="pitch")
     kat.IFO.CSOFT_P = DOF(kat.IFO, "CSOFT_P", None , None, cav_mirrors, CSOFT_factors, 1, sigtype="pitch")
     kat.IFO.DSOFT_P = DOF(kat.IFO, "DSOFT_P", None , None, cav_mirrors, DSOFT_factors, 1, sigtype="pitch")
     kat.IFO.PRM_P   = DOF(kat.IFO, "PRM_P"  , None , None, ["PRM", "PRMAR"], [1,1], 1, sigtype="pitch")
