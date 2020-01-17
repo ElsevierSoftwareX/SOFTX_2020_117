@@ -2072,7 +2072,7 @@ class kat(object):
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017
 
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None,
-            getTraceData=False, rethrowExceptions=False, usePipe=True, kat_binary="kat"):
+            getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=True, kat_binary="kat"):
         """
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
@@ -2087,7 +2087,9 @@ class kat(object):
         kat_name (string) - name of kat file if needed, will be randomly generated otherwise
 
         cmd_args (list of strings) - command line flags to pass to FINESSE
-
+        
+        binary_output (bool) - If true, it asks Finesse to pass data to Pykat in a binary format.
+        
         getTraceData (bool) - If true a list of dictionaries is returned along with the
                             output file. Each dictionary is the result of the beam tracing
                             that Finesse performs, the keys are the node names and the values
@@ -2152,7 +2154,10 @@ class kat(object):
 
             if self.__time_code:
                 cmd.append('--perf-timing')
-
+            
+            if binary_output:
+                cmd.append('-binary-output')
+                
             if cmd_args != None:
                 cmd.extend(cmd_args)
 
@@ -2370,13 +2375,13 @@ class kat(object):
                     if self.verbose: print("Output data saved to '{0}'".format(newoutfile))
                     
                 if hasattr(self, "x2axis") and self.noxaxis == False:
-                    [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
+                    [r.x, r.y, r.z, hdr] = self.readOutFile(outfile, binary_output)
 
                     r.xlabel = hdr[0]
                     r.ylabel = hdr[1]
                     r.zlabels = [s.strip() for s in hdr[2:]]
                 else:
-                    [r.x, r.y, hdr] = self.readOutFile(outfile)
+                    [r.x, r.y, hdr] = self.readOutFile(outfile, binary_output)
 
                     r.xlabel = hdr[0]
                     r.ylabels = [s.strip() for s in hdr[1:]]
@@ -2388,7 +2393,7 @@ class kat(object):
                 _process_out_file(r, outfile)
                 rtn = [r]
             else:
-                multisigs = {_.name for _ in self.signals.targets}
+                multisigs = sorted({_.name for _ in self.signals.targets})
                 rtn = {}
                 
                 for sig in multisigs:
@@ -2663,47 +2668,67 @@ class kat(object):
         finally:
             self._freeze()
 
-    def readOutFile(self, filename):
-
-        with open(filename,'r') as outfile:
-            # read first to lines to get to header line
-            outfile.readline()
-            outfile.readline()
-
-            hdr = outfile.readline().replace('%','').replace('\n','').split(',')
-
-        data = np.loadtxt(filename, comments='%',skiprows=4)
-
-        # convert 1D arrays into 2D ones for simpler selection
-        if len(data.shape) == 1:
-            data = np.array([data])
-
-        if hasattr(self, "x2axis") and self.noxaxis == False:
-            # need to parse 2D outputs slightly different as they are effectively 2D matrices
-            # written in linear form
-            x = data[0::(1+self.x2axis.steps),0].squeeze()
-            y = data[0:(1+self.x2axis.steps),1]
-            # get rows and columns lined up so that we can reshape a single column of all x/y data
-            # into a matrix
-            z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps).squeeze()
-
-            # ensure we have a shape (num outputs, x, y)
-            if len(z.shape) == 2:
-                z = z.reshape(1, z.shape[0], z.shape[1])
-
-            # once you do this the data for y and x axes need swapping
-            z = z.swapaxes(1,2)
-
-            return [x, y, z, hdr]
+    def readOutFile(self, filename, binary_format=False):
+        if binary_format:
+            with open(filename,'rb') as outfile:
+                binary = outfile.read()
+                data_split = binary.split(b'\n', maxsplit=4)  
+                data = np.frombuffer(data_split[-1], dtype=np.float64)
+                
+                dims = data_split[1].strip().split(b',')[1].strip().split()
+                assert(dims[0] == b'binary:')
+                dims = [int(_) for _ in dims[1:]]
+                data = data.reshape(*dims)
+                
+                hdr = data_split[2].decode().replace('%','').replace('\n','').split(',')
+                
+                if len(data.shape) == 2:
+                    return (data[:, 0], data[:, 1:], hdr)
+                elif len(data.shape) == 3:
+                    return (data[:, 0, 0], data[0, :, 1], data[:, :, 2:].squeeze().T, hdr)
+                else:
+                    raise Exception("Unexpected output dimensions")
+                    
         else:
-            shape_len = len(data.shape)
+            with open(filename,'r') as outfile:
+                # read first to lines to get to header line
+                outfile.readline()
+                outfile.readline()
 
-            rows,cols = data.shape
+                hdr = outfile.readline().replace('%','').replace('\n','').split(',')
 
-            x = data[:,0].squeeze()
-            y = data[:,1:cols]
+            data = np.loadtxt(filename, comments='%',skiprows=4)
 
-            return [x, y, hdr]
+            # convert 1D arrays into 2D ones for simpler selection
+            if len(data.shape) == 1:
+                data = np.array([data])
+
+            if hasattr(self, "x2axis") and self.noxaxis == False:
+                # need to parse 2D outputs slightly different as they are effectively 2D matrices
+                # written in linear form
+                x = data[0::(1+self.x2axis.steps),0].squeeze()
+                y = data[0:(1+self.x2axis.steps),1]
+                # get rows and columns lined up so that we can reshape a single column of all x/y data
+                # into a matrix
+                z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps).squeeze()
+
+                # ensure we have a shape (num outputs, x, y)
+                if len(z.shape) == 2:
+                    z = z.reshape(1, z.shape[0], z.shape[1])
+
+                # once you do this the data for y and x axes need swapping
+                z = z.swapaxes(1,2)
+
+                return [x, y, z, hdr]
+            else:
+                shape_len = len(data.shape)
+
+                rows,cols = data.shape
+
+                x = data[:,0].squeeze()
+                y = data[:,1:cols]
+
+                return [x, y, hdr]
 
     def removeLine(self, fragment) :
         """
