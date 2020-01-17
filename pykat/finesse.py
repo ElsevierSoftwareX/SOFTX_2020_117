@@ -746,6 +746,9 @@ class KatRun2D(object):
         self.katVersion = None
         self.stderr = None
         self.stdout = None
+        self.save_input = False
+        self.save_output = False
+        self.katPath = None
         self._freeze()
 
     def saveKatRun(self, filename):
