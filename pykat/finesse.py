@@ -3746,4 +3746,4 @@ class kat(object):
         return bt
 
 # printing pykat logo on first input
-kat.logo()
+# kat.logo()
