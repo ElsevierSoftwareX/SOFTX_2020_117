@@ -2075,7 +2075,7 @@ class kat(object):
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017
 
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None,
-            getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=True, kat_binary="kat"):
+            getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=False, kat_binary="kat"):
         """
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
