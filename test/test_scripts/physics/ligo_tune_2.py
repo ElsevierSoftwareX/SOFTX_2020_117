@@ -1,8 +1,6 @@
 import pykat
 import numpy as np
 from pykat.ifo import aligo
-from pykat.ifo.aligo import plot
-import matplotlib.pyplot as plt
 import scipy.constants as scc
 
 pykat.init_pykat_plotting()
