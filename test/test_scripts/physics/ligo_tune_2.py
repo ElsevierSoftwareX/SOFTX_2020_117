@@ -3,8 +3,6 @@ import numpy as np
 from pykat.ifo import aligo
 import scipy.constants as scc
 
-pykat.init_pykat_plotting()
-
 QE   = 0.98
 resp = 0.856 # A/W
 
