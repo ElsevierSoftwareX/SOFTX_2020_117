@@ -10,5 +10,5 @@ dependencies:
 - h5py
 - pandas
 - matplotlib
-- finesse=2.2
+- finesse>=2.3.0
 - ipython
