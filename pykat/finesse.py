@@ -3745,5 +3745,10 @@ class kat(object):
 
         return bt
 
-# printing pykat logo on first input
-# kat.logo()
+# Only print logo if in a notebook environment
+try:
+    shell = get_ipython().__class__.__name__
+    if shell == 'ZMQInteractiveShell':
+        kat.logo()
+except NameError:
+    pass
