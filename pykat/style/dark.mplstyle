@@ -16,7 +16,7 @@ axes.formatter.useoffset : True
 axes.formatter.offset_threshold : 4
 axes.formatter.use_mathtext : True
 axes.formatter.use_locale : False
-axes.prop_cycle : cycler('color', ['b', 'r', 'k', 'g', 'c', 'm', 'y'])
+axes.prop_cycle : cycler('color', ['b', 'r', 'w', 'g', 'c', 'm', 'y'])
 axes.axisbelow : True
 axes.xmargin : 0
 
