@@ -86,8 +86,8 @@ class parakat(object):
     on running.
     """
     
-    def __init__(self):
-        self._rc = Client()
+    def __init__(self, **kwargs):
+        self._rc = Client(**kwargs)
         self._lview = self._rc.load_balanced_view()
         self._lview.block = False
         self._results = []
