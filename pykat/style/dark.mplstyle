@@ -1,0 +1,62 @@
+# PATCHES
+patch.facecolor: r
+patch.edgecolor: white
+
+# FONT
+font.size : 11
+font.family : serif
+
+# TEXT
+text.usetex : False
+text.color: white
+
+# AXES
+axes.grid : True
+axes.formatter.useoffset : True
+axes.formatter.offset_threshold : 4
+axes.formatter.use_mathtext : True
+axes.formatter.use_locale : False
+axes.prop_cycle : cycler('color', ['b', 'r', 'w', 'g', 'c', 'm', 'y'])
+axes.axisbelow : True
+axes.xmargin : 0
+
+axes.facecolor: (0, 0, 0, 1)
+axes.edgecolor: white
+axes.labelcolor: white
+
+#TICKS
+xtick.labelsize : 9
+ytick.labelsize : 9
+
+xtick.color: white
+ytick.color: white
+
+# GRIDS
+grid.color: white
+grid.linestyle : :
+grid.linewidth : 0.25
+
+# FIGURES
+figure.titlesize : 12
+figure.figsize : 6, 3.708
+figure.dpi : 96
+figure.facecolor: (0, 0, 0, 1)
+figure.edgecolor: (0, 0, 0, 1)
+
+# LINES
+lines.linewidth : 1.2
+lines.color: white
+
+# IMAGES
+image.cmap : magma
+image.origin : lower
+
+# SAVING FIGURES
+savefig.dpi : 300
+savefig.bbox : tight
+savefig.pad_inches : 0.05
+savefig.facecolor: (0, 0, 0, 1)
+savefig.edgecolor: (0, 0, 0, 1)
+
+pdf.compression : 9
+pdf.fonttype : 42
