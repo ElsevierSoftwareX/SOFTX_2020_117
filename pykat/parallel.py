@@ -44,10 +44,12 @@ def _run(commands, pwd, **kwargs):
     import pykat
 
     kat = pykat.finesse.kat()
-    kat.parseCommands(commands)
-    out = kat.run(rethrowExceptions=True, **kwargs)
+    kat.parse(commands)
     
-    return out
+    try:
+        return kat.run(rethrowExceptions=True, **kwargs)
+    except Exception as ex:
+        return ex
 
 class parakat(object):
     """
