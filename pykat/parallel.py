@@ -37,7 +37,7 @@ import os
 
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 
-def _run(commands, pwd, **kwargs):
+def _run(commands, pwd, IFO, **kwargs):
     import os
     os.chdir(pwd)
     
@@ -45,6 +45,10 @@ def _run(commands, pwd, **kwargs):
 
     kat = pykat.finesse.kat()
     kat.parse(commands)
+    
+    if IFO is not None: # update kat object for IFO to use
+        kat.IFO = IFO
+        kat.IFO._IFO__kat = kat
     
     try:
         return kat.run(rethrowExceptions=True, **kwargs)
@@ -96,7 +100,13 @@ class parakat(object):
     def run(self, kat, func=None, *args, **kwargs):
         if func is None:
             func = _run
-        self._results.append(self._lview.apply_async(func, "".join(kat.generateKatScript()), os.getcwd(), *args, **kwargs))
+        
+        kat.IFO._IFO__kat = None # can't pickle stored kat
+        self._results.append(self._lview.apply_async(func,
+                                                    "".join(kat.generateKatScript()),
+                                                    kat.IFO,
+                                                    os.getcwd(), *args, **kwargs))
+        kat.IFO._IFO__kat = kat
         self._run_count += 1
         
     def getResults(self):

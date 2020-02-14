@@ -1133,7 +1133,7 @@ class IFO(object):
         self.__kat = kat
         self.__tuning_keys = frozenset(make_list_copy(tuning_keys_list))
         self.__tuning_comps = make_list_copy(tunings_components_list[:])
-    
+        
     @property
     def kat(self): return self.__kat
     

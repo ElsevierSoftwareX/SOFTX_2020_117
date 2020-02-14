@@ -2075,7 +2075,7 @@ class kat(object):
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017
 
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None,
-            getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=False, kat_binary="kat"):
+            getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=False, ignore_lockloss=True, kat_binary="kat"):
         """
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
@@ -2104,7 +2104,7 @@ class kat(object):
                             older versions of Finesse.
 
         rethrowExceptions - if true exceptions will be thrown again rather than being excepted and calling sys.exit()
-
+        ignore_lockloss   - When True locklosses are ignored and a warning is shown if verbose is True
         kat_binary        - Name of binary in $FINESSE_DIR to use
         """
         start = time.time()
@@ -2232,6 +2232,12 @@ class kat(object):
 
                             if tag == "version":
                                 r.katVersion = line.strip()
+                            elif tag == "lock_fail":
+                                if not ignore_lockloss:
+                                    raise pkex.LockLossException(line.strip())
+                                else:
+                                    print("\nLock loss ocurred during step {}\n".format(line.strip()))
+                                        
                             elif tag == "progress" and self.verbose:
                                 var = line.split("\t")
 
