@@ -93,8 +93,10 @@ class parakat(object):
         self._results = []
         self._run_count = 0
         
-    def run(self, kat, **kwargs):
-        self._results.append(self._lview.apply_async(_run, "".join(kat.generateKatScript()), os.getcwd(), **kwargs))
+    def run(self, kat, func=None, *args, **kwargs):
+        if func is None:
+            func = _run
+        self._results.append(self._lview.apply_async(func, "".join(kat.generateKatScript()), os.getcwd(), *args, **kwargs))
         self._run_count += 1
         
     def getResults(self):
