@@ -1240,7 +1240,7 @@ class IFO(object):
     
         for i, (target, attr, final) in enumerate(args):
             kat.parse(f"""
-            func LD{i} = ({final}) * $x1
+            func LD{i} = ({final:.15G}) * $x1
             put* {target} {attr} $LD{i}
             """)
 
