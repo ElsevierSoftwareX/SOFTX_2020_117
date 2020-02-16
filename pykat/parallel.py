@@ -101,12 +101,20 @@ class parakat(object):
         if func is None:
             func = _run
         
-        kat.IFO._IFO__kat = None # can't pickle stored kat
+        kat_IFO = None
+        
+        if hasattr(kat, 'IFO'):
+            kat.IFO._IFO__kat = None # can't pickle stored kat
+            kat_IFO = kat.IFO
+            
         self._results.append(self._lview.apply_async(func,
                                                     "".join(kat.generateKatScript()),
-                                                    kat.IFO,
+                                                    kat_IFO,
                                                     os.getcwd(), *args, **kwargs))
-        kat.IFO._IFO__kat = kat
+        
+        if hasattr(kat, 'IFO'):
+            kat.IFO._IFO__kat = kat
+            
         self._run_count += 1
         
     def getResults(self):
