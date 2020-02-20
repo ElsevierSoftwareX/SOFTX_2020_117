@@ -1815,7 +1815,7 @@ def compute_thermal_effect(kat, mirror_list, lensing = True, RoC = True):
 
 
     Returns
-    -------gi
+    -------
 
     new_params     - Dictionary with the new parameter values. E.g., {'CPN_TL': 1000, 'NI': -1700}
                      would mean that the focal length of the new compund CP+NI lens should be set
