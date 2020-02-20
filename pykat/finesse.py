@@ -62,6 +62,10 @@ except ImportError:
     # Python 3
     from itertools import zip_longest as izip_longest
 
+try:
+    Container = collections.Container
+except ImportError:
+    Container = collections.abc.Container
 
 try:
     # Add exception in Python 2
@@ -365,16 +369,22 @@ class KatRun(object):
     def __init__(self):
         self._unfreeze()
         self.runtime = None
+        self.save_input = False
+        self.save_output = False
         self.StartDateTime = datetime.datetime.now()
         self.x = None
-        self.stdout = None
+        self.__stdout = None
         self.stderr = None
+        self.__rundata = None
         self.runDateTime = None
         self.y = None
         self.xlabel = None
         self.ylabels = None
+        self.infile = None
+        self.outfile = None
         self.katScript = None
         self.katVersion = None
+        self.katPath = None
         self.yaxis = None
         self._freeze()
 
@@ -431,7 +441,7 @@ class KatRun(object):
                    yaxis=None, legend=True, loc=0, title=None, styles=None,
                    ylabel=None, y2label=None, xlabel=None, x2label=None,
                    xlim=None, x2lim=None, ylim=None, y2lim=None, return_fig=False,
-                   xscale=None, y1scale=None, y2scale=None):
+                   xscale=None, y1scale=None, y2scale=None, grid=False):
         """
         This will generate a plot for the output data of this particular pykat run.
         It will attempt to generate a plot that shows all the various traces and plots
@@ -460,6 +470,7 @@ class KatRun(object):
                                 of length 2.
             xscale, y1scale     SI scale either axes. See pykat.SI dictionary for possible
             y2scale:            values
+            grid:               True | False - whether to display a grid.
         """
         import matplotlib.pyplot as pyplot
         import pykat.plotting as plt
@@ -605,6 +616,8 @@ class KatRun(object):
 
             if title is not None:
                 ax1.set_title(title, fontsize=font_label_size)
+            
+            ax1.grid(grid)
 
             #plt.subplot(2,1,2)
             ax2.set_xlabel(x2label, fontsize=font_label_size)
@@ -613,6 +626,8 @@ class KatRun(object):
             ax2.set_xlim(x2lim[0], x2lim[1])
             if y2lim is not None:
                 ax2.set_ylim(y2lim[0],y2lim[1])
+            
+            ax2.grid(grid)
 
         else:
             ax1.set_xlabel(xlabel, fontsize=font_label_size)
@@ -624,6 +639,8 @@ class KatRun(object):
             if ylim is not None:
                 ax1.set_ylim(ylim[0],ylim[1])
 
+            ax1.grid(grid)
+
         pyplot.margins(0, 0.05)
         pyplot.tight_layout()
 
@@ -634,19 +651,44 @@ class KatRun(object):
             fig.savefig(filename)
 
         if show:
-            pyplot.show(fig)
+            pyplot.show()
             pyplot.ion()
 
         if return_fig:
             return fig
 
+    @property
+    def stdout(self):
+        """Standard output from Finesse."""
+        return self.__stdout
+    
+    @stdout.setter
+    def stdout(self, stdout):
+        self.__stdout = stdout
+        # Extract run data from stdout.
+
+        # Remove everything above the second occurrance of a line with
+        # 72 dashes (the bottom of the Finesse banner).
+        rundata = stdout.split("-" * 72)
+        if len(rundata) <= 2:
+            # No dashes found - nothing to do.
+            rundata = ""
+        else:
+            rundata = "".join(rundata[2:])
+        self.__rundata = rundata
+
+    @property
+    def rundata(self):
+        """Contents of stdout with the Finesse banner removed."""
+        return self.__rundata
+
     def saveKatRun(self, filename):
-        with open(filename,'w') as outfile:
+        with open(filename, 'wb') as outfile:
             pickle.dump(self, outfile)
 
     @staticmethod
     def loadKatRun(filename):
-        with open(filename,'r') as infile:
+        with open(filename, 'rb') as infile:
             return pickle.load(infile)
 
     def get(self, value): return self[value]
@@ -704,6 +746,9 @@ class KatRun2D(object):
         self.katVersion = None
         self.stderr = None
         self.stdout = None
+        self.save_input = False
+        self.save_output = False
+        self.katPath = None
         self._freeze()
 
     def saveKatRun(self, filename):
@@ -1016,6 +1061,7 @@ class kat(object):
         self.printmatrix = None
         self.__variables = {}
         self.IFO = None
+        self.multisig = False
         self.mf = []
 
         self.data = {}
@@ -1030,6 +1076,7 @@ class kat(object):
         self.deriv_h = None
         self.scale = None
         self.__trace = None
+        self.__powers = None
         self.__phase = None
         self.__maxtem = None
         self.__noxaxis = False
@@ -1204,6 +1251,11 @@ class kat(object):
             self.__maxtem = -1
         else:
             self.__maxtem = int(value)
+
+    @property
+    def powers(self): return self.__powers
+    @powers.setter
+    def powers(self,value): self.__powers = int(value)
 
     @property
     def phase(self): return self.__phase
@@ -1623,6 +1675,8 @@ class kat(object):
                         obj = pykat.detectors.ad.parseFinesseText(line)
                     elif(first[0:2] == "xd"):
                         obj = pykat.detectors.xd.parseFinesseText(line)
+                    elif(first[0:3] == "tf3"):
+                        obj = pykat.commands.tf3.parseFinesseText(line)
                     elif(first[0:3] == "tf2"):
                         obj = pykat.commands.tf2.parseFinesseText(line)
                     elif(first[0:2] == "tf"):
@@ -1668,9 +1722,16 @@ class kat(object):
                         after_process[0].append((line, self.__currentTag))
                     elif(first == "noxaxis"):
                         self.noxaxis = True
+                    elif(first == 'multisig'):
+                        self.multisig = True
                     elif(first == "lambda"):
                         v = line.split()
                         self.lambda0 = SIfloat(v[-1])
+                    elif(first == "powers"):
+                        v = line.split()
+                        if len(v) != 2:
+                            raise pkex.BasePyKatException("powers command `{0}` is incorrect.".format(line))
+                        self.powers = int(v[1])
                     elif(first == "yaxis"):
                         v = line.split(" ", 1)
                         self.yaxis = v[-1]
@@ -1976,7 +2037,7 @@ class kat(object):
             if self.__finesse_dir is None or len(self.__finesse_dir.strip())==0:
                 raise pkex.MissingFinesseEnvVar()
         elif find_executable('kat') is not None:
-            self.__finesse_dir = find_executable('kat').rstrip("kat")
+            self.__finesse_dir = os.path.dirname(find_executable('kat'))
         else:
             raise pkex.MissingFinesse()
 
@@ -2014,7 +2075,7 @@ class kat(object):
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017
 
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None,
-            getTraceData=False, rethrowExceptions=False, usePipe=True, kat_binary="kat"):
+            getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=False, ignore_lockloss=True, kat_binary="kat"):
         """
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
@@ -2029,7 +2090,9 @@ class kat(object):
         kat_name (string) - name of kat file if needed, will be randomly generated otherwise
 
         cmd_args (list of strings) - command line flags to pass to FINESSE
-
+        
+        binary_output (bool) - If true, it asks Finesse to pass data to Pykat in a binary format.
+        
         getTraceData (bool) - If true a list of dictionaries is returned along with the
                             output file. Each dictionary is the result of the beam tracing
                             that Finesse performs, the keys are the node names and the values
@@ -2041,7 +2104,7 @@ class kat(object):
                             older versions of Finesse.
 
         rethrowExceptions - if true exceptions will be thrown again rather than being excepted and calling sys.exit()
-
+        ignore_lockloss   - When True locklosses are ignored and a warning is shown if verbose is True
         kat_binary        - Name of binary in $FINESSE_DIR to use
         """
         start = time.time()
@@ -2065,6 +2128,8 @@ class kat(object):
             r.katScript = "".join(self.generateKatScript())
             r.katScript += "time\n"
 
+            r.katPath = kat_exec
+
             if (plot==None):
                 # ensure we don't do any plotting. That should be handled
                 # by user themselves
@@ -2081,7 +2146,6 @@ class kat(object):
                 katfile = open( filepath, 'w' )
 
             katfile.writelines(r.katScript)
-
             katfile.flush()
 
             pipe_name = katfile.name + str(uuid.uuid4())
@@ -2093,7 +2157,10 @@ class kat(object):
 
             if self.__time_code:
                 cmd.append('--perf-timing')
-
+            
+            if binary_output:
+                cmd.append('-binary-output')
+                
             if cmd_args != None:
                 cmd.extend(cmd_args)
 
@@ -2164,7 +2231,13 @@ class kat(object):
                             (tag, line) = v
 
                             if tag == "version":
-                                r.katVersion = line
+                                r.katVersion = line.strip()
+                            elif tag == "lock_fail":
+                                if not ignore_lockloss:
+                                    raise pkex.LockLossException(line.strip())
+                                else:
+                                    print("\nLock loss ocurred during step {}\n".format(line.strip()))
+                                        
                             elif tag == "progress" and self.verbose:
                                 var = line.split("\t")
 
@@ -2217,7 +2290,8 @@ class kat(object):
             root = os.path.splitext(katfile.name)
             base = os.path.basename(root[0])
             path = os.path.split(katfile.name)[0]
-            outfile = root[0] + ".out"
+
+            if self.verbose: print("Used Finesse %s at %s" % (r.katVersion, r.katPath))
 
             traceData = None
 
@@ -2275,37 +2349,7 @@ class kat(object):
                         finally:
                             ifile.close()
 
-
-            if save_output:
-                newoutfile = "{0}.out".format(base)
-
-                cwd = os.path.os.getcwd()
-                newoutfile = os.path.join(cwd,newoutfile)
-
-                if os.path.isfile(newoutfile):
-                    os.remove(newoutfile)
-
-                os.rename(outfile, newoutfile)
-
-                if self.verbose: print ("\nOutput data saved to '{0}'".format(newoutfile))
-
-            # can't see why this check is needed, causes problems when only detectors
-            # not parsed as pykat objects are used
-            #if len(self.detectors.keys()) > 0:
-
-            if hasattr(self, "x2axis") and self.noxaxis == False:
-                [r.x, r.y, r.z, hdr] = self.readOutFile(outfile)
-
-                r.xlabel = hdr[0]
-                r.ylabel = hdr[1]
-                r.zlabels = [s.strip() for s in hdr[2:]]
-                #r.zlabels = map(str.strip, hdr[2:])
-            else:
-                [r.x, r.y, hdr] = self.readOutFile(outfile)
-
-                r.xlabel = hdr[0]
-                r.ylabels = [s.strip() for s in hdr[1:]]
-                #r.ylabels = map(str.strip, hdr[1:]) // replaced 090415 adf
+            r.save_input = save_kat
 
             if save_kat:
                 if kat_name is None:
@@ -2319,12 +2363,55 @@ class kat(object):
 
                 os.rename(katfile.name, newkatfile)
 
-                if self.verbose: print ("Kat file saved to '{0}'".format(newkatfile))
+                r.infile = newkatfile
 
+                if self.verbose: print("Kat file saved to '{0}'".format(newkatfile))
+
+            def _process_out_file(r, outfile):
+                if r.save_output:
+                    newoutfile = "{0}.out".format(base)
+
+                    cwd = os.path.os.getcwd()
+                    newoutfile = os.path.join(cwd,newoutfile)
+
+                    if os.path.isfile(newoutfile):
+                        os.remove(newoutfile)
+
+                    os.rename(outfile, newoutfile)
+
+                    r.outfile = newoutfile
+
+                    if self.verbose: print("Output data saved to '{0}'".format(newoutfile))
+                    
+                if hasattr(self, "x2axis") and self.noxaxis == False:
+                    [r.x, r.y, r.z, hdr] = self.readOutFile(outfile, binary_output)
+
+                    r.xlabel = hdr[0]
+                    r.ylabel = hdr[1]
+                    r.zlabels = [s.strip() for s in hdr[2:]]
+                else:
+                    [r.x, r.y, hdr] = self.readOutFile(outfile, binary_output)
+
+                    r.xlabel = hdr[0]
+                    r.ylabels = [s.strip() for s in hdr[1:]]
+
+            r.save_output = save_output
+            
+            if not self.multisig:
+                outfile = root[0] + ".out"
+                _process_out_file(r, outfile)
+                rtn = [r]
+            else:
+                multisigs = sorted({_.name for _ in self.signals.targets})
+                rtn = {}
+                
+                for sig in multisigs:
+                    rtn[sig] = copy.deepcopy(r)
+                    outfile = root[0] + "." + sig + ".out"
+                    _process_out_file(rtn[sig], outfile)
+                
             katfile.close()
             perfData = []
-
-            rtn = [r]
 
             if sys.version > '3':
                 long = int
@@ -2590,47 +2677,67 @@ class kat(object):
         finally:
             self._freeze()
 
-    def readOutFile(self, filename):
-
-        with open(filename,'r') as outfile:
-            # read first to lines to get to header line
-            outfile.readline()
-            outfile.readline()
-
-            hdr = outfile.readline().replace('%','').replace('\n','').split(',')
-
-        data = np.loadtxt(filename, comments='%',skiprows=4)
-
-        # convert 1D arrays into 2D ones for simpler selection
-        if len(data.shape) == 1:
-            data = np.array([data])
-
-        if hasattr(self, "x2axis") and self.noxaxis == False:
-            # need to parse 2D outputs slightly different as they are effectively 2D matrices
-            # written in linear form
-            x = data[0::(1+self.x2axis.steps),0].squeeze()
-            y = data[0:(1+self.x2axis.steps),1]
-            # get rows and columns lined up so that we can reshape a single column of all x/y data
-            # into a matrix
-            z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps).squeeze()
-
-            # ensure we have a shape (num outputs, x, y)
-            if len(z.shape) == 2:
-                z = z.reshape(1, z.shape[0], z.shape[1])
-
-            # once you do this the data for y and x axes need swapping
-            z = z.swapaxes(1,2)
-
-            return [x, y, z, hdr]
+    def readOutFile(self, filename, binary_format=False):
+        if binary_format:
+            with open(filename,'rb') as outfile:
+                binary = outfile.read()
+                data_split = binary.split(b'\n', maxsplit=4)  
+                data = np.frombuffer(data_split[-1], dtype=np.float64)
+                
+                dims = data_split[1].strip().split(b',')[1].strip().split()
+                assert(dims[0] == b'binary:')
+                dims = [int(_) for _ in dims[1:]]
+                data = data.reshape(*dims)
+                
+                hdr = data_split[2].decode().replace('%','').replace('\n','').split(',')
+                
+                if len(data.shape) == 2:
+                    return (data[:, 0], data[:, 1:], hdr)
+                elif len(data.shape) == 3:
+                    return (data[:, 0, 0], data[0, :, 1], data[:, :, 2:].squeeze().T, hdr)
+                else:
+                    raise Exception("Unexpected output dimensions")
+                    
         else:
-            shape_len = len(data.shape)
+            with open(filename,'r') as outfile:
+                # read first to lines to get to header line
+                outfile.readline()
+                outfile.readline()
 
-            rows,cols = data.shape
+                hdr = outfile.readline().replace('%','').replace('\n','').split(',')
 
-            x = data[:,0].squeeze()
-            y = data[:,1:cols]
+            data = np.loadtxt(filename, comments='%',skiprows=4)
 
-            return [x, y, hdr]
+            # convert 1D arrays into 2D ones for simpler selection
+            if len(data.shape) == 1:
+                data = np.array([data])
+
+            if hasattr(self, "x2axis") and self.noxaxis == False:
+                # need to parse 2D outputs slightly different as they are effectively 2D matrices
+                # written in linear form
+                x = data[0::(1+self.x2axis.steps),0].squeeze()
+                y = data[0:(1+self.x2axis.steps),1]
+                # get rows and columns lined up so that we can reshape a single column of all x/y data
+                # into a matrix
+                z = data[:,2:].transpose().reshape(data.shape[1]-2, 1+self.xaxis.steps, 1+self.x2axis.steps).squeeze()
+
+                # ensure we have a shape (num outputs, x, y)
+                if len(z.shape) == 2:
+                    z = z.reshape(1, z.shape[0], z.shape[1])
+
+                # once you do this the data for y and x axes need swapping
+                z = z.swapaxes(1,2)
+
+                return [x, y, z, hdr]
+            else:
+                shape_len = len(data.shape)
+
+                rows,cols = data.shape
+
+                x = data[:,0].squeeze()
+                y = data[:,1:cols]
+
+                return [x, y, hdr]
 
     def removeLine(self, fragment) :
         """
@@ -2752,7 +2859,7 @@ class kat(object):
 
         if self.vacuum != None:
 
-            if isinstance(self.vacuum, collections.Container):
+            if isinstance(self.vacuum, Container):
                 objs = []
 
                 if len(self.vacuum) > 0:
@@ -2770,6 +2877,7 @@ class kat(object):
                 pkex.BasePyKatException("Couldn't understand vacuum input list")
 
         if self.scale != None and self.scale !='': out.append("scale {0}\n".format(self.scale))
+        if self.powers != None: out.append("powers {0}\n".format(self.powers))
         if self.phase != None: out.append("phase {0}\n".format(self.phase))
         if self.trace != None: out.append("trace {0}\n".format(self.trace))
         if self.maxtem != None:
@@ -2780,6 +2888,9 @@ class kat(object):
 
         if self.noxaxis == True:
             out.append("noxaxis\n")
+            
+        if self.multisig == True:
+            out.append('multisig\n')
 
         if self.yaxis is not None:
             out.append("yaxis {0}\n".format(self.yaxis))
@@ -2956,7 +3067,7 @@ class kat(object):
             # show dialog
             dialog.exec_()
 
-            if len(dialog.selectedFiles()) is 0:
+            if len(dialog.selectedFiles()) == 0:
                 # no filename specified
                 return
 
@@ -3201,7 +3312,7 @@ class kat(object):
                 # remove any mutliple whitespace
                 line = " ".join(line.split())
                 # add to a list all the positions of any inline comment markers
-                i = [line.find('#'), line.find('\\')]
+                i = [line.find('#'), line.find(' %'), line.find('\\')]
                 #i = filter(lambda a: a != -1, i)
                 i = [a for a in i if a != -1]
 
@@ -3640,5 +3751,10 @@ class kat(object):
 
         return bt
 
-# printing pykat logo on first input
-kat.logo()
+# Only print logo if in a notebook environment
+try:
+    shell = get_ipython().__class__.__name__
+    if shell == 'ZMQInteractiveShell':
+        kat.logo()
+except NameError:
+    pass

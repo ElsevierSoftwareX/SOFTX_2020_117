@@ -193,10 +193,21 @@ class ALIGO_IFO(IFO):
         This function will iterate through the main mirrors
         and remove any suspension settings on them. This can be
         done individuallly or for z, pitch, and yaw.
+        kat code for the original attr commands is returned in a 
+        dict object separated into z, pitch and yaw.
         """
+        
+        old_attr={'z':[],'pitch':[],'yaw':[]}
     
         for mirror in ["ETMY","ETMX","ITMY","ITMX","PRM","PR2","PR3","SRM","SR2","SR3","BS"]:
             mirror = self.kat.components[mirror]
+            
+            if mirror.mass != None: old_attr['z'].append(mirror.mass.getFinesseText()[0])
+            if mirror.zmech != None: old_attr['z'].append(mirror.zmech.getFinesseText()[0])
+            if mirror.Iy != None: old_attr['pitch'].append(mirror.Iy.getFinesseText()[0])
+            if mirror.rymech != None: old_attr['pitch'].append(mirror.rymech.getFinesseText()[0])
+            if mirror.Ix != None: old_attr['yaw'].append(mirror.Ix.getFinesseText()[0])
+            if mirror.rxmech != None: old_attr['yaw'].append(mirror.rxmech.getFinesseText()[0])
         
             if z:
                 mirror.mass = None
@@ -209,6 +220,29 @@ class ALIGO_IFO(IFO):
             if yaw:
                 mirror.Ix = None
                 mirror.rxmech = None
+            
+        return old_attr
+
+    def restore_susp(self, old_attr, z=True, pitch=True, yaw=True):
+        """
+        This is a pair function to fix_mirrors. 
+        It will restore any suspension settings previously stored as kat code strings 
+        in a dict object of format
+            old_attr={'z':[],'pitch':[],'yaw':[]}
+        This can be done individuallly or for z, pitch, and yaw.
+        """
+        if z:
+            for ii in old_attr['z']:
+                self.kat.parse(ii)
+
+        if pitch:
+            for ii in old_attr['pitch']:
+                self.kat.parse(ii)
+
+        if yaw:
+            for ii in old_attr['yaw']:
+                self.kat.parse(ii)
+
         
     def lengths_status(self):
         self.compute_derived_lengths()
@@ -256,8 +290,9 @@ class ALIGO_IFO(IFO):
         spaces between the laser and HAM2 and PRC. Assumes spaces exists
         with name and node:
             sHAM2in and node nIMCout
-            sPRCin  and node nHAM2out
         
+        If removing HAM2, adds a replacement dbs, `FI`, directly before the PRM,
+        to restore the REFL port.
         
         This function alters the kat object directly.
         """
@@ -272,7 +307,11 @@ class ALIGO_IFO(IFO):
         
         if removeHAM2:
             self.kat.removeBlock("HAM2")
-            self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut')
+            # self.kat.nodes.replaceNode(self.kat.sPRCin, 'nHAM2out', 'nLaserOut') #without FI restoration.
+            self.kat.parse("""
+            s sIO 0 nLaserOut nFI1
+            dbs FI  nFI1 nFI2 nHAM2out nREFL
+            """,addToBlock='PRC') #dummy space needed between mod2 and FI.
 
 
     def remove_FI_OMC(self, removeFI=True, removeOMC=True):
@@ -322,6 +361,25 @@ class ALIGO_IFO(IFO):
         kat.lp1.L += delta_l
     
         kat.IFO.compute_derived_lengths(kat)
+        
+    def adjust_SRC_length(self, verbose=False):
+        """
+        Adjust SRC length so that it fulfils the requirement
+        lSRC = (M/5) * c/(2*f1), see [1] equation C.1
+        In the current design M=17 and N=3.4.
+    
+        This function directly alters the lengths of the associated kat object.
+        """
+        kat = self.kat
+        
+        vprint(verbose, "-- adjusting SRC length")
+        ltmp = 0.5 * clight / kat.IFO.f1
+        delta_l = 3.4 * ltmp - kat.IFO.lSRC
+        vprint(verbose, "   adusting kat.ls1.L by {:.4g}m".format(delta_l))
+        kat.ls1.L += delta_l
+    
+        kat.IFO.compute_derived_lengths(kat)
+
 
     def apply_lock_feedback(self, out, idx=None):
         """
@@ -819,20 +877,13 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     kat.IFO.POP_f2  = Output(kat.IFO, "POP_f2",  "nPOP",  "f2", phase=13)
     kat.IFO.REFL_f1 = Output(kat.IFO, "REFL_f1", "nREFL", "f1", phase=101)
     kat.IFO.REFL_f2 = Output(kat.IFO, "REFL_f2", "nREFL", "f2", phase=14)
-    
-    # If we don't have an OMC then we need to attach
-    # directly to the AS node. Otherwise use OMC refl
-    if "OMC" in kat.getBlocks():
-        alt_nAS = "nAS" 
-        nAS_RF = "nOMC_ICb" 
-    else:
-        alt_nAS = None
-        nAS_RF = "nAS"
         
-    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  nAS_RF,  "f1", phase=101, alternate_node_name=alt_nAS)
-    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  nAS_RF,  "f2", phase=14, alternate_node_name=alt_nAS)
-    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", nAS_RF, "f36M", phase=14, alternate_node_name=alt_nAS)
+    kat.IFO.AS_f1  = Output(kat.IFO, "AS_f1",  "nSRM2",  "f1", phase=101)
+    kat.IFO.AS_f2  = Output(kat.IFO, "AS_f2",  "nSRM2",  "f2", phase=14)
+    kat.IFO.AS_f36 = Output(kat.IFO, "AS_f36", "nSRM2", "f36M", phase=14)
 
+    kat.IFO.AS_A_f2  = Output(kat.IFO, "AS_A_f2",  "nAS_A", "f2", phase=20)
+    
     kat.IFO.AS_DC   = Output(kat.IFO, "AS_DC", "nAS")
     kat.IFO.POW_BS  = Output(kat.IFO, "PowBS", "nPRBS*")
     kat.IFO.POW_X   = Output(kat.IFO, "PowX",  "nITMX2")
@@ -898,7 +949,7 @@ def make_kat(name="design", katfile=None, verbose = False, debug=False, use_RF_D
     DSOFT_factors[ITMS] *= -1
 
     kat.IFO.CHARD_P = DOF(kat.IFO, "CHARD_P", None , None, cav_mirrors, CHARD_factors, 1, sigtype="pitch")
-    kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", None , None, cav_mirrors, DHARD_factors, 1, sigtype="pitch")
+    kat.IFO.DHARD_P = DOF(kat.IFO, "DHARD_P", kat.IFO.AS_A_f2, 'Q', cav_mirrors, DHARD_factors, 1, sigtype="pitch")
     kat.IFO.CSOFT_P = DOF(kat.IFO, "CSOFT_P", None , None, cav_mirrors, CSOFT_factors, 1, sigtype="pitch")
     kat.IFO.DSOFT_P = DOF(kat.IFO, "DSOFT_P", None , None, cav_mirrors, DSOFT_factors, 1, sigtype="pitch")
     kat.IFO.PRM_P   = DOF(kat.IFO, "PRM_P"  , None , None, ["PRM", "PRMAR"], [1,1], 1, sigtype="pitch")
@@ -1317,7 +1368,7 @@ def setup(_base, DC_offset_pm=20, verbose=False, debug=False):
     base.removeBlock('powers',  False)
 
     base.phase = 2
-    base.IFO.fix_mirrors()
+    susp_attr = base.IFO.fix_mirrors()
 
     kat = base.deepcopy()
     kat.IFO.remove_modulators()
@@ -1354,5 +1405,7 @@ def setup(_base, DC_offset_pm=20, verbose=False, debug=False):
     #Takes these values and then generates the commands and adds them to
     #the lock block of the kat
     lock_cmds = base.IFO.add_locks_block(locks, verbose=verbose)
+    
+    base.IFO.restore_susp(susp_attr)
     
     return base

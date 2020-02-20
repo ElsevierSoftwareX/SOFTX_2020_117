@@ -11,7 +11,7 @@ try:
 except (NameError, ImportError) as ex:
     __version__ = "develop"
 
-__min_req_finesse__ = 2.2
+__min_req_finesse__ = '2.3.0'
 
 # This flag is used to switch on the gui features in pkat at import time
 USE_GUI = False
@@ -27,7 +27,7 @@ is_container = lambda c: (not isinstance(c, six.string_types)) and hasattr(c, "_
 
 import imp
 
-try:
+try:    
 	imp.find_module('optivis')
 	HAS_OPTIVIS = True
 except ImportError:
@@ -65,11 +65,16 @@ except pkex.MissingFinesse:
 	warn(msg)
 	kat = nokat()
 	v = str(__min_req_finesse__)
-if float(v.split('-')[0]) < __min_req_finesse__:
+
+version_found    = [int(_) for _ in v.split('-')[0].split('.')]
+version_required = [int(_) for _ in __min_req_finesse__.split('-')[0].split('.')]
+
+fulfilled = all([_ == __ for _,__ in zip(version_found, version_required)]) or any([_ > __ for _,__ in zip(version_found, version_required)])
+            
+if not fulfilled:
     raise pkex.BasePyKatException("Pykat %s requires Finesse version %s or higher. You have have %s" % (__version__ ,
                                                                                               str(__min_req_finesse__),
                                                                                               v))
-
 def info():
     print("Pykat version: " + __version__)
     print("Pykat loaded from: " + __file__)

@@ -323,6 +323,24 @@ class VOYAGER_IFO(IFO):
         kat.lp1.L += delta_l
     
         kat.IFO.compute_derived_lengths(kat)
+        
+    def adjust_SRC_length(self, verbose=False):
+        """
+        Adjust SRC length so that it fulfils the requirement
+        lSRC = (M/5) * c/(2*f1), see [1] equation C.1
+        In the current design M=17 and N=3.4.
+    
+        This function directly alters the lengths of the associated kat object.
+        """
+        kat = self.kat
+        
+        vprint(verbose, "-- adjusting SRC length")
+        ltmp = 0.5 * clight / kat.IFO.f1
+        delta_l = 3.4 * ltmp - kat.IFO.lSRC
+        vprint(verbose, "   adusting kat.ls1.L by {:.4g}m".format(delta_l))
+        kat.ls1.L += delta_l
+    
+        kat.IFO.compute_derived_lengths(kat)
 
     def apply_lock_feedback(self, out, idx=None):
         """

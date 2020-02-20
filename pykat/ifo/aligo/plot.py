@@ -79,7 +79,8 @@ def pretuning_powers(self, _kat, xlimits=[-10,10]):
     plt.show(block=0)
     
 def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
-                            replaceDOFSignals=False, block=True, fig=None, label=None, steps=100):
+                            replaceDOFSignals=False, block=True, fig=None, label=None, steps=100,
+                            verbose=False):
     """
     Displays error signals for a given kat file. Can also be used to plot multiple
     DOF's error signals against each other for visualising any cross coupling.
@@ -92,7 +93,8 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     replaceDOFSignals: Bool, replaces already present signals for any DOF if already defined in kat. Regardless of this value, it will add default signals if none found.
     fig: figure, uses predefined figure, when defined it won't be shown automatically
     label: string, if no plotDOFs is defined this legend is shown
-    
+    verbose: prints more output about what's happening, e.g. what commands are getting added
+                            
     Example:
         import pykat
         from pykat.gw_detectors import ifo
@@ -119,7 +121,9 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
     
     # add in signals for those DOF to plot
     for _ in dofs:
-        if replaceDOFSignals and not hasattr(kat, _.signal_name()):
+        if replaceDOFSignals:
+            if verbose:
+                print(_.name, "PD COMMAND", _.signal())
             kat.parse(_.signal())
             
     toShow = None
@@ -161,7 +165,8 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
         scan_cmd = scan_optics_string(d.optics, d.factors, "scan", linlog="lin",
                                         xlimits=np.multiply(d.scale, xlimits), steps=steps,
                                         axis=1, relative=True)
-                                  
+        if verbose:
+            print(d.name, "SCAN COMMAND", scan_cmd)          
         kat.parse(scan_cmd, addToBlock="SCAN")
                 
         out = kat.run(cmd_args=['-cr=on'])
@@ -170,7 +175,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
         
         # Get a lock offset if used
         if (d.name + '_lock') in _kat.commands:
-            DC_Offset = _kat.commands[d.name + '_lock'].offset.value
+            DC_Offset = _kat.commands[d.name + '_lock'].offset
         
         if DC_Offset is None:
             DC_Offset = 0
@@ -187,7 +192,7 @@ def error_signals(_kat, xlimits=[-1,1], DOFs=None, plotDOFs=None,
         ax.set_xlabel("{} [deg]".format(d.name))
         
         if plotDOFs is None:
-            ax.set_ylabel('{} [W] '.format(d.port.name))
+            ax.set_ylabel('{} {} [W] '.format(d.port.name, d.quad))
         else:
             ax.set_ylabel('Error signal [W]')
         

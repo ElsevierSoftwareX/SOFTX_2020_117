@@ -145,7 +145,7 @@ class BeamParam(object):
         else:
             w0 = np.array(w0)
         
-        q = z + 1j * math.pi * w0 **2 / (wavelength*nr)
+        q = z + 1j * math.pi * w0 **2 / (wavelength/nr)
         
         return np.arctan2(q.real, q.imag)
         

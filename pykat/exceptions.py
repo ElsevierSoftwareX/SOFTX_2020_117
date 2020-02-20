@@ -64,6 +64,11 @@ class BasePyKatException(Exception):
     def __str__(self):
         return self.msg
 
+class LockLossException(BasePyKatException):
+    def __init__(self, step):
+        self.step = step
+        BasePyKatException.__init__(self, "Lock was lost after {} steps.".format(step))
+
 class FinesseParse(BasePyKatException) :    
     def __init__(self, msg):
         BasePyKatException.__init__(self, "Error parsing Finesse input\n{0}".format(msg))

@@ -37,17 +37,23 @@ import os
 
 from pykat.external.progressbar import ProgressBar, ETA, Percentage, Bar
 
-def _run(commands, pwd, **kwargs):
+def _run(commands, pwd, IFO, **kwargs):
     import os
     os.chdir(pwd)
     
     import pykat
 
     kat = pykat.finesse.kat()
-    kat.parseCommands(commands)
-    out = kat.run(rethrowExceptions=True, **kwargs)
+    kat.parse(commands)
     
-    return out
+    if IFO is not None: # update kat object for IFO to use
+        kat.IFO = IFO
+        kat.IFO._IFO__kat = kat
+    
+    try:
+        return kat.run(rethrowExceptions=True, **kwargs)
+    except Exception as ex:
+        return ex
 
 class parakat(object):
     """
@@ -84,15 +90,32 @@ class parakat(object):
     on running.
     """
     
-    def __init__(self):
-        self._rc = Client()
+    def __init__(self, **kwargs):
+        self._rc = Client(**kwargs)
         self._lview = self._rc.load_balanced_view()
         self._lview.block = False
         self._results = []
         self._run_count = 0
         
-    def run(self, kat, **kwargs):
-        self._results.append(self._lview.apply_async(_run, "".join(kat.generateKatScript()), os.getcwd(), **kwargs))
+    def run(self, kat, func=None, *args, **kwargs):
+        if func is None:
+            func = _run
+        
+        kat_IFO = None
+        
+        if hasattr(kat, 'IFO'):
+            if hasattr(kat.IFO, "_IFO__kat"):
+                kat.IFO._IFO__kat = None # can't pickle stored kat
+                kat_IFO = kat.IFO
+            
+        self._results.append(self._lview.apply_async(func,
+                                                    "".join(kat.generateKatScript()),
+                                                    kat_IFO,
+                                                    os.getcwd(), *args, **kwargs))
+        
+        if kat_IFO is not None:
+            kat.IFO._IFO__kat = kat
+            
         self._run_count += 1
         
     def getResults(self):

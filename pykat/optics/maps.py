@@ -510,17 +510,17 @@ class surfacemap(object):
         beam center (not mirror center).
         '''
         if w is None:
-            return math.sqrt((self.data[self.notNan]**2).sum())/self.notNan.sum()
+            return math.sqrt((self.data[self.notNan]**2).sum()/self.notNan.sum())
         else:
             R = self.find_radius(unit='meters')
             if w>=R:
-                return math.sqrt((self.data[self.notNan]**2).sum())/self.notNan.sum()
+                return math.sqrt((self.data[self.notNan]**2).sum()/self.notNan.sum())
             else:
                 rho = self.createPolarGrid()[0]
                 inside = np.zeros(self.data.shape,dtype=bool)
                 tmp = rho<w
                 inside[tmp] = self.notNan[tmp]
-                return math.sqrt((self.data[inside]**2).sum())/inside.sum()
+                return math.sqrt((self.data[inside]**2).sum()/inside.sum())
             
     def avg(self, w=None):
         '''

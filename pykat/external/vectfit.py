@@ -104,7 +104,7 @@ def vectfit_step(f, s, poles):
     H = real(H)
     new_poles = sort(eigvals(H))
     unstable = real(new_poles) > 0
-    new_poles[unstable] -= 2*real(new_poles)[unstable]
+    #new_poles[unstable] -= 2*real(new_poles)[unstable]
     return new_poles
 
 # Dear gods of coding style, I sincerely apologize for the following copy/paste
@@ -141,8 +141,8 @@ def calculate_residues(f, s, poles, rcond=-1):
     b = concatenate((real(b), imag(b)))
     cA = np.linalg.cond(A)
     if cA > 1e13:
-        print ('Warning!: Ill Conditioned Matrix. Consider scaling the problem down')
-        print ('Cond(A)', cA)
+        print('Warning!: Ill Conditioned Matrix. Consider scaling the problem down')
+        print('Cond(A)', cA)
     x, residuals, rnk, s = lstsq(A, b, rcond=rcond)
 
     # Recover complex values
@@ -160,10 +160,10 @@ def calculate_residues(f, s, poles, rcond=-1):
 
 def print_params(poles, residues, d, h):
     cfmt = "{0.real:g} + {0.imag:g}j"
-    print ("poles: " + ", ".join(cfmt.format(p) for p in poles))
-    print ("residues: " + ", ".join(cfmt.format(r) for r in residues))
-    print ("offset: {:g}".format(d))
-    print ("slope: {:g}".format(h))
+    print("poles: " + ", ".join(cfmt.format(p) for p in poles))
+    print("residues: " + ", ".join(cfmt.format(r) for r in residues))
+    print("offset: {:g}".format(d))
+    print("slope: {:g}".format(h))
 
 def vectfit_auto(f, s, n_poles=10, n_iter=10, show=False,
                  inc_real=False, loss_ratio=1e-2, rcond=-1, track_poles=False):
@@ -185,20 +185,20 @@ def vectfit_auto(f, s, n_poles=10, n_iter=10, show=False,
     if track_poles:
         return poles, residues, d, h, np.array(poles_list)
 
-    print_params(poles, residues, d, h)
+    #print_params(poles, residues, d, h)
     return poles, residues, d, h
 
 def vectfit_auto_rescale(f, s, **kwargs):
     s_scale = abs(s[-1])
     f_scale = abs(f[-1])
-    print( 'SCALED')
+    #print('SCALED')
     poles_s, residues_s, d_s, h_s = vectfit_auto(f / f_scale, s / s_scale, **kwargs)
     poles = poles_s * s_scale
     residues = residues_s * f_scale * s_scale
     d = d_s * f_scale
     h = h_s * f_scale / s_scale
-    print( 'UNSCALED')
-    print_params(poles, residues, d, h)
+    #print('UNSCALED')
+    #print_params(poles, residues, d, h)
     return poles, residues, d, h
 
 if __name__ == '__main__':
@@ -241,4 +241,3 @@ if __name__ == '__main__':
     plot(test_s.imag, test_f.imag)
     plot(test_s.imag, fitted.real)
     plot(test_s.imag, fitted.imag)
-    show()
