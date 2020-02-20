@@ -1354,7 +1354,7 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
     
     # Useful signals
     kat.IFO.B1   = Output(kat.IFO, "B1", "nB1")
-    kat.IFO.B1p = Output(kat.IFO, "B1", "nSR2")
+    kat.IFO.B1p = Output(kat.IFO, "B1p", "nSR2")
 
     kat.IFO.B2_f1 = Output(kat.IFO, "B2_f1", "nB2", "f1", phase = 174.75)
     kat.IFO.B2_f2 = Output(kat.IFO, "B2_f2", "nB2", "f2", phase = 49.94)
