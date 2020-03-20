@@ -578,7 +578,7 @@ def square_aperture_HG_knm(mode_in, mode_out, q, R):
 
 
 
-def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riemann",
+def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, direction='reflection_front', method="riemann",
           verbose=False, profile=False, gamma=(0,0), delta=(0,0), cache=True, **kwargs):
     """
     Computes a mode scattering matrix for various defects:
@@ -675,7 +675,7 @@ def knmHG(couplings, q1, q2, surface_map=None, q1y=None, q2y=None, method="riema
         __fac_cache.append(math.factorial(n))
 
     if surface_map is not None:
-        Axy = surface_map.z_xy(wavelength=q1.wavelength)
+        Axy = surface_map.z_xy(wavelength=q1.wavelength, direction=direction)
 
         x = surface_map.x
         y = surface_map.y

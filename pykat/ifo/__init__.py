@@ -1133,7 +1133,7 @@ class IFO(object):
         self.__kat = kat
         self.__tuning_keys = frozenset(make_list_copy(tuning_keys_list))
         self.__tuning_comps = make_list_copy(tunings_components_list[:])
-    
+        
     @property
     def kat(self): return self.__kat
     
@@ -1184,6 +1184,84 @@ class IFO(object):
             print("New tunings")
             print(self.get_tunings())
             
+    def lock_drag(self, N, *args, update_state=True, **kwargs):
+        """
+        Performs a "lock drag" to gradually change the state of the interferometer model
+        from one state to another. This is used when wanting to keep a model at a chosen
+        operating point but you want to explore how changes in various parameters affect
+        properties like power buildups, noise couplings, transfer functions, etc.
+    
+        Essentially what this function does is slowly drag several parameters from some
+        initial value to some final one, whilst keeping the locks activated. The locks 
+        must be setup correctly and enabled before this function is called.
+    
+        Example
+        -------
+    
+        Here we take some base model that has a mirror which we want to change the curvature
+        of whilst keeping the interferometer locked. In this example the radius of curvature
+        of ETMX will be changed from its current value to +10m in x and -10m in y.
+
+        >>> kat = base.deepcopy()
+        >>> kat.maxtem  = 2
+        >>> kat.verbose = True
+        >>>
+        >>> drag = lock_drag(kat, 100,
+        >>>           ('ETMX', 'Rcx',  10),
+        >>>           ('ETMX', 'Rcy', -10)
+        >>>          )
+    
+        To apply the lock drag to the object you need to extract the `lock` outputs and apply
+        them to the model.
+    
+        Parameters
+        ----------
+        N : int
+            Number of points to do the lock drag over
+        update_state : bool
+            If True, the calling kat object's state will be updated with the
+            final value of the lock drag
+        *args : tuple(target, param, final_value)
+            target      : Name of the component
+            param       : Parameter to change
+            final_value : The relative change in value to do the lock drag over
+        **kwargs : dict
+            Keyword arguments are passed to the `kat.run(**kwargs)` call.
+            
+        """
+        if hasattr(self, 'xaxis'): self.xaxis.remove()
+        if hasattr(self, 'x2axis'): self.x2axis.remove()
+        
+        kat = self.kat.deepcopy()
+        kat.parse(f"""
+        var dummy 0
+        xaxis dummy re lin 0 1 {N}
+        """)
+    
+        for i, (target, attr, final) in enumerate(args):
+            kat.parse(f"""
+            func LD{i} = ({final:.15G}) * $x1
+            put* {target} {attr} $LD{i}
+            """)
+
+        drag = kat.run(**kwargs)
+    
+        if update_state:
+            self.apply_lock_drag(drag, -1, *args)
+            
+        return drag
+
+    def apply_lock_drag(self, out, idx, *args):
+    
+        for i, (target, attr, final) in enumerate(args):
+            p = [_ for _ in self.kat.components[target]._params if _.name == attr]
+            if len(p) != 1:
+                raise Exception(f"Could not find parameter {attr} for component {target}")
+            else:
+                p[0].value += final * out.x[idx]
+            
+        self.apply_lock_feedback(out, idx)
+        
     def get_tuning_comps(self):
         return self.__tuning_comps
 

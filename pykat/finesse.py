@@ -1505,7 +1505,8 @@ class kat(object):
 
     def parse(self, commands, blocks=None, addToBlock=None,
               keepComments=False, preserveConstants=False,
-              useConstants=None, exceptionOnReplace=False):
+              useConstants=None, exceptionOnReplace=False,
+              exceptionOnError=False):
         """
         This function takes Finesse commands and adds them to the kat object.
         These commands will then be accesible via the kat object interface if
@@ -1524,6 +1525,7 @@ class kat(object):
         preserveConstants - When false each constant is replaced with its value when parsing. True keeps the constant in the kat object and can be changed later using kat.constants
         useConstants - A dictionary of constant values to use instead of those already parsed by the kat object or in the commands
         exceptionOnReplace - If true an exception is thrown when a command or detector name is already present in the kat object
+        exceptionOnError - If true an exception is thrown when a parsing error occurs
         """
         if not isinstance(commands, six.string_types) and hasattr(commands, "__iter__"):
             # separate out individual parseable inputs
@@ -2022,8 +2024,11 @@ class kat(object):
 
 
         except pkex.BasePyKatException as ex:
-            pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
-            sys.exit(1)
+            if exceptionOnError:
+                raise
+            else:
+                pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
+                sys.exit(1)
 
     def _finesse_exec(self, binary_name="kat"):
         from distutils.spawn import find_executable
@@ -2075,7 +2080,7 @@ class kat(object):
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017
 
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None,
-            getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=False, kat_binary="kat"):
+            getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=False, ignore_lockloss=True, kat_binary="kat"):
         """
         Runs the current simulation setup that has been built thus far.
         It returns a KatRun or KatRun2D object which is populated with the various
@@ -2104,7 +2109,7 @@ class kat(object):
                             older versions of Finesse.
 
         rethrowExceptions - if true exceptions will be thrown again rather than being excepted and calling sys.exit()
-
+        ignore_lockloss   - When True locklosses are ignored and a warning is shown if verbose is True
         kat_binary        - Name of binary in $FINESSE_DIR to use
         """
         start = time.time()
@@ -2232,6 +2237,12 @@ class kat(object):
 
                             if tag == "version":
                                 r.katVersion = line.strip()
+                            elif tag == "lock_fail":
+                                if not ignore_lockloss:
+                                    raise pkex.LockLossException(line.strip())
+                                else:
+                                    print("\nLock loss ocurred during step {}\n".format(line.strip()))
+                                        
                             elif tag == "progress" and self.verbose:
                                 var = line.split("\t")
 

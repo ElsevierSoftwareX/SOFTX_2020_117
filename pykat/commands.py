@@ -469,7 +469,7 @@ class tf(Command):
             rtn += "p {f} {Q} ".format(f=p.f, Q=p.Q)
         
         for z in self.zeros:
-            rtn += "p {f} {Q} ".format(f=z.f, Q=z.Q)
+            rtn += "z {f} {Q} ".format(f=z.f, Q=z.Q)
         
         return rtn
         
