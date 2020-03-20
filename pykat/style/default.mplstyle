@@ -17,6 +17,8 @@ axes.formatter.use_locale : False
 axes.prop_cycle : cycler('color', ['b', 'r', 'k', 'g', 'c', 'm', 'y'])
 axes.axisbelow : True
 axes.xmargin : 0
+axes.facecolor: (1, 1, 1, 1)
+axes.edgecolor: (0, 0, 0, 1)
 
 #TICKS
 xtick.labelsize : 9
@@ -31,6 +33,8 @@ grid.linewidth : 0.25
 figure.titlesize : 12
 figure.figsize : 6, 3.708
 figure.dpi : 96
+figure.facecolor: (1, 1, 1, 1)
+figure.edgecolor: (1, 1, 1, 0)
 
 # LINES
 lines.linewidth : 1.2
