@@ -1505,7 +1505,8 @@ class kat(object):
 
     def parse(self, commands, blocks=None, addToBlock=None,
               keepComments=False, preserveConstants=False,
-              useConstants=None, exceptionOnReplace=False):
+              useConstants=None, exceptionOnReplace=False,
+              exceptionOnError=False):
         """
         This function takes Finesse commands and adds them to the kat object.
         These commands will then be accesible via the kat object interface if
@@ -1524,6 +1525,7 @@ class kat(object):
         preserveConstants - When false each constant is replaced with its value when parsing. True keeps the constant in the kat object and can be changed later using kat.constants
         useConstants - A dictionary of constant values to use instead of those already parsed by the kat object or in the commands
         exceptionOnReplace - If true an exception is thrown when a command or detector name is already present in the kat object
+        exceptionOnError - If true an exception is thrown when a parsing error occurs
         """
         if not isinstance(commands, six.string_types) and hasattr(commands, "__iter__"):
             # separate out individual parseable inputs
@@ -2022,8 +2024,11 @@ class kat(object):
 
 
         except pkex.BasePyKatException as ex:
-            pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
-            sys.exit(1)
+            if exceptionOnError:
+                raise
+            else:
+                pkex.PrintError("Pykat error parsing line: '%s':"%  line, ex)
+                sys.exit(1)
 
     def _finesse_exec(self, binary_name="kat"):
         from distutils.spawn import find_executable
