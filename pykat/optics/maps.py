@@ -87,7 +87,7 @@ class surfacemap(object):
 
         self._rom_weights = None
         
-    def write_map(self, filename):
+    def write_map(self, filename, binary=False):
         with open(filename,'w') as mapfile:
             
             mapfile.write("% Surface map\n")
@@ -98,7 +98,7 @@ class surfacemap(object):
             mapfile.write("% Step size (x,y): {0} {1}\n".format(self.step_size[0], self.step_size[1]))
             mapfile.write("% Scaling: {0}\n".format(float(self.scaling)))
             mapfile.write("\n\n")
-            
+
             for i in range(0, self.data.shape[0]):
                 for j in range(0, self.data.shape[1]):
                     mapfile.write("%.15g " % self.data[i,j])

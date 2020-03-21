@@ -2755,7 +2755,8 @@ class kat(object):
             for obj in objs:
                 if isinstance(obj,  six.string_types):
                     if fragment in obj:
-                        print ("  ** removing line '{0}'".format(obj))
+                        if self.verbose:
+                            print ("  ** removing line '{0}'".format(obj))
                         objs.remove(obj)
                         found = True
 
