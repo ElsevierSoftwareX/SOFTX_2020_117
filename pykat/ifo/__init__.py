@@ -39,37 +39,60 @@ class SensingMatrix(DataFrame):
         ref = np.angle(self.loc[DOF])
         return self.apply(lambda row: row * np.exp(-1j * ref), axis=1)
     
-    def radar_plot(self, detector, _ax=None):
+    def radar_plot(self, detector_I, detector_Q, DOFs=None, ax=None, title=None):
+        """Generates an I-Q quadrature radar plot from this sensing matrix.
+                    
+        Parameters
+        ----------
+        detector_I : str
+            Detector name in the sensing matrix for I quadrature
+        
+        detector_Q : str
+            Detector name in the sensing matrix for I quadrature
+        
+        DOFs : collection[str], optional
+            DOFs in the sensing matrix to plot
+    
+        ax : axis, optional
+            Matplotlib axis to put plot into
+        
+        title: str, optional
+            Title of plot
+        """
         import matplotlib.pyplot as plt
-        import re 
-        
-        df = self
-        
-        A = df[detector]
-        
-        if _ax is None:
-            ax = plt.subplot(111, projection='polar')
-        else:
-            ax = _ax
-            
-        ax.set_theta_zero_location('E')
-
+        import numpy as np
+    
+        I = self[detector_I]
+        Q = self[detector_Q]
+    
+        A = I + 1j*Q
+    
+        _ax = ax or plt.subplot(111, projection='polar')
+        _ax.set_theta_zero_location('E')
         r_lim = (np.log10(np.abs(A)).min()-1, np.log10(np.abs(A)).max())
-
-        for _ in A.keys():
+    
+        if DOFs and any((_ not in A.keys() for _ in DOFs)):
+            raise Exception("Sensing matrix is missing one of DOFs ({0}) requested".format(DOFs))
+        
+        if DOFs:
+            keys = tuple(_ for _ in A.keys() if _ in DOFs)
+        else:
+            keys = A.keys()
+        
+        scaling = np.linspace(1.5, 1, len(keys))
+    
+        for _, s in zip(keys, scaling):
             theta = np.angle(A[_])
             r = np.log10(np.abs(A[_]))
-
-            #ax.plot((theta,theta), (r_lim[0], r), label=re.sub("[\(\[].*?[\)\]]", "", _).strip(), lw=2)
-            ax.plot((theta,theta), (r_lim[0], r), lw=2, label=_)
-
-        ax.set_title(detector)
-        ax.set_ylim(r_lim[0], r_lim[1])
-        ax.legend(bbox_to_anchor=(0.5, -0.1), loc="upper center", ncol=3) #len(A.keys()))
-        ax.set_rticks(np.arange(*np.round(r_lim)))
-        ax.grid(True, alpha=0.5, zorder=-10)
-
-        if _ax is None:
+            _ax.plot((theta,theta), (r_lim[0], r), lw=s, label=_)
+        ttl = _ax.set_title(title, fontsize=11)
+        ttl.set_position([.5, 1.12])
+        _ax.set_ylim(r_lim[0], r_lim[1])
+        _ax.legend(bbox_to_anchor=(0.5, -0.1), loc="upper center", ncol=3, fontsize=10)
+        _ax.set_rticks(np.arange(*np.round(r_lim)))
+        _ax.set_yticklabels(tuple( "$10^{%s}$" % _ for _ in np.arange(*np.round(r_lim), dtype=int)))
+        _ax.grid(True, alpha=0.5, zorder=-10)
+        if ax is None:
             plt.tight_layout()
             plt.show()
         
