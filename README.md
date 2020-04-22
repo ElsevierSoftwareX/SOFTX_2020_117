@@ -23,18 +23,19 @@ Please cite pykat when used with::
 
 Examples and tutorials can be found at http://www.gwoptics.org/learn/
 
-Please email finesse@star.sr.bham.ac.uk if you have any issues.
+Please email `finesse-support@nikhef.nl` if you have any issues.
 
 
 
 Installation
 -------------
 
-The easiest way to install PyKat is through PyPi or Conda (Recommended)::
-
-    pip install pykat
+The easiest way to install PyKat is through Conda
+(Recommended) or PyPi:
   
     conda install -c gwoptics pykat
+
+    pip install pykat
 
 The Conda installation has the advantage that it will also install the Finesse binaries too.
 
@@ -66,7 +67,7 @@ Usage
 ------
 
 This does not detail how to use FINESSE itself, just PyKat. FINESSE related queries should
-be directed at the FINESSE manual or the mailing list finesse@star.sr.bham.ac.uk
+be directed at the FINESSE manual or the mailing list  `finesse-support@nikhef.nl`
 
 We highly recommend running PyKat with IPython or Jupyter Notebooks, it has so far provided the best way to explore the various PyKat objects and output data.
 Also of use is IPythons interactive matplotlib mode - or pylab mode - which makes displaying and interacting with multiple plots easy.

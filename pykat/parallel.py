@@ -110,8 +110,8 @@ class parakat(object):
             
         self._results.append(self._lview.apply_async(func,
                                                     "".join(kat.generateKatScript()),
-                                                    kat_IFO,
-                                                    os.getcwd(), *args, **kwargs))
+                                                    os.getcwd(), kat_IFO,
+                                                    *args, **kwargs))
         
         if kat_IFO is not None:
             kat.IFO._IFO__kat = kat
