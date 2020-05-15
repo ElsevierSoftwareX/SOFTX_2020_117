@@ -1146,7 +1146,7 @@ def assert_adv_ifo_kat(kat):
     if not isinstance(kat.IFO, ADV_IFO):
         raise pkex.BasePyKatException("\033[91mkat file is not an ADV_IFO compatiable kat\033[0m")
               
-def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=False):
+def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, keepComments=False, preserveConstants=True):
     """
     Returns a kat object and fills in the kat.IFO property for storing
     the associated interferometer data.
@@ -1389,6 +1389,7 @@ def make_kat(name="avirgo_PR_OMC", katfile=None, verbose = False, debug=False, k
                         [-1,-1,1,1], 100.0, sigtype="z")
     kat.IFO.CARM =  DOF(kat.IFO, "CARM", kat.IFO.B4_f2, "I", [mirrors["EX"], mirrors["EY"]], [-1, -1], 1.5, sigtype="z")
     kat.IFO.DARM =  DOF(kat.IFO, "DARM", kat.IFO.B1,   "",  [mirrors["EX"], mirrors["EY"]], [-1,1], 1.0, sigtype="z")
+    kat.IFO.DARM_h =  DOF(kat.IFO, "DARM_h", kat.IFO.B1,   "",  ["LN", "LW"], [-1,1], 1.0, sigtype="phase")
     if isSRC:
         kat.IFO.SRCL =  DOF(kat.IFO, "SRCL", kat.IFO.B2_f2, "I", mirrors["SRM"], -1, 1e2, sigtype="z")
 

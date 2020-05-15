@@ -15,9 +15,9 @@ const f1 6270777            # fmod1 in TDR
 const f2 56436993           # 9 * f1, fmod2 in TDR
 const f3 8361036            # 4 / 3 * f1, fmod3 in TDR
 # f4 is not used anymore. 
-#const f4 119144763.0        # 19 * f1, new fmod4
-#const f4b 131686317         # 21 * f1, fmod4 in TDR
-#const f1_3f 18812331
+const f4 119144763.0        # 19 * f1, new fmod4
+const f4b 131686317         # 21 * f1, fmod4 in TDR
+const f1_3f 18812331
 
 # EOMs with modulation indices from https://logbook.virgo-gw.eu/virgo/?r=34898 
 # and https://logbook.virgo-gw.eu/virgo/?r=38123
