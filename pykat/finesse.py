@@ -2079,6 +2079,32 @@ class kat(object):
 
         return vals[2][1:-2] #Format: Finesse 2.2 (2.2-0-g994eac8), 03.07.2017
 
+    def finesse_syntax(self, page=1, kat_binary='kat'):
+        """
+        Returns the Finesse syntax reference (from kat -h or kat -hh)
+
+        page - page of syntax reference (1 or 2)
+        kat_binary - Name of binary file to run
+        """
+        command_str =""
+        if page == 1:
+            command_str = '-h'
+        else:
+            if page == 2:
+                command_str = '-hh'
+            else:
+                raise pkex.BasePyKatException("page must be 1 or 2")
+
+        p = Popen([self._finesse_exec(kat_binary), command_str], stdout=PIPE)
+
+        out, err = p.communicate()
+
+        if err is not None:
+            raise pkex.BasePyKatException("Error getting version: " + str(err))
+
+        print(out.decode("utf-8"))
+        return out.decode("utf-8")
+
     def run(self, plot=None, save_output=False, save_kat=False, kat_name=None, cmd_args=None,
             getTraceData=False, rethrowExceptions=False, usePipe=True, binary_output=False, ignore_lockloss=True, kat_binary="kat"):
         """
