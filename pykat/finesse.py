@@ -2411,6 +2411,7 @@ class kat(object):
                     os.rename(outfile, newoutfile)
 
                     r.outfile = newoutfile
+                    outfile = newoutfile
 
                     if self.verbose: print("Output data saved to '{0}'".format(newoutfile))
                     
