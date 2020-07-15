@@ -1364,9 +1364,9 @@ class surfacemap(object):
             mapfile.write('Date:  {:s}\n'.format(time.strftime("%d/%m/%Y  %H:%M:%S")))
             mapfile.write('---------------------------------------\n')
             if w is None:
-                mapfile.write('Weights:   None')
+                mapfile.write('Weights:   None\n')
             else:
-                mapfile.write('Weights:   r     = {:.2f} cm'.format(w*100))
+                mapfile.write('Weights:   r     = {:.2f} cm\n'.format(w*100))
             mapfile.write('Diameter:  D     = {:.2f} cm\n'.format(self.find_radius(unit='meters')*200.0))
             mapfile.write('Offset:    A00   = {:.2f} nm\n'.format(self.zernikeRemoved['00'][2]))
             mapfile.write('Tilt:      A1-1  = {:.2f} nm\n'.format(self.zernikeRemoved['-11'][2]))
