@@ -1374,15 +1374,33 @@ class lens(Component):
         if not values[0].startswith("lens"):
             raise pkex.BasePyKatException("'{0}' not a valid Finesse lens command".format(text))
 
-        alt = values[0].endswith("*")
+        if values[0].endswith("***"):
+        	astigmatic = True
+        	alt=True
+        elif values[0].endswith("**"):
+        	astigmatic = True
+        	alt=False
+        elif values[0].endswith("*"):
+        	astigmatic = False
+        	alt=True
+        else:
+        	astigmatic = False
+        	alt=False
 
         values.pop(0) # remove initial value
 
-        if len(values) == 4:
+        if (not astigmatic) and (len(values) == 4):
             if not alt:
                 return lens(values[0], values[2], values[3], f=values[1], p=None)
             else:
                 return lens(values[0], values[2], values[3], f=None, p=values[1])
+        elif (astigmatic) and (len(values) == 5):
+            if not alt:
+                return astigmaticLens(values[0], values[3], values[4],
+                					 fx=values[1], fy=values[2], px=None, py=None)
+            else:
+                return astigmaticLens(values[0], values[3], values[4],
+                					 px=values[1], py=values[2], fx=None, fy=None)
         else:
             raise pkex.BasePyKatException("Lens Finesse code format incorrect '{0}'".format(text))
 
@@ -1450,6 +1468,111 @@ class lens(Component):
         return (
                    (self.nodes[0], self.nodes[1]),
                )
+
+
+class astigmaticLens(lens):
+    def __init__(self, name, node1, node2, fx=1, fy=1, px=None, py=None):
+        Component.__init__(self, name)
+
+        self._requested_node_names.append(node1)
+        self._requested_node_names.append(node2)
+        self._svgItem = None
+        self.__fx = Param("fx", self, SIfloat(fx))
+        self.__fy = Param("fy", self, SIfloat(fy))
+        self.__py = Param("py", self, SIfloat(py))
+        self.__px = Param("px", self, SIfloat(px))
+        self._freeze()
+
+    # Overwrite these methods as they do not make sense for a astigmatic lens
+    @property
+    def f(self): raise NotImplemented('Please specify fx or fy')
+    
+    @f.setter
+    def f(self, value): raise NotImplemented('Please specify fx or fy')
+    
+    @property
+    def fx(self): return self.__fx
+
+    @property
+    def fy(self): return self.__fy
+
+    @fx.setter
+    def fx(self, value):
+        self.__fx.value = SIfloat(value)
+        self.__p.value = None
+
+    @fy.setter
+    def fy(self, value):
+        self.__fy.value = SIfloat(value)
+        self.__p.value = None
+
+    @property
+    def p(self): raise NotImplemented()
+
+    @p.setter
+    def p(self, value): raise NotImplemented()
+
+    @property
+    def px(self): return self.__px
+
+    @property
+    def py(self): return self.__py
+
+    @px.setter
+    def px(self, value):
+        self.__px.value = SIfloat(value)
+        self.__fx.value = None
+
+    @py.setter
+    def py(self, value):
+        self.__py.value = SIfloat(value)
+        self.__fy.value = None
+
+    def getFinesseText(self):
+        if self.__px.value is None:
+            rtn = ['lens** {0} {1} {2} {3} {4}'.format(self.name, self.fx, self.fy,
+            										 self.nodes[0].name, self.nodes[1].name)]
+        else:
+            rtn = ['lens*** {0} {1} {2} {3} {4}'.format(self.name, self.px, self.py,
+            										 self.nodes[0].name, self.nodes[1].name)]
+
+        for p in self._params:
+            rtn.extend(p.getFinesseText())
+
+        return rtn
+
+
+    def ABCD(self, from_node, to_node, direction="x"):
+        """ untested! """
+        assert(self._kat.nodes[from_node] in self.nodes)
+        assert(self._kat.nodes[to_node] in self.nodes)
+
+        if from_node == to_node:
+            return None
+
+        # if power is set
+        alt = self.f.value is None
+
+        if direction=='x':
+        	if alt:
+        		if self.px.value ==0:
+        			f = np.inf
+        		else:
+        			f = 1/self.px.value
+        	else:
+        		f = self.fx.value
+        elif direction=='y':
+        	if alt:
+        		if self.py.value ==0:
+        			f = np.inf
+        		else:
+        			f = 1/self.py.value
+        	else:
+        		f = self.fy.value
+        else:
+        	raise NotImplemented('direction must be `x` or `y`')
+
+        return ABCD.lens(f)
 
 class modulator(Component):
     def __init__(self, name, node1, node2, f, midx, order, modulation_type='pm', phase=0):
