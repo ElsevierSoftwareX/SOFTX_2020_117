@@ -1499,12 +1499,12 @@ class astigmaticLens(lens):
     @fx.setter
     def fx(self, value):
         self.__fx.value = SIfloat(value)
-        self.__p.value = None
+        self.__px.value = None
 
     @fy.setter
     def fy(self, value):
         self.__fy.value = SIfloat(value)
-        self.__p.value = None
+        self.__py.value = None
 
     @property
     def p(self): raise NotImplemented()

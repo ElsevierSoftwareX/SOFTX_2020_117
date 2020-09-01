@@ -24,3 +24,32 @@ test_string("lens l1 10.0 n0 n1")
 test_string("lens* l1 10.0 n0 n1")
 test_string("lens** l1 10.0 15.0 n0 n1")
 test_string("lens*** l1 10.0 15.0 n0 n1")
+
+# Check the pykat interface works
+kat = finesse.kat() # create a fresh cat object
+kat.parse("lens l1 10.0 n0 n1")
+assert kat.l1.p == None
+assert kat.l1.f == 10.0
+
+kat = finesse.kat() # create a fresh cat object
+kat.parse("lens* l1 10.0 n0 n1")
+
+assert kat.l1.p == 10.0
+assert kat.l1.f == None
+
+kat = finesse.kat() # create a fresh cat object
+kat.parse("lens** l1 10.0 15.0 n0 n1")
+
+assert kat.l1.px == None
+assert kat.l1.py == None
+assert kat.l1.fx == 10.0
+assert kat.l1.fy == 15.0
+
+kat = finesse.kat() # create a fresh cat object
+kat.parse("lens*** l1 10.0 15.0 n0 n1")
+
+assert kat.l1.fx == None
+assert kat.l1.fy == None
+assert kat.l1.px == 10.0
+assert kat.l1.py == 15.0
+
