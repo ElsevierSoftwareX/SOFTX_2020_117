@@ -110,11 +110,11 @@ def adaptive_knm(mode_in, mode_out, q1, q2, q1y=None, q2y=None, smap=None, delta
             ylims = (-_y, _y)
 
             def Rfunc(y, x):
-                Nfuncs[-1] += len(r)
+                #Nfuncs[-1] += len(r)
                 return (Hg_in.Unm(x+delta[0], y+delta[1]) * Hg_out.Unm(x, y).conjugate()).real
 
             def Ifunc(y,x):
-                Nfuncs[-1] += len(r)
+                #Nfuncs[-1] += len(r)
                 return (Hg_in.Unm(x+delta[0], y+delta[1]) * Hg_out.Unm(x, y).conjugate()).imag
         else:
             xlims = (0, 2*math.pi)
