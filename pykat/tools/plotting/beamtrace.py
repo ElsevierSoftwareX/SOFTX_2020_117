@@ -2,17 +2,22 @@ import pykat
 import pykat.exceptions as pkex
 import copy
 import numpy as np
+from warnings import warn
 
-def plot_beam_trace(_kat, from_node, to_node):
+def plot_beam_trace(_kat, from_node, to_node,
+                    fig=None,size_axes=True,gouy_axes=True,return_data=False):
     """Plots the beam radius between two nodes.
 
     Args:
         _kat (pykat.finesse.kat): The kat object containing the parsed katcode
         from_node (str): Node at which to start plotting
         to_node (str): Node to end plotting
-
+        fig (matplotlib.figure): Figure to plot onto. None creates a new axis.
+        size_axes (matplotlib.axes): Beam shape axes. True creates a axes, False disables.
+        gouy_axes (matplotlib.axes): Gouy phase axes. True creates a axes, False disables.
+        return_data (bool): Return the figure object and data.
     """
-    import pylab
+    import matplotlib.pyplot as plt
     
     if _kat == None:
         raise pkex.BasePyKatException('kat object in None')
@@ -42,7 +47,12 @@ def plot_beam_trace(_kat, from_node, to_node):
     spaces = [d[0] for d in v]
     nodes2  = [d[1] for d in v]
     
-    pylab.figure()
+    # If at least one axes is enabled and no figure object is availale
+    # create a new figure object
+    # (Is not False needs to be used because we need to use *is* not *==*)
+    plot_enabled = (size_axes is not False or gouy_axes is not False)
+    if (fig is None) and plot_enabled:
+        fig = plt.figure()
     
     if len(spaces) > 0:
         print("Plotting beam along spaces", ", ".join([s.name for s in spaces]))
@@ -85,10 +95,9 @@ def plot_beam_trace(_kat, from_node, to_node):
             """.format(space=s.name, Lmax=Lmax, N=int(N), spaces=" ".join([s.name for s in spaces[0:n+1]]), node=nodes2[n])
         
             k = copy.deepcopy(kat)
-            k.parseCommands(cmds)
+            k.parse(cmds)
             k.verbose = False
             out = k.run()
-            pylab.subplot(2,1,1)
         
             L.extend(currL + out.x)
             wx.extend(out['bpx'])
@@ -96,23 +105,41 @@ def plot_beam_trace(_kat, from_node, to_node):
             gx.extend(out['gx1'])
             gy.extend(out['gy1'])
             currL += Lmax
-            
-        pylab.subplot(2,1,1)
+        
         wx = np.array(wx)/1e-2
         wy = np.array(wy)/1e-2
-        pylab.plot(L, wx, 'b', L, wy, 'r', L, -wx, 'b', L, -wy, 'r')
-        pylab.title("Beam size between %s and %s" % (from_node, to_node))
-        pylab.ylabel("Beam size [cm]")
-        pylab.xlabel("Distance from %s to %s [m]" % (from_node, to_node))
-        pylab.xlim(min(L), max(L))
+        
+        if size_axes is True and gouy_axes is True:
+            nplot=2
+        else:
+            nplot=1
+        
+        if size_axes is not False:
+            if size_axes is True:
+                size_axes = fig.add_subplot(nplot,1,1)
+            size_axes.plot(L, wx, 'b', L, wy, 'r', L, -wx, 'b', L, -wy, 'r')
+            size_axes.set_title("Beam size between %s and %s" % (from_node, to_node))
+            size_axes.set_ylabel("Beam size [cm]")
+            size_axes.set_xlabel("Distance from %s to %s [m]" % (from_node, to_node))
+            size_axes.set_xlim(min(L), max(L))
     
-        pylab.subplot(2,1,2)
-        pylab.plot(L, gx, 'b', L, gy, 'r')
-        pylab.title("Gouy phase accumulation between %s and %s" % (from_node, to_node))
-        pylab.ylabel("Phase accumulation [deg]")
-        pylab.xlabel("Distance [m]")
-        pylab.xlim(min(L), max(L))
-        pylab.legend(['x','y'], loc=0)
-        pylab.tight_layout()
-        pylab.show()
+        if gouy_axes is not False:
+            if gouy_axes is True:
+                gouy_axes = fig.add_subplot(nplot,1,nplot)
+            gouy_axes.plot(L, gx, 'b', L, gy, 'r')
+            gouy_axes.set_title("Gouy phase accumulation between %s and %s" % (from_node, to_node))
+            gouy_axes.set_ylabel("Phase accumulation [deg]")
+            gouy_axes.set_xlabel("Distance [m]")
+            gouy_axes.set_xlim(min(L), max(L))
+            
+        if plot_enabled:
+            fig.legend(['x','y'], loc='upper right')
+            fig.tight_layout()
+        
+        if return_data:
+            return fig,{'wx':wx,'wy':wy,'L':L,'gx':gx,'gy':gy}
+        elif plot_enabled:
+            fig.show()
+        else:
+            warn('Data and plotting disabled, no output will be returned.')
         
